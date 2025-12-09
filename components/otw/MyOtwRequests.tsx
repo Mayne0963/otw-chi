@@ -115,13 +115,15 @@ const MyOtwRequests: React.FC = () => {
               )}
 
               {req.notes && <p className={styles.requestNotes}>Notes: {req.notes}</p>}
-              <button
-                type="button"
-                className={styles.rateButton}
-                onClick={() => handleRateClick(req)}
-              >
-                Rate this OTW
-              </button>
+              {req.status === "COMPLETED" && (
+                <button
+                  type="button"
+                  className={styles.rateButton}
+                  onClick={() => handleRateClick(req)}
+                >
+                  Rate this OTW
+                </button>
+              )}
             </div>
           ))}
         </div>

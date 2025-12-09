@@ -228,6 +228,11 @@ export const addOtwRequest = (request: OtwRequest): void => {
   requestStore.push(request);
 };
 
+export const getOtwRequestById = (id: string): OtwRequest | undefined => {
+  const all = getAllOtwRequests?.() || [];
+  return all.find((r) => r.id === id);
+};
+
 /**
  * Update status lifecycle for a request (basic early version).
  */

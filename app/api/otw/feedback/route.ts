@@ -5,6 +5,7 @@ import {
   getAllFeedback,
   getFeedbackForDriver,
 } from "../../../../lib/otw/otwReputation";
+import { getOtwRequestById } from "../../../../lib/otw/otwRequests";
 
 const buildFeedback = (body: any): OtwFeedback | { error: string } => {
   const { requestId, driverId, customerId, rating, comment } = body || {};
@@ -52,6 +53,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const feedback = built as OtwFeedback;
+    const requestRecord = getOtwRequestById(String(feedback.requestId));
+    if (!requestRecord) {
+      return NextResponse.json(
+        { success: false, error: "Request not found for feedback." },
+        { status: 404 }
+      );
+    }
+    if (requestRecord.status !== "COMPLETED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Feedback can only be submitted for completed OTW requests.",
+        },
+        { status: 400 }
+      );
+    }
+
     const saved = addFeedback(built);
     return NextResponse.json(
       { success: true, feedback: saved },
@@ -65,4 +85,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
