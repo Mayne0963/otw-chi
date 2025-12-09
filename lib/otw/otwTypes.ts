@@ -1,6 +1,7 @@
 // lib/otw/otwTypes.ts
 
 import type { OtwTierId, OtwCustomerId, OtwDriverId } from './otwIds';
+export type { OtwTierId, OtwCustomerId, OtwDriverId } from './otwIds';
 import type { ServiceType, OtwRequestStatus } from './otwEnums';
 export type { ServiceType } from './otwEnums';
 
