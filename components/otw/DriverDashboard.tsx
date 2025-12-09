@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import styles from "./DriverDashboard.module.css";
 import { DriverStatus, DriverJob, OtwFeedback } from "../../lib/otw/otwTypes";

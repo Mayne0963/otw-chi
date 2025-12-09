@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
 import styles from "./MyOtwRequests.module.css";
 import OtwFeedbackForm from "./OtwFeedbackForm";
@@ -124,4 +126,3 @@ const MyOtwRequests: React.FC = () => {
 };
 
 export default MyOtwRequests;
-

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listAllMemberships } from "../../../../lib/otw/otwMembership";
-import { getAllFeedback } from "../../../../lib/otw/otwReputation";
-import { listDrivers } from "../../../../lib/otw/otwDrivers";
+import { listAllMemberships } from "@/lib/otw/otwMembership";
+import { getAllFeedback } from "@/lib/otw/otwReputation";
+import { listDrivers } from "@/lib/otw/otwDrivers";
 
 export async function GET(request: NextRequest) {
   let requests: any[] = [];
@@ -49,4 +49,3 @@ export async function GET(request: NextRequest) {
     lastUpdated: new Date().toISOString(),
   });
 }
-

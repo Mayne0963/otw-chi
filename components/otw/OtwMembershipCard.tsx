@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useMemo } from "react";
 import styles from "./OtwMembershipCard.module.css";
 import { getMembershipForCustomer, estimateRemainingMiles } from "../../lib/otw/otwMembership";
@@ -76,4 +78,3 @@ const OtwMembershipCard: React.FC = () => {
 };
 
 export default OtwMembershipCard;
-
