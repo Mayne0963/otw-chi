@@ -204,6 +204,8 @@ export const listAllMemberships = (): OtwMembership[] => [
 // Additional helpers for Admin HQ and external modules
 export const getAllTiers = (): OtwTierDefinition[] => catalogGetAllTiers();
 export const getAllMemberships = (): OtwMembership[] => membershipStore;
+// Re-export tier lookup for callers that already import from otwMembership
+export { getTierById };
 
 export const createMembershipForCustomerAdmin = (
   customerId: string,
