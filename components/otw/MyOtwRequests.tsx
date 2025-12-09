@@ -14,6 +14,7 @@ interface OtwRequest {
   createdAt: string;
   estimatedMiles: number;
   status: string;
+  assignedDriverId?: string;
 }
 
 const MyOtwRequests: React.FC = () => {
@@ -85,18 +86,34 @@ const MyOtwRequests: React.FC = () => {
           {requests.map((req) => (
             <div key={req.id} className={styles.requestCard}>
               <div className={styles.requestHeaderRow}>
-                <span className={styles.requestId}>{req.id}</span>
-                <span className={styles.statusBadge}>{req.status}</span>
+                <span className={styles.requestId}>Request {req.id}</span>
+                <span
+                  className={`${styles.statusBadge} ${styles[`status_${String(req.status).toLowerCase()}`]}`}
+                >
+                  {req.status}
+                </span>
               </div>
-              <p className={styles.requestMeta}>
-                {req.serviceType} • {req.urgency} • {new Date(req.createdAt).toLocaleString()}
-              </p>
+
               <p className={styles.requestRoute}>
                 {req.pickupArea} → {req.dropoffArea}
               </p>
+
+              <p className={styles.requestMeta}>
+                {req.serviceType} • {req.urgency} •{" "}
+                {new Date(req.createdAt).toLocaleString()}
+              </p>
+
               <p className={styles.requestMiles}>
                 Estimated: {req.estimatedMiles.toLocaleString()} miles
               </p>
+
+              {req.assignedDriverId && (
+                <p className={styles.assignedLine}>
+                  Assigned driver:{" "}
+                  <span className={styles.assignedDriverValue}>{req.assignedDriverId}</span>
+                </p>
+              )}
+
               {req.notes && <p className={styles.requestNotes}>Notes: {req.notes}</p>}
               <button
                 type="button"

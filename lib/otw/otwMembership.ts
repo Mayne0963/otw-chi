@@ -11,6 +11,7 @@ import {
 import {
   getTierById,
   getDefaultTier,
+  getAllTiers as catalogGetAllTiers,
 } from "./otwTierCatalog";
 import { ok, err, Result } from "./otwResult";
 
@@ -199,3 +200,89 @@ export const ensureMembership = (
 export const listAllMemberships = (): OtwMembership[] => [
   ...membershipStore,
 ];
+
+// Additional helpers for Admin HQ and external modules
+export const getAllTiers = (): OtwTierDefinition[] => catalogGetAllTiers();
+export const getAllMemberships = (): OtwMembership[] => membershipStore;
+
+export const createMembershipForCustomerAdmin = (
+  customerId: string,
+  tierId: OtwTierId
+): OtwMembership => {
+  const tier = getTierById(tierId);
+  if (!tier) {
+    throw new Error(`Unknown OTW tier: ${tierId}`);
+  }
+
+  const now = new Date();
+  const renew = new Date(now);
+  renew.setMonth(now.getMonth() + 1);
+
+  const existing = membershipStore.find(
+    (m) => m.customerId === customerId && m.status !== "CANCELLED"
+  );
+
+  if (existing) {
+    existing.tierId = tier.id;
+    existing.milesCap = tier.includedMiles;
+    existing.milesUsed = 0;
+    existing.rolloverMiles = existing.rolloverMiles || 0;
+    existing.status = "ACTIVE";
+    existing.renewsOn = renew.toISOString();
+    existing.renewsAtIso = renew.toISOString();
+    const rem = (existing.milesCap ?? tier.includedMiles) - (existing.milesUsed ?? 0) + (existing.rolloverMiles ?? 0);
+    existing.milesRemaining = rem < 0 ? 0 : rem;
+    return existing;
+  }
+
+  const membership: OtwMembership = {
+    membershipId: `MEM-${membershipStore.length + 1}`,
+    customerId,
+    tierId: tier.id,
+    milesCap: tier.includedMiles,
+    milesUsed: 0,
+    rolloverMiles: 0,
+    status: "ACTIVE",
+    renewsOn: renew.toISOString(),
+    createdAt: now.toISOString(),
+    activeSinceIso: now.toISOString(),
+    milesRemaining: tier.includedMiles,
+    renewsAtIso: renew.toISOString(),
+  };
+
+  membershipStore.push(membership);
+  return membership;
+};
+
+export const changeCustomerTier = (
+  customerId: string,
+  newTierId: OtwTierId
+): OtwMembership => {
+  const tier = getTierById(newTierId);
+  if (!tier) {
+    throw new Error(`Unknown OTW tier: ${newTierId}`);
+  }
+
+  const membership = getMembershipForCustomer(customerId);
+
+  if (!membership) {
+    return createMembershipForCustomerAdmin(customerId, newTierId);
+  }
+
+  const remaining = estimateRemainingMiles(membership);
+  membership.tierId = newTierId;
+  membership.milesCap = tier.includedMiles;
+  membership.milesUsed = 0;
+  membership.rolloverMiles = remaining;
+  membership.status = "ACTIVE";
+
+  const now = new Date();
+  const renew = new Date(now);
+  renew.setMonth(now.getMonth() + 1);
+  membership.renewsOn = renew.toISOString();
+  membership.renewsAtIso = renew.toISOString();
+  const rem2 = (membership.milesCap ?? tier.includedMiles) - (membership.milesUsed ?? 0) + (membership.rolloverMiles ?? 0);
+  membership.milesRemaining = rem2 < 0 ? 0 : rem2;
+
+  return membership;
+};

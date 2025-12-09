@@ -17,11 +17,30 @@ const DriverDashboard: React.FC = () => {
     initialStatus,
   } = mockDriverSnapshot;
 
+  // Local shape for /api/otw/requests responses
+  interface ApiOtwRequest {
+    id: string;
+    serviceType: string;
+    urgency: string;
+    pickupArea: string;
+    dropoffArea: string;
+    notes?: string;
+    createdAt: string;
+    estimatedMiles: number;
+    status: string;
+    assignedDriverId?: string;
+  }
+
   const [status, setStatus] = useState<DriverStatus>(initialStatus);
   const [feedback, setFeedback] = useState<OtwFeedback[]>([]);
   const [avgRatingFromFeedback, setAvgRatingFromFeedback] = useState<number | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState<boolean>(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [assignedRequests, setAssignedRequests] = useState<ApiOtwRequest[]>([]);
+  const [assignedLoading, setAssignedLoading] = useState(false);
+  const [assignedError, setAssignedError] = useState<string | null>(null);
+  const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const todayJobs: DriverJob[] = mockDriverJobsToday;
 
@@ -58,6 +77,63 @@ const DriverDashboard: React.FC = () => {
     };
     fetchFeedback();
   }, [driverId]);
+
+  const fetchAssignedRequests = async () => {
+    try {
+      if (!driverId) return;
+      setAssignedLoading(true);
+      setAssignedError(null);
+      const res = await fetch("/api/otw/requests");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setAssignedError(data.error || "Unable to load assigned OTW jobs.");
+        setAssignedRequests([]);
+        return;
+      }
+      const all: ApiOtwRequest[] = data.requests || [];
+      const mine = all.filter(
+        (req) =>
+          req.assignedDriverId === driverId &&
+          req.status !== "COMPLETED" &&
+          req.status !== "CANCELLED"
+      );
+      mine.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setAssignedRequests(mine);
+    } catch (err) {
+      console.error("Failed to load assigned OTW jobs:", err);
+      setAssignedError("Network error while loading assigned OTW jobs.");
+      setAssignedRequests([]);
+    } finally {
+      setAssignedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssignedRequests();
+  }, [driverId]);
+
+  const handleMarkCompleted = async (requestId: string) => {
+    try {
+      setUpdateError(null);
+      setUpdatingRequestId(requestId);
+      const res = await fetch("/api/otw/requests/status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, newStatus: "COMPLETED" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setUpdateError(data.error || "Unable to update job status.");
+        return;
+      }
+      await fetchAssignedRequests();
+    } catch (err) {
+      console.error("Failed to mark job as completed:", err);
+      setUpdateError("Network error while updating job status.");
+    } finally {
+      setUpdatingRequestId(null);
+    }
+  };
 
   const handleToggleStatus = () => {
     setStatus((prev) => (prev === "ONLINE" ? "OFFLINE" : "ONLINE"));
@@ -168,6 +244,46 @@ const DriverDashboard: React.FC = () => {
               ))}
             </ul>
           </>
+        )}
+      </section>
+
+      <section className={styles.assignedSection}>
+        <h2 className={styles.sectionTitle}>Assigned OTW Jobs</h2>
+        {updateError && (<p className={styles.assignedError}>{updateError}</p>)}
+        {assignedLoading && (<p className={styles.assignedStatus}>Loading your OTW jobs…</p>)}
+        {assignedError && (<p className={styles.assignedError}>{assignedError}</p>)}
+        {!assignedLoading && !assignedError && assignedRequests.length === 0 && (
+          <p className={styles.assignedStatus}>
+            No jobs assigned yet. When OTW matches you to a request, it will appear here.
+          </p>
+        )}
+        {!assignedLoading && assignedRequests.length > 0 && (
+          <ul className={styles.assignedList}>
+            {assignedRequests.map((req) => (
+              <li key={req.id} className={styles.assignedItem}>
+                <div className={styles.assignedHeaderRow}>
+                  <span className={styles.assignedId}>Request {req.id}</span>
+                  <span className={`${styles.assignedBadge} ${styles[`status_${String(req.status).toLowerCase()}`]}`}>
+                    {req.status}
+                  </span>
+                </div>
+                <p className={styles.assignedRoute}>{req.pickupArea} → {req.dropoffArea}</p>
+                <p className={styles.assignedMeta}>
+                  {req.serviceType} • {req.urgency} • {new Date(req.createdAt).toLocaleString()}
+                </p>
+                <p className={styles.assignedMiles}>Est. {req.estimatedMiles.toLocaleString()} miles</p>
+                {req.notes && (<p className={styles.assignedNotes}>Notes: {req.notes}</p>)}
+                <button
+                  type="button"
+                  className={styles.completeButton}
+                  onClick={() => handleMarkCompleted(req.id)}
+                  disabled={updatingRequestId === req.id}
+                >
+                  {updatingRequestId === req.id ? "Updating…" : "Mark Completed"}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

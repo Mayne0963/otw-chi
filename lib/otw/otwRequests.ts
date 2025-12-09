@@ -222,6 +222,12 @@ export const listRequestsForCustomer = (
 
 export const listAllRequests = (): OtwRequest[] => [...requestStore];
 
+// Aliases for external modules/components expecting these names
+export const getAllOtwRequests = (): OtwRequest[] => [...requestStore];
+export const addOtwRequest = (request: OtwRequest): void => {
+  requestStore.push(request);
+};
+
 /**
  * Update status lifecycle for a request (basic early version).
  */
@@ -251,6 +257,18 @@ export const updateRequestStatus = (
     // Later: set chargedMiles, further metrics, NIP rewards, etc.
   }
   return ok(request);
+};
+
+// Simple helper variant matching external import naming
+export const updateOtwRequestStatus = (
+  requestId: string,
+  newStatus: OtwRequestStatus
+): OtwRequest | null => {
+  const req = requestStore.find((r) => r.id === requestId);
+  if (!req) return null;
+  req.status = newStatus;
+  req.updatedAt = new Date().toISOString();
+  return req;
 };
 
 /**

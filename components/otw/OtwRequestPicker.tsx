@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import styles from "./OtwRequestPicker.module.css";
 import { Urgency } from "../../lib/otw/otwTypes";

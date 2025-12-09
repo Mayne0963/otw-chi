@@ -87,6 +87,56 @@
   color: #888888;
 }
 
+.tierChangeBlock {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.tierChangeLabel {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.tierChangeRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.tierSelect {
+  flex: 1;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #cccccc;
+}
+
+.tierChangeButton {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+
+.tierChangeButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tierChangeError {
+  font-size: 0.8rem;
+  color: #b00020;
+}
+
+.tierChangeSuccess {
+  font-size: 0.8rem;
+  color: #2e7d32;
+}
+
 @media (prefers-color-scheme: dark) {
   .card {
     background: #111827;
@@ -103,4 +153,3 @@
     color: #9ca3af;
   }
 }
-
