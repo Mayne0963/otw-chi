@@ -171,7 +171,11 @@ const OtwRequestPicker: React.FC = () => {
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        setSubmitError(data.error || "Unable to send request to OTW.");
+        let msg = data.error || "Unable to send request to OTW.";
+        if (data.recommendedTierId) {
+          msg += ` You may need to upgrade your OTW tier (${data.recommendedTierId}) to unlock this type of request or distance.`;
+        }
+        setSubmitError(msg);
         return;
       }
       if (typeof data.request?.estimatedMiles === "number") {

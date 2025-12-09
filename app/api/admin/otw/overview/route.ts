@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { listAllMemberships } from "@/lib/otw/otwMembership";
 import { getAllFeedback } from "@/lib/otw/otwReputation";
 import { listDrivers } from "@/lib/otw/otwDrivers";
+import {
+  getDriverHealthLeaderboard,
+  getCustomerHealthLeaderboard,
+} from "@/lib/otw/otwAnalytics";
 
 export async function GET(request: NextRequest) {
   let requests: any[] = [];
@@ -36,6 +40,11 @@ export async function GET(request: NextRequest) {
     return acc;
   }, {} as Record<string, number>);
 
+  const driverHealth = getDriverHealthLeaderboard();
+  const customerHealth = getCustomerHealthLeaderboard();
+  const topDrivers = driverHealth.slice(0, 3);
+  const topCustomers = customerHealth.slice(0, 3);
+
   return NextResponse.json({
     success: true,
     totalRequests,
@@ -47,5 +56,7 @@ export async function GET(request: NextRequest) {
     tierCounts,
     drivers: drivers.length,
     lastUpdated: new Date().toISOString(),
+    topDrivers,
+    topCustomers,
   });
 }

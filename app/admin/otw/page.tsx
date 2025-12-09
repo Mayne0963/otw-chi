@@ -69,7 +69,64 @@ export default function OtwAdminHQ() {
           </div>
         ))}
       </div>
+
+      <h2 className={styles.subtitle}>Top Drivers (OTW Health)</h2>
+      <div className={styles.healthList}>
+        {(!data.topDrivers || data.topDrivers.length === 0) && (
+          <p className={styles.healthEmpty}>No driver health data yet.</p>
+        )}
+
+        {data.topDrivers && data.topDrivers.length > 0 && (
+          <ul className={styles.healthItems}>
+            {data.topDrivers.map((entry: any) => (
+              <li key={entry.driver.driverId} className={styles.healthItem}>
+                <div className={styles.healthHeaderRow}>
+                  <span className={styles.healthName}>
+                    {entry.driver.displayName}
+                  </span>
+                  <span className={styles.healthScore}>
+                    {entry.score.toFixed(0)}/100
+                  </span>
+                </div>
+                <p className={styles.healthMeta}>
+                  Rating: {(entry.components.rating * 5).toFixed(1)} •
+                  Completion: {(entry.components.completionRate * 100).toFixed(0)}% •
+                  Recency: {(entry.components.recencyBoost * 100).toFixed(0)}%
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <h2 className={styles.subtitle}>Top Customers (OTW Health)</h2>
+      <div className={styles.healthList}>
+        {(!data.topCustomers || data.topCustomers.length === 0) && (
+          <p className={styles.healthEmpty}>No customer health data yet.</p>
+        )}
+
+        {data.topCustomers && data.topCustomers.length > 0 && (
+          <ul className={styles.healthItems}>
+            {data.topCustomers.map((entry: any) => (
+              <li key={entry.customerId} className={styles.healthItem}>
+                <div className={styles.healthHeaderRow}>
+                  <span className={styles.healthName}>
+                    Customer {entry.customerId}
+                  </span>
+                  <span className={styles.healthScore}>
+                    {entry.score.toFixed(0)}/100
+                  </span>
+                </div>
+                <p className={styles.healthMeta}>
+                  Usage: {(entry.components.usage * 100).toFixed(0)}% •
+                  Completion: {(entry.components.completionRate * 100).toFixed(0)}% •
+                  Tier: {(entry.components.tierQuality * 100).toFixed(0)}%
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
-

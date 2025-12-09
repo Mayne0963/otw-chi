@@ -143,8 +143,9 @@ export interface OtwTierDefinition {
   monthlyPriceCents: number;
   includedMiles: number;
   perks: string[];
-  allowedServiceTypes: ServiceType[];
-  maxMilesPerRequest: number;
+  // Optional constraint fields
+  maxMilesPerRequest?: number;
+  allowedServiceTypes?: ServiceType[];
   recommendedUpgradeTierId?: OtwTierId;
 }
 

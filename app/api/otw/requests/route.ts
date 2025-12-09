@@ -6,6 +6,7 @@ import {
   getMembershipForCustomer,
   updateMembershipMilesUsed,
   estimateRemainingMiles,
+  evaluateTierRequestEligibility,
 } from "../../../../lib/otw/otwMembership";
 
 export interface OtwRequest {
@@ -111,6 +112,25 @@ export async function POST(request: NextRequest) {
       notes ? String(notes) : undefined
     );
 
+    // Ensure the customer's tier allows this request before committing
+    const customerId = "CUSTOMER-1";
+    const eligibility = evaluateTierRequestEligibility(
+      customerId,
+      estimatedMiles,
+      serviceType as any
+    );
+    if (!eligibility.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            eligibility.reason || "This request is not allowed on your tier.",
+          recommendedTierId: eligibility.recommendedTierId || null,
+        },
+        { status: 400 }
+      );
+    }
+
   const newRequest: OtwRequest = {
     id: `REQ-${otwRequests.length + 1}`,
     serviceType,
@@ -140,7 +160,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Attach mock customer and update membership snapshot
-    const customerId = "CUSTOMER-1";
     newRequest.customerId = customerId;
 
     let membershipUpdate: any = null;

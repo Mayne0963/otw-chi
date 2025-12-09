@@ -61,3 +61,50 @@
   }
 }
 
+/* Health sections */
+.healthList {
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.healthEmpty {
+  font-size: 0.85rem;
+  color: #666666;
+}
+
+.healthItems {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.healthItem {
+  padding: 0.6rem 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.healthItem:first-of-type {
+  border-top: none;
+}
+
+.healthHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.healthName {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.healthScore {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.healthMeta {
+  font-size: 0.8rem;
+  color: #777777;
+  margin-top: 0.15rem;
+}

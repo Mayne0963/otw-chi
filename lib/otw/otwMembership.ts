@@ -7,6 +7,7 @@ import {
 import {
   OtwMembership,
   OtwTierDefinition,
+  ServiceType,
 } from "./otwTypes";
 import {
   getTierById,
@@ -287,4 +288,54 @@ export const changeCustomerTier = (
   membership.milesRemaining = rem2 < 0 ? 0 : rem2;
 
   return membership;
+};
+
+export interface TierEligibilityResult {
+  allowed: boolean;
+  reason?: string;
+  recommendedTierId?: OtwTierId;
+}
+
+export const evaluateTierRequestEligibility = (
+  customerId: string,
+  requestedMiles: number,
+  serviceType: ServiceType
+): TierEligibilityResult => {
+  const membership = getMembershipForCustomer(customerId);
+  if (!membership) {
+    return {
+      allowed: false,
+      reason: "No active OTW membership found for this customer.",
+    };
+  }
+
+  const tier = getTierById(membership.tierId);
+  if (!tier) {
+    return {
+      allowed: false,
+      reason: "Your OTW membership tier is misconfigured.",
+    };
+  }
+
+  if (tier.maxMilesPerRequest && requestedMiles > tier.maxMilesPerRequest) {
+    return {
+      allowed: false,
+      reason: `This request exceeds the max miles allowed for your tier (${tier.maxMilesPerRequest} miles per request).`,
+      recommendedTierId: tier.recommendedUpgradeTierId,
+    };
+  }
+
+  if (
+    tier.allowedServiceTypes &&
+    tier.allowedServiceTypes.length > 0 &&
+    !tier.allowedServiceTypes.includes(serviceType)
+  ) {
+    return {
+      allowed: false,
+      reason: `This OTW service type is not available on your current tier.`,
+      recommendedTierId: tier.recommendedUpgradeTierId,
+    };
+  }
+
+  return { allowed: true };
 };
