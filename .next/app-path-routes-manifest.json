@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/otw/drivers/complete/route": "/api/otw/drivers/complete",
+  "/api/otw/drivers/accept/route": "/api/otw/drivers/accept",
+  "/api/otw/nip/summary/route": "/api/otw/nip/summary",
+  "/api/otw/drivers/register/route": "/api/otw/drivers/register",
+  "/api/otw/drivers/requests/route": "/api/otw/drivers/requests",
+  "/api/otw/requests/route": "/api/otw/requests",
+  "/(public)/otw/nip/page": "/otw/nip",
+  "/(dashboard)/otw/driver/page": "/otw/driver",
+  "/(public)/otw/page": "/otw",
+  "/page": "/"
+}

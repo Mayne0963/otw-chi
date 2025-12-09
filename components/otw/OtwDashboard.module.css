@@ -1,0 +1,172 @@
+.otwDashboard {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: 0.02em;
+}
+
+.subtitle {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tierBadge {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  font-weight: 700;
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--card-bg, #ffffff);
+}
+
+.cardHeader {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.cardValue {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.cardSubtext {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.milesBar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 9999px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.milesFill {
+  height: 100%;
+  background: #111827;
+}
+
+.categoriesRow {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+  overflow-x: auto;
+}
+
+.categoryChip {
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  padding: 6px 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.categoryChip:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.categoryChipSelected {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activityItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.mapPreview {
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: #111827;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+  .tierBadge,
+  .avatar,
+  .categoryChip,
+  .activityItem,
+  .milesBar {
+    border-color: #374151;
+  }
+  .milesBar {
+    background: #374151;
+  }
+  .categoryChip:hover {
+    background: rgba(255,255,255,0.06);
+  }
+}
+

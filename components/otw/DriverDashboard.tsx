@@ -1,0 +1,175 @@
+import React, { useEffect, useState } from "react";
+import styles from "./DriverDashboard.module.css";
+import { DriverStatus, DriverJob, OtwFeedback } from "../../lib/otw/otwTypes";
+import { mockDriverSnapshot, mockDriverJobsToday } from "../../lib/otw/otwMockData";
+
+const DriverDashboard: React.FC = () => {
+  const {
+    driverId,
+    driverName,
+    driverTier,
+    rating,
+    jobsToday,
+    earningsToday,
+    weeklyEarnings,
+    initialStatus,
+  } = mockDriverSnapshot;
+
+  const [status, setStatus] = useState<DriverStatus>(initialStatus);
+  const [feedback, setFeedback] = useState<OtwFeedback[]>([]);
+  const [avgRatingFromFeedback, setAvgRatingFromFeedback] = useState<number | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState<boolean>(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
+  const todayJobs: DriverJob[] = mockDriverJobsToday;
+
+  useEffect(() => {
+    if (!driverId) return;
+    const fetchFeedback = async () => {
+      try {
+        setFeedbackLoading(true);
+        setFeedbackError(null);
+        const res = await fetch(`/api/otw/feedback?driverId=${encodeURIComponent(driverId)}`);
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setFeedbackError(data.error || "Unable to load feedback.");
+          setFeedback([]);
+          setAvgRatingFromFeedback(null);
+          return;
+        }
+        const items: OtwFeedback[] = data.feedback || [];
+        setFeedback(items);
+        if (items.length > 0) {
+          const total = items.reduce((sum, fb) => sum + fb.rating, 0);
+          setAvgRatingFromFeedback(Number((total / items.length).toFixed(2)));
+        } else {
+          setAvgRatingFromFeedback(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch driver feedback:", error);
+        setFeedbackError("Network error while loading feedback.");
+        setFeedback([]);
+        setAvgRatingFromFeedback(null);
+      } finally {
+        setFeedbackLoading(false);
+      }
+    };
+    fetchFeedback();
+  }, [driverId]);
+
+  const handleToggleStatus = () => {
+    setStatus((prev) => (prev === "ONLINE" ? "OFFLINE" : "ONLINE"));
+  };
+
+  const statusLabel = status === "ONLINE" ? "Online" : "Offline";
+  const statusNote = status === "ONLINE" ? "You’re receiving jobs now." : "Go online to receive jobs.";
+
+  return (
+    <div className={styles.driverDashboard}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div style={{ fontWeight: 800, fontSize: 24 }}>OTW Driver Dashboard</div>
+          <div style={{ fontSize: 14, opacity: 0.8 }}>{driverName} • {driverTier}</div>
+        </div>
+        <div className={styles.headerRight}>
+          <span className={styles.badge} style={{ background: status === "ONLINE" ? "#10b981" : "#f3f4f6", color: status === "ONLINE" ? "#ffffff" : "inherit", borderColor: status === "ONLINE" ? "#10b981" : undefined }}>{statusLabel}</span>
+          <button type="button" className={styles.statusToggle} onClick={handleToggleStatus}>
+            {status === "ONLINE" ? "Go Offline" : "Go Online"}
+          </button>
+          <span className={styles.rating}>⭐ {rating.toFixed(1)}</span>
+        </div>
+      </div>
+
+      <div className={styles.grid}>
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Today’s Earnings</div>
+          <div className={styles.cardValue}>${earningsToday.toFixed(2)}</div>
+          <div className={styles.cardSubtext}>This week: ${weeklyEarnings.toFixed(2)}</div>
+        </div>
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Jobs Completed Today</div>
+          <div className={styles.cardValue}>{jobsToday}</div>
+          <div className={styles.cardSubtext}>Keep going – bonuses unlock at 25 jobs/week.</div>
+        </div>
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Current Status</div>
+          <div className={styles.cardValue}>{statusLabel}</div>
+          <div className={styles.cardSubtext}>{statusNote}</div>
+        </div>
+        <div className={styles.card}>
+          <div className={styles.cardTitle}>Rating</div>
+          <div className={styles.cardValue}>{rating.toFixed(1)}</div>
+          <div className={styles.cardSubtext}>High ratings unlock more OTW perks.</div>
+        </div>
+      </div>
+
+      <div className={styles.card} style={{ marginTop: 16 }}>
+        <div className={styles.cardTitle}>Today’s Jobs</div>
+        <div className={styles.jobsList}>
+          {todayJobs.map((job) => (
+            <div key={job.id} className={styles.jobItem}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className={styles.badge}>{job.type}</span>
+                <div style={{ fontWeight: 600 }}>{job.label}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontWeight: 700 }}>${job.payout.toFixed(2)}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                  <span className={styles.badge} style={{ background: job.status === "COMPLETED" ? "#10b981" : job.status === "IN_PROGRESS" ? "#f59e0b" : "#e5e7eb", color: job.status === "ASSIGNED" ? "inherit" : "#ffffff", borderColor: job.status === "ASSIGNED" ? undefined : (job.status === "COMPLETED" ? "#10b981" : "#f59e0b") }}>{job.status.replace("_", " ")}</span>
+                  {job.etaMinutes !== undefined && (
+                    <span className={styles.badge}>ETA: {job.etaMinutes} min</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.card} style={{ marginTop: 16 }}>
+        <div className={styles.cardTitle}>Next Steps</div>
+        <ul style={{ margin: 0, paddingLeft: 16 }}>
+          <li>Stay Online to receive more jobs.</li>
+          <li>Complete your Haul Specialist training to unlock XL payouts.</li>
+          <li>Maintain rating above 4.8 for bonus earnings.</li>
+        </ul>
+      </div>
+
+      <section className={styles.feedbackSection}>
+        <h2 className={styles.sectionTitle}>Latest Feedback</h2>
+        {feedbackLoading && <p className={styles.feedbackStatus}>Loading feedback…</p>}
+        {feedbackError && <p className={styles.feedbackError}>{feedbackError}</p>}
+        {!feedbackLoading && !feedbackError && feedback.length === 0 && (
+          <p className={styles.feedbackStatus}>
+            No feedback yet. Complete more OTW jobs to build your reputation.
+          </p>
+        )}
+        {!feedbackLoading && feedback.length > 0 && (
+          <>
+            {avgRatingFromFeedback !== null && (
+              <p className={styles.feedbackSummary}>
+                Average rating from customers: {" "}
+                <span className={styles.feedbackRating}>{avgRatingFromFeedback.toFixed(2)} ⭐</span>{" "}
+                ({feedback.length} ratings)
+              </p>
+            )}
+            <ul className={styles.feedbackList}>
+              {feedback.slice(0, 5).map((fb) => (
+                <li key={fb.id} className={styles.feedbackItem}>
+                  <div className={styles.feedbackHeaderRow}>
+                    <span className={styles.feedbackStars}>{`${"⭐".repeat(fb.rating)}`}</span>
+                    <span className={styles.feedbackDate}>{new Date(fb.createdAt).toLocaleString()}</span>
+                  </div>
+                  {fb.comment && <p className={styles.feedbackComment}>{fb.comment}</p>}
+                  <p className={styles.feedbackMeta}>Request: {fb.requestId} • Customer: {fb.customerId}</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+    </div>
+  );
+};
+
+export default DriverDashboard;

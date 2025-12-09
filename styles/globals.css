@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Minimal global styles for OTW skeleton */
+:root {
+  --otw-bg: #F7F7F8;
+  --otw-fg: #0B0B0D;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--otw-bg);
+  color: var(--otw-fg);
+}

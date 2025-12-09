@@ -1,16 +1,37 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import eslintConfigPrettier from "eslint-config-prettier";
+import nextConfig from "eslint-config-next";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+const config = [
+  // Base Next.js rules (includes TypeScript support and Next.js plugin)
+  ...nextConfig,
+  {
+    name: "custom:ignores",
+    ignores: ["node_modules/**", "dist/**"]
+  },
+  {
+    name: "custom:base-rules",
+    rules: {
+      "no-console": ["warn", { allow: ["warn", "error"] }]
+    }
+  },
+  {
+    name: "custom:typescript-rules",
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_"
+        }
+      ]
+    }
+  },
+  {
+    name: "custom:prettier",
+    ...eslintConfigPrettier
+  }
 ];
 
-export default eslintConfig;
+export default config;

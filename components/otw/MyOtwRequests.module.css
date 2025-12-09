@@ -1,0 +1,116 @@
+.myRequests {
+  margin-top: 2rem;
+}
+
+.sectionHeader {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.sectionSubtext {
+  font-size: 0.9rem;
+  color: #666666;
+  margin-bottom: 1rem;
+}
+
+.statusText {
+  font-size: 0.9rem;
+  color: #666666;
+}
+
+.errorText {
+  font-size: 0.9rem;
+  color: #b00020;
+}
+
+.requestsList {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.requestCard {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+}
+
+.requestHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.requestId {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.statusBadge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #cccccc;
+  text-transform: uppercase;
+}
+
+.requestMeta {
+  font-size: 0.8rem;
+  color: #777777;
+  margin-bottom: 0.25rem;
+}
+
+.requestRoute {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.requestMiles {
+  font-size: 0.85rem;
+  color: #555555;
+  margin-bottom: 0.25rem;
+}
+
+.requestNotes {
+  font-size: 0.85rem;
+  color: #555555;
+  margin-bottom: 0.5rem;
+}
+
+.rateButton {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: #111827;
+  color: #ffffff;
+}
+
+.feedbackFormWrapper {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.feedbackHeader {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .requestCard {
+    background: #111827;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+  .statusBadge {
+    border-color: #6b7280;
+  }
+}
+
