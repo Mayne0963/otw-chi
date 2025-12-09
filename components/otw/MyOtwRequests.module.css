@@ -96,6 +96,18 @@
   margin-bottom: 0.25rem;
 }
 
+.metricsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+}
+
+.metricItem {
+  color: #555555;
+}
+
 .assignedLine {
   font-size: 0.85rem;
   color: #444444;
@@ -132,6 +144,27 @@
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
+}
+
+.trackButton {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+
+.trackStatus {
+  font-size: 0.78rem;
+  color: #666666;
+  margin-top: 0.2rem;
+}
+
+.trackError {
+  font-size: 0.78rem;
+  color: #b00020;
+  margin-top: 0.2rem;
 }
 
 @media (prefers-color-scheme: dark) {

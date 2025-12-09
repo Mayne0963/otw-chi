@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import styles from "./MyOtwRequests.module.css";
+import OtwLiveMap from "./OtwLiveMap";
+import { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
 import OtwFeedbackForm from "./OtwFeedbackForm";
 
 interface OtwRequest {
@@ -13,6 +15,8 @@ interface OtwRequest {
   notes?: string;
   createdAt: string;
   estimatedMiles: number;
+  estimatedDistanceKm?: number;
+  estimatedDurationMinutes?: number;
   status: string;
   assignedDriverId?: string;
 }
@@ -23,6 +27,10 @@ const MyOtwRequests: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<OtwRequest | null>(null);
   const [refreshToggle, setRefreshToggle] = useState(0);
+  const [mapDrivers, setMapDrivers] = useState<OtwDriverLocation[]>([]);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [trackedRequestId, setTrackedRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -62,6 +70,28 @@ const MyOtwRequests: React.FC = () => {
 
   const handleFeedbackSubmitted = () => {
     setRefreshToggle((prev) => prev + 1);
+  };
+
+  const handleTrackClick = async (requestId: string) => {
+    try {
+      setTrackedRequestId(requestId);
+      setMapLoading(true);
+      setMapError(null);
+      const res = await fetch(`/api/otw/driver/locations?requestId=${encodeURIComponent(requestId)}`);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setMapError(data.error || "Unable to load driver locations.");
+        setMapDrivers([]);
+        return;
+      }
+      setMapDrivers((data.locations || []) as OtwDriverLocation[]);
+    } catch (err) {
+      console.error("Failed to load driver locations:", err);
+      setMapError("Network error while loading driver locations.");
+      setMapDrivers([]);
+    } finally {
+      setMapLoading(false);
+    }
   };
 
   return (
@@ -106,6 +136,17 @@ const MyOtwRequests: React.FC = () => {
               <p className={styles.requestMiles}>
                 Estimated: {req.estimatedMiles.toLocaleString()} miles
               </p>
+              <div className={styles.metricsRow}>
+                <span className={styles.metricItem}>
+                  Distance: {typeof req.estimatedDistanceKm === "number" ? `${req.estimatedDistanceKm.toFixed(1)} km` : "N/A"}
+                </span>
+                <span className={styles.metricItem}>
+                  Time: {typeof req.estimatedDurationMinutes === "number" ? `${req.estimatedDurationMinutes} min` : "N/A"}
+                </span>
+                <span className={styles.metricItem}>
+                  OTW Miles: {typeof req.estimatedMiles === "number" ? req.estimatedMiles : "N/A"}
+                </span>
+              </div>
 
               {req.assignedDriverId && (
                 <p className={styles.assignedLine}>
@@ -115,6 +156,26 @@ const MyOtwRequests: React.FC = () => {
               )}
 
               {req.notes && <p className={styles.requestNotes}>Notes: {req.notes}</p>}
+              <button
+                type="button"
+                className={styles.trackButton}
+                onClick={() => handleTrackClick(req.id)}
+              >
+                Track OTW
+              </button>
+              {trackedRequestId === req.id && mapLoading && mapError == null && (
+                <p className={styles.trackStatus}>Loading live driver location…</p>
+              )}
+              {trackedRequestId === req.id && mapError && (
+                <p className={styles.trackError}>{mapError}</p>
+              )}
+              {trackedRequestId === req.id && (
+                <OtwLiveMap
+                  pickup={undefined}
+                  dropoff={undefined}
+                  drivers={mapDrivers}
+                />
+              )}
               {req.status === "COMPLETED" && (
                 <button
                   type="button"

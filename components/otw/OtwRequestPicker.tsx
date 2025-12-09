@@ -61,6 +61,7 @@ const OtwRequestPicker: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccessMessage, setSubmitSuccessMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [lastRequestSummary, setLastRequestSummary] = useState<any | null>(null);
 
   const mapUiToServerService = (s: UiServiceType): string => {
     switch (s) {
@@ -181,6 +182,7 @@ const OtwRequestPicker: React.FC = () => {
       if (typeof data.request?.estimatedMiles === "number") {
         setEstimatedMiles(data.request.estimatedMiles);
       }
+      setLastRequestSummary(data.request || null);
       setSubmitSuccessMessage("Your OTW request has been created.");
     } catch (error) {
       console.error("OTW request creation failed:", error);
@@ -209,6 +211,27 @@ const OtwRequestPicker: React.FC = () => {
         <h2 className={styles.sectionTitle}>Start a New OTW Request</h2>
         <p className={styles.helperText}>Choose what you need and where you need us.</p>
       </section>
+
+      {lastRequestSummary && (
+        <div className={styles.lastRequestSummary}>
+          <p className={styles.summaryTitle}>Last OTW Estimate</p>
+          <p className={styles.summaryLine}>
+            Distance: {typeof lastRequestSummary.estimatedDistanceKm === "number"
+              ? `${lastRequestSummary.estimatedDistanceKm.toFixed(1)} km`
+              : "N/A"}
+          </p>
+          <p className={styles.summaryLine}>
+            Time Estimate: {typeof lastRequestSummary.estimatedDurationMinutes === "number"
+              ? `${lastRequestSummary.estimatedDurationMinutes} min`
+              : "N/A"}
+          </p>
+          <p className={styles.summaryLine}>
+            OTW Miles: {typeof lastRequestSummary.estimatedMiles === "number"
+              ? `${lastRequestSummary.estimatedMiles} miles`
+              : "N/A"}
+          </p>
+        </div>
+      )}
 
       {/* Service Type Grid */}
       <section>

@@ -16,6 +16,25 @@
   margin-bottom: 16px;
 }
 
+.lastRequestSummary {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  background: #f7f9ff;
+}
+
+.summaryTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.summaryLine {
+  font-size: 0.8rem;
+  color: #555555;
+}
+
 .serviceGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

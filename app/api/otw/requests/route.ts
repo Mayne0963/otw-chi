@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ServiceType, Urgency } from "../../../../lib/otw/otwTypes";
+import { ServiceType, Urgency, OtwLocation } from "../../../../lib/otw/otwTypes";
 import type { OtwMatchContext } from "../../../../lib/otw/otwTypes";
+import {
+  haversineDistanceKm,
+  estimateDurationMinutes,
+  otwMilesFromRoute,
+} from "../../../../lib/otw/otwGeo";
 import { findBestDriversForRequest } from "../../../../lib/otw/otwMatching";
 import {
   getMembershipForCustomer,
@@ -22,6 +27,11 @@ export interface OtwRequest {
   customerId?: string; // mock customer linkage
   assignedDriverId?: string; // matched driver id
   matchScore?: number; // matched driver score
+  // New optional geo fields
+  pickupLocation?: OtwLocation;
+  dropoffLocation?: OtwLocation;
+  estimatedDistanceKm?: number;
+  estimatedDurationMinutes?: number;
 }
 
 const otwRequests: OtwRequest[] = [];
@@ -92,25 +102,80 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { serviceType, urgency, pickupArea, dropoffArea, notes } = body as {
-      serviceType?: ServiceType;
-      urgency?: Urgency;
-      pickupArea?: string;
-      dropoffArea?: string;
-      notes?: string;
-    };
+    const {
+      serviceType,
+      urgency,
+      pickupArea,
+      dropoffArea,
+      notes,
+      pickupLocation,
+      dropoffLocation,
+    } = body || {};
 
-    if (!serviceType || !urgency || !pickupArea || !dropoffArea) {
+    if (!serviceType || !urgency) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
 
-    const estimatedMiles = estimateMilesForRequest(
-      serviceType,
-      urgency,
-      String(pickupArea),
-      String(dropoffArea),
-      notes ? String(notes) : undefined
-    );
+    let pickup: OtwLocation | undefined;
+    let dropoff: OtwLocation | undefined;
+    if (
+      pickupLocation &&
+      typeof pickupLocation.lat === "number" &&
+      typeof pickupLocation.lng === "number"
+    ) {
+      pickup = {
+        lat: pickupLocation.lat,
+        lng: pickupLocation.lng,
+        label: pickupLocation.label,
+      };
+    }
+    if (
+      dropoffLocation &&
+      typeof dropoffLocation.lat === "number" &&
+      typeof dropoffLocation.lng === "number"
+    ) {
+      dropoff = {
+        lat: dropoffLocation.lat,
+        lng: dropoffLocation.lng,
+        label: dropoffLocation.label,
+      };
+    }
+
+    // Require either coords or area strings
+    const hasAreas = !!pickupArea && !!dropoffArea;
+    const hasCoords = !!pickup && !!dropoff;
+    if (!hasAreas && !hasCoords) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Pickup and dropoff locations (coords or area strings) are required for an OTW request.",
+        },
+        { status: 400 }
+      );
+    }
+
+    let estimatedMiles: number;
+    let distanceKm: number | undefined;
+    let durationMinutes: number | undefined;
+
+    if (hasCoords && pickup && dropoff) {
+      distanceKm = haversineDistanceKm(pickup, dropoff);
+      durationMinutes = estimateDurationMinutes(distanceKm);
+      estimatedMiles = otwMilesFromRoute({
+        distanceKm,
+        durationMinutes,
+        complexityFactor: 1,
+      });
+    } else {
+      estimatedMiles = estimateMilesForRequest(
+        serviceType,
+        urgency,
+        String(pickupArea),
+        String(dropoffArea),
+        notes ? String(notes) : undefined
+      );
+    }
 
     // Ensure the customer's tier allows this request before committing
     const customerId = "CUSTOMER-1";
@@ -141,6 +206,10 @@ export async function POST(request: NextRequest) {
     createdAt: new Date().toISOString(),
     estimatedMiles,
     status: "PENDING",
+    pickupLocation: pickup,
+    dropoffLocation: dropoff,
+    estimatedDistanceKm: distanceKm,
+    estimatedDurationMinutes: durationMinutes,
   };
 
     // Build the matching context and get driver suggestions
