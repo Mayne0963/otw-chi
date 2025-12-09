@@ -67,10 +67,13 @@ export interface OtwDriverProfile {
   // Franchise-related metadata (will be computed later)
   franchiseScore?: number;
   franchiseRank?:
-    | "ELIGIBLE"
-    | "CANDIDATE"
-    | "BUILDING"
-    | "NOT_ELIGIBLE";
+    | "NOT_ELIGIBLE"
+    | "SEED"
+    | "BRONZE"
+    | "SILVER"
+    | "GOLD"
+    | "PLATINUM"
+    | "EMPIRE";
   franchiseEligible?: boolean;
   franchiseLastEvaluatedAt?: string; // ISO
 }

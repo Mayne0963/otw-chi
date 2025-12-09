@@ -342,10 +342,10 @@ export const driverAcceptRequest = (
 /**
  * Driver marks a request as completed.
  */
-export const driverCompleteRequest = (
+export const driverCompleteRequest = async (
   requestId: OtwRequestId,
   driverId: OtwDriverId
-): Result<OtwRequest> => {
+): Promise<Result<OtwRequest>> => {
   const request = requestStore.find((r) => r.id === requestId);
   if (!request) return err("Request not found.");
   if (request.assignedDriverId !== driverId) {
@@ -355,8 +355,11 @@ export const driverCompleteRequest = (
   request.completedAtIso = new Date().toISOString();
   request.chargedMiles = request.estimatedMiles;
   request.updatedAt = new Date().toISOString();
-  // Update driver stats (ignore error for now in MVP)
-  recordDriverCompletedJob(driverId);
+  // Update driver stats and franchise readiness
+  const statsResult = await recordDriverCompletedJob(driverId);
+  if (!statsResult.ok) {
+    console.warn("Failed to update driver stats on completion:", statsResult.error);
+  }
   // Award NIP Coin rewards for this completion
   const nipOutcome = awardNipForCompletedRequest(request);
   if (nipOutcome.errors && nipOutcome.errors.length > 0) {

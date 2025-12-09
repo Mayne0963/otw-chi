@@ -1,13 +1,18 @@
-import { OtwDriverProfile, OtwRequest } from "./otwTypes";
+import { OtwDriverProfile } from "./otwTypes";
+import { getWalletForDriver } from "./otwNip";
+import { OtwRequest } from "./otwTypes";
 import { getAllOtwRequests } from "./otwRequests";
 import { getAllDrivers } from "./otwDrivers";
 import { computeDriverHealthScore } from "./otwAnalytics";
 
 export type FranchiseRank =
-  | "ELIGIBLE"
-  | "CANDIDATE"
-  | "BUILDING"
-  | "NOT_ELIGIBLE";
+  | "NOT_ELIGIBLE"
+  | "SEED"
+  | "BRONZE"
+  | "SILVER"
+  | "GOLD"
+  | "PLATINUM"
+  | "EMPIRE";
 
 export interface DriverFranchiseEvaluation {
   driver: OtwDriverProfile;
@@ -16,8 +21,26 @@ export interface DriverFranchiseEvaluation {
   reasons: string[];
 }
 
+export interface FranchiseReadinessSnapshot {
+  driverId: string;
+  score: number;
+  rank: FranchiseRank;
+  eligible: boolean;
+  completedJobs: number;
+  cancelledJobs: number;
+  avgRating: number;
+  nipTotalEarned: number;
+  lastEvaluatedAt: string;
+}
+
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
+const clamp01 = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+};
 
 const FRANCHISE_THRESHOLDS = {
   eligibleScoreMin: 85,
@@ -25,6 +48,64 @@ const FRANCHISE_THRESHOLDS = {
   minCompletedJobsWindow: 40,
   maxCancelRate: 0.08,
   maxDaysInactive: 14,
+};
+
+export const rankFromScore = (score: number): FranchiseRank => {
+  if (score < 40) return "NOT_ELIGIBLE";
+  if (score < 55) return "SEED";
+  if (score < 65) return "BRONZE";
+  if (score < 75) return "SILVER";
+  if (score < 85) return "GOLD";
+  if (score < 95) return "PLATINUM";
+  return "EMPIRE";
+};
+
+export const isFranchiseEligible = (rank: FranchiseRank): boolean => {
+  return (
+    rank === "BRONZE" ||
+    rank === "SILVER" ||
+    rank === "GOLD" ||
+    rank === "PLATINUM" ||
+    rank === "EMPIRE"
+  );
+};
+
+export const computeFranchiseScore = async (
+  driver: OtwDriverProfile
+): Promise<FranchiseReadinessSnapshot> => {
+  const { driverId, completedJobs, cancelledJobs, avgRating } = driver;
+
+  const jobTarget = 200;
+  const jobsRatio = clamp01(completedJobs / jobTarget);
+  const jobsScore = jobsRatio * 100;
+
+  const totalAttempts = completedJobs + cancelledJobs;
+  const cancelRate = totalAttempts > 0 ? cancelledJobs / totalAttempts : 0;
+  const cancelScore = (1 - clamp01(cancelRate)) * 100;
+
+  const ratingScore = clamp01(avgRating / 5) * 100;
+
+  const wallet = getWalletForDriver(driverId);
+  const nipTotalEarned = wallet?.totalEarned ?? 0;
+  const nipTarget = 10_000;
+  const nipRatio = clamp01(nipTotalEarned / nipTarget);
+  const nipScore = nipRatio * 100;
+
+  const score = jobsScore * 0.35 + cancelScore * 0.2 + ratingScore * 0.25 + nipScore * 0.2;
+  const rank = rankFromScore(score);
+  const eligible = isFranchiseEligible(rank);
+
+  return {
+    driverId,
+    score,
+    rank,
+    eligible,
+    completedJobs,
+    cancelledJobs,
+    avgRating,
+    nipTotalEarned,
+    lastEvaluatedAt: new Date().toISOString(),
+  };
 };
 
 export const evaluateDriverFranchiseReadiness = (

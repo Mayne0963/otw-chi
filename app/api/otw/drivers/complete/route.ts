@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
     const dId = driverId as OtwDriverId;
     const rId = requestId as OtwRequestId;
-    const result = driverCompleteRequest(rId, dId);
+    const result = await driverCompleteRequest(rId, dId);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: result.error },
@@ -36,4 +36,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -156,6 +156,8 @@ export const listNipLedgerForDriver = (
         new Date(a.createdAt).getTime()
     );
 
+export const listAllNipWallets = (): NipWallet[] => [...nipWallets];
+
 /**
  * Rewards model for completed OTW request.
  * Simple baseline split.
@@ -232,4 +234,3 @@ export const awardNipForCompletedRequest = (
     errors: errors.length ? errors : undefined,
   };
 };
-

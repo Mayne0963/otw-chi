@@ -3,6 +3,7 @@ import { OtwDriverProfile } from "./otwTypes";
 import { newDriverId } from "./otwIds";
 import { DriverCurrentStatus, DriverTier } from "./otwEnums";
 import { ok, err, Result } from "./otwResult";
+import { computeFranchiseScore } from "./otwFranchise";
 
 /**
  * In-memory driver store.
@@ -64,13 +65,18 @@ export const setDriverStatus = (
   return ok(driver);
 };
 
-export const recordDriverCompletedJob = (
+export const recordDriverCompletedJob = async (
   driverId: OtwDriverId
-): Result<OtwDriverProfile> => {
+): Promise<Result<OtwDriverProfile>> => {
   const driver = driverStore.find((d) => d.driverId === driverId);
   if (!driver) return err("Driver not found.");
   driver.completedJobs += 1;
   driver.lastActiveAt = new Date().toISOString();
+  const snapshot = await computeFranchiseScore(driver);
+  driver.franchiseScore = snapshot.score;
+  driver.franchiseRank = snapshot.rank;
+  driver.franchiseEligible = snapshot.eligible;
+  driver.franchiseLastEvaluatedAt = snapshot.lastEvaluatedAt;
   return ok(driver);
 };
 
@@ -82,6 +88,19 @@ export const recordDriverCancelledJob = (
   driver.cancelledJobs += 1;
   driver.lastActiveAt = new Date().toISOString();
   return ok(driver);
+};
+
+export const evaluateDriverFranchiseReadiness = async (
+  driverId: OtwDriverId
+): Promise<OtwDriverProfile | null> => {
+  const driver = driverStore.find((d) => d.driverId === driverId);
+  if (!driver) return null;
+  const snapshot = await computeFranchiseScore(driver);
+  driver.franchiseScore = snapshot.score;
+  driver.franchiseRank = snapshot.rank;
+  driver.franchiseEligible = snapshot.eligible;
+  driver.franchiseLastEvaluatedAt = snapshot.lastEvaluatedAt;
+  return driver;
 };
 
 // Seed some mock drivers if store is empty (for early development/testing)
