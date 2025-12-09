@@ -13,12 +13,12 @@ const estimateMiles = (payload: EstimateRequestBody) => {
   const { serviceType, urgency, pickupArea, dropoffArea, notes = "" } = payload;
 
   const baseByService: Record<ServiceType, number> = {
-    MOVE: 500,
-    EXCHANGE: 400,
-    HAUL: 900,
-    PRESENCE: 600,
-    BUSINESS: 700,
-    MULTI_STOP: 1100,
+    ERRAND: 500,
+    FOOD: 400,
+    BIG_HAUL: 900,
+    DOCUMENT: 600,
+    VIP: 700,
+    OTHER: 1100,
   };
 
   const urgencyMultiplier: Record<Urgency, number> = {

@@ -74,10 +74,28 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../app/admin/otw/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/admin/otw">> = Specific
+  const handler = {} as typeof import("../../app/admin/otw/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/">> = Specific
   const handler = {} as typeof import("../../app/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/admin/otw/overview/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/admin/otw/overview">> = Specific
+  const handler = {} as typeof import("../../app/api/admin/otw/overview/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -114,6 +132,33 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/drivers/requests">> = Specific
   const handler = {} as typeof import("../../app/api/otw/drivers/requests/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/estimate/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/estimate">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/estimate/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/feedback/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/feedback">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/feedback/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/match/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/match">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/match/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
