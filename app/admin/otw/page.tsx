@@ -127,6 +127,58 @@ export default function OtwAdminHQ() {
           </ul>
         )}
       </div>
+
+      <h2 className={styles.subtitle}>Franchise Eligible Drivers</h2>
+      <div className={styles.franchiseList}>
+        {(!data.franchiseEligible || data.franchiseEligible.length === 0) && (
+          <p className={styles.franchiseEmpty}>No drivers fully franchise-eligible yet.</p>
+        )}
+
+        {data.franchiseEligible && data.franchiseEligible.length > 0 && (
+          <ul className={styles.franchiseItems}>
+            {data.franchiseEligible.map((entry: any) => (
+              <li key={entry.driver.driverId} className={styles.franchiseItem}>
+                <div className={styles.franchiseHeaderRow}>
+                  <span className={styles.franchiseName}>{entry.driver.displayName}</span>
+                  <span className={styles.franchiseScore}>{entry.franchiseScore.toFixed(0)}/100</span>
+                </div>
+                <p className={styles.franchiseMeta}>
+                  Zone: {entry.driver.baseZone} • Completed Jobs: {entry.driver.completedJobs}
+                </p>
+                {entry.reasons && entry.reasons.length > 0 && (
+                  <p className={styles.franchiseReasons}>Notes: {entry.reasons.join(" ")}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <h2 className={styles.subtitle}>Franchise Candidates</h2>
+      <div className={styles.franchiseList}>
+        {(!data.franchiseCandidates || data.franchiseCandidates.length === 0) && (
+          <p className={styles.franchiseEmpty}>No drivers in candidate range yet.</p>
+        )}
+
+        {data.franchiseCandidates && data.franchiseCandidates.length > 0 && (
+          <ul className={styles.franchiseItems}>
+            {data.franchiseCandidates.map((entry: any) => (
+              <li key={entry.driver.driverId} className={styles.franchiseItem}>
+                <div className={styles.franchiseHeaderRow}>
+                  <span className={styles.franchiseName}>{entry.driver.displayName}</span>
+                  <span className={styles.franchiseScore}>{entry.franchiseScore.toFixed(0)}/100</span>
+                </div>
+                <p className={styles.franchiseMeta}>
+                  Zone: {entry.driver.baseZone} • Completed Jobs: {entry.driver.completedJobs}
+                </p>
+                {entry.reasons && entry.reasons.length > 0 && (
+                  <p className={styles.franchiseReasons}>To qualify: {entry.reasons.join(" ")}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

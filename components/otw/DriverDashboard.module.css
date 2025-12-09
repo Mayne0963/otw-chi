@@ -157,7 +157,7 @@
 .feedbackMeta {
   font-size: 0.8rem;
   color: #777777;
-}
+  }
 
 .assignedSection {
   margin-top: 2rem;
@@ -289,4 +289,50 @@
     border-color: #374151;
     color: #e5e7eb;
   }
+}
+.franchiseRibbon {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  background: #f7f9ff;
+}
+
+.franchiseTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.franchiseStatus {
+  font-size: 0.85rem;
+  color: #666666;
+}
+
+.franchiseError {
+  font-size: 0.85rem;
+  color: #b00020;
+}
+
+.franchiseScoreRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.franchiseScoreValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.franchiseRank {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.franchiseHint {
+  font-size: 0.8rem;
+  color: #555555;
 }

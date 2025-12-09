@@ -108,3 +108,57 @@
   color: #777777;
   margin-top: 0.15rem;
 }
+
+/* Franchise sections */
+.franchiseList {
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.franchiseEmpty {
+  font-size: 0.85rem;
+  color: #666666;
+}
+
+.franchiseItems {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.franchiseItem {
+  padding: 0.6rem 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.franchiseItem:first-of-type {
+  border-top: none;
+}
+
+.franchiseHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.franchiseName {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.franchiseScore {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.franchiseMeta {
+  font-size: 0.8rem;
+  color: #777777;
+  margin-top: 0.15rem;
+}
+
+.franchiseReasons {
+  font-size: 0.8rem;
+  color: #555555;
+  margin-top: 0.15rem;
+}
