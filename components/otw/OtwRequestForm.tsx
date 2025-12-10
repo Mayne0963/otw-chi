@@ -32,6 +32,14 @@ const OtwRequestForm: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ApiResponse | null>(null);
   const [customerId, setCustomerId] = useState<string>("CUSTOMER-1");
+  const [cityId, setCityId] = useState<string>("city_ftw");
+  const [zoneId, setZoneId] = useState<string>("zone_ftw_north");
+  const zonesForCity = [
+    { id: "zone_ftw_north", label: "North Fort Wayne" },
+    { id: "zone_ftw_south", label: "South Fort Wayne" },
+    { id: "zone_ftw_central", label: "Central Fort Wayne" },
+    { id: "zone_ftw_wide", label: "Greater Fort Wayne / County" },
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +56,8 @@ const OtwRequestForm: React.FC = () => {
           serviceType,
           estimatedMiles,
           notes: notes || undefined,
+          cityId,
+          zoneId,
         }),
       });
 
@@ -123,6 +133,20 @@ const OtwRequestForm: React.FC = () => {
           <span className={styles.helpText}>
             This represents internal OTW miles, not literal road miles.
           </span>
+        </label>
+
+        <label className={styles.label}>
+          Service Area
+          <div className={styles.inlineFields}>
+            <select className={styles.select} value={cityId} onChange={(e) => setCityId(e.target.value)}>
+              <option value="city_ftw">Fort Wayne, IN</option>
+            </select>
+            <select className={styles.select} value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
+              {zonesForCity.map((z) => (
+                <option key={z.id} value={z.id}>{z.label}</option>
+              ))}
+            </select>
+          </div>
         </label>
 
         <label className={styles.label}>

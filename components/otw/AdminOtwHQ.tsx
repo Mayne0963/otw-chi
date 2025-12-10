@@ -25,6 +25,16 @@ interface AdminOverviewSnapshot {
   totalNipInCirculation: number;
   totalNipEarnedAllTime: number;
   topDriversByFranchise: AdminDriverSnapshot[];
+  zones?: ZoneCoverageSnapshot[];
+}
+
+interface ZoneCoverageSnapshot {
+  zoneId: string;
+  zoneName: string;
+  cityName: string;
+  activeDrivers: number;
+  openRequests: number;
+  completedToday: number;
 }
 
 interface AdminOverviewResponse {
@@ -181,6 +191,39 @@ const AdminOtwHQ: React.FC = () => {
               </div>
             )}
           </section>
+
+          {overview.zones && overview.zones.length > 0 && (
+            <section className={styles.tableSection}>
+              <div className={styles.tableHeaderRow}>
+                <h3 className={styles.sectionTitle}>Zone Coverage</h3>
+                <p className={styles.sectionHint}>Drivers and request volume by city zone.</p>
+              </div>
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Zone</th>
+                      <th>City</th>
+                      <th>Active Drivers</th>
+                      <th>Open Requests</th>
+                      <th>Completed Today</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {overview.zones.map((z) => (
+                      <tr key={z.zoneId}>
+                        <td>{z.zoneName}</td>
+                        <td>{z.cityName}</td>
+                        <td>{z.activeDrivers}</td>
+                        <td>{z.openRequests}</td>
+                        <td>{z.completedToday}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

@@ -111,6 +111,8 @@ export async function POST(request: NextRequest) {
       notes,
       pickupLocation,
       dropoffLocation,
+      cityId,
+      zoneId,
     } = body || {};
 
     if (!serviceType || !urgency || !customerId) {
@@ -206,7 +208,8 @@ export async function POST(request: NextRequest) {
     createdAt: new Date().toISOString(),
     estimatedMiles,
     status: "PENDING",
-    customerId,
+    cityId: cityId as any,
+    zoneId: zoneId as any,
     pickupLocation: pickup,
     dropoffLocation: dropoff,
     estimatedDistanceKm: distanceKm,

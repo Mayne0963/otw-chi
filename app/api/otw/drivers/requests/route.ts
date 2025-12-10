@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   listRequestsForDriver,
   listOpenRequests,
+  listOpenRequestsForZone,
 } from "@/lib/otw/otwRequests";
-import { OtwDriverId } from "@/lib/otw/otwIds";
+import { OtwDriverId, OtwZoneId } from "@/lib/otw/otwIds";
+import { getDriverById } from "@/lib/otw/otwDrivers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +19,14 @@ export async function GET(request: NextRequest) {
     }
     const driverId = driverIdParam as OtwDriverId;
     const myRequests = listRequestsForDriver(driverId);
-    const openRequests = listOpenRequests();
+    const driver = getDriverById(driverId);
+    let openRequests = listOpenRequests();
+    if (driver) {
+      const zoneId = (driver.primaryZoneId ?? driver.allowedZoneIds?.[0]) as OtwZoneId | undefined;
+      if (zoneId) {
+        openRequests = listOpenRequestsForZone(zoneId);
+      }
+    }
     return NextResponse.json(
       {
         success: true,
@@ -34,4 +43,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

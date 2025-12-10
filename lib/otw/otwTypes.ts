@@ -1,7 +1,7 @@
 // lib/otw/otwTypes.ts
 
-import type { OtwTierId, OtwCustomerId, OtwDriverId } from './otwIds';
-export type { OtwTierId, OtwCustomerId, OtwDriverId } from './otwIds';
+import type { OtwTierId, OtwCustomerId, OtwDriverId, OtwCityId, OtwZoneId } from './otwIds';
+export type { OtwTierId, OtwCustomerId, OtwDriverId, OtwCityId, OtwZoneId } from './otwIds';
 import type { ServiceType, OtwRequestStatus } from './otwEnums';
 export type { ServiceType } from './otwEnums';
 
@@ -53,7 +53,7 @@ export interface OtwDriverProfile {
   displayName: string;
   phone?: string;
   email?: string;
-  baseZone: string; // e.g. "FORT_WAYNE_NORTH", "FW_SOUTH"
+  baseZone: string;
 
   status: DriverCurrentStatus;
   tier: DriverTier;
@@ -62,7 +62,12 @@ export interface OtwDriverProfile {
   completedJobs: number;
   cancelledJobs: number;
   avgRating: number; // 0–5
-  lastActiveAt: string; // ISO
+  lastActiveAt: string | null; // ISO
+
+  // NEW: geography
+  homeCityId?: OtwCityId;
+  primaryZoneId?: OtwZoneId;
+  allowedZoneIds?: OtwZoneId[];
 
   // Franchise-related metadata (will be computed later)
   franchiseScore?: number;
@@ -75,7 +80,7 @@ export interface OtwDriverProfile {
     | "PLATINUM"
     | "EMPIRE";
   franchiseEligible?: boolean;
-  franchiseLastEvaluatedAt?: string; // ISO
+  franchiseLastEvaluatedAt?: string | null; // ISO
 }
 
 // Membership summary for a customer.
@@ -99,6 +104,10 @@ export interface OtwRequest {
   customerId: string;
   serviceType: ServiceType;
   status: OtwRequestStatus;
+
+  // NEW: geographic tagging
+  cityId?: OtwCityId;
+  zoneId?: OtwZoneId;
 
   // Driver linkage (optional until assigned)
   assignedDriverId?: string;

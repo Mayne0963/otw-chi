@@ -1,9 +1,10 @@
-import { OtwDriverId } from "./otwIds";
+import { OtwDriverId, OtwCityId, OtwZoneId } from "./otwIds";
 import { OtwDriverProfile } from "./otwTypes";
 import { newDriverId } from "./otwIds";
 import { DriverCurrentStatus, DriverTier } from "./otwEnums";
 import { ok, err, Result } from "./otwResult";
 import { computeFranchiseScore } from "./otwFranchise";
+import { listZones } from "./otwZones";
 
 /**
  * In-memory driver store.
@@ -106,6 +107,7 @@ export const evaluateDriverFranchiseReadiness = async (
 // Seed some mock drivers if store is empty (for early development/testing)
 if (driverStore.length === 0) {
   const isoNow = new Date().toISOString();
+  const _zones = listZones();
   driverStore.push(
     {
       driverId: "DRIVER-1",
@@ -117,6 +119,9 @@ if (driverStore.length === 0) {
       cancelledJobs: 2,
       avgRating: 4.8,
       lastActiveAt: isoNow,
+      homeCityId: "city_ftw" as OtwCityId,
+      primaryZoneId: "zone_ftw_north" as OtwZoneId,
+      allowedZoneIds: ["zone_ftw_north" as OtwZoneId, "zone_ftw_central" as OtwZoneId],
     },
     {
       driverId: "DRIVER-2",
@@ -128,6 +133,9 @@ if (driverStore.length === 0) {
       cancelledJobs: 4,
       avgRating: 4.9,
       lastActiveAt: isoNow,
+      homeCityId: "city_ftw" as OtwCityId,
+      primaryZoneId: "zone_ftw_south" as OtwZoneId,
+      allowedZoneIds: ["zone_ftw_south" as OtwZoneId, "zone_ftw_wide" as OtwZoneId],
     },
     {
       driverId: "DRIVER-3",
@@ -139,6 +147,14 @@ if (driverStore.length === 0) {
       cancelledJobs: 1,
       avgRating: 4.5,
       lastActiveAt: isoNow,
+      homeCityId: "city_ftw" as OtwCityId,
+      primaryZoneId: "zone_ftw_central" as OtwZoneId,
+      allowedZoneIds: ["zone_ftw_central" as OtwZoneId, "zone_ftw_north" as OtwZoneId, "zone_ftw_south" as OtwZoneId],
     }
   );
 }
+
+export const listDriversByZone = (zoneId: OtwZoneId): OtwDriverProfile[] =>
+  driverStore.filter(
+    (d) => d.primaryZoneId === zoneId || (d.allowedZoneIds && d.allowedZoneIds.includes(zoneId))
+  );

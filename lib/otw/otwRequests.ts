@@ -5,6 +5,8 @@ import {
   OtwDriverId,
   OtwRequestId,
   newRequestId,
+  OtwCityId,
+  OtwZoneId,
 } from "./otwIds";
 import {
   OtwLocation,
@@ -45,6 +47,8 @@ const requestStore: OtwRequest[] = [];
 export interface CreateOtwRequestInput {
   customerId: OtwCustomerId;
   serviceType: ServiceType;
+  cityId: OtwCityId;
+  zoneId: OtwZoneId;
 
   // If not provided, and pickup/dropoff are present,
   // the system will derive OTW miles from geo metrics.
@@ -178,6 +182,8 @@ export const createOtwRequest = async (
     status: "PENDING",
     createdAt: nowIso,
     updatedAt: nowIso,
+    cityId: input.cityId,
+    zoneId: input.zoneId,
     assignedDriverId: undefined,
     acceptedAtIso: undefined,
     completedAtIso: undefined,
@@ -284,6 +290,14 @@ export const listOpenRequests = (): OtwRequest[] => {
     (r) =>
       r.status === "PENDING" ||
       (r.status === "MATCHED" && !r.assignedDriverId)
+  );
+};
+
+export const listOpenRequestsForZone = (zoneId: OtwZoneId): OtwRequest[] => {
+  return requestStore.filter(
+    (r) =>
+      (r.status === "PENDING" || r.status === "MATCHED" || r.status === "ACCEPTED") &&
+      r.zoneId === zoneId
   );
 };
 

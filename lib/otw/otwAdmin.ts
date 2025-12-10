@@ -76,6 +76,34 @@ export const getAdminOverviewSnapshot = (): AdminOverviewSnapshot => {
     .sort((a, b) => (b.franchiseScore || 0) - (a.franchiseScore || 0))
     .slice(0, 10);
 
+  // Build zone coverage snapshot
+  const allZones = listZones();
+  const zones = allZones.map((z) => {
+    const activeDrivers = drivers.filter(
+      (d) => d.primaryZoneId === z.zoneId || (d.allowedZoneIds && d.allowedZoneIds.includes(z.zoneId))
+    ).length;
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const openRequests = requests.filter(
+      (r) => r.zoneId === z.zoneId && (r.status === "PENDING" || r.status === "MATCHED" || r.status === "ACCEPTED")
+    ).length;
+    const completedToday = requests.filter((r) => {
+      if (r.zoneId !== z.zoneId) return false;
+      if (r.status !== "COMPLETED") return false;
+      if (!r.completedAtIso) return false;
+      const completed = new Date(r.completedAtIso);
+      return completed >= startOfDay;
+    }).length;
+    return {
+      zoneId: z.zoneId,
+      zoneName: z.name,
+      cityName: "Fort Wayne, IN",
+      activeDrivers,
+      openRequests,
+      completedToday,
+    };
+  });
+
   return {
     generatedAt: new Date().toISOString(),
     totalDrivers,
@@ -87,5 +115,6 @@ export const getAdminOverviewSnapshot = (): AdminOverviewSnapshot => {
     totalNipInCirculation,
     totalNipEarnedAllTime,
     topDriversByFranchise,
+    zones,
   };
 };

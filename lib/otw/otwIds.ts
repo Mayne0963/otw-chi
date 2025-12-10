@@ -6,6 +6,8 @@ export type OtwCustomerId = string;
 export type OtwDriverId = string;
 export type OtwRequestId = string;
 export type OtwLedgerId = string;
+export type OtwCityId = `city_${string}`;
+export type OtwZoneId = `zone_${string}`;
 
 // Generate a new Tier ID. In production this would be stable and generated server-side.
 export function newTierId(): OtwTierId {
