@@ -164,6 +164,11 @@ const DriverDashboard: React.FC = () => {
       <section className={styles.franchiseSection}>
         <h3 className={styles.franchiseHeader}>Ownership Path — OTW Franchise</h3>
         <DriverFranchiseCard driverId={driverId} />
+        <p className={styles.franchiseLinkRow}>
+          <a href="/otw/franchise-requirements" className={styles.franchiseLink}>
+            View full franchise requirements
+          </a>
+        </p>
       </section>
 
       <div className={styles.grid}>

@@ -346,3 +346,13 @@
   font-weight: 600;
   margin-bottom: 0.1rem;
 }
+
+.franchiseLinkRow {
+  margin-top: 0.25rem;
+}
+
+.franchiseLink {
+  font-size: 0.75rem;
+  color: #2563eb;
+  text-decoration: underline;
+}
