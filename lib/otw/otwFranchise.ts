@@ -159,15 +159,7 @@ export const evaluateDriverFranchiseReadiness = (
   let rank: FranchiseRank = "NOT_ELIGIBLE";
   const reasons: string[] = [];
 
-  if (franchiseScore >= FRANCHISE_THRESHOLDS.eligibleScoreMin) {
-    rank = "ELIGIBLE";
-  } else if (franchiseScore >= FRANCHISE_THRESHOLDS.candidateScoreMin) {
-    rank = "CANDIDATE";
-  } else if (franchiseScore >= 40) {
-    rank = "BUILDING";
-  } else {
-    rank = "NOT_ELIGIBLE";
-  }
+  rank = rankFromScore(franchiseScore);
 
   if (completed < FRANCHISE_THRESHOLDS.minCompletedJobsWindow) {
     reasons.push(
