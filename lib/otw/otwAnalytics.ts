@@ -44,9 +44,10 @@ export const computeDriverHealthScore = (
   const completionRate = completed / total;
   const ratingFactor = clamp(driver.avgRating / 5, 0, 1);
 
-  const lastActive = new Date(driver.lastActiveAt).getTime();
-  const now = Date.now();
-  const daysSinceActive = (now - lastActive) / (1000 * 60 * 60 * 24);
+  const daysSinceActive =
+    driver.lastActiveAt != null
+      ? (Date.now() - new Date(driver.lastActiveAt).getTime()) / (1000 * 60 * 60 * 24)
+      : Number.POSITIVE_INFINITY;
 
   let recencyBoost = 0;
   if (daysSinceActive <= 1) recencyBoost = 1.0;
