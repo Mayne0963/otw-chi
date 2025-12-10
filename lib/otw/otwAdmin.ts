@@ -15,6 +15,15 @@ export interface AdminDriverSnapshot {
   franchiseEligible: boolean;
 }
 
+export interface ZoneCoverageSnapshot {
+  zoneId: string;
+  zoneName: string;
+  cityName: string;
+  activeDrivers: number;
+  openRequests: number;
+  completedToday: number;
+}
+
 export interface AdminOverviewSnapshot {
   generatedAt: string;
 
@@ -29,6 +38,7 @@ export interface AdminOverviewSnapshot {
   totalNipEarnedAllTime: number; // sum of totalEarned
 
   topDriversByFranchise: AdminDriverSnapshot[];
+  zones?: ZoneCoverageSnapshot[];
 }
 
 const isOpenStatus = (status: string | undefined) =>
