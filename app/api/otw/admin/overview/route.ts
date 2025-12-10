@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminOverviewSnapshot } from "../../../../lib/otw/otwAdmin";
+import { getAdminOverviewSnapshot } from "@/lib/otw/otwAdmin";
 
 export async function GET(_request: NextRequest) {
   try {

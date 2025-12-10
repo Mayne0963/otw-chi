@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listDrivers, evaluateDriverFranchiseReadiness } from "../../../../lib/otw/otwDrivers";
-import { OtwDriverId } from "../../../../lib/otw/otwIds";
+import { listDrivers, evaluateDriverFranchiseReadiness } from "@/lib/otw/otwDrivers";
+import { OtwDriverId } from "@/lib/otw/otwIds";
 
 export async function GET(request: NextRequest) {
   try {
