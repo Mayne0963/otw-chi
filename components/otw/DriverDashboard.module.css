@@ -336,3 +336,13 @@
   font-size: 0.8rem;
   color: #555555;
 }
+.franchiseSection {
+  margin-top: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.franchiseHeader {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+}

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import styles from "./DriverDashboard.module.css";
+import DriverFranchiseCard from "./DriverFranchiseCard";
 import { DriverStatus, DriverJob, OtwFeedback } from "../../lib/otw/otwTypes";
 import { mockDriverSnapshot, mockDriverJobsToday } from "../../lib/otw/otwMockData";
 
@@ -42,9 +43,6 @@ const DriverDashboard: React.FC = () => {
   const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const [franchiseEval, setFranchiseEval] = useState<any | null>(null);
-  const [franchiseLoading, setFranchiseLoading] = useState(false);
-  const [franchiseError, setFranchiseError] = useState<string | null>(null);
 
   const todayJobs: DriverJob[] = mockDriverJobsToday;
 
@@ -116,29 +114,6 @@ const DriverDashboard: React.FC = () => {
     fetchAssignedRequests();
   }, [driverId]);
 
-  useEffect(() => {
-    const fetchFranchise = async () => {
-      try {
-        setFranchiseLoading(true);
-        setFranchiseError(null);
-        const res = await fetch("/api/otw/driver/franchise");
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          setFranchiseError(data.error || "Unable to load franchise progress.");
-          setFranchiseEval(null);
-          return;
-        }
-        setFranchiseEval(data.franchise);
-      } catch (err) {
-        console.error("Failed to load franchise evaluation:", err);
-        setFranchiseError("Network error while loading franchise progress.");
-        setFranchiseEval(null);
-      } finally {
-        setFranchiseLoading(false);
-      }
-    };
-    fetchFranchise();
-  }, []);
 
   const handleMarkCompleted = async (requestId: string) => {
     try {
@@ -186,40 +161,9 @@ const DriverDashboard: React.FC = () => {
         </div>
       </div>
 
-      <section className={styles.franchiseRibbon}>
-        <h2 className={styles.franchiseTitle}>Franchise Progress</h2>
-        {franchiseLoading && (
-          <p className={styles.franchiseStatus}>Calculating your path…</p>
-        )}
-        {franchiseError && (
-          <p className={styles.franchiseError}>{franchiseError}</p>
-        )}
-        {!franchiseLoading && !franchiseError && franchiseEval && (
-          <>
-            <div className={styles.franchiseScoreRow}>
-              <span className={styles.franchiseScoreValue}>
-                {Number(franchiseEval.franchiseScore).toFixed(0)}/100
-              </span>
-              <span className={styles.franchiseRank}>
-                {franchiseEval.rank === "ELIGIBLE"
-                  ? "Franchise Eligible"
-                  : franchiseEval.rank === "CANDIDATE"
-                  ? "Franchise Candidate"
-                  : franchiseEval.rank === "BUILDING"
-                  ? "Building Phase"
-                  : "Not Eligible Yet"}
-              </span>
-            </div>
-            {franchiseEval.reasons && franchiseEval.reasons.length > 0 && (
-              <p className={styles.franchiseHint}>
-                {`To level up: ${franchiseEval.reasons.join(" ")}`}
-              </p>
-            )}
-          </>
-        )}
-        {!franchiseLoading && !franchiseError && !franchiseEval && (
-          <p className={styles.franchiseStatus}>No franchise data available yet.</p>
-        )}
+      <section className={styles.franchiseSection}>
+        <h3 className={styles.franchiseHeader}>Ownership Path — OTW Franchise</h3>
+        <DriverFranchiseCard driverId={driverId} />
       </section>
 
       <div className={styles.grid}>
