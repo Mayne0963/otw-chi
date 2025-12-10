@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const {
+      customerId,
       serviceType,
       urgency,
       pickupArea,
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
       dropoffLocation,
     } = body || {};
 
-    if (!serviceType || !urgency) {
+    if (!serviceType || !urgency || !customerId) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
 
@@ -178,7 +179,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure the customer's tier allows this request before committing
-    const customerId = "CUSTOMER-1";
     const eligibility = evaluateTierRequestEligibility(
       customerId,
       estimatedMiles,
@@ -206,6 +206,7 @@ export async function POST(request: NextRequest) {
     createdAt: new Date().toISOString(),
     estimatedMiles,
     status: "PENDING",
+    customerId,
     pickupLocation: pickup,
     dropoffLocation: dropoff,
     estimatedDistanceKm: distanceKm,

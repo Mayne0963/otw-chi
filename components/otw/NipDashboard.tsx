@@ -332,32 +332,105 @@ export default function NipDashboard() {
   const [summary, setSummary] = useState<NipSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
+  const [activeDriverId, setActiveDriverId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchNipSummary();
+    initIdsAndFetch();
   }, []);
 
-  const fetchNipSummary = async () => {
+  const initIdsAndFetch = async () => {
     try {
-      // For demo purposes, we'll use a mock customer ID
-      // In a real app, this would come from user authentication
-      const customerId = 'cust_demo123';
-      const response = await fetch(`/api/otw/nip/summary?customerId=${customerId}`);
+      // Determine default IDs from live requests
+      const reqRes = await fetch('/api/otw/requests');
+      const reqData = await reqRes.json();
+      if (reqRes.ok && reqData.success && Array.isArray(reqData.requests) && reqData.requests.length > 0) {
+        const first = reqData.requests[0];
+        setActiveCustomerId(first.customerId || null);
+        const assigned = reqData.requests.find((r: any) => r.assignedDriverId);
+        setActiveDriverId(assigned?.assignedDriverId || null);
+      }
+      await fetchSummaryForCustomer();
+    } catch (err) {
+      setError('Failed to initialize NIP dashboard');
+      console.error('Failed to initialize NIP dashboard:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSummaryForCustomer = async () => {
+    if (!activeCustomerId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`/api/otw/nip/summary?customerId=${encodeURIComponent(activeCustomerId)}`);
       const data = await response.json();
-      
       if (data.success) {
-        // Transform the API response to match our interface
+        const ledger = (data.ledger || []).map((e: any) => ({
+          id: e.id,
+          type: 'EARNED',
+          amount: Math.abs(e.delta || 0),
+          description: e.reason || 'NIP transaction',
+          timestamp: e.createdAt,
+          role: 'CUSTOMER' as const,
+        }));
         setSummary({
           customerWallet: data.wallet || { balance: 0, totalEarned: 0 },
-          driverWallet: { balance: 0, totalEarned: 0 }, // Driver data would come from driver API
-          recentLedger: data.ledger || []
+          driverWallet: summary?.driverWallet || { balance: 0, totalEarned: 0 },
+          recentLedger: ledger,
         });
       } else {
         setError(data.error || 'Failed to load NIP data');
       }
     } catch (err) {
-      setError('Failed to fetch NIP summary');
-      console.error('Failed to fetch NIP summary:', err);
+      setError('Failed to fetch customer NIP summary');
+      console.error('Failed to fetch customer NIP summary:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSummaryForDriver = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      let driverId = activeDriverId;
+      if (!driverId) {
+        const res = await fetch('/api/otw/drivers/franchise');
+        const data = await res.json();
+        if (res.ok && data.success && data.mode === 'overview' && Array.isArray(data.drivers) && data.drivers.length > 0) {
+          driverId = data.drivers[0].driverId;
+          setActiveDriverId(driverId);
+        }
+      }
+      if (!driverId) {
+        setError('No driver available for NIP summary');
+        setLoading(false);
+        return;
+      }
+      const response = await fetch(`/api/otw/nip/summary?driverId=${encodeURIComponent(driverId)}`);
+      const data = await response.json();
+      if (data.success) {
+        const ledger = (data.ledger || []).map((e: any) => ({
+          id: e.id,
+          type: 'EARNED',
+          amount: Math.abs(e.delta || 0),
+          description: e.reason || 'NIP transaction',
+          timestamp: e.createdAt,
+          role: 'DRIVER' as const,
+        }));
+        setSummary({
+          customerWallet: summary?.customerWallet || { balance: 0, totalEarned: 0 },
+          driverWallet: data.wallet || { balance: 0, totalEarned: 0 },
+          recentLedger: ledger,
+        });
+      } else {
+        setError(data.error || 'Failed to load NIP data');
+      }
+    } catch (err) {
+      setError('Failed to fetch driver NIP summary');
+      console.error('Failed to fetch driver NIP summary:', err);
     } finally {
       setLoading(false);
     }
@@ -448,7 +521,7 @@ export default function NipDashboard() {
             ...styles.toggleButton,
             ...(activeView === 'driver' ? styles.toggleButtonActive : {})
           }}
-          onClick={() => setActiveView('driver')}
+          onClick={async () => { setActiveView('driver'); await fetchSummaryForDriver(); }}
         >
           <Car style={styles.toggleIcon} />
           Driver

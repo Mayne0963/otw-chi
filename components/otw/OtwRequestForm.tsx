@@ -4,8 +4,6 @@ import React, { useState } from "react";
 import styles from "./OtwRequestForm.module.css";
 import { ServiceType } from "@/lib/otw/otwEnums";
 
-// TEMP: hard-coded customer for now
-const DEMO_CUSTOMER_ID = "cus_demo_1";
 
 type RequestState = "idle" | "submitting" | "success" | "error";
 
@@ -33,6 +31,7 @@ const OtwRequestForm: React.FC = () => {
   const [state, setState] = useState<RequestState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<ApiResponse | null>(null);
+  const [customerId, setCustomerId] = useState<string>("CUSTOMER-1");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +44,7 @@ const OtwRequestForm: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId: DEMO_CUSTOMER_ID,
+          customerId,
           serviceType,
           estimatedMiles,
           notes: notes || undefined,
@@ -82,6 +81,16 @@ const OtwRequestForm: React.FC = () => {
       </p>
 
       <form className={styles.form} onSubmit={handleSubmit}>
+        <label className={styles.label}>
+          Customer ID
+          <input
+            type="text"
+            className={styles.input}
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            placeholder="CUSTOMER-1"
+          />
+        </label>
         <label className={styles.label}>
           Service Type
           <select

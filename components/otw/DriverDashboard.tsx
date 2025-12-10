@@ -3,20 +3,12 @@
 import React, { useEffect, useState } from "react";
 import styles from "./DriverDashboard.module.css";
 import DriverFranchiseCard from "./DriverFranchiseCard";
-import { DriverStatus, DriverJob, OtwFeedback } from "../../lib/otw/otwTypes";
-import { mockDriverSnapshot, mockDriverJobsToday } from "../../lib/otw/otwMockData";
+import { DriverStatus, OtwFeedback } from "../../lib/otw/otwTypes";
 
 const DriverDashboard: React.FC = () => {
-  const {
-    driverId,
-    driverName,
-    driverTier,
-    rating,
-    jobsToday,
-    earningsToday,
-    weeklyEarnings,
-    initialStatus,
-  } = mockDriverSnapshot;
+  const [driverId, setDriverId] = useState<string>("");
+  const [driverName, setDriverName] = useState<string>("");
+  const initialStatus: DriverStatus = "ONLINE";
 
   // Local shape for /api/otw/requests responses
   interface ApiOtwRequest {
@@ -44,7 +36,26 @@ const DriverDashboard: React.FC = () => {
   const [updateError, setUpdateError] = useState<string | null>(null);
 
 
-  const todayJobs: DriverJob[] = mockDriverJobsToday;
+  // Load available drivers and pick the first one
+  useEffect(() => {
+    const loadDriver = async () => {
+      try {
+        const res = await fetch("/api/otw/drivers/franchise");
+        const data = await res.json();
+        if (res.ok && data.success && data.mode === "overview" && Array.isArray(data.drivers) && data.drivers.length > 0) {
+          setDriverId(String(data.drivers[0].driverId));
+          setDriverName(String(data.drivers[0].displayName || data.drivers[0].driverId));
+        } else {
+          setDriverId("DRIVER-1");
+          setDriverName("OTW Driver");
+        }
+      } catch (e) {
+        setDriverId("DRIVER-1");
+        setDriverName("OTW Driver");
+      }
+    };
+    loadDriver();
+  }, []);
 
   useEffect(() => {
     if (!driverId) return;
@@ -85,21 +96,14 @@ const DriverDashboard: React.FC = () => {
       if (!driverId) return;
       setAssignedLoading(true);
       setAssignedError(null);
-      const res = await fetch("/api/otw/requests");
+      const res = await fetch(`/api/otw/drivers/requests?driverId=${encodeURIComponent(driverId)}`);
       const data = await res.json();
       if (!res.ok || !data.success) {
         setAssignedError(data.error || "Unable to load assigned OTW jobs.");
         setAssignedRequests([]);
         return;
       }
-      const all: ApiOtwRequest[] = data.requests || [];
-      const mine = all.filter(
-        (req) =>
-          req.assignedDriverId === driverId &&
-          req.status !== "COMPLETED" &&
-          req.status !== "CANCELLED"
-      );
-      mine.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const mine: ApiOtwRequest[] = data.myRequests || [];
       setAssignedRequests(mine);
     } catch (err) {
       console.error("Failed to load assigned OTW jobs:", err);
@@ -119,10 +123,10 @@ const DriverDashboard: React.FC = () => {
     try {
       setUpdateError(null);
       setUpdatingRequestId(requestId);
-      const res = await fetch("/api/otw/requests/status", {
-        method: "PATCH",
+      const res = await fetch("/api/otw/drivers/complete", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, newStatus: "COMPLETED" }),
+        body: JSON.stringify({ driverId, requestId }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -150,14 +154,16 @@ const DriverDashboard: React.FC = () => {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div style={{ fontWeight: 800, fontSize: 24 }}>OTW Driver Dashboard</div>
-          <div style={{ fontSize: 14, opacity: 0.8 }}>{driverName} • {driverTier}</div>
+          <div style={{ fontSize: 14, opacity: 0.8 }}>{driverName} • {driverId}</div>
         </div>
         <div className={styles.headerRight}>
           <span className={styles.badge} style={{ background: status === "ONLINE" ? "#10b981" : "#f3f4f6", color: status === "ONLINE" ? "#ffffff" : "inherit", borderColor: status === "ONLINE" ? "#10b981" : undefined }}>{statusLabel}</span>
           <button type="button" className={styles.statusToggle} onClick={handleToggleStatus}>
             {status === "ONLINE" ? "Go Offline" : "Go Online"}
           </button>
-          <span className={styles.rating}>⭐ {rating.toFixed(1)}</span>
+          {avgRatingFromFeedback !== null && (
+            <span className={styles.rating}>⭐ {avgRatingFromFeedback.toFixed(1)}</span>
+          )}
         </div>
       </div>
 
@@ -173,49 +179,20 @@ const DriverDashboard: React.FC = () => {
 
       <div className={styles.grid}>
         <div className={styles.card}>
-          <div className={styles.cardTitle}>Today’s Earnings</div>
-          <div className={styles.cardValue}>${earningsToday.toFixed(2)}</div>
-          <div className={styles.cardSubtext}>This week: ${weeklyEarnings.toFixed(2)}</div>
-        </div>
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Jobs Completed Today</div>
-          <div className={styles.cardValue}>{jobsToday}</div>
-          <div className={styles.cardSubtext}>Keep going – bonuses unlock at 25 jobs/week.</div>
-        </div>
-        <div className={styles.card}>
           <div className={styles.cardTitle}>Current Status</div>
           <div className={styles.cardValue}>{statusLabel}</div>
           <div className={styles.cardSubtext}>{statusNote}</div>
         </div>
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>Rating</div>
-          <div className={styles.cardValue}>{rating.toFixed(1)}</div>
-          <div className={styles.cardSubtext}>High ratings unlock more OTW perks.</div>
-        </div>
+        {avgRatingFromFeedback !== null && (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Rating</div>
+            <div className={styles.cardValue}>{avgRatingFromFeedback.toFixed(1)}</div>
+            <div className={styles.cardSubtext}>High ratings unlock more OTW perks.</div>
+          </div>
+        )}
       </div>
 
-      <div className={styles.card} style={{ marginTop: 16 }}>
-        <div className={styles.cardTitle}>Today’s Jobs</div>
-        <div className={styles.jobsList}>
-          {todayJobs.map((job) => (
-            <div key={job.id} className={styles.jobItem}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className={styles.badge}>{job.type}</span>
-                <div style={{ fontWeight: 600 }}>{job.label}</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 700 }}>${job.payout.toFixed(2)}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
-                  <span className={styles.badge} style={{ background: job.status === "COMPLETED" ? "#10b981" : job.status === "IN_PROGRESS" ? "#f59e0b" : "#e5e7eb", color: job.status === "ASSIGNED" ? "inherit" : "#ffffff", borderColor: job.status === "ASSIGNED" ? undefined : (job.status === "COMPLETED" ? "#10b981" : "#f59e0b") }}>{job.status.replace("_", " ")}</span>
-                  {job.etaMinutes !== undefined && (
-                    <span className={styles.badge}>ETA: {job.etaMinutes} min</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Removed hard-coded Today’s Jobs card; rely on Assigned OTW Jobs below */}
 
       <div className={styles.card} style={{ marginTop: 16 }}>
         <div className={styles.cardTitle}>Next Steps</div>
