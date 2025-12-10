@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { upsertDriverLocation } from "../../../../lib/otw/otwDriverLocation";
+import { upsertDriverLocation } from "@/lib/otw/otwDriverLocation";
 
 export async function PATCH(request: NextRequest) {
   try {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getAllDriverLocations,
   getDriverLocationsForRequest,
-} from "../../../../lib/otw/otwDriverLocation";
+} from "@/lib/otw/otwDriverLocation";
 
 export async function GET(request: NextRequest) {
   try {
