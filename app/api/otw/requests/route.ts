@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ServiceType, Urgency, OtwLocation } from "../../../../lib/otw/otwTypes";
+import { ServiceType, Urgency, OtwLocation, OtwCityId, OtwZoneId } from "../../../../lib/otw/otwTypes";
 import type { OtwMatchContext } from "../../../../lib/otw/otwTypes";
 import {
   haversineDistanceKm,
@@ -28,6 +28,8 @@ export interface OtwRequest {
   assignedDriverId?: string; // matched driver id
   matchScore?: number; // matched driver score
   // New optional geo fields
+  cityId?: OtwCityId;
+  zoneId?: OtwZoneId;
   pickupLocation?: OtwLocation;
   dropoffLocation?: OtwLocation;
   estimatedDistanceKm?: number;
