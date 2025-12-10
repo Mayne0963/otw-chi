@@ -6,7 +6,10 @@ import {
   getDriverHealthLeaderboard,
   getCustomerHealthLeaderboard,
 } from "@/lib/otw/otwAnalytics";
-import { getFranchiseEvaluationsForAllDrivers } from "@/lib/otw/otwFranchise";
+import {
+  getFranchiseEvaluationsForAllDrivers,
+  isFranchiseEligible,
+} from "@/lib/otw/otwFranchise";
 
 export async function GET(request: NextRequest) {
   let requests: any[] = [];
@@ -47,8 +50,8 @@ export async function GET(request: NextRequest) {
   const topCustomers = customerHealth.slice(0, 3);
 
   const franchiseEvaluations = getFranchiseEvaluationsForAllDrivers();
-  const franchiseEligible = franchiseEvaluations.filter((e) => e.rank === "ELIGIBLE");
-  const franchiseCandidates = franchiseEvaluations.filter((e) => e.rank === "CANDIDATE");
+  const franchiseEligible = franchiseEvaluations.filter((e) => isFranchiseEligible(e.rank));
+  const franchiseCandidates = franchiseEvaluations.filter((e) => e.rank === "SEED");
 
   return NextResponse.json({
     success: true,
