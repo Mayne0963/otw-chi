@@ -1,6 +1,7 @@
 import { listDrivers } from "./otwDrivers";
 import { listAllRequests } from "./otwRequests";
 import { listAllNipWallets } from "./otwNip";
+import { listZones } from "./otwZones";
 import { OtwDriverProfile, OtwRequest } from "./otwTypes";
 
 export interface AdminDriverSnapshot {
