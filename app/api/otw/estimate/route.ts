@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ServiceType, Urgency } from "../../../../lib/otw/otwTypes";
+import { Urgency, UiServiceType as ServiceType } from "@/lib/otw/otwTypes";
 
 interface EstimateRequestBody {
   serviceType: ServiceType;
@@ -13,12 +13,12 @@ const estimateMiles = (payload: EstimateRequestBody) => {
   const { serviceType, urgency, pickupArea, dropoffArea, notes = "" } = payload;
 
   const baseByService: Record<ServiceType, number> = {
-    ERRAND: 500,
-    FOOD: 400,
-    BIG_HAUL: 900,
-    DOCUMENT: 600,
-    VIP: 700,
-    OTHER: 1100,
+    MOVE: 500,
+    EXCHANGE: 400,
+    HAUL: 900,
+    PRESENCE: 600,
+    BUSINESS: 700,
+    MULTI_STOP: 1100,
   };
 
   const urgencyMultiplier: Record<Urgency, number> = {
@@ -28,7 +28,6 @@ const estimateMiles = (payload: EstimateRequestBody) => {
   };
 
   const base = baseByService[serviceType];
-
   const textComplexitySource = (pickupArea + dropoffArea + notes).trim();
   const rawComplexity = Math.floor(textComplexitySource.length / 10) * 10;
   const complexityBonus = Math.min(300, rawComplexity);
@@ -70,3 +69,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unable to calculate estimate." }, { status: 500 });
   }
 }
+

@@ -1,43 +1,38 @@
 .otwDashboard {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px;
+  color-scheme: light dark;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  gap: 12px;
 }
 
 .headerLeft {
   display: flex;
-  flex-direction: column;
-}
-
-.logo {
-  font-weight: 800;
-  font-size: 24px;
-  letter-spacing: 0.02em;
-}
-
-.subtitle {
-  font-size: 14px;
-  opacity: 0.8;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
 }
 
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .tierBadge {
-  padding: 6px 12px;
-  border-radius: 9999px;
-  border: 1px solid #e5e7eb;
-  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  background: rgba(128, 128, 128, 0.12);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .avatar {
@@ -47,26 +42,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e5e7eb;
-  font-weight: 700;
+  font-weight: 600;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  background: rgba(128, 128, 128, 0.12);
 }
 
 .mainGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px;
 }
 
 .card {
-  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
   border-radius: 12px;
-  padding: 16px;
-  background: var(--card-bg, #ffffff);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  background: rgba(128, 128, 128, 0.08);
 }
 
 .cardHeader {
   font-weight: 600;
-  margin-bottom: 8px;
+  letter-spacing: 0.2px;
 }
 
 .cardValue {
@@ -79,43 +78,58 @@
   opacity: 0.8;
 }
 
+.card button {
+  margin-right: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  background: rgba(128, 128, 128, 0.1);
+  color: inherit;
+}
+
+.card button:hover {
+  background: rgba(128, 128, 128, 0.18);
+}
+
 .milesBar {
-  width: 100%;
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 9999px;
-  margin-top: 12px;
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.18);
   overflow: hidden;
 }
 
-.milesFill {
-  height: 100%;
-  background: #111827;
+.milesBarFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
 }
 
 .categoriesRow {
   display: flex;
   gap: 8px;
-  padding: 12px 0;
   overflow-x: auto;
+  padding: 6px 0;
 }
 
 .categoryChip {
-  border: 1px solid #e5e7eb;
-  border-radius: 9999px;
-  padding: 6px 12px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  background: rgba(128, 128, 128, 0.08);
   white-space: nowrap;
-  cursor: pointer;
+  font-size: 13px;
 }
 
 .categoryChip:hover {
-  background: rgba(0,0,0,0.04);
+  background: rgba(128, 128, 128, 0.15);
 }
 
-.categoryChipSelected {
-  background: #111827;
-  color: #ffffff;
-  border-color: #111827;
+.categoryChip[aria-selected="true"] {
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .activityList {
@@ -125,48 +139,29 @@
 }
 
 .activityItem {
-  display: flex;
+  display: grid;
+  grid-template-columns: 90px 1fr 90px 110px;
+  gap: 8px;
   align-items: center;
-  justify-content: space-between;
-  border: 1px solid #e5e7eb;
+  padding: 8px;
   border-radius: 8px;
-  padding: 10px 12px;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  background: rgba(128, 128, 128, 0.06);
 }
 
-.mapPreview {
-  border: 1px dashed #e5e7eb;
-  border-radius: 8px;
-  height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.8;
-}
-
-@media (max-width: 768px) {
-  .mainGrid {
+@media (max-width: 640px) {
+  .activityItem {
     grid-template-columns: 1fr;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .card {
-    background: #111827;
-    border-color: #374151;
-    color: #e5e7eb;
-  }
-  .tierBadge,
-  .avatar,
-  .categoryChip,
-  .activityItem,
-  .milesBar {
-    border-color: #374151;
-  }
-  .milesBar {
-    background: #374151;
-  }
-  .categoryChip:hover {
-    background: rgba(255,255,255,0.06);
-  }
+.mapPreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  border: 2px dashed rgba(128, 128, 128, 0.35);
+  border-radius: 10px;
+  background: rgba(128, 128, 128, 0.06);
 }
 

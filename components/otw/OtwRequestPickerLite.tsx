@@ -1,40 +1,14 @@
 import React, { useState } from "react";
-import styles from "./OtwRequestPicker.module.css";
-import { Urgency, UiServiceType as ServiceType, ServiceConfigUi as ServiceConfig } from "../../lib/otw/otwTypes";
+import styles from "./OtwRequestPickerLite.module.css";
 
-// Using shared UI types from lib/otw/otwTypes
+type ServiceType = "MOVE" | "EXCHANGE" | "HAUL" | "PRESENCE" | "BUSINESS" | "MULTI_STOP";
+type Urgency = "NORMAL" | "PRIORITY" | "RUSH";
 
-// Local-only miles estimation helper
-const estimateMiles = (
-  service: ServiceType,
-  urgency: Urgency,
-  pickupArea: string,
-  dropoffArea: string,
-  notes: string
-): number => {
-  const baseByService: Record<ServiceType, number> = {
-    MOVE: 500,
-    EXCHANGE: 400,
-    HAUL: 900,
-    PRESENCE: 600,
-    BUSINESS: 700,
-    MULTI_STOP: 1100,
-  };
-  const base = baseByService[service];
-
-  const urgencyMultiplier: Record<Urgency, number> = {
-    NORMAL: 1,
-    PRIORITY: 1.2,
-    RUSH: 1.4,
-  };
-
-  const textComplexitySource = pickupArea + dropoffArea + notes;
-  const rawComplexity = Math.floor(textComplexitySource.trim().length / 10) * 10;
-  const complexityBonus = Math.min(300, rawComplexity);
-
-  const roughMiles = (base + complexityBonus) * urgencyMultiplier[urgency];
-  return Math.round(roughMiles / 10) * 10;
-};
+interface ServiceConfig {
+  id: ServiceType;
+  title: string;
+  subtitle: string;
+}
 
 const serviceOptions: ServiceConfig[] = [
   { id: "MOVE", title: "Move", subtitle: "Errands & everyday runs" },
@@ -52,7 +26,7 @@ const emojiForService = (id: ServiceType): string => {
     case "EXCHANGE":
       return "🔁";
     case "HAUL":
-      return "📦";
+      return "📺";
     case "PRESENCE":
       return "👁️‍🗨️";
     case "BUSINESS":
@@ -70,30 +44,14 @@ const OtwRequestPicker: React.FC = () => {
   const [dropoffArea, setDropoffArea] = useState("");
   const [urgency, setUrgency] = useState<Urgency>("NORMAL");
   const [notes, setNotes] = useState("");
-  const [estimatedMiles, setEstimatedMiles] = useState<number | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleEstimateClick = () => {
-    if (!selectedService) {
-      setValidationError("Please choose a service type.");
-      setEstimatedMiles(null);
+  const handleEstimate = () => {
+    if (!selectedService || !pickupArea.trim() || !dropoffArea.trim()) {
+      alert("Please choose service type and fill pickup/dropoff areas.");
       return;
     }
-
-    if (!pickupArea.trim() || !dropoffArea.trim()) {
-      setValidationError("Please fill in both pickup and dropoff areas.");
-      setEstimatedMiles(null);
-      return;
-    }
-
-    setValidationError(null);
-    const miles = estimateMiles(selectedService, urgency, pickupArea, dropoffArea, notes);
-    setEstimatedMiles(miles);
+    alert("OTW estimate coming soon – service: " + selectedService);
   };
-
-  
-
-  
 
   const handleClear = () => {
     setSelectedService(null);
@@ -101,21 +59,15 @@ const OtwRequestPicker: React.FC = () => {
     setDropoffArea("");
     setUrgency("NORMAL");
     setNotes("");
-    setEstimatedMiles(null);
-    setValidationError(null);
   };
 
   return (
     <div className={styles.requestPicker}>
-      {/* Title / Intro */}
       <section>
         <h2 className={styles.sectionTitle}>Start a New OTW Request</h2>
         <p className={styles.helperText}>Choose what you need and where you need us.</p>
       </section>
 
-      
-
-      {/* Service Type Grid */}
       <section>
         <div className={styles.serviceGrid}>
           {serviceOptions.map((opt) => {
@@ -133,17 +85,14 @@ const OtwRequestPicker: React.FC = () => {
                 }}
               >
                 <div className={styles.serviceIcon}>{emojiForService(opt.id)}</div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div className={styles.serviceTitle}>{opt.title}</div>
-                  <div className={styles.serviceSubtitle}>{opt.subtitle}</div>
-                </div>
+                <div className={styles.serviceTitle}>{opt.title}</div>
+                <div className={styles.serviceSubtitle}>{opt.subtitle}</div>
               </div>
             );
           })}
         </div>
       </section>
 
-      {/* Basic Details Section */}
       {selectedService && (
         <section>
           <h3 className={styles.sectionTitle}>Basic Details</h3>
@@ -195,44 +144,14 @@ const OtwRequestPicker: React.FC = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={handleClear}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              className={styles.primaryButton}
-              onClick={handleEstimateClick}
-            >
+            <button type="button" className={styles.primaryButton} onClick={handleEstimate}>
               Get OTW Miles Estimate
             </button>
+            <button type="button" className={styles.secondaryButton} onClick={handleClear}>
+              Clear
+            </button>
           </div>
-
-          {validationError && (
-            <p className={styles.validationError}>{validationError}</p>
-          )}
-
-          
-
-          {estimatedMiles !== null && (
-            <div className={styles.estimateCard}>
-              <h3 className={styles.estimateTitle}>Estimated OTW Miles</h3>
-              <p className={styles.estimateValue}>{estimatedMiles.toLocaleString()} miles</p>
-              {selectedService && (
-                <p className={styles.estimateSubtitle}>
-                  {`Based on a ${urgency.toLowerCase()} ${selectedService.toLowerCase().replace("_", " ")} request with the areas you entered.`}
-                </p>
-              )}
-              <p className={styles.helperText}>
-                This is a rough estimate for planning only. Final OTW Miles may adjust once the full route, timing, and load are calculated.
-              </p>
-            </div>
-          )}
         </section>
       )}
     </div>
@@ -240,3 +159,4 @@ const OtwRequestPicker: React.FC = () => {
 };
 
 export default OtwRequestPicker;
+

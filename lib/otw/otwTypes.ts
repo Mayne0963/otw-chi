@@ -220,6 +220,17 @@ export interface DriverJob {
   etaMinutes?: number;
 }
 
+// UI-centric service categories used by front-end picker components.
+// This keeps UI labels (Move, Exchange, Haul, Presence, Business, Multi-Stop)
+// decoupled from back-end ServiceType values (ERRAND, DOCUMENT, etc.).
+export type UiServiceType = "MOVE" | "EXCHANGE" | "HAUL" | "PRESENCE" | "BUSINESS" | "MULTI_STOP";
+
+export interface ServiceConfigUi {
+  id: UiServiceType;
+  title: string;
+  subtitle: string;
+}
+
 // Feedback & Reputation
 export type FeedbackRater = "CUSTOMER" | "SYSTEM";
 
