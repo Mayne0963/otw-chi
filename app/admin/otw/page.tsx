@@ -1,184 +1,260 @@
 "use client";
-import { useEffect, useState } from "react";
-import styles from "./otwAdmin.module.css";
+import React, { useEffect, useState } from "react";
+import styles from "@/components/otw/AdminOtwHQ.module.css";
 
-export default function OtwAdminHQ() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+interface AdminDriverSnapshot {
+  driverId: string;
+  displayName: string;
+  completedJobs: number;
+  cancelledJobs: number;
+  avgRating: number;
+  franchiseScore: number;
+  franchiseRank: string;
+  franchiseEligible: boolean;
+}
+
+interface ZoneCoverageSnapshot {
+  zoneId: string;
+  zoneName: string;
+  cityName: string;
+  activeDrivers: number;
+  openRequests: number;
+  completedToday: number;
+}
+
+interface AdminOverviewSnapshot {
+  generatedAt: string;
+  totalDrivers: number;
+  totalRequests: number;
+  openRequests: number;
+  completedRequests: number;
+  pendingRequests: number;
+  totalNipWallets: number;
+  totalNipInCirculation: number;
+  totalNipEarnedAllTime: number;
+  topDriversByFranchise: AdminDriverSnapshot[];
+  zones?: ZoneCoverageSnapshot[];
+}
+
+interface AdminOverviewResponse {
+  success: boolean;
+  overview?: AdminOverviewSnapshot;
+  error?: string;
+}
+
+export default function OtwAdminHQPage() {
+  const [overview, setOverview] = useState<AdminOverviewSnapshot | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [refreshingDriverId, setRefreshingDriverId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchOverview = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/otw/admin/overview");
+      const data: AdminOverviewResponse = await res.json();
+      if (!res.ok || !data.success || !data.overview) {
+        setError(data.error || "Unable to load OTW admin overview right now.");
+        setOverview(null);
+        return;
+      }
+      setOverview(data.overview);
+    } catch (err) {
+      console.error("Error loading OTW admin overview:", err);
+      setError("Network error while loading OTW admin overview.");
+      setOverview(null);
+    } finally {
+      setLoading(false);
+      setRefreshingDriverId(null);
+    }
+  };
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/admin/otw/overview");
-        const json = await res.json();
-        if (json.success) setData(json);
-      } catch (e) {
-        console.error("Admin HQ failed:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    fetchOverview();
   }, []);
 
-  if (loading) return <div className={styles.loading}>Loading OTW HQ...</div>;
-  if (!data) return <div className={styles.error}>Unable to load OTW HQ</div>;
+  const handleReevaluateDriver = async (driverId: string) => {
+    try {
+      setRefreshingDriverId(driverId);
+      setError(null);
+      const res = await fetch(`/api/otw/drivers/franchise?driverId=${encodeURIComponent(driverId)}`);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.error || "Unable to re-evaluate franchise readiness for this driver.");
+        return;
+      }
+      await fetchOverview();
+    } catch (err) {
+      console.error("Error re-evaluating driver:", err);
+      setError("Network error while updating driver franchise readiness.");
+    } finally {
+      setRefreshingDriverId(null);
+    }
+  };
+
+  const formatNumber = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>OTW Admin HQ</h1>
-      <p className={styles.timestamp}>Updated: {new Date(data.lastUpdated).toLocaleString()}</p>
+    <main
+      style={{
+        maxWidth: "1000px",
+        margin: "0 auto",
+        padding: "1.5rem 1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+      }}
+    >
+      <h1
+        style={{
+          fontSize: "1.5rem",
+          fontWeight: 800,
+          marginBottom: "0.3rem",
+        }}
+      >
+        OTW HQ — Command Center
+      </h1>
+      <p
+        style={{
+          fontSize: "0.9rem",
+          color: "#555555",
+          marginBottom: "0.75rem",
+        }}
+      >
+        Monitor drivers, requests, and NIP circulation in one place. Use this overview to decide who’s ready for franchise conversations and where OTW needs more coverage.
+      </p>
 
-      <div className={styles.grid}>
-        <div className={styles.card}>
-          <h2>Total Requests</h2>
-          <p>{data.totalRequests}</p>
+      <div className={styles.shell}>
+        <div className={styles.headerRow}>
+          <h2 className={styles.title}>OTW HQ — Admin Panel</h2>
+          <button type="button" className={styles.refreshButton} onClick={fetchOverview} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh Overview"}
+          </button>
         </div>
-        <div className={styles.card}>
-          <h2>Completed</h2>
-          <p>{data.completedRequests}</p>
-        </div>
-        <div className={styles.card}>
-          <h2>Pending</h2>
-          <p>{data.pendingRequests}</p>
-        </div>
-        <div className={styles.card}>
-          <h2>Total Miles Used</h2>
-          <p>{Number(data.totalMilesUsed).toLocaleString()}</p>
-        </div>
-        <div className={styles.card}>
-          <h2>Avg Driver Rating</h2>
-          <p>{data.averageRating}</p>
-        </div>
-        <div className={styles.card}>
-          <h2>Active Memberships</h2>
-          <p>{data.activeMemberships}</p>
-        </div>
-        <div className={styles.card}>
-          <h2>Total Drivers</h2>
-          <p>{data.drivers}</p>
-        </div>
-      </div>
 
-      <h2 className={styles.subtitle}>Tier Distribution</h2>
-      <div className={styles.tierList}>
-        {Object.keys(data.tierCounts || {}).map((tier) => (
-          <div key={tier} className={styles.tierItem}>
-            <span className={styles.tierName}>{tier}</span>
-            <span className={styles.tierCount}>{data.tierCounts[tier]}</span>
-          </div>
-        ))}
-      </div>
+        <p className={styles.subTitle}>
+          Snapshot generated at <span className={styles.code}>{overview ? new Date(overview.generatedAt).toLocaleString() : "—"}</span>
+        </p>
 
-      <h2 className={styles.subtitle}>Top Drivers (OTW Health)</h2>
-      <div className={styles.healthList}>
-        {(!data.topDrivers || data.topDrivers.length === 0) && (
-          <p className={styles.healthEmpty}>No driver health data yet.</p>
-        )}
+        {error && <p className={styles.error}>{error}</p>}
 
-        {data.topDrivers && data.topDrivers.length > 0 && (
-          <ul className={styles.healthItems}>
-            {data.topDrivers.map((entry: any) => (
-              <li key={entry.driver.driverId} className={styles.healthItem}>
-                <div className={styles.healthHeaderRow}>
-                  <span className={styles.healthName}>
-                    {entry.driver.displayName}
-                  </span>
-                  <span className={styles.healthScore}>
-                    {entry.score.toFixed(0)}/100
-                  </span>
+        {overview && (
+          <>
+            <section className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <p className={styles.statLabel}>Drivers</p>
+                <p className={styles.statValue}>{formatNumber(overview.totalDrivers)}</p>
+              </div>
+              <div className={styles.statCard}>
+                <p className={styles.statLabel}>Total Requests</p>
+                <p className={styles.statValue}>{formatNumber(overview.totalRequests)}</p>
+                <p className={styles.statMeta}>Open: {formatNumber(overview.openRequests)} • Completed: {formatNumber(overview.completedRequests)}</p>
+              </div>
+              <div className={styles.statCard}>
+                <p className={styles.statLabel}>NIP Wallets</p>
+                <p className={styles.statValue}>{formatNumber(overview.totalNipWallets)}</p>
+                <p className={styles.statMeta}>In circulation: {formatNumber(overview.totalNipInCirculation)} NIP</p>
+              </div>
+              <div className={styles.statCard}>
+                <p className={styles.statLabel}>NIP Earned All-Time</p>
+                <p className={styles.statValue}>{formatNumber(overview.totalNipEarnedAllTime)} NIP</p>
+              </div>
+            </section>
+
+            <section className={styles.tableSection}>
+              <div className={styles.tableHeaderRow}>
+                <h3 className={styles.sectionTitle}>Top Drivers by Franchise Score</h3>
+                <p className={styles.sectionHint}>Higher score + eligibility = potential OTW franchise partner.</p>
+              </div>
+
+              {overview.topDriversByFranchise.length === 0 && <p className={styles.empty}>No drivers with franchise activity yet.</p>}
+
+              {overview.topDriversByFranchise.length > 0 && (
+                <div className={styles.tableWrapper}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Driver</th>
+                        <th>Jobs</th>
+                        <th>Rating</th>
+                        <th>Score</th>
+                        <th>Rank</th>
+                        <th>Eligible</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overview.topDriversByFranchise.map((d) => (
+                        <tr key={d.driverId}>
+                          <td>
+                            <div className={styles.driverCell}>
+                              <span className={styles.driverName}>{d.displayName}</span>
+                              <span className={styles.driverId}>{d.driverId}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={styles.jobsText}>{d.completedJobs} ✓ / {d.cancelledJobs} ✕</span>
+                          </td>
+                          <td>{d.avgRating.toFixed(2)}</td>
+                          <td>{d.franchiseScore.toFixed(1)}</td>
+                          <td>{d.franchiseRank}</td>
+                          <td>
+                            <span className={d.franchiseEligible ? styles.badgeEligible : styles.badgeNotEligible}>{d.franchiseEligible ? "Yes" : "No"}</span>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className={styles.recalcButton}
+                              onClick={() => handleReevaluateDriver(d.driverId)}
+                              disabled={refreshingDriverId === d.driverId || loading}
+                            >
+                              {refreshingDriverId === d.driverId ? "Re-evaluating..." : "Re-evaluate"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <p className={styles.healthMeta}>
-                  Rating: {(entry.components.rating * 5).toFixed(1)} •
-                  Completion: {(entry.components.completionRate * 100).toFixed(0)}% •
-                  Recency: {(entry.components.recencyBoost * 100).toFixed(0)}%
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              )}
+            </section>
 
-      <h2 className={styles.subtitle}>Top Customers (OTW Health)</h2>
-      <div className={styles.healthList}>
-        {(!data.topCustomers || data.topCustomers.length === 0) && (
-          <p className={styles.healthEmpty}>No customer health data yet.</p>
-        )}
-
-        {data.topCustomers && data.topCustomers.length > 0 && (
-          <ul className={styles.healthItems}>
-            {data.topCustomers.map((entry: any) => (
-              <li key={entry.customerId} className={styles.healthItem}>
-                <div className={styles.healthHeaderRow}>
-                  <span className={styles.healthName}>
-                    Customer {entry.customerId}
-                  </span>
-                  <span className={styles.healthScore}>
-                    {entry.score.toFixed(0)}/100
-                  </span>
+            {overview.zones && overview.zones.length > 0 && (
+              <section className={styles.tableSection}>
+                <div className={styles.tableHeaderRow}>
+                  <h3 className={styles.sectionTitle}>Zone Coverage</h3>
+                  <p className={styles.sectionHint}>Drivers and request volume by city zone.</p>
                 </div>
-                <p className={styles.healthMeta}>
-                  Usage: {(entry.components.usage * 100).toFixed(0)}% •
-                  Completion: {(entry.components.completionRate * 100).toFixed(0)}% •
-                  Tier: {(entry.components.tierQuality * 100).toFixed(0)}%
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <h2 className={styles.subtitle}>Franchise Eligible Drivers</h2>
-      <div className={styles.franchiseList}>
-        {(!data.franchiseEligible || data.franchiseEligible.length === 0) && (
-          <p className={styles.franchiseEmpty}>No drivers fully franchise-eligible yet.</p>
-        )}
-
-        {data.franchiseEligible && data.franchiseEligible.length > 0 && (
-          <ul className={styles.franchiseItems}>
-            {data.franchiseEligible.map((entry: any) => (
-              <li key={entry.driver.driverId} className={styles.franchiseItem}>
-                <div className={styles.franchiseHeaderRow}>
-                  <span className={styles.franchiseName}>{entry.driver.displayName}</span>
-                  <span className={styles.franchiseScore}>{entry.franchiseScore.toFixed(0)}/100</span>
+                <div className={styles.tableWrapper}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Zone</th>
+                        <th>City</th>
+                        <th>Active Drivers</th>
+                        <th>Open Requests</th>
+                        <th>Completed Today</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overview.zones.map((z) => (
+                        <tr key={z.zoneId}>
+                          <td>{z.zoneName}</td>
+                          <td>{z.cityName}</td>
+                          <td>{z.activeDrivers}</td>
+                          <td>{z.openRequests}</td>
+                          <td>{z.completedToday}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <p className={styles.franchiseMeta}>
-                  Zone: {entry.driver.baseZone} • Completed Jobs: {entry.driver.completedJobs}
-                </p>
-                {entry.reasons && entry.reasons.length > 0 && (
-                  <p className={styles.franchiseReasons}>Notes: {entry.reasons.join(" ")}</p>
-                )}
-              </li>
-            ))}
-          </ul>
+              </section>
+            )}
+          </>
         )}
       </div>
-
-      <h2 className={styles.subtitle}>Franchise Candidates</h2>
-      <div className={styles.franchiseList}>
-        {(!data.franchiseCandidates || data.franchiseCandidates.length === 0) && (
-          <p className={styles.franchiseEmpty}>No drivers in candidate range yet.</p>
-        )}
-
-        {data.franchiseCandidates && data.franchiseCandidates.length > 0 && (
-          <ul className={styles.franchiseItems}>
-            {data.franchiseCandidates.map((entry: any) => (
-              <li key={entry.driver.driverId} className={styles.franchiseItem}>
-                <div className={styles.franchiseHeaderRow}>
-                  <span className={styles.franchiseName}>{entry.driver.displayName}</span>
-                  <span className={styles.franchiseScore}>{entry.franchiseScore.toFixed(0)}/100</span>
-                </div>
-                <p className={styles.franchiseMeta}>
-                  Zone: {entry.driver.baseZone} • Completed Jobs: {entry.driver.completedJobs}
-                </p>
-                {entry.reasons && entry.reasons.length > 0 && (
-                  <p className={styles.franchiseReasons}>To qualify: {entry.reasons.join(" ")}</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    </main>
   );
 }

@@ -9,12 +9,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        otw: {
-          primary: '#0A84FF',
-          accent: '#34C759',
-          dark: '#0B0B0D',
-          light: '#F7F7F8'
-        }
+        otwRed: '#B00017',
+        otwRedDark: '#7F0010',
+        otwGold: '#E6C36A',
+        otwBlack: '#0C0C0C',
+        otwOffWhite: '#F9F5EC'
+      },
+      boxShadow: {
+        otwSoft: '0 10px 25px rgba(0,0,0,0.35)',
+        otwGlow: '0 0 25px rgba(230,195,106,0.45)'
+      },
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.5rem'
       }
     }
   },

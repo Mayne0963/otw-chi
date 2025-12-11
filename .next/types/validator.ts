@@ -47,10 +47,28 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 }
 
 
+// Validate ../../app/(admin)/otw/hq/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/otw/hq">> = Specific
+  const handler = {} as typeof import("../../app/(admin)/otw/hq/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/(dashboard)/otw/driver/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/otw/driver">> = Specific
   const handler = {} as typeof import("../../app/(dashboard)/otw/driver/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/(public)/otw/franchise-requirements/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/otw/franchise-requirements">> = Specific
+  const handler = {} as typeof import("../../app/(public)/otw/franchise-requirements/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -65,19 +83,55 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../app/(public)/otw/page.tsx
+// Validate ../../app/admin/otw/page.tsx
 {
-  type __IsExpected<Specific extends AppPageConfig<"/otw">> = Specific
-  const handler = {} as typeof import("../../app/(public)/otw/page.js")
+  type __IsExpected<Specific extends AppPageConfig<"/admin/otw">> = Specific
+  const handler = {} as typeof import("../../app/admin/otw/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
 }
 
-// Validate ../../app/admin/otw/page.tsx
+// Validate ../../app/customer/page.tsx
 {
-  type __IsExpected<Specific extends AppPageConfig<"/admin/otw">> = Specific
-  const handler = {} as typeof import("../../app/admin/otw/page.js")
+  type __IsExpected<Specific extends AppPageConfig<"/customer">> = Specific
+  const handler = {} as typeof import("../../app/customer/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/driver/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/driver">> = Specific
+  const handler = {} as typeof import("../../app/driver/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/membership/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/membership">> = Specific
+  const handler = {} as typeof import("../../app/membership/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/nip/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/nip">> = Specific
+  const handler = {} as typeof import("../../app/nip/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/otw/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/otw">> = Specific
+  const handler = {} as typeof import("../../app/otw/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -101,6 +155,42 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../app/api/otw/admin/overview/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/admin/overview">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/admin/overview/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/driver/franchise/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/driver/franchise">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/driver/franchise/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/driver/location/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/driver/location">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/driver/location/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/driver/locations/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/driver/locations">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/driver/locations/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/api/otw/drivers/accept/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/drivers/accept">> = Specific
@@ -114,6 +204,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/drivers/complete">> = Specific
   const handler = {} as typeof import("../../app/api/otw/drivers/complete/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/drivers/franchise/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/drivers/franchise">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/drivers/franchise/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -164,6 +263,24 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../app/api/otw/membership/preview/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/membership/preview">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/membership/preview/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/membership/subscribe/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/membership/subscribe">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/membership/subscribe/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../app/api/otw/nip/summary/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/nip/summary">> = Specific
@@ -177,6 +294,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/requests">> = Specific
   const handler = {} as typeof import("../../app/api/otw/requests/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../app/api/otw/requests/status/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/otw/requests/status">> = Specific
+  const handler = {} as typeof import("../../app/api/otw/requests/status/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

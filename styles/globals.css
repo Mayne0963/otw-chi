@@ -3,16 +3,12 @@
 @tailwind utilities;
 
 /* Minimal global styles for OTW skeleton */
-:root {
-  --otw-bg: #F7F7F8;
-  --otw-fg: #0B0B0D;
-}
-
-html, body {
-  height: 100%;
-}
+html, body { height: 100%; }
 
 body {
-  background-color: var(--otw-bg);
-  color: var(--otw-fg);
+  background-color: #0C0C0C; /* otwBlack */
+  color: #F9F5EC; /* otwOffWhite */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
 }
