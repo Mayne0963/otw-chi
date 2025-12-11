@@ -3,6 +3,8 @@ import React from "react";
 import styles from "./OtwPage.module.css";
 import OtwDashboard from "@/components/otw/OtwDashboard";
 import OtwRequestPicker from "@/components/otw/OtwRequestPicker";
+import MyOtwRequests from "@/components/otw/MyOtwRequests";
+import OtwMembershipCard from "@/components/otw/OtwMembershipCard";
 
 const OtwPage: React.FC = () => {
   return (
@@ -16,6 +18,10 @@ const OtwPage: React.FC = () => {
         </section>
 
         <section className={styles.section}>
+          <OtwMembershipCard />
+        </section>
+
+        <section className={styles.section}>
           <OtwDashboard />
         </section>
 
@@ -25,10 +31,15 @@ const OtwPage: React.FC = () => {
           <h2 className={styles.sectionHeader}>Start a New Request</h2>
           <OtwRequestPicker />
         </section>
+
+        <div className={styles.spacerLg} />
+
+        <section className={styles.section}>
+          <MyOtwRequests />
+        </section>
       </div>
     </main>
   );
 };
 
 export default OtwPage;
-

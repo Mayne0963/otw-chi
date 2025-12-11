@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Urgency, UiServiceType as ServiceType } from "@/lib/otw/otwTypes";
+import {
+  getMembershipForCustomer,
+  updateMembershipMilesUsed,
+  estimateRemainingMiles,
+} from "@/lib/otw/otwMembership";
 
 export interface OtwRequest {
   id: string;
@@ -11,6 +16,7 @@ export interface OtwRequest {
   createdAt: string; // ISO timestamp
   estimatedMiles: number;
   status: "PENDING" | "MATCHED" | "COMPLETED" | "CANCELLED";
+  customerId?: string; // mock linkage for now
 }
 
 const baseByService: Record<ServiceType, number> = {
@@ -109,12 +115,40 @@ export async function POST(request: NextRequest) {
       status: "PENDING",
     };
 
+    // Attach mock customer and update membership snapshot
+    const customerId = "CUSTOMER-1";
+    newRequest.customerId = customerId;
+
+    let membershipUpdate: any = null;
+    const membership = getMembershipForCustomer(customerId);
+    if (membership && membership.membershipId) {
+      const updated = updateMembershipMilesUsed(
+        membership.membershipId,
+        newRequest.estimatedMiles
+      );
+      if (updated) {
+        const remainingMiles = estimateRemainingMiles(updated);
+        membershipUpdate = {
+          membershipId: updated.membershipId,
+          tierId: updated.tierId,
+          milesCap: updated.milesCap,
+          milesUsed: updated.milesUsed,
+          rolloverMiles: updated.rolloverMiles,
+          remainingMiles,
+          status: updated.status,
+          renewsOn: updated.renewsOn,
+        };
+      }
+    }
+
     otwRequests.push(newRequest);
 
-    return NextResponse.json({ success: true, request: newRequest }, { status: 201 });
+    return NextResponse.json(
+      { success: true, request: newRequest, membership: membershipUpdate },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("OTW request creation error:", err);
     return NextResponse.json({ error: "Unable to create OTW request." }, { status: 500 });
   }
 }
-

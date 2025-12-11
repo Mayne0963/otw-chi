@@ -2,39 +2,16 @@ import React, { useState } from "react";
 import styles from "./OtwRequestPicker.module.css";
 import { Urgency, UiServiceType as ServiceType, ServiceConfigUi as ServiceConfig } from "../../lib/otw/otwTypes";
 
-// Using shared UI types from lib/otw/otwTypes
-
-// Local-only miles estimation helper
-const estimateMiles = (
-  service: ServiceType,
-  urgency: Urgency,
-  pickupArea: string,
-  dropoffArea: string,
-  notes: string
-): number => {
-  const baseByService: Record<ServiceType, number> = {
-    MOVE: 500,
-    EXCHANGE: 400,
-    HAUL: 900,
-    PRESENCE: 600,
-    BUSINESS: 700,
-    MULTI_STOP: 1100,
+interface EstimateResponse {
+  success?: boolean;
+  estimatedMiles?: number;
+  breakdown?: {
+    base: number;
+    complexityBonus: number;
+    urgencyMultiplier: number;
   };
-  const base = baseByService[service];
-
-  const urgencyMultiplier: Record<Urgency, number> = {
-    NORMAL: 1,
-    PRIORITY: 1.2,
-    RUSH: 1.4,
-  };
-
-  const textComplexitySource = pickupArea + dropoffArea + notes;
-  const rawComplexity = Math.floor(textComplexitySource.trim().length / 10) * 10;
-  const complexityBonus = Math.min(300, rawComplexity);
-
-  const roughMiles = (base + complexityBonus) * urgencyMultiplier[urgency];
-  return Math.round(roughMiles / 10) * 10;
-};
+  error?: string;
+}
 
 const serviceOptions: ServiceConfig[] = [
   { id: "MOVE", title: "Move", subtitle: "Errands & everyday runs" },
@@ -72,28 +49,112 @@ const OtwRequestPicker: React.FC = () => {
   const [notes, setNotes] = useState("");
   const [estimatedMiles, setEstimatedMiles] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccessMessage, setSubmitSuccessMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleEstimateClick = () => {
+  const buildPayload = () => {
+    if (!selectedService) {
+      return null;
+    }
+    return {
+      serviceType: selectedService,
+      urgency,
+      pickupArea: pickupArea.trim(),
+      dropoffArea: dropoffArea.trim(),
+      notes: notes.trim() || undefined,
+    };
+  };
+
+  const handleEstimateClick = async () => {
+    setSubmitSuccessMessage(null);
+    setSubmitError(null);
     if (!selectedService) {
       setValidationError("Please choose a service type.");
       setEstimatedMiles(null);
       return;
     }
-
     if (!pickupArea.trim() || !dropoffArea.trim()) {
       setValidationError("Please fill in both pickup and dropoff areas.");
       setEstimatedMiles(null);
       return;
     }
-
     setValidationError(null);
-    const miles = estimateMiles(selectedService, urgency, pickupArea, dropoffArea, notes);
-    setEstimatedMiles(miles);
+    setIsEstimating(true);
+    const payload = buildPayload();
+    if (!payload) {
+      setIsEstimating(false);
+      setValidationError("Something went wrong building your request.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/otw/estimate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data: EstimateResponse = await response.json();
+      if (!response.ok || data.error || typeof data.estimatedMiles !== "number") {
+        setEstimatedMiles(null);
+        setSubmitError(data.error || "Unable to get an OTW estimate right now.");
+        return;
+      }
+      setEstimatedMiles(data.estimatedMiles);
+    } catch (error) {
+      console.error("Estimate request failed:", error);
+      setEstimatedMiles(null);
+      setSubmitError("Network error: unable to connect to OTW estimate.");
+    } finally {
+      setIsEstimating(false);
+    }
   };
 
-  
-
-  
+  const handleSubmitRequest = async () => {
+    setSubmitSuccessMessage(null);
+    setSubmitError(null);
+    if (!selectedService) {
+      setValidationError("Please choose a service type.");
+      return;
+    }
+    if (!pickupArea.trim() || !dropoffArea.trim()) {
+      setValidationError("Please fill in both pickup and dropoff areas.");
+      return;
+    }
+    setValidationError(null);
+    setIsSubmitting(true);
+    const payload = buildPayload();
+    if (!payload) {
+      setIsSubmitting(false);
+      setValidationError("Something went wrong building your request.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/otw/requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setSubmitError(data.error || "Unable to send request to OTW.");
+        return;
+      }
+      if (typeof data.request?.estimatedMiles === "number") {
+        setEstimatedMiles(data.request.estimatedMiles);
+      }
+      setSubmitSuccessMessage("Your OTW request has been created.");
+    } catch (error) {
+      console.error("OTW request creation failed:", error);
+      setSubmitError("Network error: unable to send request to OTW.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleClear = () => {
     setSelectedService(null);
@@ -103,6 +164,8 @@ const OtwRequestPicker: React.FC = () => {
     setNotes("");
     setEstimatedMiles(null);
     setValidationError(null);
+    setSubmitError(null);
+    setSubmitSuccessMessage(null);
   };
 
   return (
@@ -199,17 +262,27 @@ const OtwRequestPicker: React.FC = () => {
           <div className={styles.actions}>
             <button
               type="button"
-              className={styles.secondaryButton}
-              onClick={handleClear}
+              className={styles.primaryButton}
+              onClick={handleEstimateClick}
+              disabled={isEstimating || isSubmitting}
             >
-              Clear
+              {isEstimating ? "Estimating..." : "Get OTW Miles Estimate"}
             </button>
             <button
               type="button"
-              className={styles.primaryButton}
-              onClick={handleEstimateClick}
+              className={styles.secondaryButton}
+              onClick={handleSubmitRequest}
+              disabled={isEstimating || isSubmitting}
             >
-              Get OTW Miles Estimate
+              {isSubmitting ? "Sending..." : "Send Request to OTW"}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={handleClear}
+              disabled={isEstimating || isSubmitting}
+            >
+              Clear
             </button>
           </div>
 
@@ -217,7 +290,12 @@ const OtwRequestPicker: React.FC = () => {
             <p className={styles.validationError}>{validationError}</p>
           )}
 
-          
+          {submitError && (
+            <p className={styles.submitError}>{submitError}</p>
+          )}
+          {submitSuccessMessage && (
+            <p className={styles.submitSuccess}>{submitSuccessMessage}</p>
+          )}
 
           {estimatedMiles !== null && (
             <div className={styles.estimateCard}>
