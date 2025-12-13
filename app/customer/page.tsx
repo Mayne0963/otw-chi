@@ -1,5 +1,10 @@
 "use client";
 import React, { useMemo, useState } from 'react';
+import OtwPageShell from '@/components/ui/otw/OtwPageShell';
+import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
+import OtwCard from '@/components/ui/otw/OtwCard';
+import OtwButton from '@/components/ui/otw/OtwButton';
+import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 
 export default function CustomerRequestPage() {
   const [pickup, setPickup] = useState('');
@@ -22,25 +27,36 @@ export default function CustomerRequestPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-bold">What You Need Today?</h1>
-        <p className="text-otwOffWhite/80">Tell OTW where to go and we’ll handle the rest.</p>
-      </header>
-
+    <OtwPageShell
+      header={<OtwSectionHeader title="What You Need Today?" subtitle="Tell OTW where to go and we’ll handle the rest." />}
+    >
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 bg-otwBlack border border-otwRedDark rounded-3xl p-6 space-y-4 shadow-otwSoft">
+        <OtwCard className="md:col-span-2 space-y-4">
           <div className="space-y-1">
             <label className="text-sm">Pickup Location</label>
-            <input value={pickup} onChange={e=>setPickup(e.target.value)} className="w-full rounded-xl bg-otwBlack border border-otwRedDark px-3 py-2" placeholder="123 Broski Ave" />
+            <input
+              value={pickup}
+              onChange={e=>setPickup(e.target.value)}
+              className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-otwGold focus:border-otwGold"
+              placeholder="123 Broski Ave"
+            />
           </div>
           <div className="space-y-1">
             <label className="text-sm">Dropoff Location</label>
-            <input value={dropoff} onChange={e=>setDropoff(e.target.value)} className="w-full rounded-xl bg-otwBlack border border-otwRedDark px-3 py-2" placeholder="456 Executive St" />
+            <input
+              value={dropoff}
+              onChange={e=>setDropoff(e.target.value)}
+              className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-otwGold focus:border-otwGold"
+              placeholder="456 Executive St"
+            />
           </div>
           <div className="space-y-1">
             <label className="text-sm">Service Type</label>
-            <select value={service} onChange={e=>setService(e.target.value)} className="w-full rounded-xl bg-otwBlack border border-otwRedDark px-3 py-2">
+            <select
+              value={service}
+              onChange={e=>setService(e.target.value)}
+              className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-otwGold focus:border-otwGold"
+            >
               <option>Food Pickup</option>
               <option>Store / Grocery</option>
               <option>Fragile Delivery</option>
@@ -49,20 +65,25 @@ export default function CustomerRequestPage() {
           </div>
           <div className="space-y-1">
             <label className="text-sm">Notes to Driver</label>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} className="w-full min-h-[100px] rounded-xl bg-otwBlack border border-otwRedDark px-3 py-2" placeholder="Any special instructions" />
+            <textarea
+              value={notes}
+              onChange={e=>setNotes(e.target.value)}
+              className="w-full min-h-[100px] rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-otwGold focus:border-otwGold"
+              placeholder="Any special instructions"
+            />
           </div>
-          <button onClick={handleSubmit} className="w-full bg-otwGold text-otwBlack font-semibold rounded-2xl py-3 hover:shadow-otwGlow">Submit Request</button>
-        </div>
+          <OtwButton onClick={handleSubmit} variant="gold" size="lg" className="w-full">Submit Request</OtwButton>
+        </OtwCard>
 
-        <aside className="bg-otwBlack border border-otwRedDark rounded-3xl p-6 shadow-otwSoft">
-          <h2 className="text-lg font-semibold mb-2">Estimates</h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span>Estimated Miles</span><span>{estimates.miles ? estimates.miles.toFixed(1) : '—'}</span></div>
-            <div className="flex justify-between"><span>Estimated Cost</span><span>{estimates.cost ? `$${estimates.cost.toFixed(2)}` : '—'}</span></div>
-            <div className="flex justify-between"><span>NIP Coins You’ll Earn</span><span>{estimates.nip || '—'}</span></div>
+        <OtwCard>
+          <h2 className="text-lg font-semibold mb-3">Estimates</h2>
+          <div className="flex flex-wrap gap-2">
+            <OtwStatPill label="Estimated Miles" value={estimates.miles ? estimates.miles.toFixed(1) : '—'} />
+            <OtwStatPill label="Estimated Cost" value={estimates.cost ? `$${estimates.cost.toFixed(2)}` : '—'} tone="gold" />
+            <OtwStatPill label="NIP Coins" value={estimates.nip || '—'} tone="success" />
           </div>
-        </aside>
+        </OtwCard>
       </div>
-    </div>
+    </OtwPageShell>
   );
 }

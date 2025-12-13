@@ -22,16 +22,22 @@ graph TD
 ```
 
 ## 2. Technology Description
-- Frontend: React@18 + TypeScript + CSS Modules + Next.js App Router
-- Initialization Tool: create-next-app
-- Backend: Next.js API Routes
-- Database: Supabase (PostgreSQL)
-- External Service: OTW NIP Service Integration
+
+* Frontend: React\@18 + TypeScript + CSS Modules + Next.js App Router
+
+* Initialization Tool: create-next-app
+
+* Backend: Next.js API Routes
+
+* Database: Supabase (PostgreSQL)
+
+* External Service: OTW NIP Service Integration
 
 ## 3. Route Definitions
-| Route | Purpose |
-|-------|---------|
-| /otw/nip | Main NIP Dashboard page displaying wallet and ledger |
+
+| Route                | Purpose                                                            |
+| -------------------- | ------------------------------------------------------------------ |
+| /otw/nip             | Main NIP Dashboard page displaying wallet and ledger               |
 | /api/otw/nip/summary | API endpoint fetching wallet and ledger data for customers/drivers |
 
 ## 4. API Definitions
@@ -39,29 +45,33 @@ graph TD
 ### 4.1 Core API
 
 **NIP Summary API**
+
 ```
 GET /api/otw/nip/summary?customerId={id}
 GET /api/otw/nip/summary?driverId={id}
 ```
 
 Request Parameters:
-| Param Name | Param Type | isRequired | Description |
-|------------|-------------|-------------|-------------|
-| customerId | string | false | Customer ID for customer view |
-| driverId | string | false | Driver ID for driver view |
+
+| Param Name | Param Type | isRequired | Description                   |
+| ---------- | ---------- | ---------- | ----------------------------- |
+| customerId | string     | false      | Customer ID for customer view |
+| driverId   | string     | false      | Driver ID for driver view     |
 
 Response:
-| Param Name | Param Type | Description |
-|------------|-------------|-------------|
-| success | boolean | Operation status |
-| mode | string | View mode (customer/driver) |
-| customerId | string | Customer ID if customer mode |
-| driverId | string | Driver ID if driver mode |
-| wallet | object | Wallet data with balance and earnings |
-| ledger | array | Array of ledger entries |
-| error | string | Error message if failed |
+
+| Param Name | Param Type | Description                           |
+| ---------- | ---------- | ------------------------------------- |
+| success    | boolean    | Operation status                      |
+| mode       | string     | View mode (customer/driver)           |
+| customerId | string     | Customer ID if customer mode          |
+| driverId   | string     | Driver ID if driver mode              |
+| wallet     | object     | Wallet data with balance and earnings |
+| ledger     | array      | Array of ledger entries               |
+| error      | string     | Error message if failed               |
 
 Example Response:
+
 ```json
 {
   "success": true,
@@ -107,6 +117,7 @@ graph TD
 ## 6. Data Model
 
 ### 6.1 Data Model Definition
+
 ```mermaid
 erDiagram
   NIP_WALLET ||--o{ NIP_LEDGER : contains
@@ -134,6 +145,7 @@ erDiagram
 ### 6.2 Data Definition Language
 
 **NIP Wallets Table**
+
 ```sql
 -- create table
 CREATE TABLE nip_wallets (
@@ -152,6 +164,7 @@ CREATE INDEX idx_nip_wallets_driver ON nip_wallets(owner_driver_id);
 ```
 
 **NIP Ledger Table**
+
 ```sql
 -- create table
 CREATE TABLE nip_ledger (
@@ -173,3 +186,4 @@ GRANT SELECT ON nip_ledger TO anon;
 GRANT ALL PRIVILEGES ON nip_wallets TO authenticated;
 GRANT ALL PRIVILEGES ON nip_ledger TO authenticated;
 ```
+

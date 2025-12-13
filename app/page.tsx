@@ -1,55 +1,62 @@
+import OtwPageShell from '@/components/ui/otw/OtwPageShell';
+import OtwCard from '@/components/ui/otw/OtwCard';
+import OtwButton from '@/components/ui/otw/OtwButton';
+import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
+
 export default function HomePage() {
   return (
-    <div className="space-y-6">
-      {/* Hero Section */}
-      <section className="bg-otwRed rounded-3xl shadow-otwGlow px-6 py-8 mt-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <h1 className="text-3xl md:text-4xl font-extrabold">On The Way</h1>
-            <p className="text-otwOffWhite/90">Luxury delivery concierge for the block, the business, and the busy.</p>
-            <p className="text-otwOffWhite/75 text-sm">Your need moves when you do.</p>
-
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <a href="/customer" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 bg-otwGold text-otwBlack font-semibold">Request a Delivery</a>
-              <a href="/membership" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 border border-otwGold text-otwGold">Become a Member</a>
-              <a href="/driver" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 text-otwOffWhite underline">Track My Driver</a>
-            </div>
-          </div>
-
-          <div className="flex-1 flex md:justify-end">
-            <div className="w-28 h-28 md:w-40 md:h-40 rounded-full bg-otwBlack/20 border border-otwGold/40" aria-hidden="true" />
-          </div>
-        </div>
-      </section>
-
-      {/* Service Tiles */}
-      <section>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[
-            { title: 'Food Pickup', emoji: '🍔' },
-            { title: 'Store / Grocery', emoji: '🛒' },
-            { title: 'Fragile Delivery', emoji: '📦' },
-            { title: 'Custom Concierge', emoji: '🏁' },
-          ].map(({ title, emoji }) => (
-            <div key={title} className="bg-otwBlack rounded-2xl border border-otwRedDark p-4 transition transform hover:shadow-otwSoft hover:scale-[1.01]">
-              <div className="text-xl font-semibold flex items-center gap-2">
-                <span>{emoji}</span>
-                <span>{title}</span>
+    <OtwPageShell
+      header={
+        <OtwSectionHeader
+          title="On The Way"
+          subtitle="Luxury delivery concierge for the block, the business, and the busy."
+        />
+      }
+    >
+      <div className="space-y-6">
+        <OtwCard variant="red" className="mt-2">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <p className="text-otwOffWhite/75 text-sm">Your need moves when you do.</p>
+              <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                <OtwButton as="a" href="/customer" variant="gold">Request a Delivery</OtwButton>
+                <OtwButton as="a" href="/membership" variant="outline">Become a Member</OtwButton>
+                <OtwButton as="a" href="/driver" variant="ghost">Track My Driver</OtwButton>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="flex-1 flex md:justify-end">
+              <div className="w-28 h-28 md:w-40 md:h-40 rounded-full bg-otwBlack/20 border border-otwGold/40 shadow-otwGlow" aria-hidden="true" />
+            </div>
+          </div>
+        </OtwCard>
 
-      {/* Why OTW */}
-      <section className="space-y-2">
-        <h2 className="text-lg font-bold">Why OTW?</h2>
-        <ul className="list-disc pl-5 space-y-1 text-otwOffWhite/85">
-          <li>Membership-based savings</li>
-          <li>Fair driver payouts</li>
-          <li>NIP Coin rewards for the youth</li>
-        </ul>
-      </section>
-    </div>
+        <section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { title: 'Food Pickup', emoji: '🍔' },
+              { title: 'Store / Grocery', emoji: '🛒' },
+              { title: 'Fragile Delivery', emoji: '📦' },
+              { title: 'Custom Concierge', emoji: '🏁' },
+            ].map(({ title, emoji }) => (
+              <OtwCard key={title} variant="default" className="p-4">
+                <div className="text-xl font-semibold flex items-center gap-2">
+                  <span>{emoji}</span>
+                  <span>{title}</span>
+                </div>
+              </OtwCard>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-2">
+          <OtwSectionHeader title="Why OTW?" />
+          <ul className="list-disc pl-5 space-y-1 text-otwOffWhite/85">
+            <li>Membership-based savings</li>
+            <li>Fair driver payouts</li>
+            <li>NIP Coin rewards for the youth</li>
+          </ul>
+        </section>
+      </div>
+    </OtwPageShell>
   );
 }

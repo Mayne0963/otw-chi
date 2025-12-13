@@ -6,9 +6,26 @@
 html, body { height: 100%; }
 
 body {
-  background-color: #0C0C0C; /* otwBlack */
-  color: #F9F5EC; /* otwOffWhite */
+  background:
+    radial-gradient(1200px circle at 20% 0%, rgba(255,255,255,0.06), transparent 60%),
+    radial-gradient(800px circle at 80% 20%, rgba(176,0,23,0.10), transparent 50%),
+    #0C0C0C;
+  color: #F9F5EC;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+  background-position: 0 0, 25px 25px;
+  background-size: 50px 50px;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
 }
