@@ -1,8 +1,6 @@
-// Use dynamic requires to avoid type export issues during Next build TS pass
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PrismaClient: any = require('@prisma/client').PrismaClient;
+import { PrismaClient } from '@prisma/client';
 
-export function getPrisma(): any {
+export function getPrisma(): PrismaClient {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error('Missing DATABASE_URL');
