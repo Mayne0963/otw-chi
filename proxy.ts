@@ -23,15 +23,13 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
   const session = await auth();
-  const userId = session.userId;
-  if (!userId) {
+  if (!session.userId) {
     return session.redirectToSignIn();
   }
   return NextResponse.next();
 });
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
+
