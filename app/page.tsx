@@ -5,18 +5,15 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 
 export default function HomePage() {
   return (
-    <OtwPageShell
-      header={
-        <OtwSectionHeader
-          title="On The Way"
-          subtitle="Luxury delivery concierge for the block, the business, and the busy."
-        />
-      }
-    >
+    <OtwPageShell>
       <div className="space-y-6">
         <OtwCard variant="red" className="mt-2">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="space-y-2 max-w-xl">
+              <OtwSectionHeader
+                title="On The Way"
+                subtitle="Luxury delivery concierge for the block, the business, and the busy."
+              />
               <p className="text-otwOffWhite/75 text-sm">Your need moves when you do.</p>
               <div className="mt-4 flex flex-col sm:flex-row gap-3">
                 <OtwButton as="a" href="/customer" variant="gold">Request a Delivery</OtwButton>
