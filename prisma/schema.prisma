@@ -1,0 +1,168 @@
+// Prisma schema for OTW Production Build (Neon Postgres)
+// Generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Datasource
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum Role {
+  CUSTOMER
+  DRIVER
+  ADMIN
+  FRANCHISE
+}
+
+enum RequestStatus {
+  DRAFT
+  SUBMITTED
+  ASSIGNED
+  PICKED_UP
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum ServiceType {
+  FOOD
+  STORE
+  FRAGILE
+  CONCIERGE
+}
+
+// Models
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(CUSTOMER)
+  clerkId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerProfile CustomerProfile?
+  driverProfile   DriverProfile?
+  membership      MembershipSubscription?
+  requests        Request[]        @relation("UserRequests")
+  nip             NIPLedger[]
+  tickets         SupportTicket[]
+}
+
+model CustomerProfile {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  phone          String?
+  defaultPickup  String?
+  defaultDropoff String?
+
+  user           User    @relation(fields: [userId], references: [id])
+}
+
+model DriverProfile {
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  status   String   @default("ONLINE") // simple text for now
+  rating   Float?   @default(0)
+  zoneId   String?
+
+  user     User     @relation(fields: [userId], references: [id])
+  zone     Zone?    @relation(fields: [zoneId], references: [id])
+  jobs     Request[] @relation("DriverJobs")
+}
+
+model City {
+  id     String @id @default(cuid())
+  name   String
+  slug   String @unique
+  zones  Zone[]
+}
+
+model Zone {
+  id      String @id @default(cuid())
+  name    String
+  slug    String @unique
+  cityId  String
+  city    City   @relation(fields: [cityId], references: [id])
+  drivers DriverProfile[]
+  requests Request[]
+}
+
+model MembershipPlan {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  priceCents  Int
+  perks       Json?
+  stripePriceId String?
+  createdAt   DateTime @default(now())
+  subscriptions MembershipSubscription[]
+}
+
+model MembershipSubscription {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  planId           String
+  status           String   @default("active")
+  stripeCustomerId String?
+  stripeSubId      String?
+  renewsAt         DateTime?
+
+  user   User             @relation(fields: [userId], references: [id])
+  plan   MembershipPlan   @relation(fields: [planId], references: [id])
+}
+
+model Request {
+  id              String        @id @default(cuid())
+  customerId      String
+  assignedDriverId String?
+  pickup          String
+  dropoff         String
+  serviceType     ServiceType
+  notes           String?
+  status          RequestStatus @default(DRAFT)
+  zoneId          String?
+  milesEstimate   Float?
+  costEstimate    Float?
+  createdAt       DateTime      @default(now())
+
+  customer User   @relation("UserRequests", fields: [customerId], references: [id])
+  assignedDriver DriverProfile? @relation("DriverJobs", fields: [assignedDriverId], references: [id])
+  zone     Zone?  @relation(fields: [zoneId], references: [id])
+  events   RequestEvent[]
+  nipEntries NIPLedger[]
+}
+
+model RequestEvent {
+  id        String   @id @default(cuid())
+  requestId String
+  type      String
+  message   String?
+  timestamp DateTime @default(now())
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model NIPLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  requestId String?
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request  Request? @relation(fields: [requestId], references: [id])
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  status    String   @default("OPEN")
+  message   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
