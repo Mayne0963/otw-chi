@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -18,17 +18,18 @@ const isPublicRoute = createRouteMatcher([
   '/api/(.*)',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) {
-    return NextResponse.next();
-  }
+const HAS_CLERK = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !!process.env.CLERK_PUBLISHABLE_KEY;
+
+const handler = clerkMiddleware(async (auth, req) => {
+  if (isPublicRoute(req)) return NextResponse.next();
   const session = await auth();
-  const userId = session.userId;
-  if (!userId) {
-    return session.redirectToSignIn();
-  }
+  if (!session.userId) return session.redirectToSignIn();
   return NextResponse.next();
 });
+
+const noop = (_req: NextRequest) => NextResponse.next();
+
+export default HAS_CLERK ? handler : noop;
 
 export const config = {
   matcher: [
