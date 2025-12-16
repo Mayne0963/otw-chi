@@ -4,6 +4,7 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import type { RequestEvent as RequestEventModel } from '@prisma/client';
 
 export default async function RequestDetailPage({ params }: { params: { id: string } }) {
   const prisma = getPrisma();
@@ -37,7 +38,9 @@ export default async function RequestDetailPage({ params }: { params: { id: stri
         <OtwCard className="md:col-span-2">
           <div className="text-sm font-medium">Events</div>
           <ul className="mt-2 text-sm opacity-80 list-disc pl-5">
-            {req.events.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()).map(ev => (
+            {req.events
+              .sort((a: RequestEventModel, b: RequestEventModel) => a.timestamp.getTime() - b.timestamp.getTime())
+              .map((ev: RequestEventModel) => (
               <li key={ev.id}>{ev.type}{ev.message ? ` — ${ev.message}` : ''}</li>
             ))}
           </ul>
