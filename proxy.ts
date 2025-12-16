@@ -24,7 +24,7 @@ const driverRoute = createRouteMatcher(['/driver(.*)']);
 const adminRoute = createRouteMatcher(['/admin(.*)']);
 const franchiseRoute = createRouteMatcher(['/franchise(.*)']);
 
-const handler = clerkMiddleware(async (auth, req) => {
+const proxy = clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
   const session = await auth();
   if (!session.userId) return session.redirectToSignIn();
@@ -51,7 +51,7 @@ const handler = clerkMiddleware(async (auth, req) => {
 
 const noop = (_req: NextRequest) => NextResponse.next();
 
-export default HAS_CLERK ? handler : noop;
+export default HAS_CLERK ? proxy : noop;
 
 export const config = {
   matcher: [
