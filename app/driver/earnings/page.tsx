@@ -15,6 +15,7 @@ export default async function DriverEarningsPage() {
   let monthly = 0;
   let recent: Array<{ id: string; pickup: string; dropoff: string; costEstimate: number; completedAt: string }> = [];
   let latestTicketStatus: string | null = null;
+  let hasOpenPayoutRequest = false;
   if (user) {
     const driver = await prisma.driverProfile.findUnique({ where: { userId: user.id } });
     if (driver) {
@@ -47,6 +48,7 @@ export default async function DriverEarningsPage() {
         orderBy: { createdAt: 'desc' },
       });
       latestTicketStatus = latestTicket?.status ?? null;
+      hasOpenPayoutRequest = latestTicket?.status === 'OPEN';
     }
   }
   return (
@@ -72,7 +74,7 @@ export default async function DriverEarningsPage() {
             <input type="hidden" name="weeklyCents" value={weekly} />
             <input type="hidden" name="monthlyCents" value={monthly} />
             <input type="hidden" name="recentIds" value={recent.map(r => r.id).join(',')} />
-            <OtwButton variant="outline">Request Payout</OtwButton>
+            <OtwButton variant="outline" disabled={hasOpenPayoutRequest}>Request Payout</OtwButton>
           </form>
         </OtwCard>
       </div>
@@ -105,6 +107,11 @@ export async function requestPayoutAction(formData: FormData) {
   const prisma = getPrisma();
   const user = await prisma.user.findFirst({ where: { clerkId: userId } });
   if (!user) return;
+  const existingOpen = await prisma.supportTicket.findFirst({
+    where: { userId: user.id, subject: 'Payout Request', status: 'OPEN' },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (existingOpen) return;
   const weeklyCents = Number(formData.get('weeklyCents') ?? 0);
   const monthlyCents = Number(formData.get('monthlyCents') ?? 0);
   const recentIds = String(formData.get('recentIds') ?? '');
