@@ -10,11 +10,18 @@ export async function syncUserOnDashboard() {
   const name = clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || email;
   const roleMeta = String(clerkUser.publicMetadata?.role || 'CUSTOMER').toUpperCase();
   const role = roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER';
+  
+  // Compliance fields from metadata (if available)
+  const dobMeta = clerkUser.publicMetadata?.dob as string | undefined;
+  const dob = dobMeta ? new Date(dobMeta) : null;
+  const termsAcceptedAtMeta = clerkUser.publicMetadata?.termsAcceptedAt as string | undefined;
+  const termsAcceptedAt = termsAcceptedAtMeta ? new Date(termsAcceptedAtMeta) : null;
+
   const prisma = getPrisma();
   const user = await prisma.user.upsert({
     where: { clerkId: userId },
-    update: { email, name, role },
-    create: { clerkId: userId, email, name, role },
+    update: { email, name, role, dob, termsAcceptedAt } as any,
+    create: { clerkId: userId, email, name, role, dob, termsAcceptedAt } as any,
   });
   await prisma.customerProfile.upsert({
     where: { userId: user.id },

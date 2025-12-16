@@ -19,7 +19,7 @@ export function getPrisma(): PrismaClient {
     const aggregateZero = async (..._args: any[]) => ({ _sum: { amount: 0 } });
     
     // Mock objects to return for upsert/create to prevent null property access
-    const mockUser = { id: 'stub-user', role: 'CUSTOMER', name: 'Stub User' };
+    const mockUser = { id: 'stub-user', role: 'CUSTOMER', name: 'Stub User', dob: null, termsAcceptedAt: null };
     const mockProfile = { id: 'stub-profile', userId: 'stub-user' };
     const mockRequest = { id: 'stub-request', status: 'SUBMITTED' };
     const mockTicket = { id: 'stub-ticket', status: 'OPEN' };

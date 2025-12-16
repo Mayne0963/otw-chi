@@ -38,6 +38,22 @@ export default async function DashboardPage() {
         />
       ) : (
         <div className="mt-3 grid md:grid-cols-3 gap-4">
+          {/* Compliance Alert */}
+          {/* @ts-ignore: Prisma types not updating */}
+          {!user.dob && (
+            <div className="md:col-span-3">
+              <OtwCard className="border-l-4 border-l-red-500 bg-red-900/10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="font-bold text-red-200">Profile Incomplete</div>
+                    <div className="text-sm opacity-80">We need your Date of Birth to comply with age regulations.</div>
+                  </div>
+                  <OtwButton as="a" href="/settings" variant="red" size="sm">Update Profile</OtwButton>
+                </div>
+              </OtwCard>
+            </div>
+          )}
+
           <OtwCard>
             <div className="text-sm font-medium">Active Request</div>
             {activeRequest ? (

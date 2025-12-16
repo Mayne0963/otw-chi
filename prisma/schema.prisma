@@ -49,8 +49,6 @@ model User {
   name      String?
   role      Role     @default(CUSTOMER)
   clerkId   String   @unique
-  dob       DateTime? // Added for Age Verification / COPPA compliance
-  termsAcceptedAt DateTime? // Added for Legal Compliance tracking
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -78,6 +76,7 @@ model DriverProfile {
   status   String   @default("ONLINE") // simple text for now
   rating   Float?   @default(0)
   zoneId   String?
+  agreementSignedAt DateTime?
 
   user     User     @relation(fields: [userId], references: [id])
   zone     Zone?    @relation(fields: [zoneId], references: [id])

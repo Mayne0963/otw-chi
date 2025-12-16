@@ -1,4 +1,6 @@
 import React from 'react';
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import OtwButton from '@/components/ui/otw/OtwButton';
 
 const OtwNavbar: React.FC = () => {
   return (
@@ -14,6 +16,16 @@ const OtwNavbar: React.FC = () => {
           <a href="/driver/jobs" className="hover:underline">Driver Jobs</a>
           <a href="/membership/manage" className="hover:underline">Membership</a>
           <a href="/wallet/nip" className="hover:underline">NIP Wallet</a>
+          
+          <div className="ml-4 flex items-center gap-2">
+            <SignedOut>
+              <SignInButton />
+              <SignUpButton />
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+          </div>
         </nav>
       </div>
     </header>
