@@ -2,11 +2,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getMembershipForCustomer, estimateRemainingMiles, getAllTiers } from '@/lib/otw/otwMembership';
 import { getTierById } from '@/lib/otw/otwTierCatalog';
-import OtwPageShell from '@/components/ui/otw/OtwPageShell';
-import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
-import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 
 export default function MembershipPage() {
   const customerId = 'CUSTOMER-1';
@@ -59,25 +54,39 @@ export default function MembershipPage() {
   };
 
   return (
-    <OtwPageShell
-      header={<OtwSectionHeader title="Choose Your OTW Level" subtitle="From everyday runs to executive concierge, we got you." />}
-    >
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold">Choose Your OTW Level</h1>
+        <p className="text-otwOffWhite/80">From everyday runs to executive concierge, we got you.</p>
+      </header>
 
-        <OtwCard>
-          <h3 className="text-lg font-semibold mb-2">Your OTW Membership</h3>
+      {/* Your Membership Snapshot */}
+      <section className="bg-otwBlack rounded-2xl border border-otwRedDark p-5">
+        <h3 className="text-lg font-semibold mb-2">Your OTW Membership</h3>
         {!membership ? (
-          <p className="text-sm opacity-80">You don&rsquo;t have an active OTW membership yet. Once you pick a tier, your miles and perks will show up here.</p>
+          <p className="text-sm opacity-80">You don't have an active OTW membership yet. Once you pick a tier, your miles and perks will show up here.</p>
         ) : (
           <div className="space-y-3">
             <p className="font-semibold">{tier?.name ?? String((membership as any).tierId)}</p>
             {tier?.description && (<p className="text-sm opacity-80">{tier.description}</p>)}
 
-            <div className="flex flex-wrap gap-2">
-              <OtwStatPill label="Miles Cap" value={(membership as any).milesCap?.toLocaleString?.() ?? '—'} />
-              <OtwStatPill label="Used" value={(membership as any).milesUsed?.toLocaleString?.() ?? '—'} />
-              <OtwStatPill label="Rollover" value={(membership as any).rolloverMiles?.toLocaleString?.() ?? '—'} />
-              <OtwStatPill label="Remaining*" value={remainingMiles.toLocaleString()} tone="gold" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <span className="block text-xs opacity-70">Miles Cap</span>
+                <span className="block text-base font-semibold">{(membership as any).milesCap?.toLocaleString?.() ?? '—'}</span>
+              </div>
+              <div>
+                <span className="block text-xs opacity-70">Used</span>
+                <span className="block text-base font-semibold">{(membership as any).milesUsed?.toLocaleString?.() ?? '—'}</span>
+              </div>
+              <div>
+                <span className="block text-xs opacity-70">Rollover</span>
+                <span className="block text-base font-semibold">{(membership as any).rolloverMiles?.toLocaleString?.() ?? '—'}</span>
+              </div>
+              <div>
+                <span className="block text-xs opacity-70">Remaining*</span>
+                <span className="block text-base font-semibold">{remainingMiles.toLocaleString()}</span>
+              </div>
             </div>
 
             <p className="text-xs opacity-75">Status: <span className="font-semibold">{String((membership as any).status ?? 'ACTIVE')}</span> • Renews on <span className="font-semibold">{renewDateLabel}</span></p>
@@ -93,11 +102,11 @@ export default function MembershipPage() {
               </div>
             ) : null}
 
-            <div className="mt-2 pt-2 border-t border-white/10">
+            <div className="mt-2 pt-2 border-t border-otwRedDark">
               <p className="text-sm font-medium mb-2">Change your OTW tier:</p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <select
-                  className="flex-1 text-sm rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-otwGold focus:border-otwGold"
+                  className="flex-1 text-sm rounded-xl bg-otwBlack border border-otwRedDark px-3 py-2"
                   value={selectedTierId}
                   onChange={(e) => setSelectedTierId(e.target.value)}
                   aria-label="Select OTW tier"
@@ -108,14 +117,14 @@ export default function MembershipPage() {
                     </option>
                   ))}
                 </select>
-                <OtwButton
-                  variant="gold"
-                  size="md"
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-otwGold text-otwBlack font-semibold"
                   disabled={changing}
                   onClick={handleChangeTier}
                 >
                   {changing ? 'Updating…' : 'Update Tier'}
-                </OtwButton>
+                </button>
               </div>
               {changeError && <p className="text-sm text-otwRed mt-2">{changeError}</p>}
               {changeSuccess && <p className="text-sm text-otwGold mt-2">{changeSuccess}</p>}
@@ -123,11 +132,11 @@ export default function MembershipPage() {
             </div>
           </div>
         )}
-        </OtwCard>
+      </section>
 
-        <section className="grid md:grid-cols-3 gap-4">
+      <section className="grid md:grid-cols-3 gap-4">
         {/* Broski Basic */}
-        <OtwCard className="p-5">
+        <div className="bg-otwBlack rounded-2xl border border-otwRedDark p-5">
           <h3 className="text-lg font-semibold">Broski Basic</h3>
           <p className="text-sm opacity-80 mb-3">Pay as you go. Smart savings on every run.</p>
           <div className="text-3xl font-bold mb-2">$9<span className="text-base opacity-70">/mo</span></div>
@@ -136,11 +145,11 @@ export default function MembershipPage() {
             <li>NIP Coin rewards</li>
             <li>Email support</li>
           </ul>
-          <OtwButton variant="outline" className="mt-4 w-full">Choose Plan</OtwButton>
-        </OtwCard>
+          <button className="mt-4 w-full rounded-2xl px-4 py-2 border border-otwGold text-otwGold">Choose Plan</button>
+        </div>
 
         {/* Broski+ */}
-        <OtwCard variant="default" className="p-5 bg-gradient-to-b from-otwBlack to-otwRedDark">
+        <div className="rounded-2xl p-5 bg-gradient-to-b from-otwBlack to-otwRedDark shadow-otwSoft">
           <h3 className="text-lg font-semibold">Broski+</h3>
           <p className="text-sm opacity-80 mb-3">Lower delivery fees, priority drivers, NIP Coin multiplier.</p>
           <div className="text-3xl font-bold mb-2">$19<span className="text-base opacity-70">/mo</span></div>
@@ -149,11 +158,11 @@ export default function MembershipPage() {
             <li>Priority drivers</li>
             <li>NIP Coin multiplier</li>
           </ul>
-          <OtwButton variant="gold" className="mt-4 w-full">Choose Plan</OtwButton>
-        </OtwCard>
+          <button className="mt-4 w-full rounded-2xl px-4 py-2 bg-otwGold text-otwBlack font-semibold">Choose Plan</button>
+        </div>
 
         {/* Executive Broski */}
-        <OtwCard variant="red" className="p-5 border border-otwGold shadow-otwGlow">
+        <div className="bg-otwRed rounded-2xl p-5 border border-otwGold shadow-otwGlow">
           <h3 className="text-lg font-semibold">Executive Broski</h3>
           <p className="text-sm opacity-90 mb-3">Concierge scheduling, VIP queue, free miles buffer, tripled NIP Coin.</p>
           <div className="text-3xl font-bold mb-2">$39<span className="text-base opacity-70">/mo</span></div>
@@ -163,10 +172,9 @@ export default function MembershipPage() {
             <li>Free miles buffer</li>
             <li>Tripled NIP Coin</li>
           </ul>
-          <OtwButton variant="gold" className="mt-4 w-full">Choose Plan</OtwButton>
-        </OtwCard>
-        </section>
-      </div>
-    </OtwPageShell>
+          <button className="mt-4 w-full rounded-2xl px-4 py-2 bg-otwGold text-otwBlack font-semibold">Choose Plan</button>
+        </div>
+      </section>
+    </div>
   );
 }

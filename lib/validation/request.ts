@@ -7,7 +7,8 @@ export const CreateRequestSchema = z.object({
   dropoff: z.string().min(2, 'Dropoff required'),
   serviceType: ServiceTypeEnum,
   notes: z.string().optional(),
+  cityId: z.string().optional(),
+  zoneId: z.string().optional(),
 });
 
 export type CreateRequestInput = z.infer<typeof CreateRequestSchema>;
-

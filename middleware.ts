@@ -1,4 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse, NextRequest } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
@@ -20,10 +20,32 @@ const isPublicRoute = createRouteMatcher([
 
 const HAS_CLERK = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !!process.env.CLERK_PUBLISHABLE_KEY;
 
+const driverRoute = createRouteMatcher(['/driver(.*)']);
+const adminRoute = createRouteMatcher(['/admin(.*)']);
+const franchiseRoute = createRouteMatcher(['/franchise(.*)']);
+
 const handler = clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
   const session = await auth();
   if (!session.userId) return session.redirectToSignIn();
+  if (driverRoute(req) || adminRoute(req) || franchiseRoute(req)) {
+    try {
+      const client = await clerkClient();
+      const user = await client.users.getUser(session.userId);
+      const role = String(user.publicMetadata?.role || '').toUpperCase();
+      if (driverRoute(req) && !(role === 'DRIVER' || role === 'ADMIN')) {
+        return NextResponse.redirect(new URL('/', req.url));
+      }
+      if (adminRoute(req) && role !== 'ADMIN') {
+        return NextResponse.redirect(new URL('/', req.url));
+      }
+      if (franchiseRoute(req) && !(role === 'FRANCHISE' || role === 'ADMIN')) {
+        return NextResponse.redirect(new URL('/', req.url));
+      }
+    } catch {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+  }
   return NextResponse.next();
 });
 

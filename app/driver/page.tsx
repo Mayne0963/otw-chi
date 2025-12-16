@@ -1,13 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import styles from "@/components/otw/DriverDashboard.module.css";
 import DriverFranchiseCard from "@/components/otw/DriverFranchiseCard";
 import { DriverStatus, OtwFeedback } from "@/lib/otw/otwTypes";
-import OtwPageShell from "@/components/ui/otw/OtwPageShell";
-import OtwSectionHeader from "@/components/ui/otw/OtwSectionHeader";
-import OtwCard from "@/components/ui/otw/OtwCard";
-import OtwStatPill from "@/components/ui/otw/OtwStatPill";
-import OtwEmptyState from "@/components/ui/otw/OtwEmptyState";
-import OtwButton from "@/components/ui/otw/OtwButton";
 
 export default function OtwDriverPage() {
   const [driverId, setDriverId] = useState<string>("");
@@ -150,127 +145,162 @@ export default function OtwDriverPage() {
   const statusNote = status === "ONLINE" ? "You’re receiving jobs now." : "Go online to receive jobs.";
 
   return (
-    <OtwPageShell
-      header={<OtwSectionHeader title="OTW — Driver Console" subtitle="View available OTW requests, accept runs, and mark jobs completed." />}
+    <main
+      style={{
+        maxWidth: "900px",
+        margin: "0 auto",
+        padding: "1.5rem 1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+      }}
     >
-      <div className="space-y-6">
-        <OtwCard>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xl font-bold">OTW Driver Dashboard</div>
-              <div className="text-sm opacity-80">{driverName} • {driverId}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <OtwStatPill label="Status" value={statusLabel} tone={status === 'ONLINE' ? 'success' : 'neutral'} />
-              <OtwButton variant="outline" onClick={handleToggleStatus}>{status === "ONLINE" ? "Go Offline" : "Go Online"}</OtwButton>
-              {avgRatingFromFeedback !== null && (
-                <OtwStatPill label="Rating" value={avgRatingFromFeedback.toFixed(1)} tone="gold" />
-              )}
-            </div>
+      <h1
+        style={{
+          fontSize: "1.4rem",
+          fontWeight: 800,
+          marginBottom: "0.5rem",
+        }}
+      >
+        OTW — Driver Console
+      </h1>
+      <p
+        style={{
+          fontSize: "0.9rem",
+          color: "#555555",
+          marginBottom: "0.75rem",
+        }}
+      >
+        View available OTW requests, accept runs, and mark jobs completed.
+        This is the early driver portal for testing the OTW engine.
+      </p>
+
+      <div className={styles.driverDashboard}>
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <div style={{ fontWeight: 800, fontSize: 24 }}>OTW Driver Dashboard</div>
+            <div style={{ fontSize: 14, opacity: 0.8 }}>{driverName} • {driverId}</div>
           </div>
-        </OtwCard>
+          <div className={styles.headerRight}>
+            <span className={styles.badge} style={{ background: status === "ONLINE" ? "#10b981" : "#f3f4f6", color: status === "ONLINE" ? "#ffffff" : "inherit", borderColor: status === "ONLINE" ? "#10b981" : undefined }}>{statusLabel}</span>
+            <button type="button" className={styles.statusToggle} onClick={handleToggleStatus}>
+              {status === "ONLINE" ? "Go Offline" : "Go Online"}
+            </button>
+            {avgRatingFromFeedback !== null && (
+              <span className={styles.rating}>⭐ {avgRatingFromFeedback.toFixed(1)}</span>
+            )}
+          </div>
+        </div>
 
-        <OtwCard>
-          <h3 className="text-lg font-semibold mb-3">Ownership Path — OTW Franchise</h3>
+        <section className={styles.franchiseSection}>
+          <h3 className={styles.franchiseHeader}>Ownership Path — OTW Franchise</h3>
           <DriverFranchiseCard driverId={driverId} />
-          <p className="mt-3">
-            <a href="/otw/franchise-requirements" className="text-otwGold underline">View full franchise requirements</a>
+          <p className={styles.franchiseLinkRow}>
+            <a href="/otw/franchise-requirements" className={styles.franchiseLink}>
+              View full franchise requirements
+            </a>
           </p>
-        </OtwCard>
+        </section>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <OtwCard>
-            <div className="text-sm font-medium">Current Status</div>
-            <div className="text-2xl font-bold">{statusLabel}</div>
-            <div className="text-sm opacity-80">{statusNote}</div>
-          </OtwCard>
+        <div className={styles.grid}>
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Current Status</div>
+            <div className={styles.cardValue}>{statusLabel}</div>
+            <div className={styles.cardSubtext}>{statusNote}</div>
+          </div>
           {avgRatingFromFeedback !== null && (
-            <OtwCard>
-              <div className="text-sm font-medium">Rating</div>
-              <div className="text-2xl font-bold">{avgRatingFromFeedback.toFixed(1)}</div>
-              <div className="text-sm opacity-80">High ratings unlock more OTW perks.</div>
-            </OtwCard>
+            <div className={styles.card}>
+              <div className={styles.cardTitle}>Rating</div>
+              <div className={styles.cardValue}>{avgRatingFromFeedback.toFixed(1)}</div>
+              <div className={styles.cardSubtext}>High ratings unlock more OTW perks.</div>
+            </div>
           )}
         </div>
 
-        <OtwCard>
-          <div className="text-lg font-semibold mb-2">Next Steps</div>
-          <ul className="list-disc pl-5">
+        <div className={styles.card} style={{ marginTop: 16 }}>
+          <div className={styles.cardTitle}>Next Steps</div>
+          <ul style={{ margin: 0, paddingLeft: 16 }}>
             <li>Stay Online to receive more jobs.</li>
             <li>Complete your Haul Specialist training to unlock XL payouts.</li>
             <li>Maintain rating above 4.8 for bonus earnings.</li>
           </ul>
-        </OtwCard>
+        </div>
 
-        <section>
-          <OtwSectionHeader title="Latest Feedback" />
-          {feedbackLoading && <OtwCard>Loading feedback…</OtwCard>}
-          {feedbackError && <OtwCard>{feedbackError}</OtwCard>}
+        <section className={styles.feedbackSection}>
+          <h2 className={styles.sectionTitle}>Latest Feedback</h2>
+          {feedbackLoading && <p className={styles.feedbackStatus}>Loading feedback…</p>}
+          {feedbackError && <p className={styles.feedbackError}>{feedbackError}</p>}
           {!feedbackLoading && !feedbackError && feedback.length === 0 && (
-            <OtwEmptyState title="No feedback yet" subtitle="Complete more OTW jobs to build your reputation." />
+            <p className={styles.feedbackStatus}>
+              No feedback yet. Complete more OTW jobs to build your reputation.
+            </p>
           )}
           {!feedbackLoading && feedback.length > 0 && (
             <>
               {avgRatingFromFeedback !== null && (
-                <OtwCard>
-                  <p className="text-sm">
-                    Average rating from customers: <span className="font-semibold">{avgRatingFromFeedback.toFixed(2)} ⭐</span> ({feedback.length} ratings)
-                  </p>
-                </OtwCard>
+                <p className={styles.feedbackSummary}>
+                  Average rating from customers: {" "}
+                  <span className={styles.feedbackRating}>{avgRatingFromFeedback.toFixed(2)} ⭐</span>{" "}
+                  ({feedback.length} ratings)
+                </p>
               )}
-              <div className="space-y-3">
+              <ul className={styles.feedbackList}>
                 {feedback.slice(0, 5).map((fb) => (
-                  <OtwCard key={fb.id}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span>{`${"⭐".repeat(fb.rating)}`}</span>
-                      <span className="opacity-75">{new Date(fb.createdAt).toLocaleString()}</span>
+                  <li key={fb.id} className={styles.feedbackItem}>
+                    <div className={styles.feedbackHeaderRow}>
+                      <span className={styles.feedbackStars}>{`${"⭐".repeat(fb.rating)}`}</span>
+                      <span className={styles.feedbackDate}>{new Date(fb.createdAt).toLocaleString()}</span>
                     </div>
-                    {fb.comment && <p className="mt-2 text-sm">{fb.comment}</p>}
-                    <p className="mt-1 text-xs opacity-75">Request: {fb.requestId} • Customer: {fb.customerId}</p>
-                  </OtwCard>
+                    {fb.comment && <p className={styles.feedbackComment}>{fb.comment}</p>}
+                    <p className={styles.feedbackMeta}>Request: {fb.requestId} • Customer: {fb.customerId}</p>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </>
           )}
         </section>
 
-        <section>
-          <OtwSectionHeader title="Assigned OTW Jobs" />
-          {updateError && (<OtwCard>{updateError}</OtwCard>)}
-          {assignedLoading && (<OtwCard>Loading your OTW jobs…</OtwCard>)}
-          {assignedError && (<OtwCard>{assignedError}</OtwCard>)}
+        <section className={styles.assignedSection}>
+          <h2 className={styles.sectionTitle}>Assigned OTW Jobs</h2>
+          {updateError && (<p className={styles.assignedError}>{updateError}</p>)}
+          {assignedLoading && (<p className={styles.assignedStatus}>Loading your OTW jobs…</p>)}
+          {assignedError && (<p className={styles.assignedError}>{assignedError}</p>)}
           {!assignedLoading && !assignedError && assignedRequests.length === 0 && (
-            <OtwEmptyState title="No jobs assigned yet" subtitle="When OTW matches you to a request, it will appear here." />
+            <p className={styles.assignedStatus}>
+              No jobs assigned yet. When OTW matches you to a request, it will appear here.
+            </p>
           )}
           {!assignedLoading && assignedRequests.length > 0 && (
-            <div className="space-y-3">
+            <ul className={styles.assignedList}>
               {assignedRequests.map((req) => (
-                <OtwCard key={req.id}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">Request {req.id}</span>
-                    <OtwStatPill label="Status" value={req.status} tone="neutral" />
+                <li key={req.id} className={styles.assignedItem}>
+                  <div className={styles.assignedHeaderRow}>
+                    <span className={styles.assignedId}>Request {req.id}</span>
+                    <span className={`${styles.assignedBadge} ${styles[`status_${String(req.status).toLowerCase()}`]}`}>
+                      {req.status}
+                    </span>
                   </div>
-                  <p className="mt-1 text-sm">{req.pickupArea} → {req.dropoffArea}</p>
-                  <p className="text-xs opacity-75">
+                  <p className={styles.assignedRoute}>{req.pickupArea} → {req.dropoffArea}</p>
+                  <p className={styles.assignedMeta}>
                     {req.serviceType} • {req.urgency} • {new Date(req.createdAt).toLocaleString()}
                   </p>
-                  <p className="text-xs opacity-75">Est. {req.estimatedMiles.toLocaleString()} miles</p>
-                  {req.notes && (<p className="mt-1 text-sm">Notes: {req.notes}</p>)}
-                  <div className="mt-3">
-                    <OtwButton
-                      variant="gold"
-                      onClick={() => handleMarkCompleted(req.id)}
-                      disabled={updatingRequestId === req.id}
-                    >
-                      {updatingRequestId === req.id ? "Updating…" : "Mark Completed"}
-                    </OtwButton>
-                  </div>
-                </OtwCard>
+                  <p className={styles.assignedMiles}>Est. {req.estimatedMiles.toLocaleString()} miles</p>
+                  {req.notes && (<p className={styles.assignedNotes}>Notes: {req.notes}</p>)}
+                  <button
+                    type="button"
+                    className={styles.completeButton}
+                    onClick={() => handleMarkCompleted(req.id)}
+                    disabled={updatingRequestId === req.id}
+                  >
+                    {updatingRequestId === req.id ? "Updating…" : "Mark Completed"}
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
       </div>
-    </OtwPageShell>
+    </main>
   );
 }
+

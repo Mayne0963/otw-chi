@@ -5,10 +5,27 @@ import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
+import { syncUserOnDashboard } from '@/lib/user-sync';
+import { getPrisma } from '@/lib/db';
 
 export default async function DashboardPage() {
-  let user = null;
-  try { user = await getCurrentUser(); } catch { user = null; }
+  await syncUserOnDashboard();
+  const user = await getCurrentUser();
+  let membershipTier = 'None';
+  let nipBalance = 0;
+  let activeRequest: { id: string; status: string; pickup: string; dropoff: string } | null = null;
+  if (user) {
+    const prisma = getPrisma();
+    const sub = await prisma.membershipSubscription.findUnique({ where: { userId: user.id }, include: { plan: true } });
+    membershipTier = sub?.plan?.name ?? 'None';
+    const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } } as any);
+    nipBalance = nip._sum?.amount ?? 0;
+    const req = await prisma.request.findFirst({
+      where: { customerId: user.id, status: { in: ['SUBMITTED', 'ASSIGNED', 'PICKED_UP', 'DELIVERED'] } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (req) activeRequest = { id: req.id, status: req.status, pickup: req.pickup, dropoff: req.dropoff };
+  }
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
@@ -23,16 +40,24 @@ export default async function DashboardPage() {
         <div className="mt-3 grid md:grid-cols-3 gap-4">
           <OtwCard>
             <div className="text-sm font-medium">Active Request</div>
-            <OtwEmptyState title="No active request" subtitle="Start a new request to see tracking." actionHref="/requests/new" actionLabel="New Request" />
+            {activeRequest ? (
+              <div className="mt-2 text-sm opacity-90">
+                <div>{activeRequest.status}</div>
+                <div className="mt-1">{activeRequest.pickup} → {activeRequest.dropoff}</div>
+                <div className="mt-3"><OtwButton as="a" href={`/requests/${activeRequest.id}`} variant="outline">View</OtwButton></div>
+              </div>
+            ) : (
+              <OtwEmptyState title="No active request" subtitle="Start a new request to see tracking." actionHref="/requests/new" actionLabel="New Request" />
+            )}
           </OtwCard>
           <OtwCard>
             <div className="text-sm font-medium">Membership</div>
-            <div className="mt-2"><OtwStatPill label="Tier" value="Basic" tone="gold" /></div>
+            <div className="mt-2"><OtwStatPill label="Tier" value={membershipTier} tone="gold" /></div>
             <div className="mt-3"><OtwButton as="a" href="/membership/manage" variant="outline">Manage</OtwButton></div>
           </OtwCard>
           <OtwCard>
             <div className="text-sm font-medium">NIP Balance</div>
-            <div className="mt-2"><OtwStatPill label="NIP" value="0" tone="success" /></div>
+            <div className="mt-2"><OtwStatPill label="NIP" value={String(nipBalance)} tone="success" /></div>
             <div className="mt-3"><OtwButton as="a" href="/wallet/nip" variant="outline">View Wallet</OtwButton></div>
           </OtwCard>
         </div>
@@ -40,4 +65,3 @@ export default async function DashboardPage() {
     </OtwPageShell>
   );
 }
-

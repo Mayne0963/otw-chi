@@ -34,6 +34,14 @@ enum ServiceType {
   CONCIERGE
 }
 
+enum MembershipStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  INACTIVE
+}
+
 // Models
 model User {
   id        String   @id @default(cuid())
@@ -79,6 +87,7 @@ model City {
   name   String
   slug   String @unique
   zones  Zone[]
+  requests Request[]
 }
 
 model Zone {
@@ -99,16 +108,21 @@ model MembershipPlan {
   stripePriceId String?
   createdAt   DateTime @default(now())
   subscriptions MembershipSubscription[]
+  code        String?  @unique
+  monthlyPrice Int?
+  milesCap    Int?
+  nipMultiplier Float?
 }
 
 model MembershipSubscription {
   id               String   @id @default(cuid())
   userId           String   @unique
   planId           String
-  status           String   @default("active")
+  status           MembershipStatus @default(ACTIVE)
   stripeCustomerId String?
   stripeSubId      String?
   renewsAt         DateTime?
+  currentPeriodEnd DateTime?
 
   user   User             @relation(fields: [userId], references: [id])
   plan   MembershipPlan   @relation(fields: [planId], references: [id])
@@ -118,6 +132,7 @@ model Request {
   id              String        @id @default(cuid())
   customerId      String
   assignedDriverId String?
+  cityId          String?
   pickup          String
   dropoff         String
   serviceType     ServiceType
@@ -130,6 +145,7 @@ model Request {
 
   customer User   @relation("UserRequests", fields: [customerId], references: [id])
   assignedDriver DriverProfile? @relation("DriverJobs", fields: [assignedDriverId], references: [id])
+  city     City?  @relation(fields: [cityId], references: [id])
   zone     Zone?  @relation(fields: [zoneId], references: [id])
   events   RequestEvent[]
   nipEntries NIPLedger[]
@@ -163,6 +179,7 @@ model SupportTicket {
   status    String   @default("OPEN")
   message   String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
