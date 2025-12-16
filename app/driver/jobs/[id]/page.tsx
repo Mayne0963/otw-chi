@@ -70,6 +70,22 @@ export default async function DriverJobDetailPage({ params }: { params: { id: st
               </>
             )}
           </div>
+          {isAssignedToMe && (req.status === 'DELIVERED' || req.status === 'COMPLETED') && (
+            <div className="mt-4">
+              <div className="text-sm font-medium">Rate this job</div>
+              <form action={submitRatingAction} className="mt-2 flex items-center gap-2">
+                <input type="hidden" name="id" value={req.id} />
+                <select name="rating" className="rounded-lg bg-otwBlack/40 border border-white/15 px-2 py-1">
+                  <option value="5">5 — Excellent</option>
+                  <option value="4">4 — Good</option>
+                  <option value="3">3 — Fair</option>
+                  <option value="2">2 — Poor</option>
+                  <option value="1">1 — Bad</option>
+                </select>
+                <OtwButton variant="outline">Submit Rating</OtwButton>
+              </form>
+            </div>
+          )}
         </OtwCard>
         <OtwCard className="md:col-span-2">
           <div className="text-sm font-medium">Events</div>
@@ -141,4 +157,29 @@ export async function updateJobStatusAction(formData: FormData) {
       });
     }
   }
+}
+
+export async function submitRatingAction(formData: FormData) {
+  'use server';
+  const { auth } = await import('@clerk/nextjs/server');
+  const { userId } = await auth();
+  if (!userId) return;
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({ where: { clerkId: userId } });
+  if (!user) return;
+  const driver = await prisma.driverProfile.findUnique({ where: { userId: user.id } });
+  if (!driver) return;
+  const id = String(formData.get('id') ?? '');
+  const ratingVal = Number(formData.get('rating') ?? 0);
+  if (!id || !(ratingVal >= 1 && ratingVal <= 5)) return;
+  const req = await prisma.request.findUnique({ where: { id } });
+  if (!req || req.assignedDriverId !== driver.id) return;
+  await prisma.requestEvent.create({ data: { requestId: id, type: 'RATING', message: String(ratingVal) } });
+  const ratings = await prisma.requestEvent.findMany({
+    where: { type: 'RATING', request: { assignedDriverId: driver.id } },
+    select: { message: true },
+  });
+  const nums = ratings.map(r => Number(r.message)).filter(n => !Number.isNaN(n) && n >= 1 && n <= 5);
+  const avg = nums.length > 0 ? nums.reduce((a, b) => a + b, 0) / nums.length : ratingVal;
+  await prisma.driverProfile.update({ where: { id: driver.id }, data: { rating: avg } });
 }
