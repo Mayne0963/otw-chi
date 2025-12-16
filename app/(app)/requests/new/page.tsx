@@ -71,14 +71,14 @@ export async function createRequestAction(formData: FormData) {
     const cost = Math.round(miles * 150);
     const created = await prisma.request.create({
       data: {
-        customerId: user.id,
+        customer: { connect: { id: user.id } },
         pickup: parsed.pickup,
         dropoff: parsed.dropoff,
         serviceType: parsed.serviceType as any,
         notes: parsed.notes,
         status: 'SUBMITTED',
-        cityId: parsed.cityId,
-        zoneId: parsed.zoneId,
+        city: parsed.cityId ? { connect: { id: parsed.cityId } } : undefined,
+        zone: parsed.zoneId ? { connect: { id: parsed.zoneId } } : undefined,
         milesEstimate: miles,
         costEstimate: cost,
       },
