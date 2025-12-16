@@ -14,6 +14,7 @@ export default async function DriverEarningsPage() {
   let weekly = 0;
   let monthly = 0;
   let recent: Array<{ id: string; pickup: string; dropoff: string; costEstimate: number; completedAt: string }> = [];
+  let latestTicketStatus: string | null = null;
   if (user) {
     const driver = await prisma.driverProfile.findUnique({ where: { userId: user.id } });
     if (driver) {
@@ -41,6 +42,11 @@ export default async function DriverEarningsPage() {
       monthly = completed
         .filter(r => r.createdAt >= startOfMonth)
         .reduce((sum, r) => sum + Math.round(Number(r.costEstimate || 0) * earningPct), 0);
+      const latestTicket = await prisma.supportTicket.findFirst({
+        where: { userId: user.id, subject: 'Payout Request' },
+        orderBy: { createdAt: 'desc' },
+      });
+      latestTicketStatus = latestTicket?.status ?? null;
     }
   }
   return (
@@ -57,6 +63,11 @@ export default async function DriverEarningsPage() {
         </OtwCard>
         <OtwCard>
           <div className="text-sm font-medium">Actions</div>
+          {latestTicketStatus && (
+            <div className="mt-2 text-xs opacity-70">
+              Latest payout request: <span className="font-semibold">{latestTicketStatus}</span>
+            </div>
+          )}
           <form action={requestPayoutAction} className="mt-2 flex gap-2">
             <input type="hidden" name="weeklyCents" value={weekly} />
             <input type="hidden" name="monthlyCents" value={monthly} />
