@@ -6,6 +6,7 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import type { RequestEvent as RequestEventModel } from '@prisma/client';
+import { canTransition } from '@/lib/lifecycle';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,6 +120,25 @@ export async function updateJobStatusAction(formData: FormData) {
   if (!id || !status) return;
   const req = await prisma.request.findUnique({ where: { id } });
   if (!req || req.assignedDriverId !== driver.id) return;
-  await prisma.request.update({ where: { id }, data: { status: status as any } });
+  if (!canTransition(req.status as any, status as any)) return;
+  const updated = await prisma.request.update({ where: { id }, data: { status: status as any } });
   await prisma.requestEvent.create({ data: { requestId: id, type: `STATUS_${status}`, message: `Status changed to ${status}` } });
+  if (status === 'COMPLETED') {
+    const customerId = updated.customerId;
+    const miles = Number(updated.milesEstimate || 0);
+    // Base NIP reward: 5 per mile, multiplied by membership plan multiplier
+    const sub = await prisma.membershipSubscription.findUnique({ where: { userId: customerId }, include: { plan: true } });
+    const multiplier = Number(sub?.plan?.nipMultiplier || 1.0);
+    const nipReward = Math.max(0, Math.round(miles * 5 * multiplier));
+    if (nipReward > 0) {
+      await prisma.nIPLedger.create({
+        data: {
+          userId: customerId,
+          requestId: id,
+          amount: nipReward,
+          reason: 'COMPLETION_REWARD',
+        },
+      });
+    }
+  }
 }

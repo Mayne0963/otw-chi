@@ -5,6 +5,7 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { requireRole } from '@/lib/auth';
+import { canTransition } from '@/lib/lifecycle';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,6 +72,8 @@ export async function assignDriverAction(formData: FormData) {
   const driverProfileId = String(formData.get('driverProfileId') ?? '');
   if (!id || !driverProfileId) return;
   const prisma = getPrisma();
+  const req = await prisma.request.findUnique({ where: { id } });
+  if (!req || !canTransition(req.status as any, 'ASSIGNED')) return;
   await prisma.request.update({ where: { id }, data: { assignedDriverId: driverProfileId, status: 'ASSIGNED' } });
   await prisma.requestEvent.create({ data: { requestId: id, type: 'ASSIGNED', message: `Assigned to driver ${driverProfileId}` } });
 }

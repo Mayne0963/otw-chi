@@ -27,6 +27,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     await prisma.requestEvent.create({
       data: { requestId: id, type: `STATUS_${to}`, message: `Status changed to ${to}` },
     });
+    if (to === 'COMPLETED') {
+      const customerId = updated.customerId;
+      const miles = Number(updated.milesEstimate || 0);
+      const sub = await prisma.membershipSubscription.findUnique({ where: { userId: customerId }, include: { plan: true } });
+      const multiplier = Number(sub?.plan?.nipMultiplier || 1.0);
+      const nipReward = Math.max(0, Math.round(miles * 5 * multiplier));
+      if (nipReward > 0) {
+        await prisma.nIPLedger.create({
+          data: { userId: customerId, requestId: id, amount: nipReward, reason: 'COMPLETION_REWARD' },
+        });
+      }
+    }
     return NextResponse.json({ success: true, request: updated });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message ?? 'Server error' }, { status: 500 });
