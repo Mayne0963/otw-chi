@@ -21,7 +21,21 @@ export default async function DriverJobDetailPage({ params }: { params: { id: st
       </OtwPageShell>
     );
   }
+
+  // Authorization: Must be a DRIVER or ADMIN
+  // Note: We should ideally check user.role, but fetching driver profile confirms driver status.
   const driver = await prisma.driverProfile.findUnique({ where: { userId: user.id } });
+  const isAdmin = user.role === 'ADMIN';
+
+  if (!driver && !isAdmin) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader title="Access Denied" subtitle="Driver account required." />
+        <OtwCard className="mt-3"><div className="text-sm text-red-400">You must be a registered driver to view jobs.</div></OtwCard>
+      </OtwPageShell>
+    );
+  }
+
   const req = await prisma.request.findUnique({ where: { id: params.id }, include: { customer: true, events: true } });
   if (!req) {
     return (
@@ -31,7 +45,23 @@ export default async function DriverJobDetailPage({ params }: { params: { id: st
       </OtwPageShell>
     );
   }
+
   const isAssignedToMe = !!driver && req.assignedDriverId === driver.id;
+  const isUnassigned = req.assignedDriverId === null;
+  
+  // Visibility Rule: 
+  // 1. If assigned to me: Visible.
+  // 2. If unassigned (Open market): Visible.
+  // 3. If assigned to someone else: Hidden (unless Admin).
+  if (!isAssignedToMe && !isUnassigned && !isAdmin) {
+     return (
+      <OtwPageShell>
+        <OtwSectionHeader title="Job Taken" subtitle="This job has been assigned to another driver." />
+        <OtwEmptyState title="Job Unavailable" subtitle="Return to available jobs." actionHref="/driver/jobs" actionLabel="Back to Jobs" />
+      </OtwPageShell>
+    );
+  }
+
   const canAccept = !!driver && req.status === 'SUBMITTED' && !req.assignedDriverId;
   return (
     <OtwPageShell>

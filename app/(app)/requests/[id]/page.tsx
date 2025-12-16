@@ -4,14 +4,26 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import { getCurrentUser } from '@/lib/auth/roles';
 import type { RequestEvent as RequestEventModel } from '@prisma/client';
 
 export default async function RequestDetailPage({ params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader title="Access Denied" subtitle="Please sign in to view this request." />
+        <OtwEmptyState title="Sign In Required" subtitle="You must be logged in." actionHref="/sign-in" actionLabel="Sign In" />
+      </OtwPageShell>
+    );
+  }
+
   const prisma = getPrisma();
   const req = await prisma.request.findUnique({
     where: { id: params.id },
     include: { assignedDriver: { include: { user: true } }, events: true },
   });
+
   if (!req) {
     return (
       <OtwPageShell>
@@ -20,6 +32,25 @@ export default async function RequestDetailPage({ params }: { params: { id: stri
       </OtwPageShell>
     );
   }
+
+  // Authorization Check: Must be Owner, Assigned Driver, or Admin
+  const isOwner = req.customerId === user.id;
+  const isAssignedDriver = req.assignedDriver?.userId === user.id;
+  const isAdmin = user.role === 'ADMIN';
+
+  if (!isOwner && !isAssignedDriver && !isAdmin) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader title="Access Denied" subtitle="You are not authorized to view this request." />
+        <OtwCard className="mt-3">
+          <div className="text-sm opacity-80 text-red-400">
+            This request belongs to another user. If you believe this is an error, please contact support.
+          </div>
+        </OtwCard>
+      </OtwPageShell>
+    );
+  }
+
   const driverName = req.assignedDriver?.user?.name || null;
   const driverRating = req.assignedDriver?.rating || null;
   return (

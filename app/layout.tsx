@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '../styles/globals.css';
 import OtwNavbar from '@/components/otw/OtwNavbar';
+import OtwCookieConsent from '@/components/ui/otw/OtwCookieConsent';
 
 export const metadata: Metadata = {
   title: 'OTW Delivery System',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="max-w-5xl mx-auto px-4 py-6 text-sm opacity-80">
           © OTW – On The Way. Built for the People.
         </footer>
+        <OtwCookieConsent />
       </body>
     </html>
   );

@@ -49,6 +49,8 @@ model User {
   name      String?
   role      Role     @default(CUSTOMER)
   clerkId   String   @unique
+  dob       DateTime? // Added for Age Verification / COPPA compliance
+  termsAcceptedAt DateTime? // Added for Legal Compliance tracking
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
