@@ -126,9 +126,9 @@ export async function updateJobStatusAction(formData: FormData) {
   if (status === 'COMPLETED') {
     const customerId = updated.customerId;
     const miles = Number(updated.milesEstimate || 0);
-    // Base NIP reward: 5 per mile, multiplied by membership plan multiplier
     const sub = await prisma.membershipSubscription.findUnique({ where: { userId: customerId }, include: { plan: true } });
-    const multiplier = Number(sub?.plan?.nipMultiplier || 1.0);
+    const mRaw = (sub?.plan as any)?.nipMultiplier;
+    const multiplier = typeof mRaw === 'number' ? mRaw : 1.0;
     const nipReward = Math.max(0, Math.round(miles * 5 * multiplier));
     if (nipReward > 0) {
       await prisma.nIPLedger.create({
