@@ -57,7 +57,12 @@ export default async function DriverEarningsPage() {
         </OtwCard>
         <OtwCard>
           <div className="text-sm font-medium">Actions</div>
-          <div className="mt-2"><OtwButton variant="outline">Request Payout</OtwButton></div>
+          <form action={requestPayoutAction} className="mt-2 flex gap-2">
+            <input type="hidden" name="weeklyCents" value={weekly} />
+            <input type="hidden" name="monthlyCents" value={monthly} />
+            <input type="hidden" name="recentIds" value={recent.map(r => r.id).join(',')} />
+            <OtwButton variant="outline">Request Payout</OtwButton>
+          </form>
         </OtwCard>
       </div>
       <OtwCard className="mt-3">
@@ -79,4 +84,27 @@ export default async function DriverEarningsPage() {
       </OtwCard>
     </OtwPageShell>
   );
+}
+
+export async function requestPayoutAction(formData: FormData) {
+  'use server';
+  const { auth } = await import('@clerk/nextjs/server');
+  const { userId } = await auth();
+  if (!userId) return;
+  const prisma = getPrisma();
+  const user = await prisma.user.findFirst({ where: { clerkId: userId } });
+  if (!user) return;
+  const weeklyCents = Number(formData.get('weeklyCents') ?? 0);
+  const monthlyCents = Number(formData.get('monthlyCents') ?? 0);
+  const recentIds = String(formData.get('recentIds') ?? '');
+  const subject = 'Payout Request';
+  const message = `Driver payout request\nWeekly: $${(weeklyCents/100).toFixed(2)}\nMonthly: $${(monthlyCents/100).toFixed(2)}\nRecent jobs: ${recentIds}`;
+  await prisma.supportTicket.create({
+    data: {
+      userId: user.id,
+      subject,
+      status: 'OPEN',
+      message,
+    },
+  });
 }
