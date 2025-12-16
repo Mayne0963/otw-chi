@@ -10,10 +10,10 @@ const OtwNavbar: React.FC = () => {
         </div>
         <nav className="flex flex-wrap items-center gap-4 text-sm">
           <a href="/" className="hover:underline">Home</a>
-          <a href="/customer" className="hover:underline">Customer</a>
-          <a href="/driver" className="hover:underline">Driver</a>
-          <a href="/membership" className="hover:underline">Membership</a>
-          <a href="/nip" className="hover:underline">NIP Rewards</a>
+          <a href="/dashboard" className="hover:underline">Dashboard</a>
+          <a href="/driver/jobs" className="hover:underline">Driver Jobs</a>
+          <a href="/membership/manage" className="hover:underline">Membership</a>
+          <a href="/wallet/nip" className="hover:underline">NIP Wallet</a>
         </nav>
       </div>
     </header>

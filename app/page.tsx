@@ -10,9 +10,9 @@ export default function HomePage() {
             <p className="text-otwOffWhite/75 text-sm">Your need moves when you do.</p>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <a href="/customer" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 bg-otwGold text-otwBlack font-semibold">Request a Delivery</a>
-              <a href="/membership" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 border border-otwGold text-otwGold">Become a Member</a>
-              <a href="/driver" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 text-otwOffWhite underline">Track My Driver</a>
+              <a href="/dashboard" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 bg-otwGold text-otwBlack font-semibold">Request a Delivery</a>
+              <a href="/membership/manage" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 border border-otwGold text-otwGold">Become a Member</a>
+              <a href="/driver/jobs" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 text-otwOffWhite underline">Track My Driver</a>
             </div>
           </div>
 
