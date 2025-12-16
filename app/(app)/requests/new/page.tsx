@@ -77,11 +77,12 @@ export async function createRequestAction(formData: FormData) {
         serviceType: parsed.serviceType as any,
         notes: parsed.notes,
         status: 'SUBMITTED',
-        city: parsed.cityId ? { connect: { id: parsed.cityId } } : undefined,
-        zone: parsed.zoneId ? { connect: { id: parsed.zoneId } } : undefined,
+        // Use scalar FKs for broader Prisma client compatibility across environments
+        cityId: parsed.cityId || undefined,
+        zoneId: parsed.zoneId || undefined,
         milesEstimate: miles,
         costEstimate: cost,
-      },
+      } as any,
     });
     await prisma.requestEvent.create({
       data: { requestId: created.id, type: 'STATUS_SUBMITTED', message: 'Submitted' },
