@@ -1,13 +1,5 @@
-import OtwPageShell from '@/components/ui/otw/OtwPageShell';
-import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
+import { redirect } from 'next/navigation';
 
-export default function AdminMembershipsPage() {
-  return (
-    <OtwPageShell>
-      <OtwSectionHeader title="Admin — Memberships" subtitle="Subscriptions and plans." />
-      <OtwCard className="mt-3"><div className="text-sm">No data yet.</div></OtwCard>
-    </OtwPageShell>
-  );
+export default function AdminMembershipsRedirectPage() {
+  redirect('/admin');
 }
-
