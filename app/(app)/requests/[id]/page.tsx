@@ -5,7 +5,7 @@ import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
-import type { RequestEvent as RequestEventModel } from '@prisma/client';
+import { RequestEvent } from '@prisma/client';
 
 export default async function RequestDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -70,8 +70,8 @@ export default async function RequestDetailPage({ params }: { params: { id: stri
           <div className="text-sm font-medium">Events</div>
           <ul className="mt-2 text-sm opacity-80 list-disc pl-5">
             {req.events
-              .sort((a: RequestEventModel, b: RequestEventModel) => a.timestamp.getTime() - b.timestamp.getTime())
-              .map((ev: RequestEventModel) => (
+              .sort((a: RequestEvent, b: RequestEvent) => a.timestamp.getTime() - b.timestamp.getTime())
+              .map((ev: RequestEvent) => (
               <li key={ev.id}>{ev.type}{ev.message ? ` — ${ev.message}` : ''}</li>
             ))}
           </ul>
