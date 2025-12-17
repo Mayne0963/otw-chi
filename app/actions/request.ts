@@ -38,6 +38,13 @@ export async function createRequestAction(formData: FormData) {
     const basePrice = estimatePrice({ miles, serviceType: serviceType as any, tier: 'BASIC' });
     const finalPrice = basePrice * (1 - membershipBenefits.discount);
 
+    // Award NIP based on membership multiplier
+    const nipEarned = Math.round(finalPrice * membershipBenefits.nipMultiplier);
+
+    // Check if service fee should be waived for EXEC members
+    const serviceFee = membershipBenefits.waiveServiceFee ? 0 : 2.99; // $2.99 service fee
+    const totalPrice = finalPrice + serviceFee;
+
     const created = await prisma.request.create({
       data: {
         customer: { connect: { id: user.id } },
@@ -49,15 +56,26 @@ export async function createRequestAction(formData: FormData) {
         cityId: cityId || undefined,
         zoneId: zoneId || undefined,
         milesEstimate: miles,
-        costEstimate: finalPrice,
+        costEstimate: Math.round(totalPrice * 100), // Store in cents
       } as any,
     });
     
     await prisma.requestEvent.create({
       data: { requestId: created.id, type: 'STATUS_SUBMITTED', message: 'Submitted' },
     });
+
+    // Award NIP to user
+    await prisma.nIPLedger.create({
+      data: {
+        userId: user.id,
+        amount: nipEarned,
+        type: 'REQUEST_REWARD',
+        requestId: created.id,
+      },
+    });
     
     revalidatePath('/requests');
+    revalidatePath('/dashboard');
   } catch (e) {
     console.error('createRequestAction failed:', e);
   }

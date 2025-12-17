@@ -182,7 +182,7 @@ export async function updateJobStatusAction(formData: FormData) {
           userId: customerId,
           requestId: id,
           amount: nipReward,
-          reason: 'COMPLETION_REWARD',
+          type: 'COMPLETION_REWARD',
         },
       });
     }

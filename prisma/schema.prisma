@@ -1,5 +1,6 @@
 // Prisma schema for OTW Production Build (Neon Postgres)
 // Generator
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -49,15 +50,32 @@ model User {
   name      String?
   role      Role     @default(CUSTOMER)
   clerkId   String   @unique
+  dob               DateTime?
+  termsAcceptedAt   DateTime?
+  privacyAcceptedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  customerProfile CustomerProfile?
-  driverProfile   DriverProfile?
-  membership      MembershipSubscription?
-  requests        Request[]        @relation("UserRequests")
-  nip             NIPLedger[]
-  tickets         SupportTicket[]
+  driverProfile    DriverProfile?
+  customerProfile  CustomerProfile?
+  requests         Request[]
+  membership       MembershipSubscription?
+  supportTickets   SupportTicket[]
+  nIPLedger        NIPLedger[]
+  driverEarnings   DriverEarnings[]
+  franchiseProfile FranchiseProfile?
+}
+
+model DriverProfile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  rating   Float?  @default(0)
+  status   String  @default("OFFLINE")
+  zoneId   String?
+  agreementSignedAt DateTime?
+  user     User    @relation(fields: [userId], references: [id])
+  zone     Zone?   @relation(fields: [zoneId], references: [id])
+  requests Request[]
 }
 
 model CustomerProfile {
@@ -66,53 +84,76 @@ model CustomerProfile {
   phone          String?
   defaultPickup  String?
   defaultDropoff String?
-
   user           User    @relation(fields: [userId], references: [id])
 }
 
-model DriverProfile {
-  id       String   @id @default(cuid())
-  userId   String   @unique
-  status   String   @default("ONLINE") // simple text for now
-  rating   Float?   @default(0)
-  zoneId   String?
-  agreementSignedAt DateTime?
-
-  user     User     @relation(fields: [userId], references: [id])
-  zone     Zone?    @relation(fields: [zoneId], references: [id])
-  jobs     Request[] @relation("DriverJobs")
-}
-
 model City {
-  id     String @id @default(cuid())
-  name   String
-  slug   String @unique
-  zones  Zone[]
+  id    String @id @default(cuid())
+  name  String @unique
+  zones Zone[]
   requests Request[]
 }
 
 model Zone {
-  id      String @id @default(cuid())
-  name    String
-  slug    String @unique
-  cityId  String
-  city    City   @relation(fields: [cityId], references: [id])
+  id     String @id @default(cuid())
+  name   String
+  cityId String
+  city   City   @relation(fields: [cityId], references: [id])
   drivers DriverProfile[]
   requests Request[]
 }
 
+model Request {
+  id               String        @id @default(cuid())
+  customerId       String
+  assignedDriverId String?
+  cityId           String?
+  zoneId           String?
+  pickup           String
+  dropoff          String
+  serviceType      ServiceType
+  status           RequestStatus @default(DRAFT)
+  notes            String?
+  milesEstimate    Int?
+  costEstimate     Int?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  customer       User             @relation(fields: [customerId], references: [id])
+  assignedDriver DriverProfile? @relation(fields: [assignedDriverId], references: [id])
+  events         RequestEvent[]
+  city           City?            @relation(fields: [cityId], references: [id])
+  zone           Zone?            @relation(fields: [zoneId], references: [id])
+}
+
+model RequestEvent {
+  id        String   @id @default(cuid())
+  requestId String
+  type      String
+  message   String?
+  timestamp DateTime @default(now())
+  request   Request  @relation(fields: [requestId], references: [id])
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  message   String?
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
 model MembershipPlan {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  priceCents  Int
-  perks       Json?
-  stripePriceId String?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  stripePriceId String? @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   subscriptions MembershipSubscription[]
-  code        String?  @unique
-  monthlyPrice Int?
-  milesCap    Int?
-  nipMultiplier Float?
 }
 
 model MembershipSubscription {
@@ -130,58 +171,30 @@ model MembershipSubscription {
   plan   MembershipPlan   @relation(fields: [planId], references: [id])
 }
 
-model Request {
-  id              String        @id @default(cuid())
-  customerId      String
-  assignedDriverId String?
-  cityId          String?
-  pickup          String
-  dropoff         String
-  serviceType     ServiceType
-  notes           String?
-  status          RequestStatus @default(DRAFT)
-  zoneId          String?
-  milesEstimate   Float?
-  costEstimate    Float?
-  createdAt       DateTime      @default(now())
-
-  customer User   @relation("UserRequests", fields: [customerId], references: [id])
-  assignedDriver DriverProfile? @relation("DriverJobs", fields: [assignedDriverId], references: [id])
-  city     City?  @relation(fields: [cityId], references: [id])
-  zone     Zone?  @relation(fields: [zoneId], references: [id])
-  events   RequestEvent[]
-  nipEntries NIPLedger[]
-}
-
-model RequestEvent {
-  id        String   @id @default(cuid())
-  requestId String
-  type      String
-  message   String?
-  timestamp DateTime @default(now())
-  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
-}
-
 model NIPLedger {
   id        String   @id @default(cuid())
   userId    String
-  requestId String?
   amount    Int
-  reason    String
+  type      String
+  requestId String?
   createdAt DateTime @default(now())
-
-  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  request  Request? @relation(fields: [requestId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
-model SupportTicket {
+model DriverEarnings {
   id        String   @id @default(cuid())
-  userId    String
-  subject   String
-  status    String   @default("OPEN")
-  message   String
+  driverId  String
+  amount    Int
+  requestId String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [driverId], references: [id])
+}
+
+model FranchiseProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 }

@@ -1,17 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import OtwButton from './OtwButton';
 
 export default function OtwCookieConsent() {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    const consent = localStorage.getItem('otw_cookie_consent');
-    if (!consent) {
-      setShow(true);
-    }
-  }, []);
+  const [show, setShow] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return !window.localStorage.getItem('otw_cookie_consent');
+  });
 
   const accept = () => {
     localStorage.setItem('otw_cookie_consent', 'true');

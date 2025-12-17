@@ -15,7 +15,7 @@ export default function TermsPage() {
         <section>
           <h3 className="text-lg font-bold text-white mb-2">1. Acceptance of Terms</h3>
           <p>
-            By accessing or using the OTW Delivery System ("OTW", "we", "us", or "our"), you agree to be bound by these Terms of Service ("Terms"). 
+            By accessing or using the OTW Delivery System (&quot;OTW&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). 
             If you do not agree to these Terms, you may not access or use the Service.
           </p>
         </section>
@@ -42,7 +42,7 @@ export default function TermsPage() {
             <strong>Independent Contractor Status:</strong> Drivers are independent contractors, not employees of OTW. You are responsible for your own taxes, insurance, and vehicle maintenance.
           </p>
           <p className="mt-2">
-            <strong>Compliance:</strong> Drivers must possess a valid driver's license, auto insurance, and comply with all local traffic laws. 
+            <strong>Compliance:</strong> Drivers must possess a valid driver&apos;s license, auto insurance, and comply with all local traffic laws. 
             We reserve the right to deactivate drivers who violate safety standards.
           </p>
         </section>
@@ -88,4 +88,3 @@ export default function TermsPage() {
     </OtwPageShell>
   );
 }
-

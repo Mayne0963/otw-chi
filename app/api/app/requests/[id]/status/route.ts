@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       const nipReward = Math.max(0, Math.round(miles * 5 * multiplier));
       if (nipReward > 0) {
         await prisma.nIPLedger.create({
-          data: { userId: customerId, requestId: id, amount: nipReward, reason: 'COMPLETION_REWARD' },
+          data: { userId: customerId, requestId: id, amount: nipReward, type: 'COMPLETION_REWARD' },
         });
       }
     }

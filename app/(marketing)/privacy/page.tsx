@@ -67,7 +67,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h3 className="text-lg font-bold text-white mb-2">6. Children's Privacy</h3>
+          <h3 className="text-lg font-bold text-white mb-2">6. Children&apos;s Privacy</h3>
           <p>
             Our services are not directed to children under 13. We do not knowingly collect personal information from children under 13. 
             If we become aware that a child under 13 has provided us with personal information, we will take steps to delete such information.
@@ -84,4 +84,3 @@ export default function PrivacyPage() {
     </OtwPageShell>
   );
 }
-

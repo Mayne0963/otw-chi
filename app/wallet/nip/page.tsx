@@ -53,7 +53,7 @@ export default async function NipWalletPage() {
           <ul className="mt-2 space-y-2 text-sm opacity-90">
             {entries.map(e => (
               <li key={e.id} className="flex items-center justify-between">
-                <div>{e.reason}</div>
+                <div>{e.type}</div>
                 <div className={e.amount >= 0 ? 'text-green-400' : 'text-red-400'}>
                   {e.amount >= 0 ? '+' : ''}{e.amount} NIP
                 </div>
