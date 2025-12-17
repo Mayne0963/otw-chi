@@ -7,6 +7,7 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { syncUserOnDashboard } from '@/lib/user-sync';
 import { getPrisma } from '@/lib/db';
+import { getActiveSubscription, getPlanCodeFromSubscription, getMembershipBenefits } from '@/lib/membership';
 
 export default async function DashboardPage() {
   await syncUserOnDashboard();
@@ -14,18 +15,27 @@ export default async function DashboardPage() {
   let membershipTier = 'None';
   let nipBalance = 0;
   let activeRequest: { id: string; status: string; pickup: string; dropoff: string } | null = null;
+  let membershipBenefits = getMembershipBenefits(null);
+
   if (user) {
     const prisma = getPrisma();
-    const sub = await prisma.membershipSubscription.findUnique({ where: { userId: user.id }, include: { plan: true } });
+    
+    // Get membership benefits
+    const sub = await getActiveSubscription(user.id);
+    const planCode = getPlanCodeFromSubscription(sub);
+    membershipBenefits = getMembershipBenefits(planCode);
     membershipTier = sub?.plan?.name ?? 'None';
+
     const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } } as any);
     nipBalance = nip._sum?.amount ?? 0;
+
     const req = await prisma.request.findFirst({
       where: { customerId: user.id, status: { in: ['SUBMITTED', 'ASSIGNED', 'PICKED_UP', 'DELIVERED'] } },
       orderBy: { createdAt: 'desc' },
     });
     if (req) activeRequest = { id: req.id, status: req.status, pickup: req.pickup, dropoff: req.dropoff };
   }
+
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
@@ -69,6 +79,15 @@ export default async function DashboardPage() {
           <OtwCard>
             <div className="text-sm font-medium">Membership</div>
             <div className="mt-2"><OtwStatPill label="Tier" value={membershipTier} tone="gold" /></div>
+            {membershipBenefits.discount > 0 && (
+              <div className="mt-2 text-sm opacity-80">Discount: {Math.round(membershipBenefits.discount * 100)}%</div>
+            )}
+            {membershipBenefits.nipMultiplier > 1 && (
+              <div className="mt-1 text-sm opacity-80">NIP Multiplier: {membershipBenefits.nipMultiplier}x</div>
+            )}
+            {membershipBenefits.waiveServiceFee && (
+              <div className="mt-1 text-sm opacity-80">No Service Fees</div>
+            )}
             <div className="mt-3"><OtwButton as="a" href="/membership/manage" variant="outline">Manage</OtwButton></div>
           </OtwCard>
           <OtwCard>

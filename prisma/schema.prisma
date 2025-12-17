@@ -122,6 +122,7 @@ model MembershipSubscription {
   status           MembershipStatus @default(ACTIVE)
   stripeCustomerId String?
   stripeSubId      String?
+  stripePriceId    String?
   renewsAt         DateTime?
   currentPeriodEnd DateTime?
 
