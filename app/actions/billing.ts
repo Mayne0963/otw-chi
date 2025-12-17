@@ -2,7 +2,7 @@
 
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import { redirect } from 'next/navigation';
 
 export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'EXEC') {
@@ -42,6 +42,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'EXEC')
   let stripeCustomerId = user.membership?.stripeCustomerId;
 
   if (!stripeCustomerId) {
+    const stripe = getStripe();
     const customer = await stripe.customers.create({
       email: user.email,
       name: user.name ?? undefined,
@@ -94,6 +95,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'EXEC')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   // 4. Create Checkout Session
+  const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
     mode: 'subscription',
@@ -142,6 +144,7 @@ export async function createCustomerPortal() {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
+    const stripe = getStripe();
     const session = await stripe.billingPortal.sessions.create({
         customer: user.membership.stripeCustomerId,
         return_url: `${appUrl}/membership/manage`,
