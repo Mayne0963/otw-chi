@@ -32,9 +32,9 @@ async function main() {
   ]);
 
   await Promise.all([
-    prisma.membershipPlan.upsert({ where: { name: 'Basic' }, update: {}, create: { name: 'Basic', priceCents: 900, code: 'BASIC', monthlyPrice: 900, milesCap: 2000, nipMultiplier: 1.0, perks: { perks: ['Standard delivery rates', 'NIP Coin rewards', 'Email support'] } } }),
-    prisma.membershipPlan.upsert({ where: { name: 'Plus' }, update: {}, create: { name: 'Plus', priceCents: 1900, code: 'PLUS', monthlyPrice: 1900, milesCap: 4000, nipMultiplier: 1.5, perks: { perks: ['Lower delivery fees', 'Priority drivers', 'NIP Coin multiplier'] } } }),
-    prisma.membershipPlan.upsert({ where: { name: 'Executive' }, update: {}, create: { name: 'Executive', priceCents: 3900, code: 'EXEC', monthlyPrice: 3900, milesCap: 8000, nipMultiplier: 3.0, perks: { perks: ['Concierge scheduling', 'VIP queue', 'Free miles buffer', 'Tripled NIP Coin'] } } })
+    prisma.membershipPlan.upsert({ where: { name: 'Basic' }, update: {}, create: { name: 'Basic', priceCents: 900, code: 'BASIC', monthlyPrice: 900, milesCap: 2000, nipMultiplier: 1.0, perks: { perks: ['Standard delivery rates', 'TIREM rewards', 'Email support'] } } }),
+    prisma.membershipPlan.upsert({ where: { name: 'Plus' }, update: {}, create: { name: 'Plus', priceCents: 1900, code: 'PLUS', monthlyPrice: 1900, milesCap: 4000, nipMultiplier: 1.5, perks: { perks: ['Lower delivery fees', 'Priority drivers', 'TIREM multiplier'] } } }),
+    prisma.membershipPlan.upsert({ where: { name: 'Executive' }, update: {}, create: { name: 'Executive', priceCents: 3900, code: 'EXEC', monthlyPrice: 3900, milesCap: 8000, nipMultiplier: 3.0, perks: { perks: ['Concierge scheduling', 'VIP queue', 'Free miles buffer', 'Tripled TIREM'] } } })
   ]);
 
   console.log('Seed complete');

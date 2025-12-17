@@ -17,7 +17,7 @@ const OtwNavbar: React.FC = () => {
             <Link href="/dashboard" className="hover:underline">Dashboard</Link>
             <Link href="/driver/jobs" className="hover:underline">Driver Jobs</Link>
             <Link href="/membership/manage" className="hover:underline">Membership</Link>
-            <Link href="/wallet/nip" className="hover:underline">NIP Wallet</Link>
+            <Link href="/wallet/nip" className="hover:underline">TIREM Wallet</Link>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           <SignedOut>

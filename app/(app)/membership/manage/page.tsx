@@ -46,7 +46,7 @@ export default async function ManageMembershipPage() {
                 <div className="text-2xl mt-2">$9<span className="text-sm opacity-60">/mo</span></div>
                 <ul className="mt-4 text-sm space-y-2 opacity-80">
                     <li>• Standard Delivery</li>
-                    <li>• 1.0x NIP Rewards</li>
+                    <li>• 1.0x TIREM Rewards</li>
                 </ul>
                 <form action={async () => { 'use server'; await createCheckoutSession('BASIC'); }} className="mt-6">
                     <OtwButton variant="outline" className="w-full">Choose Basic</OtwButton>
@@ -59,7 +59,7 @@ export default async function ManageMembershipPage() {
                 <div className="text-2xl mt-2">$19<span className="text-sm opacity-60">/mo</span></div>
                 <ul className="mt-4 text-sm space-y-2 opacity-80">
                     <li>• 10% Discount</li>
-                    <li>• 1.25x NIP Rewards</li>
+                    <li>• 1.25x TIREM Rewards</li>
                 </ul>
                 <form action={async () => { 'use server'; await createCheckoutSession('PLUS'); }} className="mt-6">
                     <OtwButton variant="gold" className="w-full">Choose Plus</OtwButton>
@@ -72,7 +72,7 @@ export default async function ManageMembershipPage() {
                 <div className="text-2xl mt-2">$39<span className="text-sm opacity-60">/mo</span></div>
                 <ul className="mt-4 text-sm space-y-2 opacity-80">
                     <li>• 20% Discount</li>
-                    <li>• 2.0x NIP Rewards</li>
+                    <li>• 2.0x TIREM Rewards</li>
                     <li>• No Service Fees</li>
                 </ul>
                 <form action={async () => { 'use server'; await createCheckoutSession('EXEC'); }} className="mt-6">
@@ -84,4 +84,3 @@ export default async function ManageMembershipPage() {
     </OtwPageShell>
   );
 }
-

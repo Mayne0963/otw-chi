@@ -14,7 +14,7 @@ const FranchiseRequirements: React.FC = () => {
         </p>
         <p className={styles.note}>
           These are guidelines, not strict guarantees. The system uses your <strong>completed jobs</strong>, <strong>cancellations</strong>,
-          <strong> ratings</strong>, and <strong>NIP earned</strong> to calculate your readiness.
+          <strong> ratings</strong>, and <strong>TIREM earned</strong> to calculate your readiness.
         </p>
       </section>
 
@@ -27,7 +27,7 @@ const FranchiseRequirements: React.FC = () => {
             <li>Very few completed OTW runs.</li>
             <li>Cancellations or no consistent activity yet.</li>
             <li>Ratings still building or not enough feedback.</li>
-            <li>Little or no NIP earned so far.</li>
+            <li>Little or no TIREM earned so far.</li>
           </ul>
           <p className={styles.tip}>
             <strong>How to level up:</strong> Accept jobs, finish them cleanly, and avoid cancelling unless absolutely necessary.
@@ -42,7 +42,7 @@ const FranchiseRequirements: React.FC = () => {
             <li>Dozens of completed runs.</li>
             <li>Cancellations are improving but still visible.</li>
             <li>Ratings trending positive, some 5-star feedback.</li>
-            <li>Steady NIP trickling in from completed jobs.</li>
+            <li>Steady TIREM trickling in from completed jobs.</li>
           </ul>
           <p className={styles.tip}>
             <strong>How to level up:</strong> Focus on on-time arrivals, professional communication, and saying &quot;yes&quot; to more jobs in your zone.
@@ -57,7 +57,7 @@ const FranchiseRequirements: React.FC = () => {
             <li>Strong track record of completed runs.</li>
             <li>Low cancellation rate most weeks.</li>
             <li>Ratings generally 4.5+ with positive comments.</li>
-            <li>NIP balance and total earned both growing.</li>
+            <li>TIREM balance and total earned both growing.</li>
           </ul>
           <p className={styles.tip}>
             <strong>How to level up:</strong> Treat every run like an interview for ownership—clean car, clear updates, and problem-solving when customers are stressed.
@@ -72,7 +72,7 @@ const FranchiseRequirements: React.FC = () => {
             <li>High number of completed jobs across different service types.</li>
             <li>Very low cancellation rate.</li>
             <li>Consistent high ratings and repeat customers.</li>
-            <li>NIP total earned shows real commitment and time in.</li>
+            <li>TIREM total earned shows real commitment and time in.</li>
           </ul>
           <p className={styles.tip}>
             <strong>How to level up:</strong> Stay consistent, avoid burnout, and maintain your standards even on slow or late-night runs.
@@ -87,7 +87,7 @@ const FranchiseRequirements: React.FC = () => {
             <li>Very strong job volume and completion rate.</li>
             <li>Almost no cancellations without a real reason.</li>
             <li>Ratings in the top tier of all OTW drivers.</li>
-            <li>NIP total that reflects heavy, long-term movement.</li>
+            <li>TIREM total that reflects heavy, long-term movement.</li>
           </ul>
           <p className={styles.tip}>
             <strong>How to level up:</strong> Start thinking like a leader—help new drivers, learn your city deeply, and keep your record clean. You&apos;re in real franchise conversation territory.
@@ -102,7 +102,7 @@ const FranchiseRequirements: React.FC = () => {
             <li>Top-percentage performance across the whole platform.</li>
             <li>Almost perfect reliability and very rare cancellations.</li>
             <li>Near 5.0 average rating with glowing feedback.</li>
-            <li>Heavy NIP earnings from long-term consistent work.</li>
+            <li>Heavy TIREM earnings from long-term consistent work.</li>
           </ul>
           <p className={styles.tip}>
             <strong>How to level up:</strong> Document your habits, build routines, and get ready to operate OTW like a business, not just a side hustle.
@@ -116,7 +116,7 @@ const FranchiseRequirements: React.FC = () => {
           <ul className={styles.list}>
             <li>Elite numbers: jobs, ratings, and reliability.</li>
             <li>History of consistent, high-quality movement.</li>
-            <li>Strong NIP story and contribution to the ecosystem.</li>
+            <li>Strong TIREM story and contribution to the ecosystem.</li>
             <li>Matches what HQ expects from a franchise-level partner.</li>
           </ul>
           <p className={styles.tip}>
@@ -128,7 +128,7 @@ const FranchiseRequirements: React.FC = () => {
       <section className={styles.footerSection}>
         <h3 className={styles.footerTitle}>How the System Scores You</h3>
         <p className={styles.footerText}>
-          Behind the scenes, OTW calculates a <strong>franchise score</strong> using your <strong>completed jobs</strong>, <strong>cancellation rate</strong>, <strong>average rating</strong>, and <strong>NIP earned</strong>.
+          Behind the scenes, OTW calculates a <strong>franchise score</strong> using your <strong>completed jobs</strong>, <strong>cancellation rate</strong>, <strong>average rating</strong>, and <strong>TIREM earned</strong>.
           That score turns into a rank. As you keep moving right, the system pushes you up naturally.
         </p>
         <p className={styles.footerText}>

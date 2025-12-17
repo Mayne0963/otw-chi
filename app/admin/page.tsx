@@ -39,8 +39,8 @@ export default async function AdminOverviewPage() {
           <div className="mt-2"><OtwStatPill label="Support" value={String(openTickets)} tone="danger" /></div>
         </OtwCard>
         <OtwCard>
-          <div className="text-sm font-medium">NIP Issued Today</div>
-          <div className="mt-2"><OtwStatPill label="NIP" value={String(nipIssuedToday)} tone="gold" /></div>
+          <div className="text-sm font-medium">TIREM Issued Today</div>
+          <div className="mt-2"><OtwStatPill label="TIREM" value={String(nipIssuedToday)} tone="gold" /></div>
         </OtwCard>
       </div>
     </OtwPageShell>

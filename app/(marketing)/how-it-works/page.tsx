@@ -12,11 +12,10 @@ export default function HowItWorksPage() {
             <OtwCard variant="ghost"><p className="text-sm">1. Request what you need.</p></OtwCard>
             <OtwCard variant="ghost"><p className="text-sm">2. We match a driver in your zone.</p></OtwCard>
             <OtwCard variant="ghost"><p className="text-sm">3. Picked up with care, delivered fast.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">4. Earn NIP rewards along the way.</p></OtwCard>
+            <OtwCard variant="ghost"><p className="text-sm">4. Earn TIREM rewards along the way.</p></OtwCard>
           </div>
         </OtwCard>
       </div>
     </OtwPageShell>
   );
 }
-

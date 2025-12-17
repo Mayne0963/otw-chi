@@ -352,8 +352,8 @@ export default function NipDashboard() {
       }
       await fetchSummaryForCustomer();
     } catch (err) {
-      setError('Failed to initialize NIP dashboard');
-      console.error('Failed to initialize NIP dashboard:', err);
+      setError('Failed to initialize TIREM dashboard');
+      console.error('Failed to initialize TIREM dashboard:', err);
     } finally {
       setLoading(false);
     }
@@ -371,7 +371,7 @@ export default function NipDashboard() {
           id: e.id,
           type: 'EARNED',
           amount: Math.abs(e.delta || 0),
-          description: e.reason || 'NIP transaction',
+          description: e.reason || 'TIREM transaction',
           timestamp: e.createdAt,
           role: 'CUSTOMER' as const,
         }));
@@ -381,11 +381,11 @@ export default function NipDashboard() {
           recentLedger: ledger,
         });
       } else {
-        setError(data.error || 'Failed to load NIP data');
+        setError(data.error || 'Failed to load TIREM data');
       }
     } catch (err) {
-      setError('Failed to fetch customer NIP summary');
-      console.error('Failed to fetch customer NIP summary:', err);
+      setError('Failed to fetch customer TIREM summary');
+      console.error('Failed to fetch customer TIREM summary:', err);
     } finally {
       setLoading(false);
     }
@@ -405,7 +405,7 @@ export default function NipDashboard() {
         }
       }
       if (!driverId) {
-        setError('No driver available for NIP summary');
+        setError('No driver available for TIREM summary');
         setLoading(false);
         return;
       }
@@ -416,7 +416,7 @@ export default function NipDashboard() {
           id: e.id,
           type: 'EARNED',
           amount: Math.abs(e.delta || 0),
-          description: e.reason || 'NIP transaction',
+          description: e.reason || 'TIREM transaction',
           timestamp: e.createdAt,
           role: 'DRIVER' as const,
         }));
@@ -426,11 +426,11 @@ export default function NipDashboard() {
           recentLedger: ledger,
         });
       } else {
-        setError(data.error || 'Failed to load NIP data');
+        setError(data.error || 'Failed to load TIREM data');
       }
     } catch (err) {
-      setError('Failed to fetch driver NIP summary');
-      console.error('Failed to fetch driver NIP summary:', err);
+      setError('Failed to fetch driver TIREM summary');
+      console.error('Failed to fetch driver TIREM summary:', err);
     } finally {
       setLoading(false);
     }
@@ -474,7 +474,7 @@ export default function NipDashboard() {
   if (loading) {
     return (
       <div style={styles.container}>
-        <div style={styles.loading}>Loading NIP Dashboard...</div>
+        <div style={styles.loading}>Loading TIREM Dashboard...</div>
       </div>
     );
   }
@@ -490,7 +490,7 @@ export default function NipDashboard() {
   if (!summary) {
     return (
       <div style={styles.container}>
-        <div style={styles.error}>No NIP data available</div>
+        <div style={styles.error}>No TIREM data available</div>
       </div>
     );
   }
@@ -501,7 +501,7 @@ export default function NipDashboard() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>NIP Dashboard</h1>
+        <h1 style={styles.title}>TIREM Dashboard</h1>
         <p style={styles.subtitle}>Your OTW Rewards & Transactions</p>
       </div>
 
@@ -531,18 +531,18 @@ export default function NipDashboard() {
       <div style={styles.walletCard}>
         <div style={styles.walletHeader}>
           <Wallet style={styles.walletIcon} />
-          <h2 style={styles.walletTitle}>NIP Wallet</h2>
+          <h2 style={styles.walletTitle}>TIREM Wallet</h2>
         </div>
         <div style={styles.balanceContainer}>
           <div style={styles.balance}>
             <span style={styles.balanceLabel}>Current Balance</span>
             <span style={styles.balanceAmount}>{currentWallet.balance.toLocaleString()}</span>
-            <span style={styles.balanceCurrency}>NIP</span>
+            <span style={styles.balanceCurrency}>TIREM</span>
           </div>
           <div style={styles.totalEarned}>
             <span style={styles.totalLabel}>Total Earned</span>
             <span style={styles.totalAmount}>{currentWallet.totalEarned.toLocaleString()}</span>
-            <span style={styles.totalCurrency}>NIP</span>
+            <span style={styles.totalCurrency}>TIREM</span>
           </div>
         </div>
       </div>
@@ -556,8 +556,8 @@ export default function NipDashboard() {
               <p>No transactions yet</p>
               <span style={styles.emptySubtext}>
                 {activeView === 'customer' 
-                  ? 'Complete deliveries to earn NIP coins!'
-                  : 'Accept and complete deliveries to earn NIP coins!'}
+                  ? 'Complete deliveries to earn TIREM coins!'
+                  : 'Accept and complete deliveries to earn TIREM coins!'}
               </span>
             </div>
           ) : (
@@ -570,7 +570,7 @@ export default function NipDashboard() {
                   <div style={styles.transactionHeader}>
                     <span style={styles.transactionDescription}>{entry.description}</span>
                     <span style={{...styles.transactionAmount, ...getTransactionAmountStyle(entry.type)}}>
-                      {entry.type === 'EARNED' ? '+' : '-'}{entry.amount.toLocaleString()} NIP
+                      {entry.type === 'EARNED' ? '+' : '-'}{entry.amount.toLocaleString()} TIREM
                     </span>
                   </div>
                   <div style={styles.transactionFooter}>
@@ -587,16 +587,16 @@ export default function NipDashboard() {
       <div style={styles.infoBox}>
         <div style={styles.infoHeader}>
           <TrendingUp style={styles.infoIcon} />
-          <h4 style={styles.infoTitle}>How NIP Rewards Work</h4>
+          <h4 style={styles.infoTitle}>How TIREM Rewards Work</h4>
         </div>
         <div style={styles.infoContent}>
           <p style={styles.infoText}>
             {activeView === 'customer'
-              ? 'Earn NIP coins when your deliveries are completed. You receive 40% of the total NIP reward for each delivery.'
-              : 'Earn NIP coins by accepting and completing delivery requests. You receive 60% of the total NIP reward for each delivery.'}
+              ? 'Earn TIREM coins when your deliveries are completed. You receive 40% of the total TIREM reward for each delivery.'
+              : 'Earn TIREM coins by accepting and completing delivery requests. You receive 60% of the total TIREM reward for each delivery.'}
           </p>
           <p style={styles.infoSubtext}>
-            1 NIP = 100 OTW miles • Rewards are distributed automatically upon completion
+            1 TIREM = 100 OTW miles • Rewards are distributed automatically upon completion
           </p>
         </div>
       </div>

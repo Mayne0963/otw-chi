@@ -14,9 +14,9 @@ export default async function NipWalletPage() {
   if (!user) {
     return (
       <OtwPageShell>
-        <OtwSectionHeader title="NIP Wallet" subtitle="Rewards and transactions." />
+        <OtwSectionHeader title="TIREM Wallet" subtitle="Rewards and transactions." />
         <OtwCard className="mt-3">
-          <OtwEmptyState title="Sign in to view NIP" subtitle="Access your wallet and transactions." actionHref="/sign-in" actionLabel="Sign In" />
+          <OtwEmptyState title="Sign in to view TIREM" subtitle="Access your wallet and transactions." actionHref="/sign-in" actionLabel="Sign In" />
         </OtwCard>
       </OtwPageShell>
     );
@@ -30,15 +30,15 @@ export default async function NipWalletPage() {
   const totalEarned = entries.filter(e => e.amount > 0).reduce((sum, e) => sum + e.amount, 0);
   return (
     <OtwPageShell>
-      <OtwSectionHeader title="NIP Wallet" subtitle="Rewards and transactions." />
+      <OtwSectionHeader title="TIREM Wallet" subtitle="Rewards and transactions." />
       <div className="mt-3 grid md:grid-cols-3 gap-4">
         <OtwCard>
           <div className="text-sm font-medium">Balance</div>
-          <div className="mt-2"><OtwStatPill label="NIP" value={String(balance)} tone="success" /></div>
+          <div className="mt-2"><OtwStatPill label="TIREM" value={String(balance)} tone="success" /></div>
         </OtwCard>
         <OtwCard>
           <div className="text-sm font-medium">Total Earned</div>
-          <div className="mt-2"><OtwStatPill label="NIP" value={String(totalEarned)} tone="gold" /></div>
+          <div className="mt-2"><OtwStatPill label="TIREM" value={String(totalEarned)} tone="gold" /></div>
         </OtwCard>
         <OtwCard>
           <div className="text-sm font-medium">Actions</div>
@@ -48,14 +48,14 @@ export default async function NipWalletPage() {
       <OtwCard className="mt-3">
         <div className="text-sm font-medium">Recent Transactions</div>
         {entries.length === 0 ? (
-          <OtwEmptyState title="No NIP data yet" subtitle="Complete OTW runs to start earning." actionHref="/requests/new" actionLabel="Start a Request" />
+          <OtwEmptyState title="No TIREM data yet" subtitle="Complete OTW runs to start earning." actionHref="/requests/new" actionLabel="Start a Request" />
         ) : (
           <ul className="mt-2 space-y-2 text-sm opacity-90">
             {entries.map(e => (
               <li key={e.id} className="flex items-center justify-between">
-                <div>{e.type}</div>
+                <div>{String((e as any).type ?? (e as any).reason ?? '')}</div>
                 <div className={e.amount >= 0 ? 'text-green-400' : 'text-red-400'}>
-                  {e.amount >= 0 ? '+' : ''}{e.amount} NIP
+                  {e.amount >= 0 ? '+' : ''}{e.amount} TIREM
                 </div>
               </li>
             ))}

@@ -42,7 +42,7 @@ export default async function DashboardPage() {
       {!user ? (
         <OtwEmptyState
           title="Sign in to view your dashboard"
-          subtitle="Access requests, membership and NIP."
+          subtitle="Access requests, membership and TIREM."
           actionHref="/sign-in"
           actionLabel="Sign In"
         />
@@ -83,7 +83,7 @@ export default async function DashboardPage() {
               <div className="mt-2 text-sm opacity-80">Discount: {Math.round(membershipBenefits.discount * 100)}%</div>
             )}
             {membershipBenefits.nipMultiplier > 1 && (
-              <div className="mt-1 text-sm opacity-80">NIP Multiplier: {membershipBenefits.nipMultiplier}x</div>
+              <div className="mt-1 text-sm opacity-80">TIREM Multiplier: {membershipBenefits.nipMultiplier}x</div>
             )}
             {membershipBenefits.waiveServiceFee && (
               <div className="mt-1 text-sm opacity-80">No Service Fees</div>
@@ -91,8 +91,8 @@ export default async function DashboardPage() {
             <div className="mt-3"><OtwButton as="a" href="/membership/manage" variant="outline">Manage</OtwButton></div>
           </OtwCard>
           <OtwCard>
-            <div className="text-sm font-medium">NIP Balance</div>
-            <div className="mt-2"><OtwStatPill label="NIP" value={String(nipBalance)} tone="success" /></div>
+            <div className="text-sm font-medium">TIREM Balance</div>
+            <div className="mt-2"><OtwStatPill label="TIREM" value={String(nipBalance)} tone="success" /></div>
             <div className="mt-3"><OtwButton as="a" href="/wallet/nip" variant="outline">View Wallet</OtwButton></div>
           </OtwCard>
         </div>

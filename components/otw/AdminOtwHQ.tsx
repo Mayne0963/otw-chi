@@ -124,13 +124,13 @@ const AdminOtwHQ: React.FC = () => {
               <p className={styles.statMeta}>Open: {formatNumber(overview.openRequests)} • Completed: {formatNumber(overview.completedRequests)}</p>
             </div>
             <div className={styles.statCard}>
-              <p className={styles.statLabel}>NIP Wallets</p>
+              <p className={styles.statLabel}>TIREM Wallets</p>
               <p className={styles.statValue}>{formatNumber(overview.totalNipWallets)}</p>
-              <p className={styles.statMeta}>In circulation: {formatNumber(overview.totalNipInCirculation)} NIP</p>
+              <p className={styles.statMeta}>In circulation: {formatNumber(overview.totalNipInCirculation)} TIREM</p>
             </div>
             <div className={styles.statCard}>
-              <p className={styles.statLabel}>NIP Earned All-Time</p>
-              <p className={styles.statValue}>{formatNumber(overview.totalNipEarnedAllTime)} NIP</p>
+              <p className={styles.statLabel}>TIREM Earned All-Time</p>
+              <p className={styles.statValue}>{formatNumber(overview.totalNipEarnedAllTime)} TIREM</p>
             </div>
           </section>
 

@@ -47,7 +47,7 @@ export default function HomePage() {
         <ul className="list-disc pl-5 space-y-1 text-otwOffWhite/85">
           <li>Membership-based savings</li>
           <li>Fair driver payouts</li>
-          <li>NIP Coin rewards for the youth</li>
+          <li>TIREM coin rewards for the youth</li>
         </ul>
       </section>
     </div>

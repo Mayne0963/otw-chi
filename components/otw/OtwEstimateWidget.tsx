@@ -70,7 +70,7 @@ export default function OtwEstimateWidget() {
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {result.nipMultiplier > 1 && (
-              <OtwStatPill label="NIP" value={`${result.nipMultiplier}x`} tone="success" />
+              <OtwStatPill label="TIREM" value={`${result.nipMultiplier}x`} tone="success" />
             )}
             {result.waiveServiceFee && (
               <OtwStatPill label="Service Fee" value="Waived" tone="gold" />
