@@ -7,3 +7,4 @@ proxy.js
 .env
 .env.local
 .env.*
+.vercel
