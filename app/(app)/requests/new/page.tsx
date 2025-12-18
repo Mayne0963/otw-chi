@@ -7,45 +7,65 @@ import { getPrisma } from '@/lib/db';
 import OtwEstimateWidget from '@/components/otw/OtwEstimateWidget';
 import { createRequestAction } from '@/app/actions/request';
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewRequestPage() {
   const user = await getCurrentUser();
-  const prisma = getPrisma();
-  const cities = await prisma.city.findMany({ orderBy: { name: 'asc' } });
-  const zones = await prisma.zone.findMany({ orderBy: { name: 'asc' } });
+  
+  if (!user) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader title="New Request" subtitle="Sign in to start." />
+        <OtwCard className="mt-3 text-center p-6">
+          <p className="mb-4 text-sm opacity-80">You must be signed in to create a request.</p>
+          <OtwButton as="a" href="/sign-in" variant="gold">Sign In</OtwButton>
+        </OtwCard>
+      </OtwPageShell>
+    );
+  }
+
   return (
     <OtwPageShell>
-      <OtwSectionHeader title="New Request" subtitle="Create a draft and submit." />
-      {!user ? (
-        <OtwCard><p className="text-sm">Please sign in to create a request.</p></OtwCard>
-      ) : (
-        <div className="grid md:grid-cols-3 gap-4">
-          <OtwCard className="md:col-span-2 space-y-3">
-            <form action={createRequestAction} className="space-y-3">
-              <input name="pickup" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Pickup" />
-              <input name="dropoff" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Dropoff" />
-              <select name="serviceType" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" defaultValue="FOOD">
-                <option value="FOOD">Food</option><option value="STORE">Store</option><option value="FRAGILE">Fragile</option><option value="CONCIERGE">Concierge</option>
-              </select>
-              <select name="cityId" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" defaultValue="">
-                <option value="">Select City</option>
-                {cities.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
-              </select>
-              <select name="zoneId" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" defaultValue="">
-                <option value="">Select Zone</option>
-                {zones.map(z => (<option key={z.id} value={z.id}>{z.name}</option>))}
-              </select>
-              <textarea name="notes" className="w-full min-h-[120px] rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Notes" />
-              <div className="flex gap-2">
-                <OtwButton variant="outline">Save Draft</OtwButton>
-                <OtwButton variant="gold">Submit</OtwButton>
-              </div>
-            </form>
+      <OtwSectionHeader title="New Request" subtitle="Where to?" />
+      
+      <div className="mt-3 grid md:grid-cols-2 gap-4">
+        {/* Simple Form */}
+        <OtwCard>
+          <div className="text-sm font-medium mb-3">Request Details</div>
+          <form action={createRequestAction} className="space-y-3">
+            <input name="pickup" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Pickup Address" required />
+            <input name="dropoff" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Dropoff Address" required />
+            
+            <select name="serviceType" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2">
+              <option value="FOOD">Food Pickup</option>
+              <option value="STORE">Store / Grocery</option>
+              <option value="FRAGILE">Fragile Item</option>
+              <option value="CONCIERGE">Custom Concierge</option>
+            </select>
+
+            <textarea name="notes" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 h-20" placeholder="Notes for driver (optional)" />
+
+            {/* Hidden fields for city/zone logic (future) */}
+            <input type="hidden" name="cityId" value="" />
+            <input type="hidden" name="zoneId" value="" />
+
+            <OtwButton variant="gold" className="w-full">Submit Request</OtwButton>
+          </form>
+        </OtwCard>
+
+        {/* Estimate Widget */}
+        <div className="space-y-4">
+          <OtwEstimateWidget />
+          
+          <OtwCard>
+            <div className="text-sm font-medium mb-2">Need Help?</div>
+            <p className="text-xs opacity-70 mb-3">
+              Not sure which service to pick? Use Concierge for custom errands.
+            </p>
+            <OtwButton as="a" href="/contact" variant="outline" size="sm">Contact Support</OtwButton>
           </OtwCard>
-          <div>
-            <OtwEstimateWidget />
-          </div>
         </div>
-      )}
+      </div>
     </OtwPageShell>
   );
 }
