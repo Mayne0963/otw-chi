@@ -7,6 +7,8 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { RequestEvent } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
+
 export default async function RequestDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
   if (!user) {

@@ -6,7 +6,9 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import OtwButton from '@/components/ui/otw/OtwButton';
 
-export default async function RequestsListPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function RequestsPage() {
   const user = await getCurrentUser();
   let active: Array<{ id: string; status: string; serviceType: string; pickup: string; dropoff: string; costEstimate: number; createdAt: string }> = [];
   let completed: Array<{ id: string; status: string; serviceType: string; pickup: string; dropoff: string; costEstimate: number; createdAt: string }> = [];

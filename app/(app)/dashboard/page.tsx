@@ -9,6 +9,8 @@ import { syncUserOnDashboard } from '@/lib/user-sync';
 import { getPrisma } from '@/lib/db';
 import { getActiveSubscription, getPlanCodeFromSubscription, getMembershipBenefits } from '@/lib/membership';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   await syncUserOnDashboard();
   const user = await getCurrentUser();
