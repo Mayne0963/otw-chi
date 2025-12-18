@@ -4,29 +4,37 @@ import { getPrisma } from '@/lib/db';
 export async function syncUserOnDashboard() {
   const { userId } = await auth();
   if (!userId) return null;
-  const client = await clerkClient();
-  const clerkUser = await client.users.getUser(userId);
-  const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
-  const name = clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || email;
-  const roleMeta = String(clerkUser.publicMetadata?.role || 'CUSTOMER').toUpperCase();
-  const role = roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER';
   
-  // Compliance fields from metadata (if available)
-  const dobMeta = clerkUser.publicMetadata?.dob as string | undefined;
-  const dob = dobMeta ? new Date(dobMeta) : null;
-  const termsAcceptedAtMeta = clerkUser.publicMetadata?.termsAcceptedAt as string | undefined;
-  const termsAcceptedAt = termsAcceptedAtMeta ? new Date(termsAcceptedAtMeta) : null;
+  try {
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(userId);
+    const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
+    const name = clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || email;
+    const roleMeta = String(clerkUser.publicMetadata?.role || 'CUSTOMER').toUpperCase();
+    const role = roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER';
+    
+    // Compliance fields from metadata (if available)
+    const dobMeta = clerkUser.publicMetadata?.dob as string | undefined;
+    const dob = dobMeta ? new Date(dobMeta) : null;
+    const termsAcceptedAtMeta = clerkUser.publicMetadata?.termsAcceptedAt as string | undefined;
+    const termsAcceptedAt = termsAcceptedAtMeta ? new Date(termsAcceptedAtMeta) : null;
 
-  const prisma = getPrisma();
-  const user = await prisma.user.upsert({
-    where: { clerkId: userId },
-    update: { email, name, role, dob, termsAcceptedAt } as any,
-    create: { clerkId: userId, email, name, role, dob, termsAcceptedAt } as any,
-  });
-  await prisma.customerProfile.upsert({
-    where: { userId: user.id },
-    update: {},
-    create: { userId: user.id },
-  });
-  return user;
+    const prisma = getPrisma();
+    const user = await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: { email, name, role, dob, termsAcceptedAt } as any,
+      create: { clerkId: userId, email, name, role, dob, termsAcceptedAt } as any,
+    });
+    await prisma.customerProfile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id },
+    });
+    return user;
+  } catch (error) {
+    console.error("User sync failed:", error);
+    // Return null or throw depending on how critical this sync is.
+    // Returning null allows the dashboard to potentially render in a degraded state or show a specific error.
+    return null;
+  }
 }
