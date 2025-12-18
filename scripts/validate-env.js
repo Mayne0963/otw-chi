@@ -20,7 +20,9 @@ export function validateEnv() {
         missing.map((key) => `   - ${key}`).join('\n')
     );
     // In strict mode, you might want to throw an error here to fail the build
-    // throw new Error('Missing required environment variables');
+    if (process.env.CI) {
+      throw new Error('Missing required environment variables in CI/Production build');
+    }
   } else {
     console.log('✅ All required environment variables are set.');
   }
