@@ -7,7 +7,9 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getPlanCodeFromSubscription } from '@/lib/membership';
 import { createCheckoutSession, createCustomerPortal } from '@/app/actions/billing';
 
-export default async function ManageMembershipPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function MembershipManagePage() {
   const user = await getCurrentUser();
   if (!user) return <div>Please sign in</div>;
 

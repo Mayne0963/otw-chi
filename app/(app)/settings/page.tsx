@@ -5,6 +5,8 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   const prisma = getPrisma();

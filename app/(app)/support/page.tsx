@@ -6,6 +6,8 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SupportPage() {
   const user = await getCurrentUser();
   const prisma = getPrisma();
