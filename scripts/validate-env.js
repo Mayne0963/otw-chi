@@ -26,7 +26,9 @@ export function validateEnv() {
   }
 }
 
+import { fileURLToPath } from 'url';
+
 // Auto-run if executed directly
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   validateEnv();
 }
