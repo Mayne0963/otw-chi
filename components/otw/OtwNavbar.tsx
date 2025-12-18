@@ -22,10 +22,10 @@ const OtwNavbar: React.FC = () => {
           </SignedIn>
           <SignedOut>
              <div className="flex gap-2">
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" fallbackRedirectUrl="/dashboard" signUpFallbackRedirectUrl="/dashboard">
                 <button className="text-white hover:underline">Sign In</button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="modal" fallbackRedirectUrl="/dashboard" signInFallbackRedirectUrl="/dashboard">
                 <button className="bg-otwGold text-otwBlack px-3 py-1 rounded-lg font-semibold hover:brightness-110">Sign Up</button>
               </SignUpButton>
              </div>
