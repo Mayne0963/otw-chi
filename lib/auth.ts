@@ -53,3 +53,10 @@ export async function requireRole(roles: Array<'CUSTOMER' | 'DRIVER' | 'ADMIN' |
   }
   return role;
 }
+ 
+export async function getOtwToken(): Promise<string | null> {
+  const { userId, getToken } = await auth();
+  if (!userId) return null;
+  const token = await getToken({ template: 'otw' });
+  return token ?? null;
+}
