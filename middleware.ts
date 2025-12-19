@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -15,15 +15,12 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/stripe/webhook(.*)',
-  '/api/otw(.*)',
 ]);
-
-const HAS_CLERK = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !!process.env.CLERK_PUBLISHABLE_KEY;
 
 const driverRoute = createRouteMatcher(['/driver(.*)']);
 const adminRoute = createRouteMatcher(['/admin(.*)']);
 
-const proxy = clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
   
   const session = await auth();
@@ -34,7 +31,7 @@ const proxy = clerkMiddleware(async (auth, req) => {
   if (driverRoute(req) || adminRoute(req)) {
     try {
       const client = await clerkClient();
-      const user = await client.users.getUser(session.userId);
+      const user = await client.users.getUser(session.userId!);
       const role = String(user.publicMetadata?.role || '').toUpperCase();
       
       if (driverRoute(req) && !(role === 'DRIVER' || role === 'ADMIN')) {
@@ -49,10 +46,6 @@ const proxy = clerkMiddleware(async (auth, req) => {
   }
   return NextResponse.next();
 });
-
-const noop = (_req: NextRequest) => NextResponse.next();
-
-export default HAS_CLERK ? proxy : noop;
 
 export const config = {
   matcher: [
