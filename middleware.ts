@@ -1,13 +1,10 @@
-import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
-  '/how-it-works(.*)',
-  '/pricing(.*)',
-  '/services(.*)',
-  '/cities(.*)',
-  '/franchise(.*)',
+  '/pricing',
+  '/services',
   '/about',
   '/contact',
   '/terms',
@@ -17,33 +14,27 @@ const isPublicRoute = createRouteMatcher([
   '/api/stripe/webhook(.*)',
 ]);
 
-const driverRoute = createRouteMatcher(['/driver(.*)']);
-const adminRoute = createRouteMatcher(['/admin(.*)']);
+const isDriverRoute = createRouteMatcher(['/driver(.*)']);
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
-  
-  const session = await auth();
-  if (!session.userId) {
-    return session.redirectToSignIn({ returnBackUrl: req.url });
+
+  const session = await auth.protect();
+
+  const claims = session.sessionClaims as any;
+  const role = String(
+    claims?.publicMetadata?.role ?? claims?.metadata?.role ?? claims?.otw?.role ?? ''
+  ).toUpperCase();
+
+  if (isAdminRoute(req) && role !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
-  if (driverRoute(req) || adminRoute(req)) {
-    try {
-      const client = await clerkClient();
-      const user = await client.users.getUser(session.userId!);
-      const role = String(user.publicMetadata?.role || '').toUpperCase();
-      
-      if (driverRoute(req) && !(role === 'DRIVER' || role === 'ADMIN')) {
-        return NextResponse.redirect(new URL('/', req.url));
-      }
-      if (adminRoute(req) && role !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/', req.url));
-      }
-    } catch {
-      return NextResponse.redirect(new URL('/', req.url));
-    }
+  if (isDriverRoute(req) && !(role === 'DRIVER' || role === 'ADMIN')) {
+    return NextResponse.redirect(new URL('/', req.url));
   }
+
   return NextResponse.next();
 });
 
