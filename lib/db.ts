@@ -1,4 +1,4 @@
-import { PrismaClient } from '../prisma/generated/prisma/client.js'
+import { PrismaClient } from '@/prisma/generated/prisma'
 import { PrismaNeon } from '@prisma/adapter-neon'
 
 type GlobalWithPrisma = typeof globalThis & {
