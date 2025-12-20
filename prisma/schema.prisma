@@ -1,11 +1,12 @@
 // Prisma schema for OTW Production Build (Neon Postgres)
-// Generator
+// Generator - Prisma 7 format
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "./generated/prisma"
 }
 
-// Datasource
+// Datasource - URL configured in prisma.config.ts
 datasource db {
   provider = "postgresql"
 }

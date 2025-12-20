@@ -1,23 +1,22 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../prisma/generated/prisma/client.js'
+import { PrismaNeon } from '@prisma/adapter-neon'
 
 type GlobalWithPrisma = typeof globalThis & {
-  __PRISMA__?: PrismaClient;
-};
-
-const globalForPrisma = globalThis as GlobalWithPrisma;
-
-function createClient() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error('DATABASE_URL is not set');
-
-  const { PrismaNeon } = require('@prisma/adapter-neon');
-  const { neon } = require('@neondatabase/serverless');
-  const adapter = new PrismaNeon(neon(url));
-  return new PrismaClient({ adapter } as any);
+  __PRISMA__?: PrismaClient
 }
 
-export const prisma = globalForPrisma.__PRISMA__ ?? createClient();
+const globalForPrisma = globalThis as GlobalWithPrisma
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.__PRISMA__ = prisma;
+function createClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) throw new Error('DATABASE_URL is not set')
 
-export default prisma;
+  const adapter = new PrismaNeon({ connectionString })
+  return new PrismaClient({ adapter })
+}
+
+export const prisma = globalForPrisma.__PRISMA__ ?? createClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.__PRISMA__ = prisma
+
+export default prisma

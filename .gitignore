@@ -8,3 +8,6 @@ proxy.js
 .env.local
 .env.*
 .vercel
+
+# Prisma generated client (generated at build time)
+prisma/generated
