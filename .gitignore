@@ -9,3 +9,7 @@ proxy.js
 .env.*
 .vercel
 
+
+# Prisma generated client (generated at build time)
+src/generated/prisma/*
+!src/generated/prisma/.gitkeep

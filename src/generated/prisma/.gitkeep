@@ -1,0 +1,2 @@
+# This directory contains the generated Prisma client
+# The actual files are generated during build time by `prisma generate`
