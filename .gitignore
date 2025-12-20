@@ -11,4 +11,4 @@ proxy.js
 
 
 # Prisma generated client (generated at build time)
-src/generated/
+lib/generated/

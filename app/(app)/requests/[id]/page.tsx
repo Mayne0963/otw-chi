@@ -5,7 +5,7 @@ import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
-import { RequestEvent } from '../../../../src/generated/prisma';
+import { RequestEvent } from '@/lib/generated/prisma';
 
 export const dynamic = 'force-dynamic';
 
