@@ -1,4 +1,4 @@
-import type { Config } from 'tailwindcss'
+import type { Config } from 'tailwindcss';
 
 export default {
   content: [
@@ -9,21 +9,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        otwRed: '#B00017',
-        otwRedDark: '#7F0010',
-        otwGold: '#E6C36A',
-        otwBlack: '#0C0C0C',
-        otwOffWhite: '#F9F5EC'
-      },
-      boxShadow: {
-        otwSoft: '0 10px 25px rgba(0,0,0,0.35)',
-        otwGlow: '0 0 25px rgba(230,195,106,0.45)'
+        otw: {
+          bg: '#0B0B0B',
+          panel: '#141414',
+          panelHover: '#1A1A1A',
+          primary: '#C1272D',
+          primaryHover: '#A02025',
+          accent: '#FFD700',
+          text: '#F5F5F5',
+          textMuted: '#A3A3A3',
+          border: '#2A2A2A',
+          success: '#10B981',
+          warning: '#F59E0B',
+          error: '#EF4444',
+        }
       },
       borderRadius: {
         '2xl': '1rem',
-        '3xl': '1.5rem'
+        '3xl': '1.5rem',
+        '4xl': '2rem',
+      },
+      backgroundImage: {
+        'otw-gradient': 'linear-gradient(to bottom, #0B0B0B, #141414)',
       }
     }
   },
   plugins: []
-} satisfies Config
+} satisfies Config;

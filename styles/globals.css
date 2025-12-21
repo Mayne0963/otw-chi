@@ -2,13 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Minimal global styles for OTW skeleton */
-html, body { height: 100%; }
+@layer base {
+  body {
+    @apply bg-otw-bg text-otw-text antialiased;
+  }
+}
 
-body {
-  background-color: #0C0C0C; /* otwBlack */
-  color: #F9F5EC; /* otwOffWhite */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
