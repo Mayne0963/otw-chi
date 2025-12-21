@@ -5,7 +5,7 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
-import { RequestEvent } from '@/lib/generated/prisma';
+import type { RequestEvent } from '@prisma/client';
 import { canTransition } from '@/lib/lifecycle';
 
 export const dynamic = 'force-dynamic';
