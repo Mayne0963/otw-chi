@@ -4,16 +4,12 @@ import clsx from 'clsx';
 type Variant = 'gold' | 'red' | 'ghost' | 'outline';
 type Size = 'sm' | 'md' | 'lg';
 
-type Props = {
+interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   as?: 'button' | 'a';
   href?: string;
   variant?: Variant;
   size?: Size;
-  className?: string;
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-};
+}
 
 const base =
   'inline-flex items-center justify-center rounded-2xl font-semibold transition transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-otwGold focus-visible:ring-offset-otwBlack';
@@ -42,8 +38,9 @@ export default function OtwButton({
   size = 'md',
   className,
   children,
-  onClick,
-  disabled
+  type = 'button',
+  disabled,
+  ...props
 }: Props) {
   const classes = clsx(base, sizes[size], variants[variant], className, disabled && 'opacity-70 cursor-not-allowed');
   if (as === 'a' && href) {
@@ -54,7 +51,7 @@ export default function OtwButton({
     );
   }
   return (
-    <button type="button" className={classes} onClick={onClick} disabled={disabled}>
+    <button type={type} className={classes} disabled={disabled} {...props}>
       {children}
     </button>
   );

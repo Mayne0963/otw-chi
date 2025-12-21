@@ -77,7 +77,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
             {canAccept && (
               <form action={acceptJobAction}>
                 <input type="hidden" name="id" value={req.id} />
-                <OtwButton variant="outline">Accept</OtwButton>
+                <OtwButton type="submit" variant="outline">Accept</OtwButton>
               </form>
             )}
             {isAssignedToMe && (
@@ -86,21 +86,21 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
                   <form action={updateJobStatusAction}>
                     <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="PICKED_UP" />
-                    <OtwButton variant="outline">Picked Up</OtwButton>
+                    <OtwButton type="submit" variant="outline">Picked Up</OtwButton>
                   </form>
                 )}
                 {req.status === 'PICKED_UP' && (
                   <form action={updateJobStatusAction}>
                     <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="DELIVERED" />
-                    <OtwButton variant="gold">Delivered</OtwButton>
+                    <OtwButton type="submit" variant="gold">Delivered</OtwButton>
                   </form>
                 )}
                 {req.status === 'DELIVERED' && (
                   <form action={updateJobStatusAction}>
                     <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="COMPLETED" />
-                    <OtwButton>Complete</OtwButton>
+                    <OtwButton type="submit">Complete</OtwButton>
                   </form>
                 )}
               </>

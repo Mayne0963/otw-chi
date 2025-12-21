@@ -15,28 +15,28 @@ export function MarketingNav() {
   const NavLinks = () => (
     <>
       <Link 
-        href="/how-it-works" 
-        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
-      >
-        How It Works
-      </Link>
-      <Link 
         href="/pricing" 
         className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
       >
-        Pricing
+        Memberships
       </Link>
       <Link 
         href="/driver/apply" 
         className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
       >
-        Drive
+        Apply Today
       </Link>
       <Link 
         href="/franchise/apply" 
         className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
       >
         Franchise
+      </Link>
+      <Link 
+        href="/request" 
+        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
+      >
+        Request a Service
       </Link>
     </>
   )
