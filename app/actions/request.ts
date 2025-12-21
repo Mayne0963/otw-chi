@@ -105,7 +105,14 @@ export async function getRequest(id: string) {
     },
   });
 
-  if (!request || request.customerId !== user.id) {
+  if (!request) return null;
+
+  const role = user.publicMetadata.role as string;
+  const isCustomer = request.customerId === user.id;
+  const isAssignedDriver = request.assignedDriver?.userId === user.id;
+  const isAdmin = role === 'ADMIN';
+
+  if (!isCustomer && !isAssignedDriver && !isAdmin) {
     return null;
   }
 

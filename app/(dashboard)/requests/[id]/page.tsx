@@ -150,6 +150,44 @@ export default async function RequestDetailPage({ params }: { params: { id: stri
                   </div>
                 </div>
               )}
+
+              {/* Driver Tracking Section */}
+              {['ASSIGNED', 'PICKED_UP', 'IN_PROGRESS'].includes(request.status) && (
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-otwGold" />
+                    Live Tracking
+                  </h3>
+                  
+                  <div className="bg-black/40 rounded-xl border border-white/10 p-4 h-48 flex items-center justify-center relative overflow-hidden">
+                    {request.lastKnownLat && request.lastKnownLng ? (
+                      <div className="text-center space-y-2">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-otwGold/20 text-otwGold text-sm font-medium animate-pulse">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-otwGold opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-otwGold"></span>
+                          </span>
+                          Driver Connected
+                        </div>
+                        <p className="text-sm text-white/60 font-mono">
+                          Lat: {request.lastKnownLat.toFixed(4)} | Lng: {request.lastKnownLng.toFixed(4)}
+                        </p>
+                        <p className="text-xs text-white/40">
+                          Updated: {formatDate(request.lastKnownAt || new Date())}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-center text-white/40">
+                        <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Waiting for driver location signal...</p>
+                      </div>
+                    )}
+                    
+                    {/* Fake Map Background Effect */}
+                    <div className="absolute inset-0 z-[-1] opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

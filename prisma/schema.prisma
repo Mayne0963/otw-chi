@@ -65,6 +65,23 @@ model User {
   nIPLedger        NIPLedger[]
   driverEarnings   DriverEarnings[]
   franchiseProfile FranchiseProfile?
+  driverApplications DriverApplication[]
+}
+
+model DriverApplication {
+  id          String   @id @default(cuid())
+  userId      String?
+  email       String
+  fullName    String
+  phone       String
+  city        String
+  vehicleType String
+  availability String
+  message     String?
+  status      String   @default("NEW") // NEW, REVIEWING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id])
 }
 
 model DriverProfile {
@@ -117,6 +134,9 @@ model Request {
   notes            String?
   milesEstimate    Int?
   costEstimate     Int?
+  lastKnownLat     Float?
+  lastKnownLng     Float?
+  lastKnownAt      DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -125,6 +145,9 @@ model Request {
   events         RequestEvent[]
   city           City?            @relation(fields: [cityId], references: [id])
   zone           Zone?            @relation(fields: [zoneId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
 }
 
 model RequestEvent {
