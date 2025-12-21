@@ -1,0 +1,96 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { 
+  LayoutDashboard, 
+  Package, 
+  Wallet, 
+  CreditCard, 
+  LifeBuoy, 
+  Settings,
+  Truck,
+  ShieldAlert,
+  MapPin,
+  DollarSign
+} from "lucide-react"
+
+interface DashboardSidebarProps {
+  role: string
+}
+
+export function DashboardSidebar({ role }: DashboardSidebarProps) {
+  const pathname = usePathname()
+
+  const commonRoutes = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "My Requests", href: "/requests", icon: Package },
+    { label: "Wallet", href: "/wallet/nip", icon: Wallet },
+    { label: "Membership", href: "/membership/manage", icon: CreditCard },
+    { label: "Support", href: "/support", icon: LifeBuoy },
+    { label: "Settings", href: "/settings", icon: Settings },
+  ]
+
+  const driverRoutes = [
+    { label: "Driver Dashboard", href: "/driver/dashboard", icon: Truck },
+    { label: "Jobs", href: "/driver/jobs", icon: MapPin },
+    { label: "Earnings", href: "/driver/earnings", icon: DollarSign },
+    { label: "Profile", href: "/driver/profile", icon: Settings },
+  ]
+
+  const adminRoutes = [
+    { label: "Admin Overview", href: "/admin", icon: ShieldAlert },
+    { label: "Requests", href: "/admin/requests", icon: Package },
+    { label: "Drivers", href: "/admin/drivers", icon: Truck },
+    { label: "Customers", href: "/admin/customers", icon: LayoutDashboard },
+    { label: "Ledger", href: "/admin/nip-ledger", icon: Wallet },
+  ]
+
+  let routes = commonRoutes
+  if (role === 'DRIVER') {
+    routes = [...commonRoutes, ...driverRoutes]
+  } else if (role === 'ADMIN') {
+    routes = [...commonRoutes, ...adminRoutes]
+  }
+
+  return (
+    <div className="flex h-full w-64 flex-col border-r border-white/10 bg-otwBlack">
+      <div className="flex h-16 items-center px-6">
+        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-otwGold">
+          OTW <span className="text-xs text-white/50 font-normal">App</span>
+        </Link>
+      </div>
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {routes.map((route) => {
+          const isActive = pathname === route.href
+          return (
+            <Link
+              key={route.href}
+              href={route.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-otwGold/10 text-otwGold"
+                  : "text-otwOffWhite/70 hover:bg-white/5 hover:text-otwOffWhite"
+              )}
+            >
+              <route.icon className="h-4 w-4" />
+              {route.label}
+            </Link>
+          )
+        })}
+      </nav>
+      <div className="border-t border-white/10 p-4">
+        <div className="rounded-lg bg-white/5 p-4">
+          <p className="text-xs font-medium text-otwOffWhite">Need help?</p>
+          <p className="text-xs text-white/50 mt-1">Contact support anytime.</p>
+          <Button asChild variant="outline" size="sm" className="mt-3 w-full border-white/10 text-xs h-8">
+            <Link href="/support">Support</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

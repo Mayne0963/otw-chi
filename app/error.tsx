@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Error({
   error,
@@ -12,28 +12,31 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
     console.error(error);
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-      <OtwCard className="max-w-md w-full text-center space-y-4">
-        <h2 className="text-xl font-bold text-red-500">Something went wrong!</h2>
-        <p className="text-sm opacity-80">
-          We encountered an unexpected error. Please try again later.
-        </p>
-        {error.digest && (
-          <p className="text-xs font-mono bg-black/20 p-2 rounded">
-            Error ID: {error.digest}
+    <div className="flex flex-col items-center justify-center min-h-[50vh] p-4 bg-otwBlack">
+      <Card className="max-w-md w-full text-center border-red-500/20 bg-red-950/10">
+        <CardHeader>
+          <CardTitle className="text-red-500">Something went wrong!</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm opacity-80">
+            We encountered an unexpected error. Please try again later.
           </p>
-        )}
-        <div className="flex justify-center pt-2">
-          <OtwButton onClick={() => reset()} variant="gold">
+          {error.digest && (
+            <p className="text-xs font-mono bg-black/20 p-2 rounded text-red-200">
+              Error ID: {error.digest}
+            </p>
+          )}
+        </CardContent>
+        <CardFooter className="justify-center">
+          <Button onClick={() => reset()} variant="default">
             Try again
-          </OtwButton>
-        </div>
-      </OtwCard>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

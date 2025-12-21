@@ -1,35 +1,25 @@
-'use client';
-
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
-
+'use client'
+ 
 export default function GlobalError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string };
-  reset: () => void;
+  error: Error & { digest?: string }
+  reset: () => void
 }) {
   return (
     <html>
-      <body className="min-h-screen bg-otwBlack text-otwOffWhite antialiased flex items-center justify-center">
-        <OtwCard className="max-w-md w-full text-center space-y-4 m-4">
-          <h2 className="text-xl font-bold text-red-500">Critical System Error</h2>
-          <p className="text-sm opacity-80">
-            A critical error occurred. Please refresh the page.
-          </p>
-          {error.digest && (
-            <p className="text-xs font-mono bg-black/20 p-2 rounded">
-              Error ID: {error.digest}
-            </p>
-          )}
-          <div className="flex justify-center pt-2">
-            <OtwButton onClick={() => reset()} variant="gold">
-              Try again
-            </OtwButton>
-          </div>
-        </OtwCard>
+      <body className="bg-otwBlack text-otwOffWhite">
+        <div className="flex h-screen flex-col items-center justify-center">
+          <h2 className="text-2xl font-bold text-red-500">Something went wrong!</h2>
+          <button 
+            className="mt-4 rounded-lg bg-otwGold px-4 py-2 text-otwBlack font-bold hover:bg-otwGold/90"
+            onClick={() => reset()}
+          >
+            Try again
+          </button>
+        </div>
       </body>
     </html>
-  );
+  )
 }
