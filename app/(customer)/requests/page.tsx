@@ -1,4 +1,7 @@
 import { getUserRequests } from '@/app/actions/requests';
+
+export const dynamic = 'force-dynamic';
+
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
