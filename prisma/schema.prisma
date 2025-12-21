@@ -2,7 +2,7 @@
 // Generator - Prisma 7 format
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
   output   = "../lib/generated/prisma"
 }
 
