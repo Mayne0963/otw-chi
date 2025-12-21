@@ -1,7 +1,4 @@
 import { getAdminLedger } from '@/app/actions/wallet';
-
-export const dynamic = 'force-dynamic';
-
 import { requireRole } from '@/lib/auth/roles';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable } from '@/components/ui/DataTable';

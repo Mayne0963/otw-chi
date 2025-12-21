@@ -1,7 +1,4 @@
 import { getWalletBalance, getWalletHistory } from '@/app/actions/wallet';
-
-export const dynamic = 'force-dynamic';
-
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { DataTable } from '@/components/ui/DataTable';

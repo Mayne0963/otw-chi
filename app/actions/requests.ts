@@ -2,7 +2,7 @@
 
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
-import { ServiceType, RequestStatus } from '@/lib/generated/prisma';
+import { ServiceType, RequestStatus } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
