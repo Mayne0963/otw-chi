@@ -4,16 +4,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { createRequest } from '@/app/actions/requests';
+import { ServiceType } from '@prisma/client';
 import { Package, ShoppingBag, Wine, Briefcase, MapPin, ArrowRight, Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
-
-// Define ServiceType locally to avoid importing @prisma/client in a client component
-enum ServiceType {
-  FOOD = 'FOOD',
-  STORE = 'STORE',
-  FRAGILE = 'FRAGILE',
-  CONCIERGE = 'CONCIERGE',
-}
 
 const SERVICE_TYPES = [
   { id: ServiceType.FOOD, label: 'Food Delivery', icon: ShoppingBag, desc: 'Hot meals from restaurants' },
@@ -25,7 +18,7 @@ const SERVICE_TYPES = [
 export default function NewRequestPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    serviceType: '' as any,
+    serviceType: '' as ServiceType,
     pickup: '',
     dropoff: '',
     notes: '',
