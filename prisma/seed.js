@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('@/lib/generated/prisma');
 const { neonConfig, Pool } = require('@neondatabase/serverless');
 const { PrismaNeon } = require('@prisma/adapter-neon');
 
