@@ -95,7 +95,14 @@ export async function getRequest(id: string) {
   const prisma = getPrisma();
   const request = await prisma.request.findUnique({
     where: { id },
-    include: { events: { orderBy: { timestamp: 'desc' } } },
+    include: { 
+      events: { orderBy: { timestamp: 'desc' } },
+      assignedDriver: {
+        include: {
+          user: true
+        }
+      }
+    },
   });
 
   if (!request || request.customerId !== user.id) {
