@@ -13,14 +13,14 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Users', href: '/users', icon: Users },
-  { label: 'Drivers', href: '/drivers', icon: Truck },
-  { label: 'Cities & Zones', href: '/cities-zones', icon: Map },
-  { label: 'Requests', href: '/requests', icon: Package },
-  { label: 'Payouts', href: '/payouts', icon: DollarSign },
-  { label: 'NIP Ledger', href: '/nip-ledger', icon: FileText },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'Users', href: '/admin/users', icon: Users },
+  { label: 'Drivers', href: '/admin/drivers', icon: Truck },
+  { label: 'Cities & Zones', href: '/admin/cities-zones', icon: Map },
+  { label: 'Requests', href: '/admin/requests', icon: Package },
+  { label: 'Payouts', href: '/admin/payouts', icon: DollarSign },
+  { label: 'NIP Ledger', href: '/admin/nip-ledger', icon: FileText },
+  { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import styles from "./OtwRequestPicker.module.css";
 import { Urgency, UiServiceType as ServiceType, ServiceConfigUi as ServiceConfig } from "../../lib/otw/otwTypes";

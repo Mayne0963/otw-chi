@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Jobs', href: '/jobs', icon: Truck },
-  { label: 'Earnings', href: '/earnings', icon: DollarSign },
-  { label: 'Profile', href: '/profile', icon: User },
+  { label: 'Dashboard', href: '/driver/dashboard', icon: LayoutDashboard },
+  { label: 'Jobs', href: '/driver/jobs', icon: Truck },
+  { label: 'Earnings', href: '/driver/earnings', icon: DollarSign },
+  { label: 'Profile', href: '/driver/profile', icon: User },
 ];
 
 export default async function DriverLayout({ children }: { children: React.ReactNode }) {

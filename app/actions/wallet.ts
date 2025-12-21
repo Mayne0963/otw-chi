@@ -56,7 +56,7 @@ export async function createAdjustment(targetUserId: string, amount: number, rea
     }
   });
   
-  revalidatePath('/nip-ledger');
+  revalidatePath('/admin/nip-ledger');
   revalidatePath('/wallet/nip');
 }
 
