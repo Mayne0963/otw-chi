@@ -4,9 +4,10 @@ import { getPrisma } from '@/lib/db';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,7 +22,7 @@ export async function GET(
     }
 
     const request = await prisma.request.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         assignedDriver: {
           include: { user: true }

@@ -11,13 +11,14 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function RequestDetailPage({ params }: { params: { id: string } }) {
+export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const user = await getCurrentUser();
   if (!user) {
     redirect('/sign-in');
   }
 
-  const request = await getRequest(params.id);
+  const request = await getRequest(id);
 
   if (!request) {
     return (

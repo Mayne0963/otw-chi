@@ -9,13 +9,14 @@ import { acceptJobAction, updateJobStatusAction } from '@/app/actions/driver';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DriverJobDetailPage({ params }: { params: { id: string } }) {
+export default async function DriverJobDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const prisma = getPrisma();
   const user = await getCurrentUser();
   if (!user) {
     return (
       <OtwPageShell>
-        <OtwSectionHeader title={`Job ${params.id}`} subtitle="Update status and view details." />
+        <OtwSectionHeader title={`Job ${id}`} subtitle="Update status and view details." />
         <OtwCard className="mt-3"><div className="text-sm">Please sign in.</div></OtwCard>
       </OtwPageShell>
     );
@@ -34,7 +35,7 @@ export default async function DriverJobDetailPage({ params }: { params: { id: st
     );
   }
 
-  const req = await prisma.request.findUnique({ where: { id: params.id }, include: { customer: true, events: true } });
+  const req = await prisma.request.findUnique({ where: { id }, include: { customer: true, events: true } });
   if (!req) {
     return (
       <OtwPageShell>
