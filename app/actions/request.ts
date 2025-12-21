@@ -107,7 +107,7 @@ export async function getRequest(id: string) {
 
   if (!request) return null;
 
-  const role = user.publicMetadata.role as string;
+  const role = user.role;
   const isCustomer = request.customerId === user.id;
   const isAssignedDriver = request.assignedDriver?.userId === user.id;
   const isAdmin = role === 'ADMIN';
