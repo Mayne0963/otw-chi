@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useMemo, useState, useEffect } from "react";
 import styles from "./OtwMembershipCard.module.css";
 import { getMembershipForCustomer, estimateRemainingMiles, getAllTiers } from "../../lib/otw/otwMembership";

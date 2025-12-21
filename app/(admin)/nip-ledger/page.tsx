@@ -73,7 +73,7 @@ export default async function AdminNipLedgerPage({
                   header: "Type",
                   accessorKey: "type",
                   cell: (item) => {
-                    let variant: "default" | "secondary" | "success" | "destructive" | "outline" | "warning" = "outline";
+                    let variant: "default" | "secondary" | "success" | "destructive" | "outline" = "outline";
                     if (item.type === 'EARN') variant = 'success';
                     if (item.type === 'SPEND') variant = 'destructive';
                     if (item.type === 'ADJUST') variant = 'warning';
