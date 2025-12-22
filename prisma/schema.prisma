@@ -66,6 +66,7 @@ model User {
   driverEarnings   DriverEarnings[]
   franchiseProfile FranchiseProfile?
   driverApplications DriverApplication[]
+  driverLocations    DriverLocation[]
 }
 
 model DriverApplication {
@@ -148,6 +149,17 @@ model Request {
 
   @@index([customerId])
   @@index([status])
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  driverId  String
+  lat       Float
+  lng       Float
+  timestamp DateTime @default(now())
+
+  driver    User     @relation(fields: [driverId], references: [id])
+  @@index([driverId])
 }
 
 model RequestEvent {

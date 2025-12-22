@@ -48,15 +48,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not assigned to this request' }, { status: 403 });
     }
 
-    // Update location
-    const updated = await prisma.request.update({
-      where: { id: requestId },
-      data: {
-        lastKnownLat: lat,
-        lastKnownLng: lng,
-        lastKnownAt: new Date(),
-      },
-    });
+    // Update location and log history
+    const [updated] = await prisma.$transaction([
+      prisma.request.update({
+        where: { id: requestId },
+        data: {
+          lastKnownLat: lat,
+          lastKnownLng: lng,
+          lastKnownAt: new Date(),
+        },
+      }),
+      prisma.driverLocation.create({
+        data: {
+          driverId: dbUser.id,
+          lat,
+          lng,
+        }
+      })
+    ]);
 
     return NextResponse.json(updated);
   } catch (error) {

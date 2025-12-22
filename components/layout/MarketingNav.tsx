@@ -11,8 +11,8 @@ import {
   SheetClose
 } from "@/components/ui/sheet"
 
-export function MarketingNav() {
-  const NavLinks = () => (
+function NavLinks() {
+  return (
     <>
       <Link 
         href="/pricing" 
@@ -32,15 +32,11 @@ export function MarketingNav() {
       >
         Franchise
       </Link>
-      <Link 
-        href="/request" 
-        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
-      >
-        Request a Service
-      </Link>
     </>
   )
+}
 
+export function MarketingNav() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-otwBlack/80 backdrop-blur supports-[backdrop-filter]:bg-otwBlack/60">
       <div className="otw-container flex h-16 items-center justify-between">
@@ -62,7 +58,7 @@ export function MarketingNav() {
               <Link href="/dashboard">Dashboard</Link>
             </Button>
             <Button asChild size="sm" className="hidden sm:flex bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
-              <Link href="/requests/new">Request a Delivery</Link>
+              <Link href="/requests/new">Place Order</Link>
             </Button>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
@@ -71,11 +67,8 @@ export function MarketingNav() {
             <Button asChild variant="ghost" size="sm" className="hidden md:flex text-otwOffWhite hover:text-otwGold hover:bg-white/5">
               <Link href="/sign-in">Sign In</Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="hidden md:flex border-otwGold text-otwGold hover:bg-otwGold/10">
-              <Link href="/requests/new">Request a Delivery</Link>
-            </Button>
             <Button asChild size="sm" className="bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
-              <Link href="/sign-up">Get Started</Link>
+              <Link href="/requests/new">Place Order</Link>
             </Button>
           </SignedOut>
 
