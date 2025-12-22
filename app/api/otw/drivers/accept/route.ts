@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/lib/auth/roles";
 import {
   driverAcceptRequest,
   assignRequestToDriver,
@@ -7,6 +8,7 @@ import { OtwDriverId, OtwRequestId } from "@/lib/otw/otwIds";
 
 export async function POST(request: NextRequest) {
   try {
+    await requireRole(["DRIVER", "ADMIN"]);
     const body = await request.json();
     const { driverId, requestId } = body || {};
     if (!driverId || !requestId) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/lib/auth/roles";
 import {
   listRequestsForDriver,
   listOpenRequests,
@@ -9,6 +10,7 @@ import { getDriverById } from "@/lib/otw/otwDrivers";
 
 export async function GET(request: NextRequest) {
   try {
+    await requireRole(["DRIVER", "ADMIN"]);
     const { searchParams } = new URL(request.url);
     const driverIdParam = searchParams.get("driverId");
     if (!driverIdParam) {

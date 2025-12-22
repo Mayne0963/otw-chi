@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/lib/auth";
 import { listAllMemberships } from "@/lib/otw/otwMembership";
 import { getAllFeedback } from "@/lib/otw/otwReputation";
 import { listDrivers } from "@/lib/otw/otwDrivers";
@@ -12,6 +13,12 @@ import {
 } from "@/lib/otw/otwFranchise";
 
 export async function GET(request: NextRequest) {
+  try {
+    await requireRole(["ADMIN"]);
+  } catch (e) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let requests: any[] = [];
   try {
     const base = new URL(request.url).origin;
