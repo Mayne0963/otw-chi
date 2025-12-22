@@ -63,57 +63,57 @@ enum PayoutMethod {
 
 // Models
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      Role     @default(CUSTOMER)
-  clerkId   String   @unique
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  role              Role      @default(CUSTOMER)
+  clerkId           String    @unique
   dob               DateTime?
   termsAcceptedAt   DateTime?
   privacyAcceptedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  driverProfile    DriverProfile?
-  customerProfile  CustomerProfile?
-  requests         Request[]
-  membership       MembershipSubscription?
-  supportTickets   SupportTicket[]
-  nIPLedger        NIPLedger[]
-  driverEarnings   DriverEarnings[]
-  driverPayouts    DriverPayout[]
-  nipTransactions  NipTransaction[]
-  franchiseProfile FranchiseProfile?
+  driverProfile      DriverProfile?
+  customerProfile    CustomerProfile?
+  requests           Request[]
+  membership         MembershipSubscription?
+  supportTickets     SupportTicket[]
+  nIPLedger          NIPLedger[]
+  driverEarnings     DriverEarnings[]
+  driverPayouts      DriverPayout[]
+  nipTransactions    NipTransaction[]
+  franchiseProfile   FranchiseProfile?
   driverApplications DriverApplication[]
 }
 
 model DriverApplication {
-  id          String   @id @default(cuid())
-  userId      String?
-  email       String
-  fullName    String
-  phone       String
-  city        String
-  vehicleType String
+  id           String   @id @default(cuid())
+  userId       String?
+  email        String
+  fullName     String
+  phone        String
+  city         String
+  vehicleType  String
   availability String
-  message     String?
-  status      String   @default("NEW") // NEW, REVIEWING, APPROVED, REJECTED
-  createdAt   DateTime @default(now())
-  
-  user        User?    @relation(fields: [userId], references: [id])
+  message      String?
+  status       String   @default("NEW") // NEW, REVIEWING, APPROVED, REJECTED
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }
 
 model DriverProfile {
-  id       String  @id @default(cuid())
-  userId   String  @unique
-  rating   Float?  @default(0)
-  status   String  @default("OFFLINE")
-  zoneId   String?
+  id                String           @id @default(cuid())
+  userId            String           @unique
+  rating            Float?           @default(0)
+  status            String           @default("OFFLINE")
+  zoneId            String?
   agreementSignedAt DateTime?
-  user     User    @relation(fields: [userId], references: [id])
-  zone     Zone?   @relation(fields: [zoneId], references: [id])
-  requests Request[]
-  locations DriverLocation[]
+  user              User             @relation(fields: [userId], references: [id])
+  zone              Zone?            @relation(fields: [zoneId], references: [id])
+  requests          Request[]
+  locations         DriverLocation[]
 }
 
 model CustomerProfile {
@@ -126,18 +126,18 @@ model CustomerProfile {
 }
 
 model City {
-  id    String @id @default(cuid())
-  name  String @unique
-  zones Zone[]
+  id       String    @id @default(cuid())
+  name     String    @unique
+  zones    Zone[]
   requests Request[]
 }
 
 model Zone {
-  id     String @id @default(cuid())
-  name   String
-  cityId String
-  city   City   @relation(fields: [cityId], references: [id])
-  drivers DriverProfile[]
+  id       String          @id @default(cuid())
+  name     String
+  cityId   String
+  city     City            @relation(fields: [cityId], references: [id])
+  drivers  DriverProfile[]
   requests Request[]
 }
 
@@ -160,11 +160,11 @@ model Request {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  customer       User             @relation(fields: [customerId], references: [id])
+  customer       User           @relation(fields: [customerId], references: [id])
   assignedDriver DriverProfile? @relation(fields: [assignedDriverId], references: [id])
   events         RequestEvent[]
-  city           City?            @relation(fields: [cityId], references: [id])
-  zone           Zone?            @relation(fields: [zoneId], references: [id])
+  city           City?          @relation(fields: [cityId], references: [id])
+  zone           Zone?          @relation(fields: [zoneId], references: [id])
 
   @@index([customerId])
   @@index([status])
@@ -191,18 +191,18 @@ model SupportTicket {
 }
 
 model MembershipPlan {
-  id           String   @id @default(cuid())
-  name         String   @unique
-  description  String?
-  stripePriceId String? @unique
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String                   @id @default(cuid())
+  name          String                   @unique
+  description   String?
+  stripePriceId String?                  @unique
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
   subscriptions MembershipSubscription[]
 }
 
 model MembershipSubscription {
-  id               String   @id @default(cuid())
-  userId           String   @unique
+  id               String           @id @default(cuid())
+  userId           String           @unique
   planId           String
   status           MembershipStatus @default(ACTIVE)
   stripeCustomerId String?
@@ -211,8 +211,8 @@ model MembershipSubscription {
   renewsAt         DateTime?
   currentPeriodEnd DateTime?
 
-  user   User             @relation(fields: [userId], references: [id])
-  plan   MembershipPlan   @relation(fields: [planId], references: [id])
+  user User           @relation(fields: [userId], references: [id])
+  plan MembershipPlan @relation(fields: [planId], references: [id])
 }
 
 model NIPLedger {
@@ -226,24 +226,24 @@ model NIPLedger {
 }
 
 model DriverEarnings {
-  id        String   @id @default(cuid())
-  driverId  String
-  amount    Int
+  id          String              @id @default(cuid())
+  driverId    String
+  amount      Int
   amountCents Int?
-  status    DriverEarningStatus @default(pending)
-  requestId String?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [driverId], references: [id])
+  status      DriverEarningStatus @default(pending)
+  requestId   String?
+  createdAt   DateTime            @default(now())
+  user        User                @relation(fields: [driverId], references: [id])
 }
 
 model DriverPayout {
-  id          String           @id @default(cuid())
-  driverId    String
-  totalCents  Int
-  status      DriverPayoutStatus @default(processing)
-  payoutMethod PayoutMethod      @default(manual)
-  createdAt   DateTime          @default(now())
-  user        User              @relation(fields: [driverId], references: [id])
+  id           String             @id @default(cuid())
+  driverId     String
+  totalCents   Int
+  status       DriverPayoutStatus @default(processing)
+  payoutMethod PayoutMethod       @default(manual)
+  createdAt    DateTime           @default(now())
+  user         User               @relation(fields: [driverId], references: [id])
 }
 
 model NipTransaction {
@@ -254,6 +254,7 @@ model NipTransaction {
   refId     String?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+
   @@index([userId, createdAt])
 }
 
@@ -267,12 +268,13 @@ model FranchiseProfile {
 }
 
 model DriverLocation {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   driverId  String
   lat       Float
   lng       Float
-  timestamp DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  timestamp DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   driver    DriverProfile @relation(fields: [driverId], references: [id])
+
   @@index([driverId, timestamp])
 }
