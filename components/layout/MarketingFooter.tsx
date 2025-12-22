@@ -3,7 +3,7 @@ import Link from "next/link"
 export function MarketingFooter() {
   return (
     <footer className="border-t border-white/10 bg-otwBlack py-12 text-otwOffWhite/60">
-      <div className="container grid grid-cols-1 gap-8 md:grid-cols-4">
+      <div className="otw-container flex h-16 items-center justify-between">
         <div className="space-y-4">
           <h4 className="text-lg font-bold text-otwGold">OTW</h4>
           <p className="text-sm">Luxury delivery concierge for the block, the business, and the busy.</p>
