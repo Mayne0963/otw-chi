@@ -1,50 +1,75 @@
-import OtwPageShell from '@/components/ui/otw/OtwPageShell';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwButton from '@/components/ui/otw/OtwButton';
-import { createCheckoutSession } from '@/app/actions/billing';
+import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Check } from 'lucide-react';
 
 export default function PricingPage() {
+  const plans = [
+    {
+      code: 'basic',
+      name: 'Basic',
+      price: '$0',
+      description: 'Pay-as-you-go concierge delivery.',
+      features: ['No monthly fee', 'Standard support', 'On-demand requests'],
+    },
+    {
+      code: 'plus',
+      name: 'Plus',
+      price: '$9.99/mo',
+      description: 'Best for regular users.',
+      features: ['10% off deliveries', 'Priority support', 'Faster dispatch'],
+    },
+    {
+      code: 'executive',
+      name: 'Executive',
+      price: '$29.99/mo',
+      description: 'Premium concierge experience.',
+      features: ['Service fee waived', '24/7 concierge', 'Priority dispatch'],
+    },
+  ];
+
   return (
-    <OtwPageShell>
-      <div className="space-y-6">
-        <OtwSectionHeader title="Membership Pricing" subtitle="Choose the tier that fits your motion." />
-        <div className="grid md:grid-cols-3 gap-4">
-          <OtwCard className="p-5">
-            <h3 className="text-lg font-semibold">Broski Basic</h3>
-            <p className="text-sm opacity-80 mb-3">Pay as you go.</p>
-            <div className="text-3xl font-bold mb-2">$9<span className="text-base opacity-70">/mo</span></div>
-            <form action={async () => { 'use server'; await createCheckoutSession('BASIC'); }} className="mt-6">
-              <OtwButton variant="outline" className="w-full">Choose</OtwButton>
-            </form>
-          </OtwCard>
-          <OtwCard variant="default" className="p-5 bg-gradient-to-b from-otwBlack to-otwRedDark">
-            <h3 className="text-lg font-semibold">Broski+</h3>
-            <p className="text-sm opacity-80 mb-3">Priority drivers.</p>
-            <div className="text-3xl font-bold mb-2">$19<span className="text-base opacity-70">/mo</span></div>
-            <form action={async () => { 'use server'; await createCheckoutSession('PLUS'); }} className="mt-6">
-              <OtwButton variant="gold" className="w-full">Choose</OtwButton>
-            </form>
-          </OtwCard>
-          <OtwCard variant="red" className="p-5 border border-otwGold shadow-otwGlow">
-            <h3 className="text-lg font-semibold">Executive Broski</h3>
-            <p className="text-sm opacity-90 mb-3">Concierge level.</p>
-            <div className="text-3xl font-bold mb-2">$39<span className="text-base opacity-70">/mo</span></div>
-            <form action={async () => { 'use server'; await createCheckoutSession('EXEC'); }} className="mt-6">
-              <OtwButton variant="gold" className="w-full">Choose</OtwButton>
-            </form>
-          </OtwCard>
-        </div>
-        <OtwCard>
-          <OtwSectionHeader title="FAQ" subtitle="Common membership questions" />
-          <ul className="mt-3 space-y-2 text-sm opacity-85">
-            <li>Can I change tiers anytime? Yes.</li>
-            <li>Do unused miles rollover? Executive only.</li>
-            <li>Are tips included? Tips are separate.</li>
-          </ul>
-        </OtwCard>
+    <div className="space-y-8">
+      <div className="text-center space-y-2">
+        <h1 className="text-4xl font-bold">Memberships</h1>
+        <p className="text-white/70">Upgrade your OTW experience and save on every delivery.</p>
       </div>
-    </OtwPageShell>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        {plans.map((plan) => (
+          <Card key={plan.code} className="relative flex flex-col">
+            <Badge variant="secondary" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-otwGold text-otwBlack hover:bg-otwGold">
+              Popular
+            </Badge>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                {plan.name}
+                <span className="text-lg text-white/60">{plan.price}</span>
+              </CardTitle>
+              <CardDescription>{plan.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <ul className="space-y-3">
+                {plan.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Check className="h-4 w-4 text-otwGold shrink-0 mt-0.5" />
+                    <span className="text-white/80">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <PlanCheckoutButton
+                plan={plan.code as 'basic' | 'plus' | 'executive'}
+                className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90"
+              >
+                Choose Plan
+              </PlanCheckoutButton>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }
 

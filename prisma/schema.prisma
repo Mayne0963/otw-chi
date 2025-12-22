@@ -66,7 +66,6 @@ model User {
   driverEarnings   DriverEarnings[]
   franchiseProfile FranchiseProfile?
   driverApplications DriverApplication[]
-  driverLocations    DriverLocation[]
 }
 
 model DriverApplication {
@@ -95,6 +94,7 @@ model DriverProfile {
   user     User    @relation(fields: [userId], references: [id])
   zone     Zone?   @relation(fields: [zoneId], references: [id])
   requests Request[]
+  locations DriverLocation[]
 }
 
 model CustomerProfile {
@@ -149,17 +149,6 @@ model Request {
 
   @@index([customerId])
   @@index([status])
-}
-
-model DriverLocation {
-  id        String   @id @default(cuid())
-  driverId  String
-  lat       Float
-  lng       Float
-  timestamp DateTime @default(now())
-
-  driver    User     @relation(fields: [driverId], references: [id])
-  @@index([driverId])
 }
 
 model RequestEvent {
@@ -233,4 +222,13 @@ model FranchiseProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  driverId  String
+  lat       Float
+  lng       Float
+  timestamp DateTime @default(now())
+  driver    DriverProfile @relation(fields: [driverId], references: [id])
 }

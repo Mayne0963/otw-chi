@@ -11,41 +11,36 @@ const isPublicRoute = createRouteMatcher([
   '/contact',
   '/driver/apply',
   '/api/stripe/webhook',
-  '/api/webhooks(.*)',
-  '/terms',
-  '/privacy'
+  '/api/webhooks/(.*)',
 ]);
 
-// Explicitly protected routes (optional, as we protect everything else by default)
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/membership(.*)',
-  '/wallet(.*)',
-  '/settings(.*)',
-  '/support(.*)',
-  '/requests(.*)',
-  '/driver/dashboard(.*)',
-  '/driver/jobs(.*)',
-  '/driver/earnings(.*)',
-  '/admin(.*)'
-]);
+const isDriverRoute = createRouteMatcher(['/driver(.*)']);
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) {
-    return NextResponse.next();
+  if (isPublicRoute(req)) return NextResponse.next();
+
+  const session = await auth.protect();
+
+  const claims = session.sessionClaims as any;
+  const role = String(
+    claims?.publicMetadata?.role ?? claims?.metadata?.role ?? claims?.otw?.role ?? ''
+  ).toUpperCase();
+
+  if (isAdminRoute(req) && role !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
-  // Protect all other routes
-  await auth.protect();
+  if (isDriverRoute(req) && !(role === 'DRIVER' || role === 'ADMIN')) {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
 
   return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
+    '/((?!_next|.*\\..*).*)',
     '/(api|trpc)(.*)',
   ],
 };

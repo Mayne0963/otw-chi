@@ -1,6 +1,6 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 import { Badge } from '@/components/ui/badge';
 import { Check } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/roles';
@@ -70,12 +70,13 @@ export default async function MembershipPage() {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button 
+                <PlanCheckoutButton
+                  plan={plan.code.toLowerCase() as 'basic' | 'plus' | 'executive'}
                   className={`w-full ${isCurrent ? 'opacity-50 cursor-default' : 'bg-otwGold text-otwBlack hover:bg-otwGold/90'}`}
                   disabled={isCurrent}
                 >
                   {isCurrent ? 'Active' : 'Choose Plan'}
-                </Button>
+                </PlanCheckoutButton>
               </CardFooter>
             </Card>
           );

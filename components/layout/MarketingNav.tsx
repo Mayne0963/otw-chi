@@ -32,6 +32,12 @@ function NavLinks() {
       >
         Franchise
       </Link>
+      <Link 
+        href="/request" 
+        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
+      >
+        Request a Service
+      </Link>
     </>
   )
 }
@@ -58,7 +64,7 @@ export function MarketingNav() {
               <Link href="/dashboard">Dashboard</Link>
             </Button>
             <Button asChild size="sm" className="hidden sm:flex bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
-              <Link href="/requests/new">Place Order</Link>
+              <Link href="/request">Place Order</Link>
             </Button>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
@@ -67,8 +73,11 @@ export function MarketingNav() {
             <Button asChild variant="ghost" size="sm" className="hidden md:flex text-otwOffWhite hover:text-otwGold hover:bg-white/5">
               <Link href="/sign-in">Sign In</Link>
             </Button>
+            <Button asChild variant="outline" size="sm" className="hidden md:flex border-otwGold text-otwGold hover:bg-otwGold/10">
+              <Link href="/request">Place Order</Link>
+            </Button>
             <Button asChild size="sm" className="bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
-              <Link href="/requests/new">Place Order</Link>
+              <Link href="/sign-up">Get Started</Link>
             </Button>
           </SignedOut>
 
@@ -112,7 +121,7 @@ export function MarketingNav() {
                   <div className="flex flex-col gap-3 pt-4 border-t border-white/10">
                     <SheetClose asChild>
                       <Button asChild className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">
-                        <Link href="/requests/new">Request a Delivery</Link>
+                        <Link href="/request">Place Order</Link>
                       </Button>
                     </SheetClose>
                     
