@@ -1,46 +1,30 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
-  '/pricing',
-  '/services',
-  '/about',
-  '/contact',
-  '/terms',
-  '/privacy',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/api/stripe/webhook(.*)',
+  '/pricing',
+  '/how-it-works',
+  '/services',
+  '/contact',
+  '/driver/apply',
+  '/api/stripe/webhook',
+  '/api/webhooks(.*)'
 ]);
 
-const isDriverRoute = createRouteMatcher(['/driver(.*)']);
-const isAdminRoute = createRouteMatcher(['/admin(.*)']);
-
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return NextResponse.next();
-
-  const session = await auth.protect();
-
-  const claims = session.sessionClaims as any;
-  const role = String(
-    claims?.publicMetadata?.role ?? claims?.metadata?.role ?? claims?.otw?.role ?? ''
-  ).toUpperCase();
-
-  if (isAdminRoute(req) && role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/', req.url));
+  if (isPublicRoute(req)) {
+    return;
   }
-
-  if (isDriverRoute(req) && !(role === 'DRIVER' || role === 'ADMIN')) {
-    return NextResponse.redirect(new URL('/', req.url));
-  }
-
-  return NextResponse.next();
+  await auth.protect();
 });
 
 export const config = {
   matcher: [
-    '/((?!_next|.*\\..*).*)',
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 };
