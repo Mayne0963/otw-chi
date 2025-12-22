@@ -16,15 +16,33 @@ const OtwNavbar: React.FC = () => {
             <Link href="/how-it-works" className="hover:text-otwGold transition">How It Works</Link>
             <Link href="/pricing" className="hover:text-otwGold transition">Pricing</Link>
             <Link href="/driver/apply" className="hover:text-otwGold transition">Drive</Link>
+            <Link
+              href="/order"
+              className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20"
+            >
+              Place Order
+            </Link>
           </div>
 
           <SignedIn>
             <Link href="/dashboard" className="hover:text-otwGold transition">Dashboard</Link>
+            <Link
+              href="/order"
+              className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20 hidden sm:inline-block"
+            >
+              Place Order
+            </Link>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           
           <SignedOut>
              <div className="flex gap-3">
+              <Link
+                href="/order"
+                className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20 hidden md:inline-block"
+              >
+                Place Order
+              </Link>
               <SignInButton mode="modal">
                 <button className="hover:text-otwGold transition">Sign In</button>
               </SignInButton>

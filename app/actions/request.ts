@@ -62,14 +62,26 @@ export async function createRequestAction(formData: FormData) {
   });
 
   // Award NIP to user
-  await prisma.nIPLedger.create({
-    data: {
-      userId: user.id,
-      amount: nipEarned,
-      type: 'REQUEST_REWARD',
-      requestId: created.id,
-    },
-  });
+  const p: any = prisma as any;
+  try {
+    await p.nipTransaction?.create?.({
+      data: {
+        userId: user.id,
+        amount: nipEarned,
+        reason: 'REQUEST_REWARD',
+        refId: created.id,
+      },
+    });
+  } catch {
+    await prisma.nIPLedger.create({
+      data: {
+        userId: user.id,
+        amount: nipEarned,
+        type: 'REQUEST_REWARD',
+        requestId: created.id,
+      },
+    });
+  }
   
   revalidatePath('/requests');
   revalidatePath('/dashboard');

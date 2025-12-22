@@ -171,13 +171,26 @@ export async function completeJob(requestId: string) {
     });
     
     if (!existing) {
-        await prisma.driverEarnings.create({
+      await prisma.driverEarnings.create({
         data: {
-            driverId: user.id,
-            amount: earningsAmount,
-            requestId: job.id,
+          driverId: user.id,
+          amount: earningsAmount,
+          requestId: job.id,
         },
-        });
+      });
+    }
+  }
+
+  // Award NIP for customer first completed order
+  if (job.customerId) {
+    const count = await prisma.request.count({
+      where: { customerId: job.customerId, status: 'COMPLETED' },
+    });
+    if (count === 1) {
+      const p: any = getPrisma();
+      await p.nipTransaction?.create?.({
+        data: { userId: job.customerId, amount: 50, reason: 'FIRST_COMPLETED_ORDER', refId: job.id },
+      }).catch?.(() => {});
     }
   }
 
@@ -199,25 +212,40 @@ export async function getDriverEarnings() {
     orderBy: { createdAt: 'desc' },
   });
 
-  const total = earnings.reduce((sum, e) => sum + e.amount, 0);
+  const total = earnings.reduce((sum, e) => {
+    const cents = ((e as any).amountCents ?? e.amount ?? 0);
+    return sum + cents;
+  }, 0);
 
   return { total, history: earnings };
 }
 
 export async function requestPayoutAction(formData: FormData) {
-    // Placeholder for payout request
-    const user = await getCurrentUser();
-    if (!user) return;
-    
-    const prisma = getPrisma();
-    await prisma.supportTicket.create({
-        data: {
-            userId: user.id,
-            subject: 'Payout Request',
-            message: 'Driver requested payout via dashboard.',
-            status: 'OPEN'
-        }
-    });
-    
-    revalidatePath('/driver/earnings');
+  const user = await getCurrentUser();
+  if (!user || user.role !== 'DRIVER') return;
+
+  const prisma = getPrisma();
+  const available = await prisma.driverEarnings.findMany({
+    where: { driverId: user.id },
+    orderBy: { createdAt: 'asc' },
+  });
+  const totalCents = available.reduce((sum, e) => sum + ((e as any).amountCents ?? e.amount ?? 0), 0);
+  if (totalCents <= 0) {
+    return;
+  }
+
+  const p: any = prisma as any;
+  await p.$transaction?.(async (tx: any) => {
+    await tx.driverPayout?.create?.({
+      data: {
+        driverId: user.id,
+        totalCents,
+        status: 'processing',
+        payoutMethod: 'manual',
+      },
+    }).catch?.(() => {});
+    // Status updates will be enabled after schema migration
+  }).catch?.(() => {});
+
+  revalidatePath('/driver/earnings');
 }

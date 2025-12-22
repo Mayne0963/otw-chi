@@ -64,7 +64,7 @@ export function MarketingNav() {
               <Link href="/dashboard">Dashboard</Link>
             </Button>
             <Button asChild size="sm" className="hidden sm:flex bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
-              <Link href="/request">Place Order</Link>
+              <Link href="/order">Place Order</Link>
             </Button>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
@@ -74,7 +74,7 @@ export function MarketingNav() {
               <Link href="/sign-in">Sign In</Link>
             </Button>
             <Button asChild variant="outline" size="sm" className="hidden md:flex border-otwGold text-otwGold hover:bg-otwGold/10">
-              <Link href="/request">Place Order</Link>
+              <Link href="/order">Place Order</Link>
             </Button>
             <Button asChild size="sm" className="bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
               <Link href="/sign-up">Get Started</Link>
@@ -121,7 +121,7 @@ export function MarketingNav() {
                   <div className="flex flex-col gap-3 pt-4 border-t border-white/10">
                     <SheetClose asChild>
                       <Button asChild className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">
-                        <Link href="/request">Place Order</Link>
+                        <Link href="/order">Place Order</Link>
                       </Button>
                     </SheetClose>
                     

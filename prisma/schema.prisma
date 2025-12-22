@@ -44,6 +44,23 @@ enum MembershipStatus {
   INACTIVE
 }
 
+enum DriverEarningStatus {
+  pending
+  available
+  paid
+}
+
+enum DriverPayoutStatus {
+  processing
+  paid
+  failed
+}
+
+enum PayoutMethod {
+  stripe
+  manual
+}
+
 // Models
 model User {
   id        String   @id @default(cuid())
@@ -210,9 +227,32 @@ model DriverEarnings {
   id        String   @id @default(cuid())
   driverId  String
   amount    Int
+  amountCents Int?
+  status    DriverEarningStatus @default(pending)
   requestId String?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [driverId], references: [id])
+}
+
+model DriverPayout {
+  id          String           @id @default(cuid())
+  driverId    String
+  totalCents  Int
+  status      DriverPayoutStatus @default(processing)
+  payoutMethod PayoutMethod      @default(manual)
+  createdAt   DateTime          @default(now())
+  user        User              @relation(fields: [driverId], references: [id])
+}
+
+model NipTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int
+  reason    String
+  refId     String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  @@index([userId, createdAt])
 }
 
 model FranchiseProfile {
@@ -230,5 +270,7 @@ model DriverLocation {
   lat       Float
   lng       Float
   timestamp DateTime @default(now())
+  updatedAt DateTime @updatedAt
   driver    DriverProfile @relation(fields: [driverId], references: [id])
+  @@index([driverId, timestamp])
 }

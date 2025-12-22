@@ -20,7 +20,7 @@ export default async function DriverEarningsPage() {
     );
   }
   
-  const { history } = await getDriverEarnings();
+  const { history, total } = await getDriverEarnings();
   
   const now = new Date();
   const startOfWeek = new Date(now);
@@ -31,19 +31,24 @@ export default async function DriverEarningsPage() {
   
   const weekly = history
     .filter(e => e.createdAt >= startOfWeek)
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum, e) => sum + (((e as any).amountCents ?? e.amount ?? 0)), 0);
     
   const monthly = history
     .filter(e => e.createdAt >= startOfMonth)
-    .reduce((sum, e) => sum + e.amount, 0);
+    .reduce((sum, e) => sum + (((e as any).amountCents ?? e.amount ?? 0)), 0);
+
+  const availableTotal = history
+    .filter(e => (e as any).status === 'available')
+    .reduce((sum, e) => sum + (((e as any).amountCents ?? e.amount ?? 0)), 0);
 
   const prisma = getPrisma();
-  const latestTicket = await prisma.supportTicket.findFirst({
-    where: { userId: user.id, subject: 'Payout Request' },
+  const p: any = prisma as any;
+  const latestPayout = await p.driverPayout?.findFirst?.({
+    where: { driverId: user.id },
     orderBy: { createdAt: 'desc' },
-  });
-  const latestTicketStatus = latestTicket?.status ?? null;
-  const hasOpenPayoutRequest = latestTicket?.status === 'OPEN';
+  }) ?? null;
+  const latestPayoutStatus = (latestPayout as any)?.status ?? null;
+  const hasProcessingPayout = (latestPayout as any)?.status === 'processing';
 
   return (
     <OtwPageShell>
@@ -58,16 +63,16 @@ export default async function DriverEarningsPage() {
           <div className="mt-2"><OtwStatPill label="USD" value={`$${(monthly/100).toFixed(2)}`} tone="gold" /></div>
         </OtwCard>
         <OtwCard>
-          <div className="text-sm font-medium">Actions</div>
-          {latestTicketStatus && (
+          <div className="text-sm font-medium">Available Balance</div>
+          <div className="mt-2"><OtwStatPill label="USD" value={`$${(availableTotal/100).toFixed(2)}`} tone="neutral" /></div>
+          {latestPayoutStatus && (
             <div className="mt-2 text-xs opacity-70">
-              Latest payout request: <span className="font-semibold">{latestTicketStatus}</span>
+              Latest payout: <span className="font-semibold">{latestPayoutStatus}</span>
             </div>
           )}
           <form action={requestPayoutAction} className="mt-2 flex gap-2">
-            <input type="hidden" name="weeklyCents" value={weekly} />
-            <input type="hidden" name="monthlyCents" value={monthly} />
-            <OtwButton variant="outline" disabled={hasOpenPayoutRequest}>Request Payout</OtwButton>
+            <input type="hidden" name="availableCents" value={availableTotal} />
+            <OtwButton variant="outline" disabled={hasProcessingPayout || availableTotal <= 0}>Request Payout</OtwButton>
           </form>
         </OtwCard>
       </div>
@@ -81,7 +86,10 @@ export default async function DriverEarningsPage() {
               <li key={e.id} className="py-2 border-b border-white/10 last:border-0">
                 <div className="flex items-center justify-between">
                   <div className="text-xs opacity-70">Job {e.requestId?.slice(-6) ?? 'N/A'}</div>
-                  <div>${(e.amount/100).toFixed(2)}</div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs rounded-full px-2 py-1 border border-white/10 opacity-70">{(e as any).status ?? 'pending'}</span>
+                    <span>${((((e as any).amountCents ?? e.amount ?? 0)/100)).toFixed(2)}</span>
+                  </div>
                 </div>
               </li>
             ))}
