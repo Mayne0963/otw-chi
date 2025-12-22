@@ -81,6 +81,8 @@ model User {
   supportTickets   SupportTicket[]
   nIPLedger        NIPLedger[]
   driverEarnings   DriverEarnings[]
+  driverPayouts    DriverPayout[]
+  nipTransactions  NipTransaction[]
   franchiseProfile FranchiseProfile?
   driverApplications DriverApplication[]
 }

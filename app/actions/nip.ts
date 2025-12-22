@@ -9,7 +9,7 @@ export async function getNipBalance(userId?: string) {
   const uid = userId ?? (await getCurrentUser())?.id;
   if (!uid) return 0;
   const txns = await prisma.nipTransaction?.findMany({ where: { userId: uid } }).catch?.(() => []) ?? [];
-  return txns.reduce((sum, t) => sum + t.amount, 0);
+  return (txns as Array<{ amount: number }>).reduce((sum: number, t: { amount: number }) => sum + t.amount, 0);
 }
 
 export async function getNipTransactions(userId?: string) {

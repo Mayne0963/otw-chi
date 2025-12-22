@@ -175,6 +175,8 @@ export async function completeJob(requestId: string) {
         data: {
           driverId: user.id,
           amount: earningsAmount,
+          amountCents: earningsAmount,
+          status: 'available',
           requestId: job.id,
         },
       });
@@ -226,7 +228,7 @@ export async function requestPayoutAction(formData: FormData) {
 
   const prisma = getPrisma();
   const available = await prisma.driverEarnings.findMany({
-    where: { driverId: user.id },
+    where: { driverId: user.id, status: 'available' },
     orderBy: { createdAt: 'asc' },
   });
   const totalCents = available.reduce((sum, e) => sum + ((e as any).amountCents ?? e.amount ?? 0), 0);
@@ -244,7 +246,10 @@ export async function requestPayoutAction(formData: FormData) {
         payoutMethod: 'manual',
       },
     }).catch?.(() => {});
-    // Status updates will be enabled after schema migration
+    await tx.driverEarnings?.updateMany?.({
+      where: { driverId: user.id, status: 'available' },
+      data: { status: 'pending' },
+    }).catch?.(() => {});
   }).catch?.(() => {});
 
   revalidatePath('/driver/earnings');
