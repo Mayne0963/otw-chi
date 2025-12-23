@@ -120,7 +120,7 @@ export interface CreateOtwRequestResult {
  */
 export const createOtwRequest = async (
   input: CreateOtwRequestInput
-): Promise<Result<CreateOtwRequestResult, any>> => {
+): Promise<Result<CreateOtwRequestResult, unknown>> => {
   const { distanceKm, durationMinutes, estimatedMiles } =
     deriveRouteAndMiles(input);
 

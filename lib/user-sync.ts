@@ -1,5 +1,6 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
+import { Role } from '@/lib/generated/prisma';
 
 export async function syncUserOnDashboard() {
   const { userId } = await auth();
@@ -11,7 +12,7 @@ export async function syncUserOnDashboard() {
     const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
     const name = clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || email;
     const roleMeta = String(clerkUser.publicMetadata?.role || 'CUSTOMER').toUpperCase();
-    const role = roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER';
+    const role = (roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER') as Role;
     
     // Compliance fields from metadata (if available)
     const dobMeta = clerkUser.publicMetadata?.dob as string | undefined;
@@ -22,8 +23,8 @@ export async function syncUserOnDashboard() {
     const prisma = getPrisma();
     const user = await prisma.user.upsert({
       where: { clerkId: userId },
-      update: { email, name, role, dob, termsAcceptedAt } as any,
-      create: { clerkId: userId, email, name, role, dob, termsAcceptedAt } as any,
+      update: { email, name, role, dob, termsAcceptedAt },
+      create: { clerkId: userId, email, name, role, dob, termsAcceptedAt },
     });
     await prisma.customerProfile.upsert({
       where: { userId: user.id },

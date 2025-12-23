@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
 export default function DriverApplyPage() {
-  const { user, isSignedIn } = useUser();
+  const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -49,7 +49,7 @@ export default function DriverApplyPage() {
       });
       
       router.push('/');
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",

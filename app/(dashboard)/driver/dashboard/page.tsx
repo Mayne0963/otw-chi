@@ -45,7 +45,7 @@ export default function OtwDriverPage() {
           setDriverId("DRIVER-1");
           setDriverName("OTW Driver");
         }
-      } catch (e) {
+      } catch (_e) {
         setDriverId("DRIVER-1");
         setDriverName("OTW Driver");
       }

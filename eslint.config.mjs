@@ -6,7 +6,7 @@ const config = [
   ...nextConfig,
   {
     name: "custom:ignores",
-    ignores: ["node_modules/**", "dist/**"]
+    ignores: ["node_modules/**", "dist/**", "lib/generated/**", "scripts/**", "prisma/seed.js"]
   },
   {
     name: "custom:base-rules",
@@ -23,7 +23,8 @@ const config = [
         "warn",
         {
           argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_"
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_"
         }
       ]
     }

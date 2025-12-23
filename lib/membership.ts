@@ -1,5 +1,6 @@
 import { getPrisma } from '@/lib/db';
 import { cache } from 'react';
+import { MembershipSubscription, MembershipPlan } from '@/lib/generated/prisma';
 
 export const getActiveSubscription = cache(async (userId: string) => {
   const prisma = getPrisma();
@@ -21,7 +22,7 @@ export const getActiveSubscription = cache(async (userId: string) => {
   return null;
 });
 
-export function getPlanCodeFromSubscription(sub: any): 'BASIC' | 'PLUS' | 'EXEC' | null {
+export function getPlanCodeFromSubscription(sub: (MembershipSubscription & { plan: MembershipPlan }) | null): 'BASIC' | 'PLUS' | 'EXEC' | null {
   if (!sub || !sub.plan) return null;
   
   const name = sub.plan.name.toUpperCase();

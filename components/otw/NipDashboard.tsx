@@ -337,6 +337,7 @@ export default function NipDashboard() {
 
   useEffect(() => {
     initIdsAndFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initIdsAndFetch = async () => {

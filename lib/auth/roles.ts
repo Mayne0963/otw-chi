@@ -1,5 +1,6 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
+import { Role } from '@/lib/generated/prisma';
 
 export async function getCurrentUser() {
   try {
@@ -16,20 +17,33 @@ export async function getCurrentUser() {
         const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
         const name = clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || email;
         const roleMeta = String(clerkUser.publicMetadata?.role || 'CUSTOMER').toUpperCase();
-        const role = roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER';
+        const role = (roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER') as Role;
         const pm = clerkUser.publicMetadata || {};
+        
+        interface UserMetadata {
+          otw_role?: string;
+          otw_tier?: string;
+          nip_wallet_id?: string;
+          franchise_level?: string;
+          otw_zone?: string;
+          role?: string;
+          [key: string]: unknown;
+        }
+
+        const typedPm = pm as UserMetadata;
+
         const defaults = {
-          otw_role: (pm as any).otw_role ?? role.toLowerCase(),
-          otw_tier: (pm as any).otw_tier ?? 'basic',
-          nip_wallet_id: (pm as any).nip_wallet_id ?? 'pending',
-          franchise_level: (pm as any).franchise_level ?? 'seed',
-          otw_zone: (pm as any).otw_zone ?? 'unassigned',
+          otw_role: typedPm.otw_role ?? role.toLowerCase(),
+          otw_tier: typedPm.otw_tier ?? 'basic',
+          nip_wallet_id: typedPm.nip_wallet_id ?? 'pending',
+          franchise_level: typedPm.franchise_level ?? 'seed',
+          otw_zone: typedPm.otw_zone ?? 'unassigned',
           role
         };
         await client.users.updateUser(userId, { publicMetadata: { ...pm, ...defaults } });
         
         user = await prisma.user.create({
-          data: { clerkId: userId, email, name, role } as any,
+          data: { clerkId: userId, email, name, role },
         });
         // Create profile async (don't block)
         prisma.customerProfile.create({ data: { userId: user.id } }).catch(console.error);
@@ -51,7 +65,7 @@ export async function requireRole(allowed: Array<'CUSTOMER' | 'DRIVER' | 'ADMIN'
   if (!user) {
     throw new Error('Unauthorized');
   }
-  if (!allowed.includes(user.role as any)) {
+  if (!allowed.includes(user.role)) {
     throw new Error('Forbidden');
   }
   return user;

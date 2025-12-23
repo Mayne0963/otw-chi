@@ -6,6 +6,7 @@ export function getStripe(): Stripe {
     throw new Error('Stripe secret not configured');
   }
   return new Stripe(key, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     apiVersion: '2024-12-18.acacia' as any,
     typescript: true,
   });

@@ -15,7 +15,7 @@ import {
 export async function GET(request: NextRequest) {
   try {
     await requireRole(["ADMIN"]);
-  } catch (e) {
+  } catch (_e) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         requests = json.requests;
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // fallback to empty
   }
 

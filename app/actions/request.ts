@@ -7,6 +7,8 @@ import { estimatePrice } from '@/lib/pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import { ServiceType, RequestStatus } from '@/lib/generated/prisma';
+
 export async function createRequestAction(formData: FormData) {
   const pickup = String(formData.get('pickup') ?? '');
   const dropoff = String(formData.get('dropoff') ?? '');
@@ -16,7 +18,7 @@ export async function createRequestAction(formData: FormData) {
   const zoneId = String(formData.get('zoneId') ?? '');
   
   // Validate service type
-  const serviceType = ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'].includes(st) ? st : 'FOOD';
+  const serviceType = (['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'].includes(st) ? st : 'FOOD') as ServiceType;
 
   const user = await getCurrentUser();
   if (!user) throw new Error('Unauthorized');
@@ -44,17 +46,17 @@ export async function createRequestAction(formData: FormData) {
 
   const created = await prisma.request.create({
     data: {
-      customer: { connect: { id: user.id } },
+      customerId: user.id,
       pickup,
       dropoff,
-      serviceType: serviceType as any,
-      notes: notes || undefined,
-      status: 'SUBMITTED',
-      cityId: cityId || undefined,
-      zoneId: zoneId || undefined,
+      serviceType,
+      notes: notes || null,
+      status: RequestStatus.SUBMITTED,
+      cityId: cityId || null,
+      zoneId: zoneId || null,
       milesEstimate: miles,
       costEstimate: Math.round(totalPrice * 100), // Store in cents
-    } as any,
+    },
   });
   
   await prisma.requestEvent.create({
@@ -62,9 +64,8 @@ export async function createRequestAction(formData: FormData) {
   });
 
   // Award NIP to user
-  const p: any = prisma as any;
   try {
-    await p.nipTransaction?.create?.({
+    await prisma.nipTransaction.create({
       data: {
         userId: user.id,
         amount: nipEarned,

@@ -1,6 +1,7 @@
 import { listDrivers } from "./otwDrivers";
 import { listAllRequests } from "./otwRequests";
 import { listAllNipWallets } from "./otwNip";
+import { listAllMemberships } from "./otwMembership";
 import { listZones } from "./otwZones";
 import { OtwDriverProfile, OtwRequest } from "./otwTypes";
 
@@ -58,9 +59,9 @@ export const getAdminOverviewSnapshot = (): AdminOverviewSnapshot => {
   let pendingRequests = 0;
 
   for (const r of requests) {
-    if (isCompletedStatus(r.status as any)) {
+    if (isCompletedStatus(r.status)) {
       completedRequests++;
-    } else if (isOpenStatus(r.status as any)) {
+    } else if (isOpenStatus(r.status)) {
       openRequests++;
     } else {
       pendingRequests++;
@@ -98,17 +99,18 @@ export const getAdminOverviewSnapshot = (): AdminOverviewSnapshot => {
     const openRequests = requests.filter(
       (r) => r.zoneId === z.zoneId && (r.status === "PENDING" || r.status === "MATCHED" || r.status === "ACCEPTED")
     ).length;
-    const completedToday = requests.filter((r) => {
-      if (r.zoneId !== z.zoneId) return false;
-      if (r.status !== "COMPLETED") return false;
-      if (!r.completedAtIso) return false;
-      const completed = new Date(r.completedAtIso);
-      return completed >= startOfDay;
-    }).length;
+    const completedToday = requests.filter(
+      (r) =>
+        r.zoneId === z.zoneId &&
+        r.status === "COMPLETED" &&
+        r.completedAt &&
+        new Date(r.completedAt) >= startOfDay
+    ).length;
+
     return {
       zoneId: z.zoneId,
       zoneName: z.name,
-      cityName: "Fort Wayne, IN",
+      cityName: z.cityId, // approximate mapping for mock
       activeDrivers,
       openRequests,
       completedToday,
@@ -128,4 +130,16 @@ export const getAdminOverviewSnapshot = (): AdminOverviewSnapshot => {
     topDriversByFranchise,
     zones,
   };
+};
+
+export const getAdminOverviewSnapshotWithTierCounts = (): AdminOverviewSnapshot & { tierCounts: Record<string, number> } => {
+  const snapshot = getAdminOverviewSnapshot();
+  const memberships = listAllMemberships();
+  const tierCounts = memberships.reduce((acc: Record<string, number>, m) => {
+    const key = String(m.tierId);
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return { ...snapshot, tierCounts };
 };

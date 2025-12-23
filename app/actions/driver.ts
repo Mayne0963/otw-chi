@@ -189,10 +189,9 @@ export async function completeJob(requestId: string) {
       where: { customerId: job.customerId, status: 'COMPLETED' },
     });
     if (count === 1) {
-      const p: any = getPrisma();
-      await p.nipTransaction?.create?.({
+      await prisma.nipTransaction.create({
         data: { userId: job.customerId, amount: 50, reason: 'FIRST_COMPLETED_ORDER', refId: job.id },
-      }).catch?.(() => {});
+      }).catch(() => {});
     }
   }
 
@@ -215,14 +214,14 @@ export async function getDriverEarnings() {
   });
 
   const total = earnings.reduce((sum, e) => {
-    const cents = ((e as any).amountCents ?? e.amount ?? 0);
+    const cents = (e.amountCents ?? e.amount ?? 0);
     return sum + cents;
   }, 0);
 
   return { total, history: earnings };
 }
 
-export async function requestPayoutAction(formData: FormData) {
+export async function requestPayoutAction(_formData: FormData) {
   const user = await getCurrentUser();
   if (!user || user.role !== 'DRIVER') return;
 
@@ -231,26 +230,25 @@ export async function requestPayoutAction(formData: FormData) {
     where: { driverId: user.id, status: 'available' },
     orderBy: { createdAt: 'asc' },
   });
-  const totalCents = available.reduce((sum, e) => sum + ((e as any).amountCents ?? e.amount ?? 0), 0);
+  const totalCents = available.reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
   if (totalCents <= 0) {
     return;
   }
 
-  const p: any = prisma as any;
-  await p.$transaction?.(async (tx: any) => {
-    await tx.driverPayout?.create?.({
+  await prisma.$transaction(async (tx) => {
+    await tx.driverPayout.create({
       data: {
         driverId: user.id,
         totalCents,
         status: 'processing',
         payoutMethod: 'manual',
       },
-    }).catch?.(() => {});
-    await tx.driverEarnings?.updateMany?.({
+    }).catch(() => {});
+    await tx.driverEarnings.updateMany({
       where: { driverId: user.id, status: 'available' },
       data: { status: 'pending' },
-    }).catch?.(() => {});
-  }).catch?.(() => {});
+    }).catch(() => {});
+  }).catch(() => {});
 
   revalidatePath('/driver/earnings');
 }

@@ -62,7 +62,7 @@ const applyNipDelta = (args: {
   ownerDriverId?: OtwDriverId;
   delta: number;
   reason: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
 }): Result<NipWallet> => {
   if (!args.ownerCustomerId && !args.ownerDriverId) {
     return err("NIP ledger entry must have an owner.");
@@ -97,7 +97,7 @@ export const creditNipToCustomer = (
   customerId: OtwCustomerId,
   amount: number,
   reason: string,
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): Result<NipWallet> => {
   if (amount <= 0) return err("NIP credit must be positive.");
   return applyNipDelta({
@@ -112,7 +112,7 @@ export const creditNipToDriver = (
   driverId: OtwDriverId,
   amount: number,
   reason: string,
-  meta?: Record<string, any>
+  meta?: Record<string, unknown>
 ): Result<NipWallet> => {
   if (amount <= 0) return err("NIP credit must be positive.");
   return applyNipDelta({

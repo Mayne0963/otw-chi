@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { createRequestAction } from "@/app/actions/request"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,7 @@ export function NewRequestForm() {
           title: "Request created",
           description: "We've received your request and will assign a driver shortly.",
         })
-      } catch (error) {
+      } catch (_error) {
         toast({
           title: "Error",
           description: "Something went wrong. Please try again.",

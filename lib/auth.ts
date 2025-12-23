@@ -27,7 +27,7 @@ export async function getUserRole(): Promise<'CUSTOMER' | 'DRIVER' | 'ADMIN' | '
     const user = await client.users.getUser(userId);
     const metaRole = (user.publicMetadata?.role as string | undefined)?.toUpperCase();
     if (metaRole === 'DRIVER' || metaRole === 'ADMIN' || metaRole === 'FRANCHISE' || metaRole === 'CUSTOMER') {
-      return metaRole as any;
+      return metaRole;
     }
   } catch (error) {
     console.warn("Failed to fetch user role from Clerk metadata, falling back to DB:", error);
@@ -37,7 +37,7 @@ export async function getUserRole(): Promise<'CUSTOMER' | 'DRIVER' | 'ADMIN' | '
   try {
     const row = await prisma.user.findFirst({ where: { clerkId: userId } });
     if (row && (row.role === 'DRIVER' || row.role === 'ADMIN' || row.role === 'FRANCHISE' || row.role === 'CUSTOMER')) {
-      return row.role as any;
+      return row.role;
     }
   } catch (dbError) {
     console.error("Failed to fetch user role from DB:", dbError);

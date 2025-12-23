@@ -22,12 +22,12 @@ export async function syncUserMetadataFromDb() {
   const zoneName = user.driverProfile?.zone?.name?.toLowerCase() ?? 'unassigned';
   const client = await clerkClient();
   const clerkUser = await client.users.getUser(userId);
-  const pm = clerkUser.publicMetadata || {};
+  const pm = (clerkUser.publicMetadata || {}) as Record<string, unknown>;
   const payload = {
     otw_role: user.role.toLowerCase(),
     otw_tier: tier,
-    nip_wallet_id: (pm as any).nip_wallet_id ?? 'pending',
-    franchise_level: (pm as any).franchise_level ?? 'seed',
+    nip_wallet_id: (pm.nip_wallet_id as string) ?? 'pending',
+    franchise_level: (pm.franchise_level as string) ?? 'seed',
     otw_zone: zoneName,
     role: user.role
   };

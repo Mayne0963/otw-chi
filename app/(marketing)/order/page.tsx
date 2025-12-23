@@ -76,7 +76,7 @@ export default function OrderPage() {
 
       setEstimate({ priceMin, priceMax, eta, miles });
       setStep("estimate");
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Estimate Unavailable",
         description: "Please check your details and try again.",
@@ -120,7 +120,7 @@ export default function OrderPage() {
       const data = await response.json();
 
       router.push(`/requests/${data.id}`);
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Submission Error",
         description: "Something went wrong. Please try again.",

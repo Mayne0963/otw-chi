@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, MapPin, Package, Clock, DollarSign, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+// import Link from 'next/link';
 
 export default function RequestPage() {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   

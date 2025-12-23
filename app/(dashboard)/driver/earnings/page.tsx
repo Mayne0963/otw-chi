@@ -20,7 +20,7 @@ export default async function DriverEarningsPage() {
     );
   }
   
-  const { history, total } = await getDriverEarnings();
+  const { history } = await getDriverEarnings();
   
   const now = new Date();
   const startOfWeek = new Date(now);
@@ -31,24 +31,23 @@ export default async function DriverEarningsPage() {
   
   const weekly = history
     .filter(e => e.createdAt >= startOfWeek)
-    .reduce((sum, e) => sum + (((e as any).amountCents ?? e.amount ?? 0)), 0);
+    .reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
     
   const monthly = history
     .filter(e => e.createdAt >= startOfMonth)
-    .reduce((sum, e) => sum + (((e as any).amountCents ?? e.amount ?? 0)), 0);
+    .reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
 
   const availableTotal = history
-    .filter(e => (e as any).status === 'available')
-    .reduce((sum, e) => sum + (((e as any).amountCents ?? e.amount ?? 0)), 0);
+    .filter(e => e.status === 'available')
+    .reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
 
   const prisma = getPrisma();
-  const p: any = prisma as any;
-  const latestPayout = await p.driverPayout?.findFirst?.({
+  const latestPayout = await prisma.driverPayout.findFirst({
     where: { driverId: user.id },
     orderBy: { createdAt: 'desc' },
   }) ?? null;
-  const latestPayoutStatus = (latestPayout as any)?.status ?? null;
-  const hasProcessingPayout = (latestPayout as any)?.status === 'processing';
+  const latestPayoutStatus = latestPayout?.status ?? null;
+  const hasProcessingPayout = latestPayout?.status === 'processing';
 
   return (
     <OtwPageShell>
@@ -87,8 +86,8 @@ export default async function DriverEarningsPage() {
                 <div className="flex items-center justify-between">
                   <div className="text-xs opacity-70">Job {e.requestId?.slice(-6) ?? 'N/A'}</div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs rounded-full px-2 py-1 border border-white/10 opacity-70">{(e as any).status ?? 'pending'}</span>
-                    <span>${((((e as any).amountCents ?? e.amount ?? 0)/100)).toFixed(2)}</span>
+                    <span className="text-xs rounded-full px-2 py-1 border border-white/10 opacity-70">{e.status ?? 'pending'}</span>
+                    <span>${(((e.amountCents ?? e.amount ?? 0)/100)).toFixed(2)}</span>
                   </div>
                 </div>
               </li>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import styles from "./DriverDashboard.module.css";
 import DriverFranchiseCard from "./DriverFranchiseCard";
 import { DriverStatus, OtwFeedback } from "../../lib/otw/otwTypes";
@@ -49,7 +49,7 @@ const DriverDashboard: React.FC = () => {
           setDriverId("DRIVER-1");
           setDriverName("OTW Driver");
         }
-      } catch (e) {
+      } catch (_e) {
         setDriverId("DRIVER-1");
         setDriverName("OTW Driver");
       }
@@ -91,7 +91,7 @@ const DriverDashboard: React.FC = () => {
     fetchFeedback();
   }, [driverId]);
 
-  const fetchAssignedRequests = async () => {
+  const fetchAssignedRequests = useCallback(async () => {
     try {
       if (!driverId) return;
       setAssignedLoading(true);
@@ -112,11 +112,11 @@ const DriverDashboard: React.FC = () => {
     } finally {
       setAssignedLoading(false);
     }
-  };
+  }, [driverId]);
 
   useEffect(() => {
     fetchAssignedRequests();
-  }, [driverId]);
+  }, [fetchAssignedRequests]);
 
 
   const handleMarkCompleted = async (requestId: string) => {

@@ -4,7 +4,7 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { getCurrentUser } from '@/lib/auth/roles';
-import { getActiveSubscription, getPlanCodeFromSubscription } from '@/lib/membership';
+import { getActiveSubscription } from '@/lib/membership';
 import { createCheckoutSession, createCustomerPortal } from '@/app/actions/billing';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ export default async function MembershipManagePage() {
   if (!user) return <div>Please sign in</div>;
 
   const sub = await getActiveSubscription(user.id);
-  const planCode = getPlanCodeFromSubscription(sub);
+  // const planCode = getPlanCodeFromSubscription(sub);
 
   return (
     <OtwPageShell>
