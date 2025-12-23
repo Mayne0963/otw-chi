@@ -6,9 +6,10 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const result = await getEstimateAction(formData);
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to estimate';
     console.error('API estimate error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to estimate' }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
@@ -30,8 +31,9 @@ export async function GET(req: NextRequest) {
     
     const result = await getEstimateAction(formData);
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to estimate';
     console.error('API estimate GET error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to estimate' }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

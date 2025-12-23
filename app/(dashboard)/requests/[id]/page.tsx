@@ -203,7 +203,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             <CardContent>
               <div className="relative space-y-6 pl-4 before:absolute before:left-[5px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-white/10">
                 {request.events && request.events.length > 0 ? (
-                  request.events.map((event: any) => (
+                  request.events.map((event: { id: string; type: string; timestamp: Date; message: string | null }) => (
                     <div key={event.id} className="relative flex gap-4">
                       <div className="absolute -left-[15px] mt-1.5 h-2.5 w-2.5 rounded-full border-2 border-otwGold bg-otwBlack ring-4 ring-otwBlack" />
                       <div className="space-y-1">

@@ -21,8 +21,9 @@ export async function POST(req: Request) {
       }
     });
     return NextResponse.json({ success: true, request: created }, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message ?? 'Server error' }, { status: 500 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Server error';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 

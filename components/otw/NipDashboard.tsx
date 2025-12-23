@@ -348,7 +348,7 @@ export default function NipDashboard() {
       if (reqRes.ok && reqData.success && Array.isArray(reqData.requests) && reqData.requests.length > 0) {
         const first = reqData.requests[0];
         setActiveCustomerId(first.customerId || null);
-        const assigned = reqData.requests.find((r: any) => r.assignedDriverId);
+        const assigned = reqData.requests.find((r: { assignedDriverId?: string }) => r.assignedDriverId);
         setActiveDriverId(assigned?.assignedDriverId || null);
       }
       await fetchSummaryForCustomer();
@@ -368,7 +368,7 @@ export default function NipDashboard() {
       const response = await fetch(`/api/otw/nip/summary?customerId=${encodeURIComponent(activeCustomerId)}`);
       const data = await response.json();
       if (data.success) {
-        const ledger = (data.ledger || []).map((e: any) => ({
+        const ledger = (data.ledger || []).map((e: { id: string; delta: number; reason?: string; createdAt: string }) => ({
           id: e.id,
           type: 'EARNED',
           amount: Math.abs(e.delta || 0),
@@ -413,7 +413,7 @@ export default function NipDashboard() {
       const response = await fetch(`/api/otw/nip/summary?driverId=${encodeURIComponent(driverId)}`);
       const data = await response.json();
       if (data.success) {
-        const ledger = (data.ledger || []).map((e: any) => ({
+        const ledger = (data.ledger || []).map((e: { id: string; delta: number; reason?: string; createdAt: string }) => ({
           id: e.id,
           type: 'EARNED',
           amount: Math.abs(e.delta || 0),

@@ -28,7 +28,7 @@ export default clerkMiddleware(async (auth, req) => {
 
   const session = await auth.protect();
 
-  const claims = session.sessionClaims as { publicMetadata?: { role?: string }; metadata?: { role?: string }; otw?: { role?: string } };
+  const claims = session.sessionClaims as { publicMetadata?: { role?: string }; metadata?: { role?: string }; otw?: { role?: string } } | undefined;
   const role = String(
     claims?.publicMetadata?.role ?? claims?.metadata?.role ?? claims?.otw?.role ?? ''
   ).toUpperCase();

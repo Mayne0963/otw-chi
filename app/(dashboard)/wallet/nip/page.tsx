@@ -23,10 +23,9 @@ export default async function NipWalletPage() {
     );
   }
   await ensureWeeklyActiveMemberGrant();
-  let entries: any[] = [];
+  let entries: { id: string; amount: number; reason?: string | null; type?: string; createdAt: Date }[] = [];
   try {
-    const p: any = prisma as any;
-    entries = await p.nipTransaction?.findMany?.({
+    entries = await prisma.nipTransaction.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -38,8 +37,8 @@ export default async function NipWalletPage() {
       take: 30,
     });
   }
-  const balance = entries.reduce((sum, e) => sum + ((e as any).amount ?? 0), 0);
-  const totalEarned = entries.filter(e => ((e as any).amount ?? 0) > 0).reduce((sum, e) => sum + ((e as any).amount ?? 0), 0);
+  const balance = entries.reduce((sum, e) => sum + (e.amount ?? 0), 0);
+  const totalEarned = entries.filter(e => (e.amount ?? 0) > 0).reduce((sum, e) => sum + (e.amount ?? 0), 0);
   return (
     <OtwPageShell>
       <OtwSectionHeader title="NIP Wallet" subtitle="Rewards and transactions." />
@@ -79,9 +78,9 @@ export default async function NipWalletPage() {
             <ul className="mt-2 space-y-2 text-sm opacity-90">
               {entries.map(e => (
                 <li key={e.id} className="flex items-center justify-between">
-                  <div>{String((e as any).reason ?? (e as any).type ?? '')}</div>
-                  <div className={((e as any).amount ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    {((e as any).amount ?? 0) >= 0 ? '+' : ''}{(e as any).amount ?? 0} NIP
+                  <div>{String(e.reason ?? e.type ?? '')}</div>
+                  <div className={(e.amount ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    {(e.amount ?? 0) >= 0 ? '+' : ''}{e.amount ?? 0} NIP
                   </div>
                 </li>
               ))}

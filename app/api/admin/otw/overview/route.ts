@@ -12,6 +12,8 @@ import {
   isFranchiseEligible,
 } from "@/lib/otw/otwFranchise";
 
+import { OtwRequest } from "@/lib/otw/otwTypes";
+
 export async function GET(request: NextRequest) {
   try {
     await requireRole(["ADMIN"]);
@@ -19,14 +21,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let requests: any[] = [];
+  let requests: OtwRequest[] = [];
   try {
     const base = new URL(request.url).origin;
     const res = await fetch(`${base}/api/otw/requests`, { cache: "no-store" });
     if (res.ok) {
       const json = await res.json();
       if (json && json.success && Array.isArray(json.requests)) {
-        requests = json.requests;
+        requests = json.requests as OtwRequest[];
       }
     }
   } catch (_e) {
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
     : "N/A";
   const activeMemberships = memberships.length;
   const tierCounts = memberships.reduce((acc: Record<string, number>, m) => {
-    const key = String((m as any).tierId);
+    const key = String(m.tierId);
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

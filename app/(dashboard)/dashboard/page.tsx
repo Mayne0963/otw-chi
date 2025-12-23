@@ -7,6 +7,7 @@ import { syncUserOnDashboard } from '@/lib/user-sync';
 import { getPrisma } from '@/lib/db';
 import { getActiveSubscription, getPlanCodeFromSubscription, getMembershipBenefits } from '@/lib/membership';
 import { LayoutDashboard, Wallet, CreditCard } from 'lucide-react';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export default async function DashboardPage() {
     membershipBenefits = getMembershipBenefits(planCode);
     membershipTier = sub?.plan?.name ?? 'None';
 
-    const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } } as any);
+    const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } });
     nipBalance = nip._sum?.amount ?? 0;
 
     const req = await prisma.request.findFirst({
@@ -66,7 +67,7 @@ export default async function DashboardPage() {
                   <div className="text-sm text-white/70">We need your Date of Birth to comply with age regulations.</div>
                 </div>
                 <Button asChild variant="destructive" size="sm">
-                  <a href="/settings">Update Profile</a>
+                  <Link href="/settings">Update Profile</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -85,14 +86,14 @@ export default async function DashboardPage() {
                 <div className="font-semibold text-white">{activeRequest.status}</div>
                 <div className="text-white/70">{activeRequest.pickup} → {activeRequest.dropoff}</div>
                 <Button asChild variant="outline" size="sm" className="w-full mt-2">
-                  <a href={`/requests/${activeRequest.id}`}>View Details</a>
+                  <Link href={`/requests/${activeRequest.id}`}>View Details</Link>
                 </Button>
               </div>
             ) : (
               <div className="text-center py-4">
                 <p className="text-xs text-white/50 mb-3">No active requests.</p>
                 <Button asChild variant="secondary" size="sm" className="w-full">
-                  <a href="/requests/new">New Request</a>
+                  <Link href="/requests/new">New Request</Link>
                 </Button>
               </div>
             )}

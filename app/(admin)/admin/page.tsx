@@ -20,7 +20,7 @@ export default async function AdminOverviewPage() {
   const nipIssuedAgg = await prisma.nIPLedger.aggregate({
     where: { createdAt: { gte: startOfDay }, amount: { gt: 0 } },
     _sum: { amount: true },
-  } as any);
+  });
   const nipIssuedToday = nipIssuedAgg._sum?.amount ?? 0;
   return (
     <OtwPageShell>

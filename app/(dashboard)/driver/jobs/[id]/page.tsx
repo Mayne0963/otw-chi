@@ -112,8 +112,8 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
           <div className="text-sm font-medium">Events</div>
            <ul className="mt-2 text-sm opacity-80 list-disc pl-5">
             {req.events
-              .sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime())
-              .map((ev: any) => (
+              .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+              .map((ev) => (
               <li key={ev.id}>{ev.type}{ev.message ? ` — ${ev.message}` : ''}</li>
             ))}
           </ul>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
+import { ServiceType } from '@/lib/generated/prisma';
 
 const createRequestSchema = z.object({
   pickup: z.string().min(5, "Pickup address is required"),
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
         customerId: user.id,
         pickup,
         dropoff,
-        serviceType: serviceType as any,
+        serviceType: serviceType as ServiceType,
         notes,
         status: 'SUBMITTED',
         costEstimate: costEstimate || 0,

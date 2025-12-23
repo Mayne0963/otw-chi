@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function HomePage() {
   return (
     <div className="space-y-6">
@@ -10,9 +12,9 @@ export default function HomePage() {
             <p className="text-otwOffWhite/75 text-sm">Your need moves when you do.</p>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <a href="/dashboard" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 bg-otwGold text-otwBlack font-semibold">Request a Delivery</a>
-              <a href="/membership/manage" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 border border-otwGold text-otwGold">Become a Member</a>
-              <a href="/" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 text-otwOffWhite underline">Track My Driver</a>
+              <Link href="/dashboard" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 bg-otwGold text-otwBlack font-semibold">Request a Delivery</Link>
+              <Link href="/membership/manage" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 border border-otwGold text-otwGold">Become a Member</Link>
+              <Link href="/" className="inline-flex justify-center items-center rounded-2xl px-4 py-3 text-otwOffWhite underline">Track My Driver</Link>
             </div>
           </div>
 

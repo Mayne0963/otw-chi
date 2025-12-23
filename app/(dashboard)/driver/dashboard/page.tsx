@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import Link from 'next/link';
 import styles from "@/components/otw/DriverDashboard.module.css";
 import DriverFranchiseCard from "@/components/otw/DriverFranchiseCard";
 import { DriverStatus, OtwFeedback } from "@/lib/otw/otwTypes";
@@ -87,7 +88,7 @@ export default function OtwDriverPage() {
     fetchFeedback();
   }, [driverId]);
 
-  const fetchAssignedRequests = async () => {
+  const fetchAssignedRequests = useCallback(async () => {
     try {
       if (!driverId) return;
       setAssignedLoading(true);
@@ -108,11 +109,11 @@ export default function OtwDriverPage() {
     } finally {
       setAssignedLoading(false);
     }
-  };
+  }, [driverId]);
 
   useEffect(() => {
     fetchAssignedRequests();
-  }, [driverId]);
+  }, [fetchAssignedRequests]);
 
   const handleMarkCompleted = async (requestId: string) => {
     try {
@@ -196,9 +197,9 @@ export default function OtwDriverPage() {
           <h3 className={styles.franchiseHeader}>Ownership Path — OTW Franchise</h3>
           <DriverFranchiseCard driverId={driverId} />
           <p className={styles.franchiseLinkRow}>
-            <a href="/otw/franchise-requirements" className={styles.franchiseLink}>
+            <Link href="/otw/franchise-requirements" className={styles.franchiseLink}>
               View full franchise requirements
-            </a>
+            </Link>
           </p>
         </section>
 

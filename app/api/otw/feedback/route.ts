@@ -7,7 +7,7 @@ import {
 } from "../../../../lib/otw/otwReputation";
 import { getOtwRequestById } from "../../../../lib/otw/otwRequests";
 
-const buildFeedback = (body: any): OtwFeedback | { error: string } => {
+const buildFeedback = (body: { requestId?: string; driverId?: string; customerId?: string; rating?: number; comment?: string }): OtwFeedback | { error: string } => {
   const { requestId, driverId, customerId, rating, comment } = body || {};
 
   if (!requestId || !driverId || !customerId || typeof rating !== "number") {

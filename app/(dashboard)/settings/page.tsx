@@ -56,7 +56,7 @@ export async function saveSettings(formData: FormData) {
     if (!isNaN(dobDate.getTime())) {
        await prisma.user.update({
          where: { id: user.id },
-         data: { dob: dobDate } as any
+         data: { dob: dobDate }
        });
     }
   }

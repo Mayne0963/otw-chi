@@ -9,12 +9,12 @@ type RequestState = "idle" | "submitting" | "success" | "error";
 
 interface ApiResponse {
   success: boolean;
-  request?: any;
-  membership?: any;
-  tier?: any;
-  eligibility?: any;
+  request?: { id: string };
+  membership?: { milesRemaining: number };
+  tier?: { name: string };
+  eligibility?: { reason: string };
   error?: string;
-  details?: any;
+  details?: { suggestedUpgradeTier?: { name: string; description: string } };
 }
 
 const serviceTypeOptions: { value: ServiceType; label: string }[] = [

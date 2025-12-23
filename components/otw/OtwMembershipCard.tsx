@@ -2,13 +2,14 @@ import React, { useMemo, useState, useEffect } from "react";
 import styles from "./OtwMembershipCard.module.css";
 import { getMembershipForCustomer, estimateRemainingMiles, getAllTiers } from "../../lib/otw/otwMembership";
 import { getTierById } from "../../lib/otw/otwTierCatalog";
+import { OtwTierDefinition, OtwMembership } from "../../lib/otw/otwTypes";
 
 const OtwMembershipCard: React.FC = () => {
   const customerId = "CUSTOMER-1";
 
   const membership = useMemo(() => getMembershipForCustomer(customerId), [customerId]);
 
-  const [allTiers, setAllTiers] = useState<any[]>([]);
+  const [allTiers, setAllTiers] = useState<OtwTierDefinition[]>([]);
   const [selectedTierId, setSelectedTierId] = useState<string>("");
   const [changing, setChanging] = useState(false);
   const [changeError, setChangeError] = useState<string | null>(null);
@@ -39,7 +40,7 @@ const OtwMembershipCard: React.FC = () => {
 
   const tier = getTierById(membership.tierId);
   const remainingMiles = estimateRemainingMiles(membership);
-  const renewSource = (membership as any).renewsOn || membership.renewsAtIso;
+  const renewSource = (membership as OtwMembership & { renewsOn?: string }).renewsOn || membership.renewsAtIso;
   const renewDateLabel = renewSource ? new Date(renewSource).toLocaleDateString() : "—";
 
   const handleChangeTier = async () => {
@@ -76,15 +77,15 @@ const OtwMembershipCard: React.FC = () => {
       <div className={styles.milesRow}>
         <div className={styles.milesBlock}>
           <span className={styles.milesLabel}>Miles Cap</span>
-          <span className={styles.milesValue}>{(membership as any).milesCap?.toLocaleString?.() ?? "—"}</span>
+          <span className={styles.milesValue}>{(membership as OtwMembership & { milesCap?: number }).milesCap?.toLocaleString?.() ?? "—"}</span>
         </div>
         <div className={styles.milesBlock}>
           <span className={styles.milesLabel}>Used</span>
-          <span className={styles.milesValue}>{(membership as any).milesUsed?.toLocaleString?.() ?? "—"}</span>
+          <span className={styles.milesValue}>{(membership as OtwMembership & { milesUsed?: number }).milesUsed?.toLocaleString?.() ?? "—"}</span>
         </div>
         <div className={styles.milesBlock}>
           <span className={styles.milesLabel}>Rollover</span>
-          <span className={styles.milesValue}>{(membership as any).rolloverMiles?.toLocaleString?.() ?? "—"}</span>
+          <span className={styles.milesValue}>{(membership as OtwMembership & { rolloverMiles?: number }).rolloverMiles?.toLocaleString?.() ?? "—"}</span>
         </div>
         <div className={styles.milesBlock}>
           <span className={styles.milesLabel}>Remaining*</span>
@@ -93,7 +94,7 @@ const OtwMembershipCard: React.FC = () => {
       </div>
 
       <p className={styles.meta}>
-        Status: <span className={styles.status}>{String((membership as any).status ?? "ACTIVE")}</span> •
+        Status: <span className={styles.status}>{String(membership.status ?? "ACTIVE")}</span> •
         {" "}Renews on <span className={styles.date}>{renewDateLabel}</span>
       </p>
 
@@ -119,7 +120,7 @@ const OtwMembershipCard: React.FC = () => {
               value={selectedTierId}
               onChange={(e) => setSelectedTierId(e.target.value)}
             >
-              {allTiers.map((t: any) => (
+              {allTiers.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name} – {Number(t.includedMiles).toLocaleString()} miles / month
                 </option>

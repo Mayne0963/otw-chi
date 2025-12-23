@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     const customerId = "CUSTOMER-1";
     newRequest.customerId = customerId;
 
-    let membershipUpdate: any = null;
+    let membershipUpdate: unknown = null;
     const membership = getMembershipForCustomer(customerId);
     if (membership && membership.membershipId) {
       const updated = updateMembershipMilesUsed(

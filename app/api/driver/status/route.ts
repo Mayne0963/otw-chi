@@ -27,9 +27,10 @@ export async function POST(req: Request) {
       data: { status },
     });
     return NextResponse.json({ success: true, driver: updated });
-  } catch (e: any) {
-    const status = e.message === 'Unauthorized' ? 401 : e.message === 'Forbidden' ? 403 : 500;
-    return NextResponse.json({ success: false, error: e?.message ?? 'Server error' }, { status });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Server error';
+    const status = message === 'Unauthorized' ? 401 : message === 'Forbidden' ? 403 : 500;
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }
 

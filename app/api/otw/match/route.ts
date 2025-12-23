@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OtwMatchContext } from "../../../../lib/otw/otwTypes";
+import { OtwMatchContext, ServiceType, Urgency } from "../../../../lib/otw/otwTypes";
 import { findBestDriversForRequest } from "../../../../lib/otw/otwMatching";
 
 interface MatchRequestBody {
   requestId: string;
-  serviceType: string;
-  urgency: string;
+  serviceType: ServiceType;
+  urgency: Urgency;
   pickupArea: string;
   dropoffArea: string;
 }
@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
 
     const context: OtwMatchContext = {
       requestId: String(body.requestId),
-      serviceType: body.serviceType as any,
-      urgency: body.urgency as any,
+      serviceType: body.serviceType as ServiceType,
+      urgency: body.urgency as Urgency,
       pickupArea: String(body.pickupArea),
       dropoffArea: String(body.dropoffArea),
     };

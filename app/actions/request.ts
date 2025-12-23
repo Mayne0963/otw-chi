@@ -34,7 +34,7 @@ export async function createRequestAction(formData: FormData) {
   const membershipBenefits = getMembershipBenefits(planCode);
 
   // Calculate cost with membership discount
-  const basePrice = estimatePrice({ miles, serviceType: serviceType as any, tier: 'BASIC' });
+  const basePrice = estimatePrice({ miles, serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE', tier: 'BASIC' });
   const finalPrice = basePrice * (1 - membershipBenefits.discount);
 
   // Award NIP based on membership multiplier

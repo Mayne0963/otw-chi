@@ -25,7 +25,7 @@ export async function getEstimateAction(formData: FormData) {
     membershipBenefits = getMembershipBenefits(planCode);
   }
 
-  const basePrice = estimatePrice({ miles, serviceType: serviceType as any, tier: 'BASIC' }); // Use BASIC as base
+  const basePrice = estimatePrice({ miles, serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE', tier: 'BASIC' }); // Use BASIC as base
   const discountedPrice = basePrice * (1 - membershipBenefits.discount);
 
   return {

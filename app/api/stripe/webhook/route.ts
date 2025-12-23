@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
       const plan = String(session.metadata?.plan || '').toUpperCase();
       const stripeCustomerId = String(session.customer || '');
       const stripeSubscriptionId = String(session.subscription || '');
-      const priceId = String((session.line_items as any)?.data?.[0]?.price?.id || session.metadata?.priceId || '');
+      const lineItems = session.line_items as { data?: { price?: { id?: string } }[] } | undefined;
+      const priceId = String(lineItems?.data?.[0]?.price?.id || session.metadata?.priceId || '');
 
       const prisma = getPrisma();
 
