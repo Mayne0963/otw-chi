@@ -1,68 +1,220 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
-import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
-import { canTransition, RequestStatus } from '@/lib/lifecycle';
+import { Suspense } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
-export const dynamic = 'force-dynamic';
-
-export default async function AdminRequestsPage() {
-  await requireRole(['ADMIN']);
-  const prisma = getPrisma();
-  const requests = await prisma.request.findMany({ orderBy: { createdAt: 'desc' }, take: 50, include: { zone: true, assignedDriver: { include: { user: true } }, customer: true } });
-  const drivers = await prisma.driverProfile.findMany({ include: { user: true } });
+// Loading component for better UX
+function AdminRequestsLoading() {
   return (
-    <OtwPageShell>
-      <OtwSectionHeader title="Admin — Requests" subtitle="Manage lifecycle and assignments." />
-      <OtwCard className="mt-3">
-        {requests.length === 0 ? (
-          <OtwEmptyState title="No requests" subtitle="Once customers submit, they will appear here." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="opacity-60">
-                <tr>
-                  <th className="text-left px-3 py-2">ID</th>
-                  <th className="text-left px-3 py-2">Status</th>
-                  <th className="text-left px-3 py-2">Pickup</th>
-                  <th className="text-left px-3 py-2">Dropoff</th>
-                  <th className="text-left px-3 py-2">Zone</th>
-                  <th className="text-left px-3 py-2">Driver</th>
-                  <th className="text-left px-3 py-2">Assign</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map(r => (
-                  <tr key={r.id} className="border-t border-white/10">
-                    <td className="px-3 py-2">{r.id}</td>
-                    <td className="px-3 py-2">{r.status}</td>
-                    <td className="px-3 py-2">{r.pickup}</td>
-                    <td className="px-3 py-2">{r.dropoff}</td>
-                    <td className="px-3 py-2">{r.zone?.name ?? '-'}</td>
-                    <td className="px-3 py-2">{r.assignedDriver?.user?.name ?? '-'}</td>
-                    <td className="px-3 py-2">
-                      <form action={assignDriverAction} className="flex gap-2">
-                        <input type="hidden" name="id" value={r.id} />
-                        <select name="driverProfileId" className="rounded-lg bg-otwBlack/40 border border-white/15 px-2 py-1">
-                          <option value="">Select</option>
-                          {drivers.map(d => (
-                            <option key={d.id} value={d.id}>{d.user?.name ?? d.id}</option>
+    <OtwCard className="mt-3">
+      <div className="animate-pulse">
+        <div className="h-4 bg-white/10 rounded w-1/4 mb-4"></div>
+        <div className="space-y-3">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="h-16 bg-white/5 rounded"></div>
+          ))}
+        </div>
+      </div>
+    </OtwCard>
+  );
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+    case 'ASSIGNED': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+    case 'PICKED_UP': return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
+    case 'IN_TRANSIT': return 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30';
+    case 'DELIVERED': return 'bg-green-500/20 text-green-400 border border-green-500/30';
+    case 'COMPLETED': return 'bg-green-600/20 text-green-500 border border-green-600/30';
+    case 'CANCELLED': return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+  }
+}
+
+async function getRequestsData() {
+  const prisma = getPrisma();
+  
+  try {
+    const requests = await prisma.request.findMany({ 
+      orderBy: { createdAt: 'desc' }, 
+      take: 50, 
+      include: { 
+        zone: { select: { name: true } }, 
+        assignedDriver: { 
+          include: { 
+            user: { select: { name: true, email: true } } 
+          } 
+        }, 
+        customer: { select: { name: true, email: true } }
+      }
+    });
+
+    const drivers = await prisma.driverProfile.findMany({ 
+      include: { 
+        user: { select: { name: true, email: true } } 
+      },
+      where: { status: { not: 'OFFLINE' } }
+    });
+
+    return { requests, drivers };
+  } catch (error) {
+    console.error('[AdminRequests] Failed to fetch requests:', error);
+    throw error;
+  }
+}
+
+async function RequestsList() {
+  let requests: any[] = [];
+  let drivers: any[] = [];
+  let error: unknown = null;
+
+  try {
+    const data = await getRequestsData();
+    requests = data.requests;
+    drivers = data.drivers;
+  } catch (err) {
+    error = err;
+  }
+
+  if (error) {
+    return <RequestsErrorState error={error} />;
+  }
+
+  if (requests.length === 0) {
+    return <EmptyRequestsState />;
+  }
+
+  return <RequestsTable requests={requests} drivers={drivers} />;
+}
+
+function EmptyRequestsState() {
+  return (
+    <OtwCard className="mt-3 p-8 text-center">
+      <OtwEmptyState 
+        title="No requests found" 
+        subtitle="Customer delivery requests will appear here when submitted." 
+      />
+    </OtwCard>
+  );
+}
+
+function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] }) {
+  return (
+    <OtwCard className="mt-3">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="opacity-60 border-b border-white/10">
+            <tr>
+              <th className="text-left px-4 py-3">Request</th>
+              <th className="text-left px-4 py-3">Status</th>
+              <th className="text-left px-4 py-3">Customer</th>
+              <th className="text-left px-4 py-3">Route</th>
+              <th className="text-left px-4 py-3">Zone</th>
+              <th className="text-left px-4 py-3">Driver</th>
+              <th className="text-left px-4 py-3">Created</th>
+              <th className="text-left px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {requests.map((request) => (
+              <tr key={request.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                <td className="px-4 py-3">
+                  <div>
+                    <div className="font-medium text-xs">{request.id}</div>
+                    <div className="text-xs text-white/50">
+                      {request.serviceType} • {request.tier}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                    {request.status.replace('_', ' ')}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <div className="font-medium">{request.customer.name || 'Guest'}</div>
+                    <div className="text-xs text-white/50">{request.customer.email}</div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="text-xs">
+                    <div className="truncate max-w-32" title={request.pickup}>📍 {request.pickup}</div>
+                    <div className="truncate max-w-32" title={request.dropoff}>🏠 {request.dropoff}</div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-white/60">
+                  {request.zone?.name || '-'}
+                </td>
+                <td className="px-4 py-3">
+                  {request.assignedDriver ? (
+                    <div>
+                      <div className="font-medium text-sm">{request.assignedDriver.user.name}</div>
+                      <div className="text-xs text-white/50">{request.assignedDriver.user.email}</div>
+                    </div>
+                  ) : (
+                    <span className="text-white/50 text-xs">Unassigned</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-white/60 text-xs">
+                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-1">
+                    <button className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">
+                      View
+                    </button>
+                    {request.status === 'PENDING' && drivers.length > 0 && (
+                      <form action={assignDriverAction} className="inline-block">
+                        <input type="hidden" name="id" value={request.id} />
+                        <select 
+                          name="driverProfileId" 
+                          className="text-xs rounded bg-otwBlack/40 border border-white/15 px-2 py-1"
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              e.target.form?.submit();
+                            }
+                          }}
+                        >
+                          <option value="">Assign Driver</option>
+                          {drivers.map((driver) => (
+                            <option key={driver.id} value={driver.id}>
+                              {driver.user.name} ({driver.status})
+                            </option>
                           ))}
                         </select>
-                        <OtwButton variant="outline">Assign</OtwButton>
                       </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </OtwCard>
-    </OtwPageShell>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </OtwCard>
+  );
+}
+
+function RequestsErrorState({ error }: { error: unknown }) {
+  return (
+    <OtwCard className="mt-3 p-8 text-center border-red-500/30 bg-red-500/10">
+      <div className="text-red-400">Failed to load requests</div>
+      <div className="text-xs text-white/40 mt-2">
+        {error instanceof Error ? error.message : 'Unknown error occurred'}
+      </div>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="mt-4 text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+      >
+        Retry
+      </button>
+    </OtwCard>
   );
 }
 
@@ -70,10 +222,69 @@ export async function assignDriverAction(formData: FormData) {
   'use server';
   const id = String(formData.get('id') ?? '');
   const driverProfileId = String(formData.get('driverProfileId') ?? '');
-  if (!id || !driverProfileId) return;
-  const prisma = getPrisma();
-  const req = await prisma.request.findUnique({ where: { id } });
-  if (!req || !canTransition(req.status as RequestStatus, 'ASSIGNED')) return;
-  await prisma.request.update({ where: { id }, data: { assignedDriverId: driverProfileId, status: 'ASSIGNED' } });
-  await prisma.requestEvent.create({ data: { requestId: id, type: 'ASSIGNED', message: `Assigned to driver ${driverProfileId}` } });
+  
+  if (!id || !driverProfileId) {
+    console.warn('[assignDriverAction] Missing required parameters:', { id, driverProfileId });
+    return;
+  }
+  
+  try {
+    const prisma = getPrisma();
+    const req = await prisma.request.findUnique({ 
+      where: { id },
+      select: { status: true }
+    });
+    
+    if (!req) {
+      console.warn('[assignDriverAction] Request not found:', id);
+      return;
+    }
+    
+    // Skip transition validation for now
+    if ((req.status as string) !== 'PENDING') {
+      console.warn('[assignDriverAction] Can only assign to PENDING requests:', req.status);
+      return;
+    }
+    
+    await prisma.request.update({ 
+      where: { id }, 
+      data: { 
+        assignedDriverId: driverProfileId, 
+        status: 'ASSIGNED' 
+      } 
+    });
+    
+    await prisma.requestEvent.create({ 
+      data: { 
+        requestId: id, 
+        type: 'ASSIGNED', 
+        message: `Assigned to driver ${driverProfileId}` 
+      } 
+    });
+    
+    console.log('[assignDriverAction] Successfully assigned driver:', { id, driverProfileId });
+    
+  } catch (error) {
+    console.error('[assignDriverAction] Failed to assign driver:', error);
+    throw error; // Re-throw to trigger error boundary
+  }
+}
+
+export default async function AdminRequestsPage() {
+  await requireRole(['ADMIN']);
+  
+  return (
+    <OtwPageShell>
+      <OtwSectionHeader 
+        title="Request Management" 
+        subtitle="Monitor and manage customer delivery requests." 
+      />
+      
+      <div className="mt-6">
+        <Suspense fallback={<AdminRequestsLoading />}>
+          <RequestsList />
+        </Suspense>
+      </div>
+    </OtwPageShell>
+  );
 }

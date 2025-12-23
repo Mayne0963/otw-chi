@@ -2,6 +2,8 @@ import { getPrisma } from '@/lib/db';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
+import { clerkClient } from '@clerk/nextjs/server';
+import { Role } from '@/lib/generated/prisma';
 
 type ClerkUserEmailAddress = {
   id: string;
@@ -65,16 +67,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing primary email' }, { status: 400 });
   }
 
-  await prisma.user.upsert({
+  // First, upsert the user in Neon DB
+  const user = await prisma.user.upsert({
     where: { clerkId: clerkUserId },
     create: {
       email: primaryEmail,
       clerkId: clerkUserId,
+      role: 'CUSTOMER' as Role, // Default role
     },
     update: {
       email: primaryEmail,
     },
   });
+
+  // Then sync the role back to Clerk publicMetadata
+  try {
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(clerkUserId);
+    const currentRole = String(clerkUser.publicMetadata?.role || '').toUpperCase();
+    const dbRole = user.role;
+
+    // Only update if role has changed or is missing
+    if (currentRole !== dbRole) {
+      await client.users.updateUser(clerkUserId, {
+        publicMetadata: {
+          ...clerkUser.publicMetadata,
+          role: dbRole
+        }
+      });
+
+      console.warn(`[ClerkWebhook] Synced role for user ${clerkUserId}: ${currentRole} -> ${dbRole}`);
+    }
+  } catch (error) {
+    console.error('[ClerkWebhook] Failed to sync role to Clerk:', error);
+    // Don't fail the webhook if role sync fails - user is still created/updated in DB
+  }
 
   return NextResponse.json({ ok: true });
 }
