@@ -27,7 +27,7 @@ async function getDriversData() {
   const prisma = getPrisma();
   
   try {
-    // Get all drivers with their user info, zone, locations, and earnings
+    // Get all drivers with their user info, zone, and locations
     const drivers = await prisma.driverProfile.findMany({
       include: { 
         user: { 
@@ -50,11 +50,11 @@ async function getDriversData() {
       }
     });
 
-    // Fetch earnings separately for all drivers
-    const driverIds = drivers.map(d => d.userId);
+    // Fetch earnings separately for all drivers using user IDs
+    const userIds = drivers.map(d => d.userId);
     const earnings = await prisma.driverEarnings.findMany({
       where: {
-        driverId: { in: driverIds }
+        driverId: { in: userIds }
       },
       select: {
         driverId: true,
@@ -172,10 +172,10 @@ function DriversTable({ drivers }: { drivers: any[] }) {
           <tbody>
             {drivers.map((driver) => {
               // Calculate driver's total earnings
-              const driverEarnings = driver.earnings.reduce((sum: number, e: any) => sum + e.amount, 0);
+              const driverEarnings = driver.earnings?.reduce((sum: number, e: any) => sum + e.amount, 0) || 0;
               const pendingEarnings = driver.earnings
-                .filter((e: any) => e.status === 'pending')
-                .reduce((sum: number, e: any) => sum + e.amount, 0);
+                ?.filter((e: any) => e.status === 'pending')
+                .reduce((sum: number, e: any) => sum + e.amount, 0) || 0;
               
               // Get last known location
               const lastLocation = driver.locations[0];
@@ -238,7 +238,7 @@ function DriversTable({ drivers }: { drivers: any[] }) {
                     )}
                   </td>
                   <td className="px-4 py-3 text-white/60 text-xs">
-                    {formatDistanceToNow(new Date(driver.createdAt), { addSuffix: true })}
+                    {driver.user.createdAt ? formatDistanceToNow(new Date(driver.user.createdAt), { addSuffix: true }) : 'Unknown'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
