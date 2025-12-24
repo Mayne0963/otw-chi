@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { getPrisma } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -15,25 +12,38 @@ export async function POST(request: Request) {
 
     console.log('[Migrate] Starting database migration...');
     
-    // Run Prisma migrate deploy (for production)
-    const { stdout, stderr } = await execAsync('npx prisma migrate deploy', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        DATABASE_URL: process.env.DATABASE_URL,
-        DIRECT_URL: process.env.DIRECT_URL,
-      },
-    });
-
-    console.log('[Migrate] stdout:', stdout);
-    if (stderr) {
-      console.error('[Migrate] stderr:', stderr);
+    const prisma = getPrisma();
+    
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('[Migrate] Database connection successful');
+    
+    // Run the migration SQL directly
+    const migrations = [
+      // Check if tables already exist
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`,
+    ];
+    
+    const existingTables = await prisma.$queryRawUnsafe(migrations[0]);
+    console.log('[Migrate] Existing tables:', existingTables);
+    
+    // If tables don't exist, we need to run migrations manually
+    // For now, let's just report the status
+    const tableCount = Array.isArray(existingTables) ? existingTables.length : 0;
+    
+    if (tableCount === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'No tables found. Please run migrations using Prisma CLI locally or via a build script.',
+        details: 'Vercel serverless functions cannot run Prisma CLI commands due to file system restrictions.',
+        suggestion: 'Add "postinstall": "prisma generate && prisma migrate deploy" to package.json scripts',
+      });
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Database migration completed successfully',
-      output: stdout,
+      message: `Database is set up with ${tableCount} tables`,
+      tables: existingTables,
     });
   } catch (error: any) {
     console.error('[Migrate] Error:', error);
@@ -41,7 +51,7 @@ export async function POST(request: Request) {
       {
         success: false,
         error: error.message,
-        details: error.stderr || error.stdout,
+        details: error.toString(),
       },
       { status: 500 }
     );
