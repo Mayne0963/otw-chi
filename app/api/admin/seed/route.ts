@@ -117,14 +117,8 @@ export async function POST(request: Request) {
       update: {},
       create: {
         name: 'Basic',
-        priceCents: 900,
-        code: 'BASIC',
-        monthlyPrice: 900,
-        milesCap: 2000,
-        nipMultiplier: 1.0,
-        perks: {
-          perks: ['Standard delivery rates', 'TIREM rewards', 'Email support']
-        },
+        description: 'Perfect for occasional users - Standard delivery rates, TIREM rewards, Email support',
+        stripePriceId: process.env.STRIPE_PRICE_BASIC || null,
       },
     });
 
@@ -133,14 +127,8 @@ export async function POST(request: Request) {
       update: {},
       create: {
         name: 'Plus',
-        priceCents: 1900,
-        code: 'PLUS',
-        monthlyPrice: 1900,
-        milesCap: 4000,
-        nipMultiplier: 1.5,
-        perks: {
-          perks: ['Lower delivery fees', 'Priority drivers', 'TIREM multiplier']
-        },
+        description: 'For regular users - Lower delivery fees, Priority drivers, TIREM multiplier',
+        stripePriceId: process.env.STRIPE_PRICE_PLUS || null,
       },
     });
 
@@ -149,14 +137,8 @@ export async function POST(request: Request) {
       update: {},
       create: {
         name: 'Executive',
-        priceCents: 3900,
-        code: 'EXEC',
-        monthlyPrice: 3900,
-        milesCap: 8000,
-        nipMultiplier: 3.0,
-        perks: {
-          perks: ['Concierge scheduling', 'VIP queue', 'Free miles buffer', 'Tripled TIREM']
-        },
+        description: 'Premium tier - Concierge scheduling, VIP queue, Free miles buffer, Tripled TIREM',
+        stripePriceId: process.env.STRIPE_PRICE_EXEC || null,
       },
     });
 

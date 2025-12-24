@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getPrisma } from '@/lib/db';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 export async function POST(req: NextRequest) {
   try {
+    if (!stripe) {
+      return new NextResponse('Stripe not configured', { status: 500 });
+    }
+    
     const sig = req.headers.get('stripe-signature');
     if (!sig) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
