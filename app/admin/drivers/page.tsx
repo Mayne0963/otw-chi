@@ -1,10 +1,11 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
 // Loading component for better UX
 function AdminDriversLoading() {
@@ -26,13 +27,48 @@ async function getDriversData() {
   const prisma = getPrisma();
   
   try {
+    // Get all drivers with their user info, zone, locations, and earnings
     const drivers = await prisma.driverProfile.findMany({
       include: { 
-        user: { select: { id: true, name: true, email: true } }
+        user: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            driverEarnings: {
+              select: {
+                amount: true,
+                status: true
+              }
+            }
+          } 
+        },
+        zone: { select: { name: true } },
+        locations: {
+          orderBy: { timestamp: 'desc' },
+          take: 1
+        },
+        _count: {
+          select: {
+            requests: true
+          }
+        }
       }
     });
 
-    return drivers;
+    // Calculate statistics
+    const totalDrivers = drivers.length;
+    const onlineDrivers = drivers.filter(d => d.status === 'ONLINE').length;
+    const busyDrivers = drivers.filter(d => d.status === 'BUSY').length;
+    const offlineDrivers = drivers.filter(d => d.status === 'OFFLINE').length;
+
+    // Calculate total earnings
+    const totalEarnings = drivers.reduce((acc, driver) => {
+      const driverEarnings = driver.user.driverEarnings.reduce((sum, e) => sum + e.amount, 0);
+      return acc + driverEarnings;
+    }, 0);
+
+    return { drivers, totalDrivers, onlineDrivers, busyDrivers, offlineDrivers, totalEarnings };
   } catch (error) {
     console.error('[AdminDrivers] Failed to fetch drivers:', error);
     throw error;
@@ -41,10 +77,21 @@ async function getDriversData() {
 
 async function DriversList() {
   let drivers: any[] = [];
+  let totalDrivers = 0;
+  let onlineDrivers = 0;
+  let busyDrivers = 0;
+  let offlineDrivers = 0;
+  let totalEarnings = 0;
   let error: unknown = null;
 
   try {
-    drivers = await getDriversData();
+    const data = await getDriversData();
+    drivers = data.drivers;
+    totalDrivers = data.totalDrivers;
+    onlineDrivers = data.onlineDrivers;
+    busyDrivers = data.busyDrivers;
+    offlineDrivers = data.offlineDrivers;
+    totalEarnings = data.totalEarnings;
   } catch (err) {
     error = err;
   }
@@ -53,19 +100,44 @@ async function DriversList() {
     return <DriversErrorState error={error} />;
   }
 
-  if (drivers.length === 0) {
-    return <EmptyDriversState />;
-  }
-
-  return <DriversTable drivers={drivers} />;
-}
-
-function EmptyDriversState() {
   return (
-    <OtwCard className="mt-3 p-8 text-center">
-      <div className="text-white/60">No drivers found</div>
-      <div className="text-xs text-white/40 mt-2">Driver profiles will appear here when drivers register</div>
-    </OtwCard>
+    <>
+      <OtwCard className="mt-3 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-center">
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-white">{totalDrivers}</div>
+            <div className="text-xs text-white/60">Total Drivers</div>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-green-400">{onlineDrivers}</div>
+            <div className="text-xs text-white/60">Online</div>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-yellow-400">{busyDrivers}</div>
+            <div className="text-xs text-white/60">Busy</div>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-gray-400">{offlineDrivers}</div>
+            <div className="text-xs text-white/60">Offline</div>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-otwGold">${(totalEarnings / 100).toFixed(2)}</div>
+            <div className="text-xs text-white/60">Total Earnings</div>
+          </div>
+        </div>
+      </OtwCard>
+
+      {drivers.length === 0 ? (
+        <OtwCard className="mt-3 p-8 text-center">
+          <OtwEmptyState 
+            title="No drivers found" 
+            subtitle="Driver profiles will appear here when drivers register." 
+          />
+        </OtwCard>
+      ) : (
+        <DriversTable drivers={drivers} />
+      )}
+    </>
   );
 }
 
@@ -78,53 +150,99 @@ function DriversTable({ drivers }: { drivers: any[] }) {
             <tr>
               <th className="text-left px-4 py-3">Driver</th>
               <th className="text-left px-4 py-3">Status</th>
-              <th className="text-left px-4 py-3">Locations</th>
+              <th className="text-left px-4 py-3">Zone</th>
+              <th className="text-left px-4 py-3">Last Location</th>
+              <th className="text-left px-4 py-3">Completed</th>
               <th className="text-left px-4 py-3">Earnings</th>
+              <th className="text-left px-4 py-3">Rating</th>
               <th className="text-left px-4 py-3">Joined</th>
               <th className="text-left px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {drivers.map((driver) => (
-              <tr key={driver.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                <td className="px-4 py-3">
-                  <div>
-                    <div className="font-medium">{driver.user.name || 'Unknown Driver'}</div>
-                    <div className="text-xs text-white/50">{driver.user.email}</div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    driver.status === 'ONLINE' 
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                      : driver.status === 'BUSY'
-                      ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                      : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                  }`}>
-                    {driver.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className="text-white/70">-</span>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className="text-white/70">-</span>
-                </td>
-                <td className="px-4 py-3 text-white/60">
-                  {new Date(driver.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">
-                      View
-                    </button>
-                    <button className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors">
-                      Edit
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {drivers.map((driver) => {
+              // Calculate driver's total earnings
+              const driverEarnings = driver.user.driverEarnings.reduce((sum: number, e: any) => sum + e.amount, 0);
+              const pendingEarnings = driver.user.driverEarnings
+                .filter((e: any) => e.status === 'pending')
+                .reduce((sum: number, e: any) => sum + e.amount, 0);
+              
+              // Get last known location
+              const lastLocation = driver.locations[0];
+              
+              return (
+                <tr key={driver.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="px-4 py-3">
+                    <div>
+                      <div className="font-medium">{driver.user.name || 'Unknown Driver'}</div>
+                      <div className="text-xs text-white/50">{driver.user.email}</div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      driver.status === 'ONLINE' 
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : driver.status === 'BUSY'
+                        ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                        : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                    }`}>
+                      {driver.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-white/70">
+                    {driver.zone?.name || <span className="text-white/40">Unassigned</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {lastLocation ? (
+                      <div className="text-xs">
+                        <div className="text-white/70">
+                          {lastLocation.lat.toFixed(4)}, {lastLocation.lng.toFixed(4)}
+                        </div>
+                        <div className="text-white/40">
+                          {formatDistanceToNow(new Date(lastLocation.timestamp), { addSuffix: true })}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-white/40 text-xs">No location data</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-white/70">{driver._count.requests}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs">
+                      <div className="font-medium text-otwGold">${(driverEarnings / 100).toFixed(2)}</div>
+                      {pendingEarnings > 0 && (
+                        <div className="text-yellow-400">${(pendingEarnings / 100).toFixed(2)} pending</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {driver.rating && driver.rating > 0 ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-yellow-400">★</span>
+                        <span className="text-white/70">{driver.rating.toFixed(1)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-white/40 text-xs">No ratings</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-white/60 text-xs">
+                    {formatDistanceToNow(new Date(driver.createdAt), { addSuffix: true })}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">
+                        View
+                      </button>
+                      <button className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors">
+                        Edit
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -139,6 +257,12 @@ function DriversErrorState({ error }: { error: unknown }) {
       <div className="text-xs text-white/40 mt-2">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="mt-4 text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+      >
+        Retry
+      </button>
     </OtwCard>
   );
 }

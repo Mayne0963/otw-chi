@@ -27,16 +27,19 @@ async function getCustomersData() {
   const prisma = getPrisma();
   
   try {
-    // Get all customers (users who are not drivers or admins)
+    // Get all customers with their membership and request counts
     const customers = await prisma.user.findMany({
       where: { 
         role: 'CUSTOMER',
-        // Exclude drivers and admins
         driverProfile: null,
-        // Add some basic filtering to avoid loading system users
         email: { not: { contains: 'system' } }
       },
       include: {
+        membership: {
+          include: {
+            plan: { select: { name: true } }
+          }
+        },
         _count: {
           select: {
             requests: true,
@@ -48,7 +51,18 @@ async function getCustomersData() {
       take: 50
     });
 
-    return customers;
+    // Get customer statistics
+    const totalCustomers = await prisma.user.count({
+      where: { role: 'CUSTOMER' }
+    });
+
+    const customersWithMembership = await prisma.membershipSubscription.count({
+      where: { status: 'ACTIVE' }
+    });
+
+    const totalRequests = await prisma.request.count();
+
+    return { customers, totalCustomers, customersWithMembership, totalRequests };
   } catch (error) {
     console.error('[AdminCustomers] Failed to fetch customers:', error);
     throw error;
@@ -57,10 +71,17 @@ async function getCustomersData() {
 
 async function CustomersList() {
   let customers: any[] = [];
+  let totalCustomers = 0;
+  let customersWithMembership = 0;
+  let totalRequests = 0;
   let error: unknown = null;
 
   try {
-    customers = await getCustomersData();
+    const data = await getCustomersData();
+    customers = data.customers;
+    totalCustomers = data.totalCustomers;
+    customersWithMembership = data.customersWithMembership;
+    totalRequests = data.totalRequests;
   } catch (err) {
     error = err;
   }
@@ -69,21 +90,40 @@ async function CustomersList() {
     return <CustomersErrorState error={error} />;
   }
 
-  if (customers.length === 0) {
-    return <EmptyCustomersState />;
-  }
-
-  return <CustomersTable customers={customers} />;
-}
-
-function EmptyCustomersState() {
   return (
-    <OtwCard className="mt-3 p-8 text-center">
-      <OtwEmptyState 
-        title="No customers found" 
-        subtitle="Customer accounts will appear here when users register or make requests." 
-      />
-    </OtwCard>
+    <>
+      <OtwCard className="mt-3 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-white">{totalCustomers}</div>
+            <div className="text-xs text-white/60">Total Customers</div>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-otwGold">{customersWithMembership}</div>
+            <div className="text-xs text-white/60">Active Members</div>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-gray-400">{totalCustomers - customersWithMembership}</div>
+            <div className="text-xs text-white/60">Free Users</div>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <div className="text-2xl font-bold text-green-400">{totalRequests}</div>
+            <div className="text-xs text-white/60">Total Requests</div>
+          </div>
+        </div>
+      </OtwCard>
+
+      {customers.length === 0 ? (
+        <OtwCard className="mt-3 p-8 text-center">
+          <OtwEmptyState 
+            title="No customers found" 
+            subtitle="Customer accounts will appear here when users register or make requests." 
+          />
+        </OtwCard>
+      ) : (
+        <CustomersTable customers={customers} />
+      )}
+    </>
   );
 }
 
@@ -105,6 +145,10 @@ function CustomersTable({ customers }: { customers: any[] }) {
           </thead>
           <tbody>
             {customers.map((customer) => {
+              const hasMembership = customer.membership && customer.membership.status === 'ACTIVE';
+              const membershipStatus = customer.membership?.status;
+              const planName = customer.membership?.plan?.name;
+              
               return (
                 <tr key={customer.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
@@ -115,18 +159,38 @@ function CustomersTable({ customers }: { customers: any[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30`}>
-                      Free User
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      hasMembership
+                        ? 'bg-otwGold/20 text-otwGold border border-otwGold/30'
+                        : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                    }`}>
+                      {hasMembership ? 'Member' : 'Free User'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="text-white/70">{customer._count.requests}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="text-white/70">{customer._count.supportTickets}</span>
+                    <span className={`${customer._count.supportTickets > 0 ? 'text-yellow-400' : 'text-white/70'}`}>
+                      {customer._count.supportTickets}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-white/50 text-xs">No membership</span>
+                    {customer.membership ? (
+                      <div>
+                        <div className="text-sm font-medium">{planName || 'Unknown Plan'}</div>
+                        <div className={`text-xs ${
+                          membershipStatus === 'ACTIVE' ? 'text-green-400' :
+                          membershipStatus === 'PAST_DUE' ? 'text-yellow-400' :
+                          membershipStatus === 'CANCELED' ? 'text-red-400' :
+                          'text-white/50'
+                        }`}>
+                          {membershipStatus}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-white/50 text-xs">No membership</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-white/60 text-xs">
                     {formatDistanceToNow(new Date(customer.createdAt), { addSuffix: true })}
