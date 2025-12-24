@@ -34,13 +34,7 @@ async function getDriversData() {
           select: { 
             id: true, 
             name: true, 
-            email: true,
-            driverEarnings: {
-              select: {
-                amount: true,
-                status: true
-              }
-            }
+            email: true
           } 
         },
         zone: { select: { name: true } },
@@ -56,19 +50,35 @@ async function getDriversData() {
       }
     });
 
+    // Fetch earnings separately for all drivers
+    const driverIds = drivers.map(d => d.userId);
+    const earnings = await prisma.driverEarnings.findMany({
+      where: {
+        driverId: { in: driverIds }
+      },
+      select: {
+        driverId: true,
+        amount: true,
+        status: true
+      }
+    });
+
+    // Map earnings to drivers
+    const driversWithEarnings = drivers.map(driver => ({
+      ...driver,
+      earnings: earnings.filter(e => e.driverId === driver.userId)
+    }));
+
     // Calculate statistics
     const totalDrivers = drivers.length;
     const onlineDrivers = drivers.filter(d => d.status === 'ONLINE').length;
     const busyDrivers = drivers.filter(d => d.status === 'BUSY').length;
     const offlineDrivers = drivers.filter(d => d.status === 'OFFLINE').length;
 
-    // Calculate total earnings
-    const totalEarnings = drivers.reduce((acc, driver) => {
-      const driverEarnings = driver.user.driverEarnings.reduce((sum, e) => sum + e.amount, 0);
-      return acc + driverEarnings;
-    }, 0);
+    // Calculate total earnings from the earnings array
+    const totalEarnings = earnings.reduce((acc, e) => acc + e.amount, 0);
 
-    return { drivers, totalDrivers, onlineDrivers, busyDrivers, offlineDrivers, totalEarnings };
+    return { drivers: driversWithEarnings, totalDrivers, onlineDrivers, busyDrivers, offlineDrivers, totalEarnings };
   } catch (error) {
     console.error('[AdminDrivers] Failed to fetch drivers:', error);
     throw error;
@@ -162,8 +172,8 @@ function DriversTable({ drivers }: { drivers: any[] }) {
           <tbody>
             {drivers.map((driver) => {
               // Calculate driver's total earnings
-              const driverEarnings = driver.user.driverEarnings.reduce((sum: number, e: any) => sum + e.amount, 0);
-              const pendingEarnings = driver.user.driverEarnings
+              const driverEarnings = driver.earnings.reduce((sum: number, e: any) => sum + e.amount, 0);
+              const pendingEarnings = driver.earnings
                 .filter((e: any) => e.status === 'pending')
                 .reduce((sum: number, e: any) => sum + e.amount, 0);
               
