@@ -31,6 +31,16 @@ export async function syncUserOnDashboard() {
       update: {},
       create: { userId: user.id },
     });
+    
+    // Create driver profile for DRIVER and ADMIN roles
+    if (role === 'DRIVER' || role === 'ADMIN') {
+      await prisma.driverProfile.upsert({
+        where: { userId: user.id },
+        update: {},
+        create: { userId: user.id, status: 'OFFLINE' },
+      });
+    }
+    
     return user;
   } catch (error) {
     console.error("User sync failed:", error);

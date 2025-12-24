@@ -7,7 +7,7 @@ import { RequestStatus } from '@/lib/generated/prisma';
 
 export async function getAvailableJobs() {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'DRIVER') return [];
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) return [];
 
   const prisma = getPrisma();
   
@@ -37,7 +37,7 @@ export async function getAvailableJobs() {
 
 export async function acceptJob(requestId: string) {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'DRIVER') throw new Error('Unauthorized');
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) throw new Error('Unauthorized');
 
   const prisma = getPrisma();
   const driverProfile = await prisma.driverProfile.findUnique({
@@ -84,7 +84,7 @@ export async function acceptJobAction(formData: FormData) {
 
 export async function updateJobStatus(requestId: string, status: RequestStatus) {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'DRIVER') throw new Error('Unauthorized');
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) throw new Error('Unauthorized');
 
   const prisma = getPrisma();
   const driverProfile = await prisma.driverProfile.findUnique({
@@ -132,7 +132,7 @@ export async function updateJobStatusAction(formData: FormData) {
 
 export async function completeJob(requestId: string) {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'DRIVER') throw new Error('Unauthorized');
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) throw new Error('Unauthorized');
 
   const prisma = getPrisma();
   const driverProfile = await prisma.driverProfile.findUnique({
@@ -204,7 +204,7 @@ export async function completeJob(requestId: string) {
 
 export async function getDriverEarnings() {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'DRIVER') return { total: 0, history: [] };
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) return { total: 0, history: [] };
 
   const prisma = getPrisma();
   
@@ -223,7 +223,7 @@ export async function getDriverEarnings() {
 
 export async function requestPayoutAction(_formData: FormData) {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'DRIVER') return;
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) return;
 
   const prisma = getPrisma();
   const available = await prisma.driverEarnings.findMany({
