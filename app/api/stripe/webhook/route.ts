@@ -48,12 +48,12 @@ export async function POST(req: Request) {
       const stripeCustomerId = subscription.customer as string;
 
       // Find user by stripeCustomerId if metadata is missing
-      let userId = subscription.metadata?.userId;
+      let userId: string | undefined = subscription.metadata?.userId;
       if (!userId) {
         const membership = await prisma.membershipSubscription.findFirst({
             where: { stripeCustomerId }
         });
-        userId = membership?.userId;
+        userId = membership?.userId ?? undefined;
       }
 
       if (userId) {
@@ -83,12 +83,12 @@ export async function POST(req: Request) {
       const subscription = event.data.object as Stripe.Subscription;
       const stripeCustomerId = subscription.customer as string;
       
-      let userId = subscription.metadata?.userId;
+      let userId: string | undefined = subscription.metadata?.userId;
       if (!userId) {
         const membership = await prisma.membershipSubscription.findFirst({
             where: { stripeCustomerId }
         });
-        userId = membership?.userId;
+        userId = membership?.userId ?? undefined;
       }
 
       if (userId) {

@@ -25,7 +25,7 @@ export default async function MembershipManagePage() {
           <div className="flex justify-between items-start">
             <div>
               <div className="text-sm font-medium opacity-70 uppercase tracking-wider">Current Plan</div>
-              <div className="text-2xl font-bold mt-1 text-otwGold">{sub.plan.name}</div>
+              <div className="text-2xl font-bold mt-1 text-otwGold">{sub.plan?.name ?? 'No Plan'}</div>
               <div className="mt-2 text-sm opacity-80">
                 Status: <OtwStatPill label="Status" value={sub.status} tone={sub.status === 'ACTIVE' ? 'success' : 'danger'} />
               </div>

@@ -1,0 +1,44 @@
+
+> otw-delivery-system@0.0.0 build
+> node scripts/validate-env.js && prisma generate && node scripts/migrate-deploy.js && next build
+
+❌ Missing required environment variables:
+   - DATABASE_URL
+   - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+   - CLERK_SECRET_KEY
+   - NEXT_PUBLIC_APP_URL
+   - STRIPE_SECRET_KEY
+   - STRIPE_WEBHOOK_SECRET
+   - STRIPE_PRICE_BASIC
+   - STRIPE_PRICE_PLUS
+   - STRIPE_PRICE_EXEC
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (v7.2.0) to ./lib/generated/prisma in 195ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+[migrate-deploy] Starting database migrations...
+[migrate-deploy] DATABASE_URL or DIRECT_URL not set, skipping migrations
+▲ Next.js 16.1.0 (Turbopack)
+- Environments: .env
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 3 errors:
+./app/requests
+You cannot have two parallel pages that resolve to the same path. Please check /(dashboard)/requests/[id] and /requests.
+
+./app/driver
+You cannot have two parallel pages that resolve to the same path. Please check /(public)/driver/apply and /driver.
+
+./app/order
+You cannot have two parallel pages that resolve to the same path. Please check /(public)/order and /order.
+
+    at ignore-listed frames

@@ -22,7 +22,7 @@ export const getActiveSubscription = cache(async (userId: string) => {
   return null;
 });
 
-export function getPlanCodeFromSubscription(sub: (MembershipSubscription & { plan: MembershipPlan }) | null): 'BASIC' | 'PLUS' | 'EXEC' | null {
+export function getPlanCodeFromSubscription(sub: (MembershipSubscription & { plan: MembershipPlan | null }) | null): 'BASIC' | 'PLUS' | 'EXEC' | null {
   if (!sub || !sub.plan) return null;
   
   const name = sub.plan.name.toUpperCase();
