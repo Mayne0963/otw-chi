@@ -1,39 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getEstimateAction } from '@/app/actions/estimate';
+import { NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const result = await getEstimateAction(formData);
-    return NextResponse.json(result);
+    const miles = Number(formData.get('miles')) || 1;
+    
+    // Simple pricing logic: $5 base + $1.50/mile (in cents)
+    const basePrice = 500 + (miles * 150); 
+    
+    return NextResponse.json({
+      basePrice,
+      discountedPrice: basePrice, 
+      miles
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to estimate';
-    console.error('API estimate error:', error);
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
-}
-
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const formData = new FormData();
-    
-    // Convert query params to form data for compatibility
-    const pickup = searchParams.get('pickup');
-    const dropoff = searchParams.get('dropoff');
-    const serviceType = searchParams.get('serviceType');
-    const miles = searchParams.get('miles');
-    
-    if (pickup) formData.set('pickup', pickup);
-    if (dropoff) formData.set('dropoff', dropoff);
-    if (serviceType) formData.set('serviceType', serviceType);
-    if (miles) formData.set('miles', miles);
-    
-    const result = await getEstimateAction(formData);
-    return NextResponse.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to estimate';
-    console.error('API estimate GET error:', error);
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error('Estimate error:', error);
+    return new NextResponse('Invalid request', { status: 400 });
   }
 }

@@ -1,84 +1,109 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getPrisma } from '@/lib/db';
+import { MembershipStatus } from '@/lib/generated/prisma';
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-12-18.acacia',
+});
 
-export async function POST(req: NextRequest) {
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  const signature = (await headers()).get('Stripe-Signature') as string;
+
+  let event: Stripe.Event;
+
   try {
-    if (!stripe) {
-      return new NextResponse('Stripe not configured', { status: 500 });
-    }
-    
-    const sig = req.headers.get('stripe-signature');
-    if (!sig) {
-      return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
-    }
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+  } catch (err: any) {
+    console.error(`Webhook signature verification failed.`, err.message);
+    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+  }
 
-    const payload = await req.text();
-    const secret = process.env.STRIPE_WEBHOOK_SECRET as string;
-    if (!secret) {
-      return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
-    }
+  const prisma = getPrisma();
 
-    let event: Stripe.Event;
-    try {
-      event = stripe.webhooks.constructEvent(payload, sig, secret);
-    } catch (_err) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-    }
-
+  try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
-      const clerkUserId = String(session.metadata?.clerkUserId || '');
-      const plan = String(session.metadata?.plan || '').toUpperCase();
-      const stripeCustomerId = String(session.customer || '');
-      const stripeSubscriptionId = String(session.subscription || '');
-      const lineItems = session.line_items as { data?: { price?: { id?: string } }[] } | undefined;
-      const priceId = String(lineItems?.data?.[0]?.price?.id || session.metadata?.priceId || '');
 
-      const prisma = getPrisma();
-
-      const dbUser = await prisma.user.findFirst({ where: { clerkId: clerkUserId } });
-      if (!dbUser) {
-        return NextResponse.json({ ok: true });
+      if (!session?.metadata?.userId) {
+        return new NextResponse('Webhook Error: No user ID in metadata', { status: 400 });
       }
 
-      const planName =
-        plan === 'PLUS' ? 'Plus' :
-        plan === 'EXECUTIVE' ? 'Executive' :
-        'Basic';
-
-      let dbPlan = await prisma.membershipPlan.findFirst({ where: { name: planName } });
-      if (!dbPlan) {
-        dbPlan = await prisma.membershipPlan.create({
-          data: { name: planName, stripePriceId: priceId || null }
-        });
-      }
-
-      await prisma.membershipSubscription.upsert({
-        where: { userId: dbUser.id },
-        update: {
-          planId: dbPlan.id,
+      const subscriptionId = session.subscription as string;
+      
+      await prisma.membershipSubscription.update({
+        where: { userId: session.metadata.userId },
+        data: {
+          stripeSubId: subscriptionId,
+          stripePriceId: session.metadata.planCode, // Store plan code or price ID
           status: 'ACTIVE',
-          stripeCustomerId,
-          stripeSubId: stripeSubscriptionId,
-          stripePriceId: priceId || dbPlan.stripePriceId || null,
-        },
-        create: {
-          userId: dbUser.id,
-          planId: dbPlan.id,
-          status: 'ACTIVE',
-          stripeCustomerId,
-          stripeSubId: stripeSubscriptionId,
-          stripePriceId: priceId || dbPlan.stripePriceId || null,
         },
       });
-    }
+    } else if (event.type === 'customer.subscription.updated') {
+      const subscription = event.data.object as Stripe.Subscription;
+      const stripeCustomerId = subscription.customer as string;
 
-    return NextResponse.json({ received: true });
+      // Find user by stripeCustomerId if metadata is missing
+      let userId = subscription.metadata?.userId;
+      if (!userId) {
+        const membership = await prisma.membershipSubscription.findFirst({
+            where: { stripeCustomerId }
+        });
+        userId = membership?.userId;
+      }
+
+      if (userId) {
+        const statusMap: Record<string, MembershipStatus> = {
+            'active': 'ACTIVE',
+            'past_due': 'PAST_DUE',
+            'canceled': 'CANCELED',
+            'unpaid': 'PAST_DUE',
+            'incomplete': 'TRIALING',
+            'incomplete_expired': 'CANCELED',
+            'trialing': 'TRIALING',
+            'paused': 'INACTIVE'
+        };
+
+        const status = statusMap[subscription.status] || 'ACTIVE';
+
+        await prisma.membershipSubscription.update({
+            where: { userId },
+            data: {
+                status,
+                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+                stripePriceId: subscription.items.data[0].price.id,
+            }
+        });
+      }
+    } else if (event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object as Stripe.Subscription;
+      const stripeCustomerId = subscription.customer as string;
+      
+      let userId = subscription.metadata?.userId;
+      if (!userId) {
+        const membership = await prisma.membershipSubscription.findFirst({
+            where: { stripeCustomerId }
+        });
+        userId = membership?.userId;
+      }
+
+      if (userId) {
+        await prisma.membershipSubscription.update({
+            where: { userId },
+            data: {
+                status: 'CANCELED',
+            }
+        });
+      }
+    }
   } catch (error) {
-    console.error('Stripe webhook error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('Webhook handler failed', error);
+    return new NextResponse('Webhook handler failed', { status: 500 });
   }
+
+  return new NextResponse(null, { status: 200 });
 }

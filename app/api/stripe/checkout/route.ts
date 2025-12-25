@@ -1,52 +1,106 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
+import { getPrisma } from '@/lib/db';
 
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-12-18.acacia',
+});
 
-const planToPriceId: Record<string, string | undefined> = {
+const PLANS = {
   basic: process.env.STRIPE_PRICE_BASIC,
   plus: process.env.STRIPE_PRICE_PLUS,
-  executive: process.env.STRIPE_PRICE_EXECUTIVE,
+  executive: process.env.STRIPE_PRICE_EXEC,
 };
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    if (!stripe) {
-      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
-    }
-    
     const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await currentUser();
+
+    if (!userId || !user) {
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const body = await req.json();
-    const plan = String(body?.plan || '').toLowerCase();
-    if (!['basic', 'plus', 'executive'].includes(plan)) {
-      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
-    }
+    const { plan } = await req.json();
+    const priceId = PLANS[plan as keyof typeof PLANS];
 
-    const priceId = planToPriceId[plan];
     if (!priceId) {
-      return NextResponse.json({ error: 'Missing price configuration' }, { status: 500 });
+      // If basic plan (free), just update DB directly if no stripe price
+      if (plan === 'basic') {
+         // Handle free tier logic if needed, but for checkout we usually expect a price.
+         // If basic is truly $0 and no stripe interaction needed, we might handle it here.
+         // But the prompt says "Creates Stripe Checkout Session".
+         // If priceId is missing, return error.
+         return new NextResponse('Plan not found or configured', { status: 400 });
+      }
+      return new NextResponse('Plan not found', { status: 400 });
+    }
+
+    const prisma = getPrisma();
+    
+    // Check if user already has a stripe customer ID
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      include: { membership: true },
+    });
+
+    if (!dbUser) {
+        return new NextResponse('User not found in DB', { status: 404 });
+    }
+
+    let stripeCustomerId = dbUser.membership?.stripeCustomerId;
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: user.emailAddresses[0].emailAddress,
+        metadata: {
+          clerkUserId: userId,
+          userId: dbUser.id,
+        },
+      });
+      stripeCustomerId = customer.id;
+      
+      // Update user with stripe customer id
+      // We upsert membership to ensure it exists
+      await prisma.membershipSubscription.upsert({
+        where: { userId: dbUser.id },
+        update: { stripeCustomerId },
+        create: {
+            userId: dbUser.id,
+            stripeCustomerId,
+            status: 'INACTIVE', // Will be active after webhook
+        }
+      });
     }
 
     const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
       mode: 'subscription',
       payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
       metadata: {
         clerkUserId: userId,
-        plan,
+        userId: dbUser.id,
+        planCode: plan,
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/pricing?canceled=true`,
+      subscription_data: {
+        metadata: {
+          userId: dbUser.id,
+        },
+      },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
     });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error('Stripe checkout error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('[STRIPE_CHECKOUT]', error);
+    return new NextResponse('Internal Error', { status: 500 });
   }
 }

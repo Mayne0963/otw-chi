@@ -9,25 +9,25 @@ import { getActiveSubscription, getPlanCodeFromSubscription } from '@/lib/member
 export default async function MembershipPage() {
   const user = await getCurrentUser();
   const sub = user ? await getActiveSubscription(user.id) : null;
-  const planCode = getPlanCodeFromSubscription(sub);
+  const planCode = getPlanCodeFromSubscription(sub as any);
 
   const plans = [
     {
-      code: 'FREE',
-      name: 'Free',
+      code: 'basic',
+      name: 'Basic',
       price: '$0',
       description: 'Standard access to OTW services.',
       features: ['Standard delivery fees', 'Basic support', 'Pay per request'],
     },
     {
-      code: 'PRO',
-      name: 'Pro',
+      code: 'plus',
+      name: 'Plus',
       price: '$9.99/mo',
       description: 'For frequent users who want to save.',
       features: ['20% off all deliveries', 'Priority support', '1.2x NIP Rewards'],
     },
     {
-      code: 'EXECUTIVE',
+      code: 'executive',
       name: 'Executive',
       price: '$29.99/mo',
       description: 'The ultimate concierge experience.',

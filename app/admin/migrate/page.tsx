@@ -50,7 +50,7 @@ export default function MigratePage() {
             <div className="text-sm text-white/80">
               <p className="mb-2">This will run all pending Prisma migrations on your Neon database.</p>
               <p className="mb-4 text-white/60">
-                <strong>Warning:</strong> Only run this if you know what you're doing. This will modify your database schema.
+                <strong>Warning:</strong> Only run this if you know what you&apos;re doing. This will modify your database schema.
               </p>
             </div>
 

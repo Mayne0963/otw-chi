@@ -1,37 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 
-const schema = z.object({
+const applicationSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email(),
-  phone: z.string().min(7),
+  phone: z.string().min(10),
   city: z.string().min(2),
   vehicleType: z.string().min(2),
-  availability: z.string().min(2),
+  availability: z.string().optional(),
   message: z.string().optional(),
 });
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const prisma = getPrisma();
     const { userId } = await auth();
+    const prisma = getPrisma();
+    
+    // Check if user already applied
+    if (userId) {
+        const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+        if (user) {
+            const existing = await prisma.driverApplication.findFirst({
+                where: { userId: user.id, status: 'PENDING' }
+            });
+            if (existing) {
+                return new NextResponse('You already have a pending application.', { status: 409 });
+            }
+        }
+    }
 
     const body = await req.json();
-    const parsed = schema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Validation failed', details: parsed.error.flatten() }, { status: 400 });
-    }
-
-    const data = parsed.data;
-    let dbUserId: string | undefined;
+    const data = applicationSchema.parse(body);
+    
+    let dbUserId = null;
     if (userId) {
-      const dbUser = await prisma.user.findFirst({ where: { clerkId: userId } });
-      dbUserId = dbUser?.id;
+        const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+        dbUserId = user?.id;
     }
 
-    const application = await prisma.driverApplication.create({
+    await prisma.driverApplication.create({
       data: {
         userId: dbUserId,
         email: data.email,
@@ -40,15 +49,13 @@ export async function POST(req: NextRequest) {
         city: data.city,
         vehicleType: data.vehicleType,
         availability: data.availability,
-        message: data.message || null,
-        status: 'pending',
+        message: data.message,
       },
     });
 
-    return NextResponse.json(application, { status: 201 });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Driver apply error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('Driver application error:', error);
+    return new NextResponse('Invalid application data', { status: 400 });
   }
 }
-

@@ -24,6 +24,7 @@ enum RequestStatus {
   SUBMITTED
   ASSIGNED
   PICKED_UP
+  EN_ROUTE
   DELIVERED
   COMPLETED
   CANCELLED
@@ -61,6 +62,12 @@ enum PayoutMethod {
   manual
 }
 
+enum DriverApplicationStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
 // Models
 model User {
   id                String    @id @default(cuid())
@@ -95,12 +102,14 @@ model DriverApplication {
   phone        String
   city         String
   vehicleType  String
-  availability String
+  availability String?
   message      String?
-  status       String   @default("NEW") // NEW, REVIEWING, APPROVED, REJECTED
+  notes        String?
+  status       DriverApplicationStatus   @default(PENDING)
   createdAt    DateTime @default(now())
-
-  user User? @relation(fields: [userId], references: [id])
+  updatedAt    DateTime @updatedAt
+  
+  user         User?    @relation(fields: [userId], references: [id])
 }
 
 model DriverProfile {
@@ -114,6 +123,8 @@ model DriverProfile {
   zone              Zone?            @relation(fields: [zoneId], references: [id])
   requests          Request[]
   locations         DriverLocation[]
+  assignments       DriverAssignment[]
+  locationPings     DriverLocationPing[]
 }
 
 model CustomerProfile {
@@ -165,6 +176,8 @@ model Request {
   events         RequestEvent[]
   city           City?          @relation(fields: [cityId], references: [id])
   zone           Zone?          @relation(fields: [zoneId], references: [id])
+  assignments    DriverAssignment[]
+  locationPings  DriverLocationPing[]
 
   @@index([customerId])
   @@index([status])
@@ -203,7 +216,7 @@ model MembershipPlan {
 model MembershipSubscription {
   id               String           @id @default(cuid())
   userId           String           @unique
-  planId           String
+  planId           String?
   status           MembershipStatus @default(ACTIVE)
   stripeCustomerId String?
   stripeSubId      String?
@@ -212,7 +225,7 @@ model MembershipSubscription {
   currentPeriodEnd DateTime?
 
   user User           @relation(fields: [userId], references: [id])
-  plan MembershipPlan @relation(fields: [planId], references: [id])
+  plan MembershipPlan? @relation(fields: [planId], references: [id])
 }
 
 model NIPLedger {
@@ -277,4 +290,32 @@ model DriverLocation {
   driver    DriverProfile @relation(fields: [driverId], references: [id])
 
   @@index([driverId, timestamp])
+}
+
+model DriverAssignment {
+  id         String   @id @default(cuid())
+  requestId  String
+  driverId   String
+  assignedAt DateTime @default(now())
+  
+  request    Request       @relation(fields: [requestId], references: [id])
+  driver     DriverProfile @relation(fields: [driverId], references: [id])
+
+  @@index([requestId])
+  @@index([driverId])
+}
+
+model DriverLocationPing {
+  id        String   @id @default(cuid())
+  driverId  String
+  requestId String?
+  lat       Float
+  lng       Float
+  createdAt DateTime @default(now())
+
+  driver    DriverProfile @relation(fields: [driverId], references: [id])
+  request   Request?      @relation(fields: [requestId], references: [id])
+
+  @@index([driverId])
+  @@index([requestId])
 }
