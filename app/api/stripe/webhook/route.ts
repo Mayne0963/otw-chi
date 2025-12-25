@@ -5,7 +5,7 @@ import { getPrisma } from '@/lib/db';
 import { MembershipStatus } from '@/lib/generated/prisma';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-11-17.clover',
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
             where: { userId },
             data: {
                 status,
-                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+                currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
                 stripePriceId: subscription.items.data[0].price.id,
             }
         });

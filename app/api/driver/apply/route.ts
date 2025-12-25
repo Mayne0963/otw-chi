@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
     await prisma.driverApplication.create({
       data: {
-        userId: dbUserId,
+        userId: dbUserId || undefined,
         email: data.email,
         fullName: data.fullName,
         phone: data.phone,
