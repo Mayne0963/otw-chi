@@ -1,6 +1,6 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
-import { Role } from '@/lib/generated/prisma';
+import { Role } from '@prisma/client';
 
 export async function syncUserOnDashboard() {
   const { userId } = await auth();

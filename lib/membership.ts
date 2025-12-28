@@ -1,6 +1,6 @@
 import { getPrisma } from '@/lib/db';
 import { cache } from 'react';
-import { MembershipSubscription, MembershipPlan } from '@/lib/generated/prisma';
+import { MembershipSubscription, MembershipPlan } from '@prisma/client';
 
 export const getActiveSubscription = cache(async (userId: string) => {
   const prisma = getPrisma();

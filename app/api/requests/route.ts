@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
-import { ServiceType } from '@/lib/generated/prisma';
+import { ServiceType } from '@prisma/client';
 
 const requestSchema = z.object({
   pickup: z.string().min(5),

@@ -3,7 +3,7 @@
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
-import { RequestStatus } from '@/lib/generated/prisma';
+import { RequestStatus } from '@prisma/client';
 
 export async function getAvailableJobs() {
   const user = await getCurrentUser();

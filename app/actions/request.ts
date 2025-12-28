@@ -7,7 +7,7 @@ import { estimatePrice } from '@/lib/pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { ServiceType, RequestStatus } from '@/lib/generated/prisma';
+import { ServiceType, RequestStatus } from '@prisma/client';
 
 export async function createRequestAction(formData: FormData) {
   const pickup = String(formData.get('pickup') ?? '');
