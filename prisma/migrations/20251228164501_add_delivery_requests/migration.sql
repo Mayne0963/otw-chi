@@ -7,7 +7,7 @@ BEGIN
 END $$;
 
 -- CreateTable
-CREATE TABLE "DeliveryRequest" (
+CREATE TABLE IF NOT EXISTS "DeliveryRequest" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "assignedDriverId" TEXT,
@@ -25,23 +25,100 @@ CREATE TABLE "DeliveryRequest" (
     CONSTRAINT "DeliveryRequest_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "DriverAssignment" (
+    "id" TEXT NOT NULL,
+    "requestId" TEXT,
+    "driverId" TEXT NOT NULL,
+    "deliveryRequestId" TEXT,
+    "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DriverAssignment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "DriverLocationPing" (
+    "id" TEXT NOT NULL,
+    "driverId" TEXT NOT NULL,
+    "requestId" TEXT,
+    "deliveryRequestId" TEXT,
+    "lat" DOUBLE PRECISION NOT NULL,
+    "lng" DOUBLE PRECISION NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DriverLocationPing_pkey" PRIMARY KEY ("id")
+);
+
 -- AlterTable
-ALTER TABLE "DriverAssignment" ADD COLUMN "deliveryRequestId" TEXT;
+ALTER TABLE "DriverAssignment" ADD COLUMN IF NOT EXISTS "deliveryRequestId" TEXT;
 ALTER TABLE "DriverAssignment" ALTER COLUMN "requestId" DROP NOT NULL;
 
 -- AlterTable
-ALTER TABLE "DriverLocationPing" ADD COLUMN "deliveryRequestId" TEXT;
+ALTER TABLE "DriverLocationPing" ADD COLUMN IF NOT EXISTS "deliveryRequestId" TEXT;
 
 -- CreateIndex
-CREATE INDEX "DeliveryRequest_userId_idx" ON "DeliveryRequest"("userId");
-CREATE INDEX "DeliveryRequest_status_idx" ON "DeliveryRequest"("status");
-CREATE INDEX "DriverAssignment_deliveryRequestId_idx" ON "DriverAssignment"("deliveryRequestId");
-CREATE INDEX "DriverLocationPing_deliveryRequestId_idx" ON "DriverLocationPing"("deliveryRequestId");
+CREATE INDEX IF NOT EXISTS "DeliveryRequest_userId_idx" ON "DeliveryRequest"("userId");
+CREATE INDEX IF NOT EXISTS "DeliveryRequest_status_idx" ON "DeliveryRequest"("status");
+CREATE INDEX IF NOT EXISTS "DriverAssignment_requestId_idx" ON "DriverAssignment"("requestId");
+CREATE INDEX IF NOT EXISTS "DriverAssignment_driverId_idx" ON "DriverAssignment"("driverId");
+CREATE INDEX IF NOT EXISTS "DriverAssignment_deliveryRequestId_idx" ON "DriverAssignment"("deliveryRequestId");
+CREATE INDEX IF NOT EXISTS "DriverLocationPing_driverId_idx" ON "DriverLocationPing"("driverId");
+CREATE INDEX IF NOT EXISTS "DriverLocationPing_requestId_idx" ON "DriverLocationPing"("requestId");
+CREATE INDEX IF NOT EXISTS "DriverLocationPing_deliveryRequestId_idx" ON "DriverLocationPing"("deliveryRequestId");
 
 -- AddForeignKey
-ALTER TABLE "DeliveryRequest" ADD CONSTRAINT "DeliveryRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "DeliveryRequest" ADD CONSTRAINT "DeliveryRequest_assignedDriverId_fkey" FOREIGN KEY ("assignedDriverId") REFERENCES "DriverProfile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DeliveryRequest_userId_fkey') THEN
+    ALTER TABLE "DeliveryRequest" ADD CONSTRAINT "DeliveryRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "DriverAssignment" ADD CONSTRAINT "DriverAssignment_deliveryRequestId_fkey" FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "DriverLocationPing" ADD CONSTRAINT "DriverLocationPing_deliveryRequestId_fkey" FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DeliveryRequest_assignedDriverId_fkey') THEN
+    ALTER TABLE "DeliveryRequest" ADD CONSTRAINT "DeliveryRequest_assignedDriverId_fkey" FOREIGN KEY ("assignedDriverId") REFERENCES "DriverProfile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DriverAssignment_requestId_fkey') THEN
+    ALTER TABLE "DriverAssignment" ADD CONSTRAINT "DriverAssignment_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "Request"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DriverAssignment_driverId_fkey') THEN
+    ALTER TABLE "DriverAssignment" ADD CONSTRAINT "DriverAssignment_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DriverAssignment_deliveryRequestId_fkey') THEN
+    ALTER TABLE "DriverAssignment" ADD CONSTRAINT "DriverAssignment_deliveryRequestId_fkey" FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DriverLocationPing_driverId_fkey') THEN
+    ALTER TABLE "DriverLocationPing" ADD CONSTRAINT "DriverLocationPing_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DriverLocationPing_requestId_fkey') THEN
+    ALTER TABLE "DriverLocationPing" ADD CONSTRAINT "DriverLocationPing_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "Request"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'DriverLocationPing_deliveryRequestId_fkey') THEN
+    ALTER TABLE "DriverLocationPing" ADD CONSTRAINT "DriverLocationPing_deliveryRequestId_fkey" FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;

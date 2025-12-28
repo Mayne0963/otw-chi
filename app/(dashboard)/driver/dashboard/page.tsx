@@ -153,7 +153,7 @@ export default async function DriverDashboardPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{req.serviceType}</span>
-                                <span className="text-green-400 font-mono">${((req.costEstimate || 0) / 100).toFixed(2)}</span>
+                                <span className="text-xs uppercase tracking-wide text-white/60">Quote pending</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
