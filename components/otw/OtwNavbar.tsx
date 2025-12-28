@@ -16,11 +16,11 @@ const OtwNavbar: React.FC = () => {
             <Link href="/how-it-works" className="hover:text-otwGold transition">How It Works</Link>
             <Link href="/pricing" className="hover:text-otwGold transition">Pricing</Link>
             <Link href="/driver/apply" className="hover:text-otwGold transition">Drive</Link>
-            <Link
+              <Link
               href="/order"
               className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20"
             >
-              Place Order
+              Order Now
             </Link>
           </div>
 
@@ -30,7 +30,7 @@ const OtwNavbar: React.FC = () => {
               href="/order"
               className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20 hidden sm:inline-block"
             >
-              Place Order
+              Order Now
             </Link>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
@@ -41,7 +41,7 @@ const OtwNavbar: React.FC = () => {
                 href="/order"
                 className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20 hidden md:inline-block"
               >
-                Place Order
+                Order Now
               </Link>
               <SignInButton mode="modal">
                 <button className="hover:text-otwGold transition">Sign In</button>

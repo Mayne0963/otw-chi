@@ -121,7 +121,7 @@ export function MarketingNav() {
                   <div className="flex flex-col gap-3 pt-4 border-t border-white/10">
                     <SheetClose asChild>
                       <Button asChild className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">
-                        <Link href="/order">Place Order</Link>
+                        <Link href="/order">Order Now</Link>
                       </Button>
                     </SheetClose>
                     

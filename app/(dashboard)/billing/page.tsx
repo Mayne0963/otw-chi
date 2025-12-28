@@ -14,6 +14,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   });
 
   const { success, canceled } = await searchParams;
+  const isActive = membership?.status === 'ACTIVE' || membership?.status === 'TRIALING';
+  const planName = membership?.plan?.name || (membership?.stripePriceId ? 'Custom Plan' : 'Basic');
+  const statusLabel = membership?.status ? membership.status.replace('_', ' ') : 'Inactive';
 
   return (
     <div className="space-y-6">
@@ -39,13 +42,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                     <span>Status</span>
-                    <Badge variant={membership?.status === 'ACTIVE' ? 'default' : 'secondary'} className={membership?.status === 'ACTIVE' ? 'bg-green-500' : ''}>
-                        {membership?.status || 'Inactive'}
+                    <Badge variant={isActive ? 'default' : 'secondary'} className={isActive ? 'bg-green-500' : ''}>
+                        {statusLabel}
                     </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                    <span>Plan ID</span>
-                    <span className="font-semibold text-sm font-mono">{membership?.stripePriceId || membership?.planId || 'Basic (Free)'}</span> 
+                    <span>Plan</span>
+                    <span className="font-semibold text-sm">{planName}</span> 
                 </div>
                 {membership?.currentPeriodEnd && (
                     <div className="flex items-center justify-between text-sm text-white/50">

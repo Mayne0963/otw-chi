@@ -18,17 +18,17 @@ export default async function DriverDashboardPage() {
     return <div className="p-8 text-center text-xl text-red-500">Driver profile not found. Please contact support.</div>;
   }
 
-  const assignedRequests = await prisma.request.findMany({
+  const assignedRequests = await prisma.deliveryRequest.findMany({
     where: { 
         assignedDriverId: driverProfile.id,
-        status: { notIn: ['COMPLETED', 'CANCELLED', 'DELIVERED'] }
+        status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] }
     },
     orderBy: { createdAt: 'desc' }
   });
 
-  const availableRequests = await prisma.request.findMany({
+  const availableRequests = await prisma.deliveryRequest.findMany({
     where: { 
-        status: 'SUBMITTED',
+        status: 'REQUESTED',
         assignedDriverId: null 
     },
     orderBy: { createdAt: 'desc' }
@@ -44,11 +44,11 @@ export default async function DriverDashboardPage() {
     const prisma = getPrisma();
     
     // Optimistic check
-    const req = await prisma.request.findUnique({ where: { id: requestId } });
-    if (req?.status !== 'SUBMITTED') return;
+    const req = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
+    if (req?.status !== 'REQUESTED') return;
 
     await prisma.$transaction([
-        prisma.request.update({
+        prisma.deliveryRequest.update({
             where: { id: requestId },
             data: { 
                 status: 'ASSIGNED',
@@ -57,7 +57,7 @@ export default async function DriverDashboardPage() {
         }),
         prisma.driverAssignment.create({
             data: {
-                requestId,
+                deliveryRequestId: requestId,
                 driverId
             }
         })
@@ -69,12 +69,12 @@ export default async function DriverDashboardPage() {
   async function updateStatus(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as any; // 'PICKED_UP', 'DELIVERED'
+    const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
     
     if (!requestId || !newStatus) return;
     
     const prisma = getPrisma();
-    await prisma.request.update({
+    await prisma.deliveryRequest.update({
         where: { id: requestId },
         data: { status: newStatus } 
     });
@@ -102,17 +102,17 @@ export default async function DriverDashboardPage() {
                             <div className="space-y-2 text-sm mb-4">
                                 <div>
                                     <span className="text-white/50 block text-xs">Pickup</span>
-                                    <span>{req.pickup}</span>
+                                <span>{req.pickupAddress}</span>
+                            </div>
+                            <div>
+                                <span className="text-white/50 block text-xs">Dropoff</span>
+                                <span>{req.dropoffAddress}</span>
+                            </div>
+                            {req.notes && (
+                                <div className="bg-white/5 p-2 rounded text-xs italic">
+                                    &quot;{req.notes}&quot;
                                 </div>
-                                <div>
-                                    <span className="text-white/50 block text-xs">Dropoff</span>
-                                    <span>{req.dropoff}</span>
-                                </div>
-                                {req.notes && (
-                                    <div className="bg-white/5 p-2 rounded text-xs italic">
-                                        &quot;{req.notes}&quot;
-                                    </div>
-                                )}
+                            )}
                             </div>
                             <div className="flex gap-2">
                                 {req.status === 'ASSIGNED' && (
@@ -123,6 +123,13 @@ export default async function DriverDashboardPage() {
                                     </form>
                                 )}
                                 {req.status === 'PICKED_UP' && (
+                                    <form action={updateStatus} className="w-full">
+                                        <input type="hidden" name="requestId" value={req.id} />
+                                        <input type="hidden" name="status" value="EN_ROUTE" />
+                                        <Button type="submit" className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">En Route</Button>
+                                    </form>
+                                )}
+                                {req.status === 'EN_ROUTE' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />
@@ -151,7 +158,7 @@ export default async function DriverDashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-white/60 mb-4">
-                                {req.milesEstimate} miles • {req.pickup} <span className="text-otwGold">→</span> {req.dropoff}
+                                {req.pickupAddress} <span className="text-otwGold">→</span> {req.dropoffAddress}
                             </p>
                             <form action={acceptRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />

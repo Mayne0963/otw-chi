@@ -29,6 +29,15 @@ enum RequestStatus {
   CANCELLED
 }
 
+enum DeliveryRequestStatus {
+  REQUESTED
+  ASSIGNED
+  PICKED_UP
+  EN_ROUTE
+  DELIVERED
+  CANCELED
+}
+
 enum ServiceType {
   FOOD
   STORE
@@ -91,6 +100,7 @@ model User {
   nipTransactions    NipTransaction[]
   franchiseProfile   FranchiseProfile?
   driverApplications DriverApplication[]
+  deliveryRequests   DeliveryRequest[]
 }
 
 model DriverApplication {
@@ -121,6 +131,7 @@ model DriverProfile {
   user              User             @relation(fields: [userId], references: [id])
   zone              Zone?            @relation(fields: [zoneId], references: [id])
   requests          Request[]
+  assignedDeliveryRequests DeliveryRequest[]
   locations         DriverLocation[]
   assignments       DriverAssignment[]
   locationPings     DriverLocationPing[]
@@ -179,6 +190,30 @@ model Request {
   locationPings  DriverLocationPing[]
 
   @@index([customerId])
+  @@index([status])
+}
+
+model DeliveryRequest {
+  id               String                @id @default(cuid())
+  userId           String
+  assignedDriverId String?
+  serviceType      ServiceType
+  pickupAddress    String
+  dropoffAddress   String
+  notes            String?
+  status           DeliveryRequestStatus @default(REQUESTED)
+  lastKnownLat     Float?
+  lastKnownLng     Float?
+  lastKnownAt      DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  user           User           @relation(fields: [userId], references: [id])
+  assignedDriver DriverProfile? @relation(fields: [assignedDriverId], references: [id])
+  assignments    DriverAssignment[]
+  locationPings  DriverLocationPing[]
+
+  @@index([userId])
   @@index([status])
 }
 
@@ -295,9 +330,11 @@ model DriverAssignment {
   id         String   @id @default(cuid())
   requestId  String
   driverId   String
+  deliveryRequestId String?
   assignedAt DateTime @default(now())
   
   request    Request       @relation(fields: [requestId], references: [id])
+  deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
   driver     DriverProfile @relation(fields: [driverId], references: [id])
 
   @@index([requestId])
@@ -308,13 +345,16 @@ model DriverLocationPing {
   id        String   @id @default(cuid())
   driverId  String
   requestId String?
+  deliveryRequestId String?
   lat       Float
   lng       Float
   createdAt DateTime @default(now())
 
   driver    DriverProfile @relation(fields: [driverId], references: [id])
   request   Request?      @relation(fields: [requestId], references: [id])
+  deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
 
   @@index([driverId])
   @@index([requestId])
+  @@index([deliveryRequestId])
 }

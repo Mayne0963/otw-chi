@@ -3,10 +3,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getPrisma } from '@/lib/db';
 import { MembershipStatus } from '@prisma/client';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-12-15.clover',
-});
+import { constructStripeEvent, getStripe } from '@/lib/stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
@@ -17,30 +14,70 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    event = constructStripeEvent(body, signature, webhookSecret);
   } catch (err: any) {
     console.error(`Webhook signature verification failed.`, err.message);
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
   const prisma = getPrisma();
+  const stripe = getStripe();
+
+  async function findUserIdFromMetadata(metadata?: Stripe.Metadata | null) {
+    const userId = metadata?.userId ? String(metadata.userId) : undefined;
+    const clerkUserId = metadata?.clerkUserId ? String(metadata.clerkUserId) : undefined;
+
+    if (userId) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user) return user.id;
+    }
+    if (clerkUserId) {
+      const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+      if (user) return user.id;
+    }
+    return undefined;
+  }
 
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      if (!session?.metadata?.userId) {
+      const userId = await findUserIdFromMetadata(session.metadata);
+      if (!userId) {
         return new NextResponse('Webhook Error: No user ID in metadata', { status: 400 });
       }
 
-      const subscriptionId = session.subscription as string;
-      
-      await prisma.membershipSubscription.update({
-        where: { userId: session.metadata.userId },
-        data: {
-          stripeSubId: subscriptionId,
-          stripePriceId: session.metadata.planCode, // Store plan code or price ID
+      const subscriptionId = session.subscription ? String(session.subscription) : undefined;
+      const stripeCustomerId = session.customer ? String(session.customer) : undefined;
+      const sessionPriceId = session.metadata?.priceId ? String(session.metadata.priceId) : undefined;
+      const sessionPlanId = session.metadata?.planId ? String(session.metadata.planId) : undefined;
+
+      let currentPeriodEnd: Date | undefined;
+      let priceId = sessionPriceId;
+      if (subscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+        priceId = subscription.items.data[0]?.price?.id ?? priceId;
+      }
+
+      await prisma.membershipSubscription.upsert({
+        where: { userId },
+        update: {
           status: 'ACTIVE',
+          stripeCustomerId,
+          stripeSubId: subscriptionId,
+          ...(priceId ? { stripePriceId: priceId } : {}),
+          ...(sessionPlanId ? { planId: sessionPlanId } : {}),
+          ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
+        },
+        create: {
+          userId,
+          status: 'ACTIVE',
+          stripeCustomerId,
+          stripeSubId: subscriptionId,
+          ...(priceId ? { stripePriceId: priceId } : {}),
+          ...(sessionPlanId ? { planId: sessionPlanId } : {}),
+          ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
         },
       });
     } else if (event.type === 'customer.subscription.updated') {
@@ -48,10 +85,10 @@ export async function POST(req: Request) {
       const stripeCustomerId = subscription.customer as string;
 
       // Find user by stripeCustomerId if metadata is missing
-      let userId: string | undefined = subscription.metadata?.userId;
+      let userId: string | undefined = await findUserIdFromMetadata(subscription.metadata);
       if (!userId) {
         const membership = await prisma.membershipSubscription.findFirst({
-            where: { stripeCustomerId }
+          where: { stripeCustomerId },
         });
         userId = membership?.userId ?? undefined;
       }
@@ -69,34 +106,59 @@ export async function POST(req: Request) {
         };
 
         const status = statusMap[subscription.status] || 'ACTIVE';
+        const priceId = subscription.items.data[0]?.price?.id;
+        const planRecord = priceId
+          ? await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } })
+          : null;
 
-        await prisma.membershipSubscription.update({
-            where: { userId },
-            data: {
-                status,
-                currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
-                stripePriceId: subscription.items.data[0].price.id,
-            }
+        const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000);
+        await prisma.membershipSubscription.upsert({
+          where: { userId },
+          update: {
+            status,
+            currentPeriodEnd,
+            stripeCustomerId,
+            stripeSubId: subscription.id,
+            ...(priceId ? { stripePriceId: priceId } : {}),
+            ...(planRecord?.id ? { planId: planRecord.id } : {}),
+          },
+          create: {
+            userId,
+            status,
+            currentPeriodEnd,
+            stripeCustomerId,
+            stripeSubId: subscription.id,
+            ...(priceId ? { stripePriceId: priceId } : {}),
+            ...(planRecord?.id ? { planId: planRecord.id } : {}),
+          },
         });
       }
     } else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription;
       const stripeCustomerId = subscription.customer as string;
       
-      let userId: string | undefined = subscription.metadata?.userId;
+      let userId: string | undefined = await findUserIdFromMetadata(subscription.metadata);
       if (!userId) {
         const membership = await prisma.membershipSubscription.findFirst({
-            where: { stripeCustomerId }
+          where: { stripeCustomerId }
         });
         userId = membership?.userId ?? undefined;
       }
 
       if (userId) {
-        await prisma.membershipSubscription.update({
-            where: { userId },
-            data: {
-                status: 'CANCELED',
-            }
+        await prisma.membershipSubscription.upsert({
+          where: { userId },
+          update: {
+            status: 'CANCELED',
+            stripeSubId: subscription.id,
+            stripeCustomerId,
+          },
+          create: {
+            userId,
+            status: 'CANCELED',
+            stripeSubId: subscription.id,
+            stripeCustomerId,
+          },
         });
       }
     }

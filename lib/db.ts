@@ -23,12 +23,14 @@ export function getPrisma(): PrismaClient {
     const mockUser = { id: 'stub-user', role: 'CUSTOMER', name: 'Stub User', dob: null, termsAcceptedAt: null }
     const mockProfile = { id: 'stub-profile', userId: 'stub-user' }
     const mockRequest = { id: 'stub-request', status: 'SUBMITTED' }
+    const mockDeliveryRequest = { id: 'stub-delivery-request', status: 'REQUESTED' }
     const mockTicket = { id: 'stub-ticket', status: 'OPEN' }
     const mockEvent = { id: 'stub-event' }
     
     const returnMockUser = async (..._args: unknown[]) => mockUser
     const returnMockProfile = async (..._args: unknown[]) => mockProfile
     const returnMockRequest = async (..._args: unknown[]) => mockRequest
+    const returnMockDeliveryRequest = async (..._args: unknown[]) => mockDeliveryRequest
     const returnMockTicket = async (..._args: unknown[]) => mockTicket
     const returnMockEvent = async (..._args: unknown[]) => mockEvent
 
@@ -55,6 +57,14 @@ export function getPrisma(): PrismaClient {
         update: returnMockRequest, 
         create: returnMockRequest,
         count: countZero
+      },
+      deliveryRequest: {
+        findUnique: noop,
+        findFirst: noop,
+        findMany: listEmpty,
+        update: returnMockDeliveryRequest,
+        create: returnMockDeliveryRequest,
+        count: countZero,
       },
       requestEvent: { 
         create: returnMockEvent, 

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -13,8 +12,8 @@ import { Loader2 } from 'lucide-react';
 export default function DriverApplyPage() {
   const { user } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
@@ -41,14 +40,17 @@ export default function DriverApplyPage() {
         body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error('Failed to submit application');
+      if (!res.ok) {
+        const message = await res.text();
+        throw new Error(message || 'Failed to submit application');
+      }
 
       toast({
         title: "Application Submitted",
         description: "We'll be in touch shortly!",
       });
       
-      router.push('/');
+      setSubmitted(true);
     } catch (_error) {
       toast({
         title: "Error",
@@ -66,10 +68,19 @@ export default function DriverApplyPage() {
       
       <div className="mt-6 max-w-xl mx-auto">
         <OtwCard className="space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {submitted ? (
+            <div className="space-y-2 text-center">
+              <h2 className="text-xl font-semibold text-otwOffWhite">Thanks for applying!</h2>
+              <p className="text-sm text-white/70">
+                Your application is under review. We will contact you with next steps.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-otwOffWhite block mb-1">Full Name</label>
+              <label htmlFor="fullName" className="text-sm font-medium text-otwOffWhite block mb-1">Full Name</label>
               <input 
+                id="fullName"
                 name="fullName"
                 required
                 value={formData.fullName}
@@ -80,8 +91,9 @@ export default function DriverApplyPage() {
             </div>
             
             <div>
-              <label className="text-sm font-medium text-otwOffWhite block mb-1">Email</label>
+              <label htmlFor="email" className="text-sm font-medium text-otwOffWhite block mb-1">Email</label>
               <input 
+                id="email"
                 name="email"
                 type="email"
                 required
@@ -93,8 +105,9 @@ export default function DriverApplyPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-otwOffWhite block mb-1">Phone</label>
+              <label htmlFor="phone" className="text-sm font-medium text-otwOffWhite block mb-1">Phone</label>
               <input 
+                id="phone"
                 name="phone"
                 type="tel"
                 required
@@ -107,8 +120,9 @@ export default function DriverApplyPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-otwOffWhite block mb-1">City</label>
+                <label htmlFor="city" className="text-sm font-medium text-otwOffWhite block mb-1">City</label>
                 <input 
+                  id="city"
                   name="city"
                   required
                   value={formData.city}
@@ -118,8 +132,9 @@ export default function DriverApplyPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-otwOffWhite block mb-1">Vehicle Type</label>
+                <label htmlFor="vehicleType" className="text-sm font-medium text-otwOffWhite block mb-1">Vehicle Type</label>
                 <select 
+                  id="vehicleType"
                   name="vehicleType"
                   required
                   value={formData.vehicleType}
@@ -137,8 +152,9 @@ export default function DriverApplyPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-otwOffWhite block mb-1">Availability</label>
+              <label htmlFor="availability" className="text-sm font-medium text-otwOffWhite block mb-1">Availability</label>
               <select 
+                id="availability"
                 name="availability"
                 required
                 value={formData.availability}
@@ -154,8 +170,9 @@ export default function DriverApplyPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-otwOffWhite block mb-1">Why OTW? (Optional)</label>
+              <label htmlFor="message" className="text-sm font-medium text-otwOffWhite block mb-1">Why OTW? (Optional)</label>
               <textarea 
+                id="message"
                 name="message"
                 rows={3}
                 value={formData.message}
@@ -169,6 +186,7 @@ export default function DriverApplyPage() {
               {loading ? <Loader2 className="animate-spin" /> : "Submit Application"}
             </OtwButton>
           </form>
+          )}
         </OtwCard>
       </div>
     </OtwPageShell>

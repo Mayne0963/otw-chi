@@ -2,8 +2,18 @@ import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check } from 'lucide-react';
+import { getPrisma } from '@/lib/db';
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const prisma = getPrisma();
+  const planRecords = await prisma.membershipPlan.findMany();
+  const planMap = new Map(planRecords.map((plan) => [plan.name.toLowerCase(), plan]));
+  const fallbackPriceIds = {
+    basic: process.env.STRIPE_PRICE_BASIC,
+    plus: process.env.STRIPE_PRICE_PLUS,
+    executive: process.env.STRIPE_PRICE_EXEC,
+  } as const;
+
   const plans = [
     {
       code: 'basic',
@@ -36,7 +46,11 @@ export default function PricingPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {plans.map((plan) => (
+        {plans.map((plan) => {
+          const planRecord = planMap.get(plan.name.toLowerCase());
+          const priceId = planRecord?.stripePriceId ?? fallbackPriceIds[plan.code as keyof typeof fallbackPriceIds];
+          const planId = planRecord?.id;
+          return (
           <Card key={plan.code} className="relative flex flex-col">
             <Badge variant="secondary" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-otwGold text-otwBlack hover:bg-otwGold">
               Popular
@@ -61,15 +75,18 @@ export default function PricingPage() {
             <CardFooter>
               <PlanCheckoutButton
                 plan={plan.code as 'basic' | 'plus' | 'executive'}
+                planId={planId}
+                priceId={priceId}
+                disabled={!priceId}
                 className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90"
               >
                 Choose Plan
               </PlanCheckoutButton>
             </CardFooter>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
-

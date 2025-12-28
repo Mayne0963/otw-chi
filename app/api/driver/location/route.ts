@@ -26,34 +26,53 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { lat, lng } = pingSchema.parse(body);
 
-    // Find active request
-    const activeRequest = await prisma.request.findFirst({
-        where: {
-            assignedDriverId: user.driverProfile.id,
-            status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] }
-        }
+    // Find active delivery request first
+    const activeDelivery = await prisma.deliveryRequest.findFirst({
+      where: {
+        assignedDriverId: user.driverProfile.id,
+        status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
+      },
     });
+
+    const activeRequest = activeDelivery
+      ? null
+      : await prisma.request.findFirst({
+          where: {
+            assignedDriverId: user.driverProfile.id,
+            status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
+          },
+        });
 
     // Save Ping
     await prisma.driverLocationPing.create({
         data: {
             driverId: user.driverProfile.id,
             requestId: activeRequest?.id,
+            deliveryRequestId: activeDelivery?.id,
             lat,
             lng
         }
     });
 
-    // Update Request Last Known Location (for easy access)
-    if (activeRequest) {
-        await prisma.request.update({
-            where: { id: activeRequest.id },
-            data: {
-                lastKnownLat: lat,
-                lastKnownLng: lng,
-                lastKnownAt: new Date()
-            }
-        });
+    // Update last known location (for easy access)
+    if (activeDelivery) {
+      await prisma.deliveryRequest.update({
+        where: { id: activeDelivery.id },
+        data: {
+          lastKnownLat: lat,
+          lastKnownLng: lng,
+          lastKnownAt: new Date(),
+        },
+      });
+    } else if (activeRequest) {
+      await prisma.request.update({
+        where: { id: activeRequest.id },
+        data: {
+          lastKnownLat: lat,
+          lastKnownLng: lng,
+          lastKnownAt: new Date(),
+        },
+      });
     }
 
     return NextResponse.json({ success: true });

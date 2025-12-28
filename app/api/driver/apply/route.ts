@@ -50,6 +50,7 @@ export async function POST(req: Request) {
         vehicleType: data.vehicleType,
         availability: data.availability,
         message: data.message,
+        notes: data.message,
       },
     });
 

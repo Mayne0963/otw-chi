@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `Luxury Delivery & Concierge in ${city} | OTW`,
     description: `Professional food pickup, fragile item delivery, and custom concierge services in ${city}. Active coverage in Downtown, West Side, and South Side.`,
     alternates: {
-      canonical: `https://ontheway.com/cities/${rawCity}`,
+      canonical: `https://otw-chi-two.vercel.app/cities/${rawCity}`,
     },
     openGraph: {
       title: `OTW ${city} - Luxury Delivery Service`,
