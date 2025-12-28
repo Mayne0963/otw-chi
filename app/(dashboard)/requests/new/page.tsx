@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export default function NewRequestPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="New Request" subtitle="Schedule a pickup or delivery." />
+      <PageHeader title="Request a Delivery" subtitle="Tell us what you need - we'll handle the rest." />
       <NewRequestForm />
     </div>
   );
