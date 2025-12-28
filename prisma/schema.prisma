@@ -328,17 +328,18 @@ model DriverLocation {
 
 model DriverAssignment {
   id         String   @id @default(cuid())
-  requestId  String
+  requestId  String?
   driverId   String
   deliveryRequestId String?
   assignedAt DateTime @default(now())
   
-  request    Request       @relation(fields: [requestId], references: [id])
+  request    Request?      @relation(fields: [requestId], references: [id])
   deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
   driver     DriverProfile @relation(fields: [driverId], references: [id])
 
   @@index([requestId])
   @@index([driverId])
+  @@index([deliveryRequestId])
 }
 
 model DriverLocationPing {
