@@ -23,6 +23,16 @@ export async function POST(req: Request) {
   const prisma = getPrisma();
   const stripe = getStripe();
 
+  function resolveCurrentPeriodEndDate(
+    subscription: Stripe.Subscription,
+  ): Date | undefined {
+    const currentPeriodEnd = (
+      subscription as Stripe.Subscription & { current_period_end?: number }
+    ).current_period_end;
+    if (typeof currentPeriodEnd !== 'number') return undefined;
+    return new Date(currentPeriodEnd * 1000);
+  }
+
   async function findUserIdFromMetadata(metadata?: Stripe.Metadata | null) {
     const userId = metadata?.userId ? String(metadata.userId) : undefined;
     const clerkUserId = metadata?.clerkUserId ? String(metadata.clerkUserId) : undefined;
@@ -56,7 +66,7 @@ export async function POST(req: Request) {
       let priceId = sessionPriceId;
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+        currentPeriodEnd = resolveCurrentPeriodEndDate(subscription);
         priceId = subscription.items.data[0]?.price?.id ?? priceId;
       }
 
@@ -111,7 +121,7 @@ export async function POST(req: Request) {
           ? await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } })
           : null;
 
-        const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000);
+        const currentPeriodEnd = resolveCurrentPeriodEndDate(subscription);
         await prisma.membershipSubscription.upsert({
           where: { userId },
           update: {
