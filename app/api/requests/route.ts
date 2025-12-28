@@ -3,6 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 import { ServiceType } from '@prisma/client';
+import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
+import { calculatePriceBreakdownCents } from '@/lib/pricing';
 
 const requestSchema = z.object({
   pickup: z.string().min(5),
@@ -29,6 +31,21 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const data = requestSchema.parse(body);
+    const miles = Number(data.milesEstimate);
+    const milesEstimate = Math.max(0, Math.round(miles));
+    let benefits = getMembershipBenefits(null);
+    try {
+      const sub = await getActiveSubscription(user.id);
+      benefits = getMembershipBenefits(getPlanCodeFromSubscription(sub));
+    } catch {
+      benefits = getMembershipBenefits(null);
+    }
+    const pricing = calculatePriceBreakdownCents({
+      miles,
+      serviceType: data.serviceType,
+      discount: benefits.discount,
+      waiveServiceFee: benefits.waiveServiceFee,
+    });
 
     const request = await prisma.request.create({
       data: {
@@ -38,8 +55,8 @@ export async function POST(req: Request) {
         serviceType: data.serviceType as ServiceType,
         notes: data.notes,
         status: 'SUBMITTED',
-        costEstimate: data.costEstimate,
-        milesEstimate: data.milesEstimate,
+        costEstimate: pricing.totalCents,
+        milesEstimate,
       },
     });
 

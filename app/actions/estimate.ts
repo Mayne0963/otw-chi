@@ -2,7 +2,7 @@
 // import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
-import { estimatePrice } from '@/lib/pricing';
+import { calculatePriceBreakdownCents } from '@/lib/pricing';
 
 export async function getEstimateAction(formData: FormData) {
   'use server';
@@ -25,12 +25,16 @@ export async function getEstimateAction(formData: FormData) {
     membershipBenefits = getMembershipBenefits(planCode);
   }
 
-  const basePrice = estimatePrice({ miles, serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE', tier: 'BASIC' }); // Use BASIC as base
-  const discountedPrice = basePrice * (1 - membershipBenefits.discount);
+  const pricing = calculatePriceBreakdownCents({
+    miles,
+    serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE',
+    discount: membershipBenefits.discount,
+    waiveServiceFee: membershipBenefits.waiveServiceFee,
+  });
 
   return {
-    basePrice,
-    discountedPrice,
+    basePrice: pricing.basePriceCents,
+    discountedPrice: pricing.totalCents,
     discount: membershipBenefits.discount,
     nipMultiplier: membershipBenefits.nipMultiplier,
     waiveServiceFee: membershipBenefits.waiveServiceFee,

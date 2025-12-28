@@ -135,6 +135,9 @@ export function NewRequestForm() {
         formData.set("pickup", pickupAddress.formattedAddress)
         formData.set("dropoff", dropoffAddress.formattedAddress)
         formData.set("serviceType", serviceType)
+        if (estimate?.miles) {
+          formData.set("miles", String(estimate.miles))
+        }
         const trimmedNotes = notes.trim()
         if (trimmedNotes) {
           formData.set("notes", trimmedNotes)

@@ -3,7 +3,7 @@
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
-import { estimatePrice } from '@/lib/pricing';
+import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -16,6 +16,7 @@ export async function createRequestAction(formData: FormData) {
   const notes = String(formData.get('notes') ?? '');
   const cityId = String(formData.get('cityId') ?? '');
   const zoneId = String(formData.get('zoneId') ?? '');
+  const milesInput = Number(formData.get('miles') ?? '');
   
   // Validate service type
   const serviceType = (['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'].includes(st) ? st : 'FOOD') as ServiceType;
@@ -25,8 +26,9 @@ export async function createRequestAction(formData: FormData) {
   
   const prisma = getPrisma();
 
-  // Calculate miles (placeholder heuristic)
-  const miles = Math.max(0, Math.round(((pickup + dropoff + (notes || '')).length / 32) * 10));
+  const fallbackMiles = Math.max(0, Math.round(((pickup + dropoff + (notes || '')).length / 32) * 10));
+  const miles = Number.isFinite(milesInput) && milesInput > 0 ? milesInput : fallbackMiles;
+  const milesEstimate = Math.max(0, Math.round(miles));
 
   // Get membership benefits
   const sub = await getActiveSubscription(user.id);
@@ -34,15 +36,16 @@ export async function createRequestAction(formData: FormData) {
   const membershipBenefits = getMembershipBenefits(planCode);
 
   // Calculate cost with membership discount
-  const basePrice = estimatePrice({ miles, serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE', tier: 'BASIC' });
-  const finalPrice = basePrice * (1 - membershipBenefits.discount);
+  const pricing = calculatePriceBreakdownCents({
+    miles,
+    serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE',
+    discount: membershipBenefits.discount,
+    waiveServiceFee: membershipBenefits.waiveServiceFee,
+  });
+  const finalPriceDollars = pricing.discountedBaseCents / 100;
 
   // Award NIP based on membership multiplier
-  const nipEarned = Math.round(finalPrice * membershipBenefits.nipMultiplier);
-
-  // Check if service fee should be waived for EXEC members
-  const serviceFee = membershipBenefits.waiveServiceFee ? 0 : 2.99; // $2.99 service fee
-  const totalPrice = finalPrice + serviceFee;
+  const nipEarned = Math.round(finalPriceDollars * membershipBenefits.nipMultiplier);
 
   const created = await prisma.request.create({
     data: {
@@ -54,8 +57,8 @@ export async function createRequestAction(formData: FormData) {
       status: RequestStatus.SUBMITTED,
       cityId: cityId || null,
       zoneId: zoneId || null,
-      milesEstimate: miles,
-      costEstimate: Math.round(totalPrice * 100), // Store in cents
+      milesEstimate,
+      costEstimate: pricing.totalCents, // Store in cents
     },
   });
   

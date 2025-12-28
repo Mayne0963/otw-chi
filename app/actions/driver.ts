@@ -4,6 +4,7 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
 import { RequestStatus } from '@prisma/client';
+import { calculateBasePriceCents, calculateDriverPayoutCents } from '@/lib/pricing';
 
 export async function getAvailableJobs() {
   const user = await getCurrentUser();
@@ -162,7 +163,13 @@ export async function completeJob(requestId: string) {
     },
   });
 
-  const earningsAmount = Math.floor((job.costEstimate || 0) * 0.8);
+  const basePriceCents = job.milesEstimate
+    ? calculateBasePriceCents({
+        miles: job.milesEstimate,
+        serviceType: job.serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE',
+      })
+    : job.costEstimate || 0;
+  const earningsAmount = calculateDriverPayoutCents({ basePriceCents });
 
   if (earningsAmount > 0) {
     // Check if earnings already exist to avoid duplicates
