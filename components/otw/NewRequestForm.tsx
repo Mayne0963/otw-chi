@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { AddressSearch } from "@/components/ui/address-search"
 import { ArrowRight, Clock, DollarSign, Loader2, MapPin, Package } from "lucide-react"
-import type { GeocodedAddress } from "@/lib/geocoding"
+import { formatAddressLines, type GeocodedAddress } from "@/lib/geocoding"
 
 type Estimate = {
   priceMin: number
@@ -27,6 +27,8 @@ export function NewRequestForm() {
   const [serviceType, setServiceType] = useState("FOOD")
   const [notes, setNotes] = useState("")
   const [estimate, setEstimate] = useState<Estimate | null>(null)
+  const pickupLines = pickupAddress ? formatAddressLines(pickupAddress) : null
+  const dropoffLines = dropoffAddress ? formatAddressLines(dropoffAddress) : null
 
   function resetEstimate() {
     setEstimate(null)
@@ -172,9 +174,10 @@ export function NewRequestForm() {
                 onSelect={(address) => {
                   setPickupAddress(address)
                   resetEstimate()
+                  const lines = formatAddressLines(address)
                   toast({
                     title: "Pickup Address Set",
-                    description: `${address.streetAddress}, ${address.city}`,
+                    description: lines.secondary ? `${lines.primary}, ${lines.secondary}` : lines.primary,
                   })
                 }}
                 className="w-full"
@@ -183,10 +186,10 @@ export function NewRequestForm() {
                 <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="font-medium">{pickupAddress.streetAddress}</div>
-                    <div className="text-green-600/80">
-                      {pickupAddress.city}, {pickupAddress.state} {pickupAddress.zipCode}
-                    </div>
+                    <div className="font-medium">{pickupLines?.primary}</div>
+                    {pickupLines?.secondary && (
+                      <div className="text-green-600/80">{pickupLines.secondary}</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -199,9 +202,10 @@ export function NewRequestForm() {
                 onSelect={(address) => {
                   setDropoffAddress(address)
                   resetEstimate()
+                  const lines = formatAddressLines(address)
                   toast({
                     title: "Dropoff Address Set",
-                    description: `${address.streetAddress}, ${address.city}`,
+                    description: lines.secondary ? `${lines.primary}, ${lines.secondary}` : lines.primary,
                   })
                 }}
                 className="w-full"
@@ -210,10 +214,10 @@ export function NewRequestForm() {
                 <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="font-medium">{dropoffAddress.streetAddress}</div>
-                    <div className="text-green-600/80">
-                      {dropoffAddress.city}, {dropoffAddress.state} {dropoffAddress.zipCode}
-                    </div>
+                    <div className="font-medium">{dropoffLines?.primary}</div>
+                    {dropoffLines?.secondary && (
+                      <div className="text-green-600/80">{dropoffLines.secondary}</div>
+                    )}
                   </div>
                 </div>
               )}

@@ -20,6 +20,29 @@ export interface GeocodedAddress {
   isWithinServiceArea: boolean;
 }
 
+export function formatAddressLines(address: GeocodedAddress) {
+  const displayName = address.formattedAddress?.split(',')[0]?.trim();
+  const primary =
+    displayName || address.streetAddress || address.formattedAddress || '';
+
+  const cityState = [address.city, address.state].filter(Boolean).join(', ');
+  const cityStateZip = cityState + (address.zipCode ? ` ${address.zipCode}` : '');
+
+  const secondaryParts: string[] = [];
+  const street = address.streetAddress?.trim();
+  if (street && primary && street.toLowerCase() !== primary.toLowerCase()) {
+    secondaryParts.push(street);
+  }
+  if (cityStateZip) {
+    secondaryParts.push(cityStateZip);
+  }
+
+  return {
+    primary,
+    secondary: secondaryParts.join(', '),
+  };
+}
+
 /**
  * Calculate distance between two coordinates using Haversine formula
  * Returns distance in miles

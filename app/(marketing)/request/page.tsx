@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { AddressSearch } from '@/components/ui/address-search';
 import { Loader2, Package, Clock, DollarSign, ArrowRight, MapPin } from 'lucide-react';
-import type { GeocodedAddress } from '@/lib/geocoding';
+import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
 
 export default function RequestPage() {
   const { isSignedIn } = useUser();
@@ -24,6 +24,8 @@ export default function RequestPage() {
   const [notes, setNotes] = useState('');
 
   const [estimate, setEstimate] = useState<{ priceMin: number; priceMax: number; eta: string; miles: number } | null>(null);
+  const pickupLines = pickupAddress ? formatAddressLines(pickupAddress) : null;
+  const dropoffLines = dropoffAddress ? formatAddressLines(dropoffAddress) : null;
 
   // Calculate distance between two coordinates using Haversine formula
   function calculateDistance(
@@ -187,9 +189,10 @@ export default function RequestPage() {
                 placeholder="Search for pickup address..."
                 onSelect={(address) => {
                   setPickupAddress(address);
+                  const lines = formatAddressLines(address);
                   toast({
                     title: "Pickup Address Set",
-                    description: `${address.streetAddress}, ${address.city}`,
+                    description: lines.secondary ? `${lines.primary}, ${lines.secondary}` : lines.primary,
                   });
                 }}
                 className="w-full"
@@ -198,10 +201,10 @@ export default function RequestPage() {
                 <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="font-medium">{pickupAddress.streetAddress}</div>
-                    <div className="text-green-600/80">
-                      {pickupAddress.city}, {pickupAddress.state} {pickupAddress.zipCode}
-                    </div>
+                    <div className="font-medium">{pickupLines?.primary}</div>
+                    {pickupLines?.secondary && (
+                      <div className="text-green-600/80">{pickupLines.secondary}</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -213,9 +216,10 @@ export default function RequestPage() {
                 placeholder="Search for dropoff address..."
                 onSelect={(address) => {
                   setDropoffAddress(address);
+                  const lines = formatAddressLines(address);
                   toast({
                     title: "Dropoff Address Set",
-                    description: `${address.streetAddress}, ${address.city}`,
+                    description: lines.secondary ? `${lines.primary}, ${lines.secondary}` : lines.primary,
                   });
                 }}
                 className="w-full"
@@ -224,10 +228,10 @@ export default function RequestPage() {
                 <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="font-medium">{dropoffAddress.streetAddress}</div>
-                    <div className="text-green-600/80">
-                      {dropoffAddress.city}, {dropoffAddress.state} {dropoffAddress.zipCode}
-                    </div>
+                    <div className="font-medium">{dropoffLines?.primary}</div>
+                    {dropoffLines?.secondary && (
+                      <div className="text-green-600/80">{dropoffLines.secondary}</div>
+                    )}
                   </div>
                 </div>
               )}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Search, MapPin, AlertCircle } from "lucide-react";
-import { searchAddress, type GeocodedAddress } from "@/lib/geocoding";
+import { formatAddressLines, searchAddress, type GeocodedAddress } from "@/lib/geocoding";
 import { cn } from "@/lib/utils";
 
 interface AddressSearchProps {
@@ -144,7 +144,9 @@ export function AddressSearch({
 
       {isOpen && results.length > 0 && (
         <div className="absolute z-50 mt-1 max-h-[300px] w-full overflow-auto rounded-xl border border-white/10 bg-otwBlack/95 shadow-2xl shadow-black/60">
-          {results.map((address, index) => (
+          {results.map((address, index) => {
+            const lines = formatAddressLines(address);
+            return (
             <button
               key={index}
               type="button"
@@ -157,16 +159,17 @@ export function AddressSearch({
             >
               <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-otwGold/80" />
               <div className="flex-1 space-y-1">
-                <div className="font-medium">{address.streetAddress}</div>
-                <div className="text-xs text-white/60">
-                  {address.city}, {address.state} {address.zipCode}
-                </div>
+                <div className="font-medium">{lines.primary}</div>
+                {lines.secondary && (
+                  <div className="text-xs text-white/60">{lines.secondary}</div>
+                )}
                 <div className="text-xs text-green-500">
                   ✓ {address.distanceFromFortWayne} miles from Fort Wayne
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
