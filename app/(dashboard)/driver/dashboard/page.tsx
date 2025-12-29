@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
 import { RequestStatus } from '@prisma/client';
-// (no import needed – RequestStatus is referenced via Prisma client’s generated types)
 
 export default async function DriverDashboardPage() {
   await requireRole(['DRIVER', 'ADMIN']);
@@ -20,17 +19,17 @@ export default async function DriverDashboardPage() {
     return <div className="p-8 text-center text-xl text-red-500">Driver profile not found. Please contact support.</div>;
   }
 
-  const assignedRequests = await prisma.request.findMany({
+  const assignedRequests = await prisma.deliveryRequest.findMany({
     where: { 
         assignedDriverId: driverProfile.id,
-        status: { in: [RequestStatus.ASSIGNED, RequestStatus.PICKED_UP, RequestStatus.EN_ROUTE] }
+        status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] }
     },
     orderBy: { createdAt: 'desc' }
   });
 
-  const availableRequests = await prisma.request.findMany({
+  const availableRequests = await prisma.deliveryRequest.findMany({
     where: { 
-        status: RequestStatus.REQUESTED,
+        status: 'REQUESTED',
         assignedDriverId: null 
     },
     orderBy: { createdAt: 'desc' }
@@ -62,20 +61,20 @@ export default async function DriverDashboardPage() {
     const prisma = getPrisma();
     
     // Optimistic check
-    const req = await prisma.request.findUnique({ where: { id: requestId } });
-    if (req?.status !== RequestStatus.REQUESTED) return;
+    const req = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
+    if (req?.status !== 'REQUESTED') return;
     
     await prisma.$transaction([
-        prisma.request.update({
+        prisma.deliveryRequest.update({
             where: { id: requestId },
             data: { 
-                status: RequestStatus.ASSIGNED,
+                status: 'ASSIGNED',
                 assignedDriverId: driverId 
             }
         }),
         prisma.driverAssignment.create({
             data: {
-                requestId,
+                deliveryRequestId: requestId,
                 driverId
             }
         })
@@ -117,7 +116,7 @@ export default async function DriverDashboardPage() {
   async function updateStatus(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as RequestStatus;
+    const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
     
     if (!requestId || !newStatus) return;
     
@@ -179,24 +178,24 @@ export default async function DriverDashboardPage() {
                             )}
                             </div>
                             <div className="flex gap-2">
-                                {req.status === RequestStatus.ASSIGNED && (
+                                {req.status === 'ASSIGNED' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value={RequestStatus.PICKED_UP} />
+                                        <input type="hidden" name="status" value="PICKED_UP" />
                                         <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">Picked Up</Button>
                                     </form>
                                 )}
-                                {req.status === RequestStatus.PICKED_UP && (
+                                {req.status === 'PICKED_UP' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value={RequestStatus.EN_ROUTE} />
+                                        <input type="hidden" name="status" value="EN_ROUTE" />
                                         <Button type="submit" className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">En Route</Button>
                                     </form>
                                 )}
-                                {req.status === RequestStatus.EN_ROUTE && (
+                                {req.status === 'EN_ROUTE' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value={RequestStatus.DELIVERED} />   
+                                        <input type="hidden" name="status" value="DELIVERED" />   
                                         <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Delivered</Button>
                                     </form>
                                 )}
