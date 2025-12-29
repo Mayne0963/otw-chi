@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { clerkClient } from '@clerk/nextjs/server';
-import { Role } from '@/lib/generated/prisma';
+import { Role } from '@prisma/client';
 
 export async function POST(req: Request) {
   try {

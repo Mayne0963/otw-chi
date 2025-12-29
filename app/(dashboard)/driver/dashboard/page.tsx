@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
-import { RequestStatus } from '@/lib/generated/prisma';
+import { RequestStatus } from '@prisma/client';
 // (no import needed – RequestStatus is referenced via Prisma client’s generated types)
 
 export default async function DriverDashboardPage() {

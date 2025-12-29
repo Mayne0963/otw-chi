@@ -1,7 +1,7 @@
 'use server';
 
 // PrismaClient is not imported here; getPrisma() from '@/lib/db' provides the client instance
-import type { Prisma } from '@/lib/generated/prisma';
+import type { Prisma } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
