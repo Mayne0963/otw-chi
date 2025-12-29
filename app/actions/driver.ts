@@ -2,16 +2,11 @@
 
 // PrismaClient is not imported here; getPrisma() from '@/lib/db' provides the client instance
 import type { Prisma } from '@prisma/client';
+import { RequestStatus } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
 import { calculateBasePriceCents, calculateDriverPayoutCents } from '@/lib/pricing';
-
-type RequestStatus = 
-  | 'SUBMITTED'
-  | 'ASSIGNED'
-  | 'COMPLETED'
-  | 'CANCELED';
 
 export async function getAvailableJobs() {
   const user = await getCurrentUser();
