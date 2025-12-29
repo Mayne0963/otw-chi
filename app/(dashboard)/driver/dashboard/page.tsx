@@ -1,14 +1,20 @@
-import { requireRole, getCurrentUser } from '@/lib/auth/roles';
+import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
 import { RequestStatus } from '@prisma/client';
+import { redirect } from 'next/navigation';
 
 export default async function DriverDashboardPage() {
-  await requireRole(['DRIVER', 'ADMIN']);
   const user = await getCurrentUser();
+  if (!user) {
+    redirect('/sign-in');
+  }
+  if (user.role !== 'DRIVER' && user.role !== 'ADMIN') {
+    redirect('/');
+  }
   const prisma = getPrisma();
 
   const driverProfile = await prisma.driverProfile.findUnique({

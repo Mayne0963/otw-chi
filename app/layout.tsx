@@ -11,11 +11,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const signInUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL ?? '/sign-in';
   const signUpUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL ?? '/sign-up';
-  const afterSignInUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL ?? '/dashboard';
-  const afterSignUpUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL ?? '/onboarding';
+  const signInFallbackRedirectUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL ?? '/dashboard';
+  const signUpFallbackRedirectUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL ?? '/onboarding';
 
   return (
-    <ClerkProvider signInUrl={signInUrl} signUpUrl={signUpUrl} afterSignInUrl={afterSignInUrl} afterSignUpUrl={afterSignUpUrl}>
+    <ClerkProvider
+      signInUrl={signInUrl}
+      signUpUrl={signUpUrl}
+      signInFallbackRedirectUrl={signInFallbackRedirectUrl}
+      signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
+    >
       <html lang="en">
         <body className="min-h-screen bg-otwBlack text-otwOffWhite antialiased relative selection:bg-otwGold/30 selection:text-otwGold">
           {/* Global background effect */}
