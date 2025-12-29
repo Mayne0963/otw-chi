@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { clerkClient } from '@clerk/nextjs/server';
-import { Role } from '@prisma/client';
+import { Role } from '@/lib/generated/prisma';
 
 type ClerkUserEmailAddress = {
   id: string;

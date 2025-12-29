@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OtwMatchContext, ServiceType, Urgency } from "../../../../lib/otw/otwTypes";
-import { findBestDriversForRequest } from "../../../../lib/otw/otwMatching";
+import { OtwMatchContext, ServiceType, Urgency } from "@/lib/otw/otwTypes";
+import { findBestDriversForRequest } from "@/lib/otw/otwMatching";
 
 interface MatchRequestBody {
   requestId: string;

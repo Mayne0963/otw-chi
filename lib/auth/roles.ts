@@ -1,6 +1,6 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
-import { Role } from '@prisma/client';
+import { Role } from '@/lib/generated/prisma';
 
 export async function getCurrentUser() {
   try {

@@ -7,7 +7,7 @@ import { getPrisma } from '@/lib/db';
 export default async function PricingPage() {
   const prisma = getPrisma();
   const planRecords = await prisma.membershipPlan.findMany();
-  const planMap = new Map(planRecords.map((plan) => [plan.name.toLowerCase(), plan]));
+  const planMap = new Map(planRecords.map((plan: { name: string }) => [plan.name.toLowerCase(), plan]));
   const fallbackPriceIds = {
     basic: process.env.STRIPE_PRICE_BASIC,
     plus: process.env.STRIPE_PRICE_PLUS,
@@ -48,8 +48,8 @@ export default async function PricingPage() {
       <div className="grid gap-6 md:grid-cols-3">
         {plans.map((plan) => {
           const planRecord = planMap.get(plan.name.toLowerCase());
-          const priceId = planRecord?.stripePriceId ?? fallbackPriceIds[plan.code as keyof typeof fallbackPriceIds];
-          const planId = planRecord?.id;
+          const priceId = (planRecord as any)?.stripePriceId ?? fallbackPriceIds[plan.code as keyof typeof fallbackPriceIds];
+          const planId = (planRecord as any)?.id;
           return (
           <Card key={plan.code} className="relative flex flex-col">
             <Badge variant="secondary" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-otwGold text-otwBlack hover:bg-otwGold">

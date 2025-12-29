@@ -7,7 +7,8 @@ import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { ServiceType, RequestStatus } from '@prisma/client';
+import { ServiceType, RequestStatus } from '@/lib/generated/prisma';
+
 
 export async function createRequestAction(formData: FormData) {
   const pickup = String(formData.get('pickup') ?? '');

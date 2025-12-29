@@ -1,10 +1,17 @@
 'use server';
 
+// PrismaClient is not imported here; getPrisma() from '@/lib/db' provides the client instance
+import type { Prisma } from '@/lib/generated/prisma';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
-import { RequestStatus } from '@prisma/client';
 import { calculateBasePriceCents, calculateDriverPayoutCents } from '@/lib/pricing';
+
+type RequestStatus = 
+  | 'SUBMITTED'
+  | 'ASSIGNED'
+  | 'COMPLETED'
+  | 'CANCELED';
 
 export async function getAvailableJobs() {
   const user = await getCurrentUser();
@@ -220,7 +227,7 @@ export async function getDriverEarnings() {
     orderBy: { createdAt: 'desc' },
   });
 
-  const total = earnings.reduce((sum, e) => {
+  const total = earnings.reduce((sum: number, e: { amountCents?: number | null; amount?: number | null }) => {
     const cents = (e.amountCents ?? e.amount ?? 0);
     return sum + cents;
   }, 0);
@@ -237,12 +244,12 @@ export async function requestPayoutAction(_formData: FormData) {
     where: { driverId: user.id, status: 'available' },
     orderBy: { createdAt: 'asc' },
   });
-  const totalCents = available.reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
+  const totalCents = available.reduce((sum: number, e: { amountCents?: number | null; amount?: number | null }) => sum + (e.amountCents ?? e.amount ?? 0), 0);
   if (totalCents <= 0) {
     return;
   }
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.driverPayout.create({
       data: {
         driverId: user.id,

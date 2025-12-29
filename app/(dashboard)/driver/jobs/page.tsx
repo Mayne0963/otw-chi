@@ -53,7 +53,7 @@ export default async function DriverJobsPage() {
             <OtwEmptyState title="No jobs" subtitle="No available requests in your zone." />
           ) : (
             <ul className="mt-2 space-y-2 text-sm opacity-90">
-              {available.map(r => (
+              {available.map((r: any) => (
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                   <div className="flex items-center justify-between">
                     <div>
@@ -76,7 +76,7 @@ export default async function DriverJobsPage() {
             <div className="mt-2 text-sm opacity-80">No active jobs.</div>
           ) : (
             <ul className="mt-2 space-y-2 text-sm opacity-90">
-              {active.map(r => (
+              {active.map((r: any) => (
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                   <div className="flex items-center justify-between">
                     <div>
@@ -96,7 +96,7 @@ export default async function DriverJobsPage() {
             <div className="mt-2 text-sm opacity-80">No completed jobs yet.</div>
           ) : (
             <ul className="mt-2 space-y-2 text-sm opacity-90">
-              {completed.map(r => (
+              {completed.map((r: any) => (
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                   <div className="flex items-center justify-between">
                     <div>

@@ -2,10 +2,16 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
-import { ServiceType } from '@prisma/client';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 
+const ServiceType = {
+  FOOD: 'FOOD',
+  STORE: 'STORE',
+  FRAGILE: 'FRAGILE',
+  CONCIERGE: 'CONCIERGE',
+} as const;
+type ServiceType = typeof ServiceType[keyof typeof ServiceType];
 const requestSchema = z.object({
   pickup: z.string().min(5),
   dropoff: z.string().min(5),

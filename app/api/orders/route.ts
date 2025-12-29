@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
-import { ServiceType } from '@prisma/client';
+import { ServiceType } from '@/lib/generated/prisma';
 
 const orderSchema = z.object({
-  serviceType: z.enum(['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE']),
+  serviceType: z.enum(Object.values(ServiceType)),
   pickupAddress: z.string().min(5),
   dropoffAddress: z.string().min(5),
   notes: z.string().optional(),

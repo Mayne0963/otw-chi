@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { RequestStatus } from "@/lib/generated/prisma";
 import { updateOtwRequestStatus } from "../../../../../lib/otw/otwRequests";
 
 export async function PATCH(request: NextRequest) {

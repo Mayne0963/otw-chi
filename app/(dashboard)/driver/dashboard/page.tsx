@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
-import { RequestStatus } from '@prisma/client';
+import { RequestStatus } from '@/lib/generated/prisma';
+// (no import needed – RequestStatus is referenced via Prisma client’s generated types)
 
 export default async function DriverDashboardPage() {
   await requireRole(['DRIVER', 'ADMIN']);
@@ -19,17 +20,17 @@ export default async function DriverDashboardPage() {
     return <div className="p-8 text-center text-xl text-red-500">Driver profile not found. Please contact support.</div>;
   }
 
-  const assignedRequests = await prisma.deliveryRequest.findMany({
+  const assignedRequests = await prisma.request.findMany({
     where: { 
         assignedDriverId: driverProfile.id,
-        status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] }
+        status: { in: [RequestStatus.ASSIGNED, RequestStatus.PICKED_UP, RequestStatus.EN_ROUTE] }
     },
     orderBy: { createdAt: 'desc' }
   });
 
-  const availableRequests = await prisma.deliveryRequest.findMany({
+  const availableRequests = await prisma.request.findMany({
     where: { 
-        status: 'REQUESTED',
+        status: RequestStatus.REQUESTED,
         assignedDriverId: null 
     },
     orderBy: { createdAt: 'desc' }
@@ -61,20 +62,20 @@ export default async function DriverDashboardPage() {
     const prisma = getPrisma();
     
     // Optimistic check
-    const req = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
-    if (req?.status !== 'REQUESTED') return;
-
+    const req = await prisma.request.findUnique({ where: { id: requestId } });
+    if (req?.status !== RequestStatus.REQUESTED) return;
+    
     await prisma.$transaction([
-        prisma.deliveryRequest.update({
+        prisma.request.update({
             where: { id: requestId },
             data: { 
-                status: 'ASSIGNED',
+                status: RequestStatus.ASSIGNED,
                 assignedDriverId: driverId 
             }
         }),
         prisma.driverAssignment.create({
             data: {
-                deliveryRequestId: requestId,
+                requestId,
                 driverId
             }
         })
@@ -116,7 +117,7 @@ export default async function DriverDashboardPage() {
   async function updateStatus(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
+    const newStatus = formData.get('status') as RequestStatus;
     
     if (!requestId || !newStatus) return;
     
@@ -132,7 +133,7 @@ export default async function DriverDashboardPage() {
   async function updateLegacyStatus(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
+    const newStatus = formData.get('status') as RequestStatus;
 
     if (!requestId || !newStatus) return;
 
@@ -153,7 +154,7 @@ export default async function DriverDashboardPage() {
         <section>
             <h2 className="text-2xl font-semibold mb-4 text-otwGold">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {assignedRequests.map(req => (
+                {assignedRequests.map((req: any) => (
                     <Card key={req.id} className="bg-otwBlack/40 border-otwGold/50 text-otwOffWhite">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
@@ -178,24 +179,24 @@ export default async function DriverDashboardPage() {
                             )}
                             </div>
                             <div className="flex gap-2">
-                                {req.status === 'ASSIGNED' && (
+                                {req.status === RequestStatus.ASSIGNED && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value="PICKED_UP" />
+                                        <input type="hidden" name="status" value={RequestStatus.PICKED_UP} />
                                         <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">Picked Up</Button>
                                     </form>
                                 )}
-                                {req.status === 'PICKED_UP' && (
+                                {req.status === RequestStatus.PICKED_UP && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value="EN_ROUTE" />
+                                        <input type="hidden" name="status" value={RequestStatus.EN_ROUTE} />
                                         <Button type="submit" className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">En Route</Button>
                                     </form>
                                 )}
-                                {req.status === 'EN_ROUTE' && (
+                                {req.status === RequestStatus.EN_ROUTE && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value="DELIVERED" />
+                                        <input type="hidden" name="status" value={RequestStatus.DELIVERED} />   
                                         <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Delivered</Button>
                                     </form>
                                 )}
@@ -203,7 +204,7 @@ export default async function DriverDashboardPage() {
                         </CardContent>
                     </Card>
                 ))}
-                {assignedLegacyRequests.map(req => (
+                {assignedLegacyRequests.map((req: any) => (
                     <Card key={req.id} className="bg-otwBlack/40 border-otwGold/50 text-otwOffWhite">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
@@ -263,7 +264,7 @@ export default async function DriverDashboardPage() {
         <section>
             <h2 className="text-2xl font-semibold mb-4 text-white">Available Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {availableRequests.map(req => (
+                {availableRequests.map((req: any) => (
                     <Card key={req.id} className="bg-white/5 border-white/10 text-otwOffWhite hover:bg-white/10 transition-colors">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
@@ -283,7 +284,7 @@ export default async function DriverDashboardPage() {
                         </CardContent>
                     </Card>
                 ))}
-                {availableLegacyRequests.map(req => (
+                {availableLegacyRequests.map((req: any) => (
                     <Card key={req.id} className="bg-white/5 border-white/10 text-otwOffWhite hover:bg-white/10 transition-colors">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">

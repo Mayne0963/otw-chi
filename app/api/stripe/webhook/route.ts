@@ -2,8 +2,14 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getPrisma } from '@/lib/db';
-import { MembershipStatus } from '@prisma/client';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
+
+type MembershipStatus = 
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'CANCELED'
+  | 'TRIALING'
+  | 'INACTIVE';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 

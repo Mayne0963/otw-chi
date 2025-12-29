@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { clerkClient } from '@clerk/nextjs/server';
-
-import { Role } from '@prisma/client';
+import { Role } from '@/lib/generated/prisma';
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +10,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const targetClerkId = String(body?.clerkId || '');
     const newRole = String(body?.role || '').toUpperCase();
-    if (!targetClerkId || !['CUSTOMER','DRIVER','ADMIN','FRANCHISE'].includes(newRole)) {
+    if (!targetClerkId || !Object.values(Role).includes(newRole as Role)) {
       return NextResponse.json({ success: false, error: 'Invalid input' }, { status: 400 });
     }
     const client = await clerkClient();

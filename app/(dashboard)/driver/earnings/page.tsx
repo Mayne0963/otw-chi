@@ -6,6 +6,7 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getDriverEarnings, requestPayoutAction } from '@/app/actions/driver';
+import { MembershipStatus } from '@/lib/generated/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,16 +31,16 @@ export default async function DriverEarningsPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   
   const weekly = history
-    .filter(e => e.createdAt >= startOfWeek)
-    .reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
+    .filter((e: { createdAt: Date }) => e.createdAt >= startOfWeek)
+    .reduce((sum: number, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
     
   const monthly = history
-    .filter(e => e.createdAt >= startOfMonth)
-    .reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
+    .filter((e: { createdAt: Date }) => e.createdAt >= startOfMonth)
+    .reduce((sum: number, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
 
   const availableTotal = history
-    .filter(e => e.status === 'available')
-    .reduce((sum, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
+    .filter((e) => e.status === 'available')
+    .reduce((sum: number, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
 
   const prisma = getPrisma();
   const latestPayout = await prisma.driverPayout.findFirst({
@@ -80,13 +81,13 @@ export default async function DriverEarningsPage() {
         {history.length === 0 ? (
           <p className="mt-2 text-sm opacity-80">No earnings yet.</p>
         ) : (
-          <ul className="mt-2 space-y-2 text-sm opacity-90">
-            {history.slice(0, 20).map(e => (
+          <ul>
+            {history.slice(0, 20).map((e) => (
               <li key={e.id} className="py-2 border-b border-white/10 last:border-0">
                 <div className="flex items-center justify-between">
                   <div className="text-xs opacity-70">Job {e.requestId?.slice(-6) ?? 'N/A'}</div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs rounded-full px-2 py-1 border border-white/10 opacity-70">{e.status ?? 'pending'}</span>
+                    <span className={`text-xs rounded-full px-2 py-1 border border-white/10 opacity-70 ${e.status === 'available' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}>{e.status ?? 'pending'}</span>
                     <span>${(((e.amountCents ?? e.amount ?? 0)/100)).toFixed(2)}</span>
                   </div>
                 </div>
