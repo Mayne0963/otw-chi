@@ -9,8 +9,8 @@ export async function POST(req: Request) {
     await requireRole(['ADMIN']);
     const body = await req.json();
     const targetClerkId = String(body?.clerkId || '');
-    const newRole = String(body?.role || '').toUpperCase();
-    if (!targetClerkId || !Object.values(Role).includes(newRole as Role)) {
+    const newRole = String(body?.role || '').toUpperCase() as Role;
+    if (!targetClerkId || !Object.values(Role).includes(newRole)) {
       return NextResponse.json({ success: false, error: 'Invalid input' }, { status: 400 });
     }
     const client = await clerkClient();

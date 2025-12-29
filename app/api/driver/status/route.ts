@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth/roles';
+import { MembershipStatus } from '@prisma/client';
 
 export async function POST(req: Request) {
   try {
@@ -8,7 +9,7 @@ export async function POST(req: Request) {
     const prisma = getPrisma();
     const body = await req.json();
     const driverProfileId = String(body?.driverProfileId || '');
-    const status = String(body?.status || '').toUpperCase();
+    const status = String(body?.status || '').toUpperCase() as MembershipStatus;
     
     if (!driverProfileId || !status) {
       return NextResponse.json({ success: false, error: 'Missing driverProfileId or status' }, { status: 400 });
