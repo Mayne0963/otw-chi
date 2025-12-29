@@ -44,7 +44,7 @@ export default async function DriverDashboardPage() {
   const assignedLegacyRequests = await prisma.request.findMany({
     where: {
       assignedDriverId: driverProfile.id,
-      status: { in: [RequestStatus.ASSIGNED, RequestStatus.PICKED_UP, RequestStatus.EN_ROUTE] },
+      status: { in: [RequestStatus.ASSIGNED, RequestStatus.PICKED_UP] },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -138,7 +138,7 @@ export default async function DriverDashboardPage() {
   async function updateLegacyStatus(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as RequestStatus;
+    const newStatus = formData.get('status') as RequestStatus.PICKED_UP | RequestStatus.DELIVERED;
 
     if (!requestId || !newStatus) return;
 
@@ -242,13 +242,6 @@ export default async function DriverDashboardPage() {
                                     </form>
                                 )}
                                 {req.status === RequestStatus.PICKED_UP && (
-                                    <form action={updateLegacyStatus} className="w-full">
-                                        <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value={RequestStatus.EN_ROUTE} />
-                                        <Button type="submit" className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">En Route</Button>
-                                    </form>
-                                )}
-                                {req.status === RequestStatus.EN_ROUTE && (
                                     <form action={updateLegacyStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value={RequestStatus.DELIVERED} />
