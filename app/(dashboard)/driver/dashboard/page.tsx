@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { revalidatePath } from 'next/cache';
+import { RequestStatus } from '@prisma/client';
 
 export default async function DriverDashboardPage() {
   await requireRole(['DRIVER', 'ADMIN']);
@@ -32,6 +33,22 @@ export default async function DriverDashboardPage() {
         assignedDriverId: null 
     },
     orderBy: { createdAt: 'desc' }
+  });
+
+  const assignedLegacyRequests = await prisma.request.findMany({
+    where: {
+      assignedDriverId: driverProfile.id,
+      status: { in: [RequestStatus.ASSIGNED, RequestStatus.PICKED_UP, RequestStatus.EN_ROUTE] },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const availableLegacyRequests = await prisma.request.findMany({
+    where: {
+      status: RequestStatus.SUBMITTED,
+      assignedDriverId: null,
+    },
+    orderBy: { createdAt: 'desc' },
   });
 
   async function acceptRequest(formData: FormData) {
@@ -66,6 +83,36 @@ export default async function DriverDashboardPage() {
     revalidatePath('/driver/dashboard');
   }
 
+  async function acceptLegacyRequest(formData: FormData) {
+    'use server';
+    const requestId = formData.get('requestId') as string;
+    const driverId = formData.get('driverId') as string;
+
+    if (!requestId || !driverId) return;
+
+    const prisma = getPrisma();
+    const req = await prisma.request.findUnique({ where: { id: requestId } });
+    if (req?.status !== RequestStatus.SUBMITTED) return;
+
+    await prisma.$transaction([
+      prisma.request.update({
+        where: { id: requestId },
+        data: {
+          status: RequestStatus.ASSIGNED,
+          assignedDriverId: driverId,
+        },
+      }),
+      prisma.driverAssignment.create({
+        data: {
+          requestId,
+          driverId,
+        },
+      }),
+    ]);
+
+    revalidatePath('/driver/dashboard');
+  }
+
   async function updateStatus(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
@@ -79,6 +126,22 @@ export default async function DriverDashboardPage() {
         data: { status: newStatus } 
     });
     
+    revalidatePath('/driver/dashboard');
+  }
+
+  async function updateLegacyStatus(formData: FormData) {
+    'use server';
+    const requestId = formData.get('requestId') as string;
+    const newStatus = formData.get('status') as RequestStatus.PICKED_UP | RequestStatus.EN_ROUTE | RequestStatus.DELIVERED;
+
+    if (!requestId || !newStatus) return;
+
+    const prisma = getPrisma();
+    await prisma.request.update({
+      where: { id: requestId },
+      data: { status: newStatus },
+    });
+
     revalidatePath('/driver/dashboard');
   }
 
@@ -140,7 +203,59 @@ export default async function DriverDashboardPage() {
                         </CardContent>
                     </Card>
                 ))}
-                {assignedRequests.length === 0 && <p className="text-white/50 col-span-full py-4 text-center border border-dashed border-white/10 rounded-lg">No active jobs.</p>}
+                {assignedLegacyRequests.map(req => (
+                    <Card key={req.id} className="bg-otwBlack/40 border-otwGold/50 text-otwOffWhite">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex justify-between items-center text-lg">
+                                <span>{req.serviceType}</span>
+                                <Badge variant="outline" className="border-otwGold text-otwGold">LEGACY {req.status.replace('_', ' ')}</Badge>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2 text-sm mb-4">
+                                <div>
+                                    <span className="text-white/50 block text-xs">Pickup</span>
+                                    <span>{req.pickup}</span>
+                                </div>
+                                <div>
+                                    <span className="text-white/50 block text-xs">Dropoff</span>
+                                    <span>{req.dropoff}</span>
+                                </div>
+                                {req.notes && (
+                                    <div className="bg-white/5 p-2 rounded text-xs italic">
+                                        &quot;{req.notes}&quot;
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                {req.status === RequestStatus.ASSIGNED && (
+                                    <form action={updateLegacyStatus} className="w-full">
+                                        <input type="hidden" name="requestId" value={req.id} />
+                                        <input type="hidden" name="status" value={RequestStatus.PICKED_UP} />
+                                        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">Picked Up</Button>
+                                    </form>
+                                )}
+                                {req.status === RequestStatus.PICKED_UP && (
+                                    <form action={updateLegacyStatus} className="w-full">
+                                        <input type="hidden" name="requestId" value={req.id} />
+                                        <input type="hidden" name="status" value={RequestStatus.EN_ROUTE} />
+                                        <Button type="submit" className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">En Route</Button>
+                                    </form>
+                                )}
+                                {req.status === RequestStatus.EN_ROUTE && (
+                                    <form action={updateLegacyStatus} className="w-full">
+                                        <input type="hidden" name="requestId" value={req.id} />
+                                        <input type="hidden" name="status" value={RequestStatus.DELIVERED} />
+                                        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Delivered</Button>
+                                    </form>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+                {assignedRequests.length === 0 && assignedLegacyRequests.length === 0 && (
+                    <p className="text-white/50 col-span-full py-4 text-center border border-dashed border-white/10 rounded-lg">No active jobs.</p>
+                )}
             </div>
         </section>
 
@@ -168,7 +283,29 @@ export default async function DriverDashboardPage() {
                         </CardContent>
                     </Card>
                 ))}
-                {availableRequests.length === 0 && <p className="text-white/50 col-span-full py-4 text-center border border-dashed border-white/10 rounded-lg">No jobs available right now.</p>}
+                {availableLegacyRequests.map(req => (
+                    <Card key={req.id} className="bg-white/5 border-white/10 text-otwOffWhite hover:bg-white/10 transition-colors">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex justify-between items-center text-lg">
+                                <span>{req.serviceType}</span>
+                                <span className="text-xs uppercase tracking-wide text-white/60">Legacy</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-white/60 mb-4">
+                                {req.pickup} <span className="text-otwGold">→</span> {req.dropoff}
+                            </p>
+                            <form action={acceptLegacyRequest}>
+                                <input type="hidden" name="requestId" value={req.id} />
+                                <input type="hidden" name="driverId" value={driverProfile.id} />
+                                <Button type="submit" variant="secondary" className="w-full hover:bg-otwGold hover:text-otwBlack">Accept Job</Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                ))}
+                {availableRequests.length === 0 && availableLegacyRequests.length === 0 && (
+                    <p className="text-white/50 col-span-full py-4 text-center border border-dashed border-white/10 rounded-lg">No jobs available right now.</p>
+                )}
             </div>
         </section>
       </div>
