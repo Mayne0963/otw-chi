@@ -28,6 +28,7 @@ BEGIN
       AND column_name = 'status'
       AND data_type = 'text'
   ) THEN
+    ALTER TABLE "DriverApplication" ALTER COLUMN "status" DROP DEFAULT;
     ALTER TABLE "DriverApplication"
       ALTER COLUMN "status" TYPE "DriverApplicationStatus"
       USING "status"::"DriverApplicationStatus";
