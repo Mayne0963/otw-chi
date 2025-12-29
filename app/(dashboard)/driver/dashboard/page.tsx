@@ -132,7 +132,7 @@ export default async function DriverDashboardPage() {
   async function updateLegacyStatus(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as RequestStatus.PICKED_UP | RequestStatus.EN_ROUTE | RequestStatus.DELIVERED;
+    const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
 
     if (!requestId || !newStatus) return;
 
