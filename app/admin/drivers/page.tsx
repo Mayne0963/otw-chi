@@ -6,6 +6,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 // Loading component for better UX
 function AdminDriversLoading() {
@@ -242,12 +243,18 @@ function DriversTable({ drivers }: { drivers: any[] }) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">
+                      <Link
+                        href={`/admin/drivers/${driver.id}`}
+                        className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                      >
                         View
-                      </button>
-                      <button className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors">
+                      </Link>
+                      <Link
+                        href={`/admin/drivers/${driver.id}/edit`}
+                        className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
+                      >
                         Edit
-                      </button>
+                      </Link>
                     </div>
                   </td>
                 </tr>

@@ -6,6 +6,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 // Loading component for better UX
 function AdminRequestsLoading() {
@@ -166,9 +167,18 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
-                    <button className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">
+                    <Link
+                      href={`/admin/requests/${request.id}`}
+                      className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                    >
                       View
-                    </button>
+                    </Link>
+                    <Link
+                      href={`/admin/requests/${request.id}/edit`}
+                      className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
+                    >
+                      Edit
+                    </Link>
                     {request.status === 'PENDING' && drivers.length > 0 && (
                       <form action={assignDriverAction} className="inline-block">
                         <input type="hidden" name="id" value={request.id} />
