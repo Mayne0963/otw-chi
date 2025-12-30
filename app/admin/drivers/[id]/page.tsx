@@ -6,6 +6,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 async function getDriver(id: string) {
   const prisma = getPrisma();
@@ -43,6 +44,10 @@ export default async function AdminDriverDetailPage({
   params: { id: string };
 }) {
   await requireRole(['ADMIN']);
+
+  if (!params.id) {
+    notFound();
+  }
 
   const data = await getDriver(params.id);
 

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Role } from '@prisma/client';
+import { notFound } from 'next/navigation';
 
 const roleOptions: Role[] = ['CUSTOMER', 'DRIVER', 'ADMIN', 'FRANCHISE'];
 
@@ -79,6 +80,10 @@ export default async function AdminCustomerEditPage({
   params: { id: string };
 }) {
   await requireRole(['ADMIN']);
+
+  if (!params.id) {
+    notFound();
+  }
 
   const customer = await getCustomer(params.id);
 

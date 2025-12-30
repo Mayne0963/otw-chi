@@ -6,6 +6,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 async function getCustomer(id: string) {
   const prisma = getPrisma();
@@ -34,6 +35,10 @@ export default async function AdminCustomerDetailPage({
   params: { id: string };
 }) {
   await requireRole(['ADMIN']);
+
+  if (!params.id) {
+    notFound();
+  }
 
   const customer = await getCustomer(params.id);
 

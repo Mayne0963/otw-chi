@@ -7,6 +7,7 @@ import { requireRole } from '@/lib/auth';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { notFound } from 'next/navigation';
 
 const statusOptions = [
   'DRAFT',
@@ -108,6 +109,10 @@ export default async function AdminRequestEditPage({
   params: { id: string };
 }) {
   await requireRole(['ADMIN']);
+
+  if (!params.id) {
+    notFound();
+  }
 
   const { request, drivers } = await getRequestData(params.id);
 
