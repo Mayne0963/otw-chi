@@ -11,8 +11,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const signInUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL ?? '/sign-in';
   const signUpUrl = process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL ?? '/sign-up';
-  const signInFallbackRedirectUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL ?? '/dashboard';
-  const signUpFallbackRedirectUrl = process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL ?? '/onboarding';
+  const signInFallbackRedirectUrl =
+    process.env.NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL ??
+    process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL ??
+    '/dashboard';
+  const signUpFallbackRedirectUrl =
+    process.env.NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL ??
+    process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL ??
+    '/onboarding';
 
   return (
     <ClerkProvider
