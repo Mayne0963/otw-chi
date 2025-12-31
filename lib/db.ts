@@ -23,7 +23,23 @@ export function getPrisma(): PrismaClient {
     const mockUser = { id: 'stub-user', role: 'CUSTOMER', name: 'Stub User', dob: null, termsAcceptedAt: null }
     const mockProfile = { id: 'stub-profile', userId: 'stub-user' }
     const mockRequest = { id: 'stub-request', status: 'SUBMITTED' }
-    const mockDeliveryRequest = { id: 'stub-delivery-request', status: 'REQUESTED' }
+    const mockDeliveryRequest = {
+      id: 'stub-delivery-request',
+      status: 'REQUESTED',
+      serviceType: 'FOOD',
+      pickupAddress: '123 Mock St',
+      dropoffAddress: '456 Example Ave',
+      notes: null,
+      restaurantName: 'Sample Bistro',
+      restaurantWebsite: 'https://example.com',
+      receiptVendor: 'Sample Bistro',
+      receiptLocation: 'Mock City, IN',
+      receiptItems: [],
+      receiptAuthenticityScore: 0.85,
+      receiptImageData: null,
+      deliveryFeeCents: 995,
+      deliveryFeePaid: true,
+    }
     const mockTicket = { id: 'stub-ticket', status: 'OPEN' }
     const mockEvent = { id: 'stub-event' }
     

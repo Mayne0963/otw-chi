@@ -201,6 +201,16 @@ model DeliveryRequest {
   pickupAddress    String
   dropoffAddress   String
   notes            String?
+  restaurantName      String?
+  restaurantWebsite   String?
+  receiptImageData    String?   @db.Text
+  receiptVendor       String?
+  receiptLocation     String?
+  receiptItems        Json?
+  receiptAuthenticityScore Float?
+  deliveryFeeCents    Int?
+  deliveryFeePaid     Boolean   @default(false)
+  receiptVerifiedAt   DateTime?
   status           DeliveryRequestStatus @default(REQUESTED)
   lastKnownLat     Float?
   lastKnownLng     Float?
