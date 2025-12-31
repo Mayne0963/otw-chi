@@ -10,9 +10,8 @@ type ParsedReceipt = {
   items: ReceiptItem[];
 };
 
-const ITEM_LINE =
-  /^(?<qty>\d+)?\s*(?<name>[A-Za-z0-9][A-Za-z0-9\s.'/#&-]{2,}?)\s+(?<price>\d{1,3}\.\d{2})$/;
 const TOTAL_LINE = /(subtotal|total|tax|change|cash|visa|mastercard|amex|debit)/i;
+const ITEMS_HEADER = /(qty|quantity|item|description|total)\b/i;
 const PHONE_LINE = /(tel|phone)/i;
 const ADDRESS_LINE =
   /\d{1,5}\s+.+\s+(?:street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|pike|trail|trl|way|court|ct)\b/i;
@@ -27,6 +26,7 @@ export function parseReceiptText(text: string): ParsedReceipt {
   let vendorName = "";
   let location = "";
   const items: ReceiptItem[] = [];
+  let inItemsSection = false;
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
@@ -47,18 +47,34 @@ export function parseReceiptText(text: string): ParsedReceipt {
     }
 
     if (TOTAL_LINE.test(line)) continue;
-    const match = ITEM_LINE.exec(line);
-    if (match?.groups?.name && match?.groups?.price) {
-      const quantity = match.groups.qty ? Number(match.groups.qty) : 1;
-      const price = Number(match.groups.price);
-      if (Number.isFinite(price)) {
-        items.push({
-          name: match.groups.name.trim(),
-          quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
-          price,
-        });
-      }
+    if (ITEMS_HEADER.test(line)) {
+      inItemsSection = true;
+      continue;
     }
+
+    const numericTokens = line.match(/\$?\d{1,3}\.\d{2}/g) || [];
+    const priceToken = numericTokens.at(-1);
+    if (!priceToken) continue;
+
+    const cleaned = line.replace(/\$/g, "").trim();
+    const qtyMatch = cleaned.match(/^\d+\b/);
+    const quantity = qtyMatch ? Number(qtyMatch[0]) : 1;
+    const namePart = cleaned
+      .replace(/^\d+\s+/, "")
+      .replace(/\d{1,3}\.\d{2}\s*$/, "")
+      .trim();
+
+    if (!namePart || namePart.length < 2) continue;
+    if (!inItemsSection && items.length > 0 && items.length >= 6) continue;
+
+    const price = Number(priceToken.replace("$", ""));
+    if (!Number.isFinite(price)) continue;
+
+    items.push({
+      name: namePart,
+      quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+      price,
+    });
   }
 
   return {

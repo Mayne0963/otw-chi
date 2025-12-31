@@ -34,6 +34,7 @@ type ReceiptAnalysis = {
   imageData?: string;
 };
 
+const AUTHENTICITY_THRESHOLD = 0.85;
 const MAX_OCR_BYTES = 1.2 * 1024 * 1024;
 const OCR_TIMEOUT_MS = 6_000;
 
@@ -617,10 +618,15 @@ export default function OrderPage() {
                 </div>
               )}
 
-              {receiptAnalysis && (
-                <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+      {receiptAnalysis && (
+        <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
+          {receiptAnalysis.authenticityScore < AUTHENTICITY_THRESHOLD && (
+            <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+              This receipt didn’t pass our 85% authenticity check. Please upload a clearer photo or verify the details.
+            </div>
+          )}
+          <div className="flex items-start justify-between gap-3">
+            <div>
                       <div className="text-xs text-white/50">Detected restaurant</div>
                       <Input
                         value={receiptAnalysis.vendorName}
