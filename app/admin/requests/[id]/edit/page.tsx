@@ -112,6 +112,8 @@ export default async function AdminRequestEditPage({
 }) {
   await requireRole(['ADMIN']);
 
+  const resolvedParams = await Promise.resolve(params);
+  const resolvedSearchParams = await Promise.resolve(searchParams);
   const headerList = await headers();
   const rawUrl =
     headerList.get('x-forwarded-path') ||
@@ -138,7 +140,7 @@ export default async function AdminRequestEditPage({
     }
   }
 
-  const resolvedId = params?.id || searchParams?.id || derivedId;
+  const resolvedId = resolvedParams?.id || resolvedSearchParams?.id || derivedId;
 
   if (!resolvedId) {
     return (
