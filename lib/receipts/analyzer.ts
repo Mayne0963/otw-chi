@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { recognize } from "tesseract.js";
 
 export const MAX_RECEIPT_BYTES = 2.5 * 1024 * 1024; // 2.5MB safety limit
 
@@ -73,6 +74,74 @@ function scoreAuthenticity(buffer: Buffer): { score: number; reason: string } {
   return { score: combined, reason };
 }
 
+const ITEM_LINE = /^(?<qty>\d+)?\s*(?<name>[A-Za-z0-9][A-Za-z0-9\s.'/#&-]{2,}?)\s+(?<price>\d{1,3}\.\d{2})$/;
+const TOTAL_LINE = /(subtotal|total|tax|change|cash|visa|mastercard|amex|debit)/i;
+const PHONE_LINE = /(tel|phone)/i;
+const ADDRESS_LINE = /\d{1,5}\s+.+\s+(?:street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln|drive|dr|pike|trail|trl|way|court|ct)\b/i;
+const CITY_STATE_ZIP = /[A-Z]{2}\s+\d{5}(?:-\d{4})?/;
+
+function parseReceiptText(text: string) {
+  const lines = text
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  let vendorName = "";
+  let location = "";
+  const items: ReceiptItem[] = [];
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!vendorName && !TOTAL_LINE.test(line) && !PHONE_LINE.test(line)) {
+      const candidate = line.replace(/[^A-Za-z0-9\s.'&-]/g, "").trim();
+      if (candidate.length >= 3 && !/receipt|thank|visit|welcome/i.test(candidate)) {
+        vendorName = candidate;
+      }
+    }
+
+    if (!location && (ADDRESS_LINE.test(line) || CITY_STATE_ZIP.test(line))) {
+      const nextLine = lines[i + 1] || "";
+      location = CITY_STATE_ZIP.test(line)
+        ? line
+        : CITY_STATE_ZIP.test(nextLine)
+          ? `${line}, ${nextLine}`
+          : line;
+    }
+
+    if (TOTAL_LINE.test(line)) continue;
+    const match = ITEM_LINE.exec(line);
+    if (match?.groups?.name && match?.groups?.price) {
+      const quantity = match.groups.qty ? Number(match.groups.qty) : 1;
+      const price = Number(match.groups.price);
+      if (Number.isFinite(price)) {
+        items.push({
+          name: match.groups.name.trim(),
+          quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+          price,
+        });
+      }
+    }
+  }
+
+  return {
+    vendorName: vendorName || "",
+    location: location || "",
+    items,
+  };
+}
+
+function scoreWithOcr(baseScore: number, ocrConfidence: number): { score: number; reason: string } {
+  const normalized = Math.min(1, Math.max(0, ocrConfidence / 100));
+  const score = Number((baseScore * 0.7 + normalized * 0.3).toFixed(2));
+  const reason =
+    score > 0.8
+      ? "Passed realism and OCR checks"
+      : score > 0.55
+        ? "Looks like a real photo but OCR confidence is moderate"
+        : "Low OCR confidence; please double-check clarity";
+  return { score, reason };
+}
+
 function generateItems(hash: string, restaurantName: string): ReceiptItem[] {
   const palette = [
     "House Special",
@@ -110,11 +179,29 @@ export async function analyzeReceiptFile(
   }
 
   const hash = buildHash(buffer);
-  const vendorName = inferVendorName(context.restaurantName, file.name);
-  const location = inferLocation(context.pickupAddress, context.dropoffAddress);
-  const items = generateItems(hash, vendorName);
+  const baseVendorName = inferVendorName(context.restaurantName, file.name);
+  const baseLocation = inferLocation(context.pickupAddress, context.dropoffAddress);
+
+  let ocrVendor = "";
+  let ocrLocation = "";
+  let ocrItems: ReceiptItem[] = [];
+  let ocrConfidence = 0;
+  try {
+    const result = await recognize(buffer, "eng");
+    ocrConfidence = result.data.confidence || 0;
+    const parsed = parseReceiptText(result.data.text || "");
+    ocrVendor = parsed.vendorName;
+    ocrLocation = parsed.location;
+    ocrItems = parsed.items.slice(0, 8);
+  } catch (error) {
+    console.error("Receipt OCR failed:", error);
+  }
+
+  const vendorName = ocrVendor || baseVendorName;
+  const location = ocrLocation || baseLocation;
+  const items = ocrItems.length > 0 ? ocrItems : generateItems(hash, vendorName);
   const subtotalCents = items.reduce((sum, item) => sum + Math.round(item.price * 100) * item.quantity, 0);
-  const authenticity = scoreAuthenticity(buffer);
+  const authenticity = scoreWithOcr(scoreAuthenticity(buffer).score, ocrConfidence);
   const imageData = `data:${file.type || "image/jpeg"};base64,${buffer.toString("base64")}`;
 
   return {
