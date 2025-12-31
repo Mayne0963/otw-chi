@@ -32,7 +32,7 @@ export default async function AdminRequestDetailPage({
 }) {
   await requireRole(['ADMIN']);
 
-  const headerList = headers();
+  const headerList = await headers();
   const rawUrl =
     headerList.get('x-forwarded-path') ||
     headerList.get('x-forwarded-uri') ||
