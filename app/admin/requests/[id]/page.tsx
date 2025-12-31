@@ -6,7 +6,6 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 
 async function getRequest(id: string) {
   const prisma = getPrisma();
@@ -30,8 +29,21 @@ export default async function AdminRequestDetailPage({
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params.id) {
-    notFound();
+  if (!params?.id) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader
+          title="Request Details"
+          subtitle="Review customer request, route, and assignment."
+        />
+        <OtwCard className="mt-4 p-6">
+          <OtwEmptyState
+            title="Request ID missing"
+            subtitle="This request link is missing an identifier."
+          />
+        </OtwCard>
+      </OtwPageShell>
+    );
   }
 
   const request = await getRequest(params.id);

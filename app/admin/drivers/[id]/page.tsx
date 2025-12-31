@@ -6,7 +6,6 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 
 async function getDriver(id: string) {
   const prisma = getPrisma();
@@ -45,8 +44,21 @@ export default async function AdminDriverDetailPage({
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params.id) {
-    notFound();
+  if (!params?.id) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader
+          title="Driver Details"
+          subtitle="Review driver profile, status, and performance."
+        />
+        <OtwCard className="mt-4 p-6">
+          <OtwEmptyState
+            title="Driver ID missing"
+            subtitle="This driver link is missing an identifier."
+          />
+        </OtwCard>
+      </OtwPageShell>
+    );
   }
 
   const data = await getDriver(params.id);

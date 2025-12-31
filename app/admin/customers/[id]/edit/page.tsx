@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Role } from '@prisma/client';
-import { notFound } from 'next/navigation';
 
 const roleOptions: Role[] = ['CUSTOMER', 'DRIVER', 'ADMIN', 'FRANCHISE'];
 
@@ -81,8 +80,21 @@ export default async function AdminCustomerEditPage({
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params.id) {
-    notFound();
+  if (!params?.id) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader
+          title="Edit Customer"
+          subtitle="Update customer profile details and role."
+        />
+        <OtwCard className="mt-4 p-6">
+          <OtwEmptyState
+            title="Customer ID missing"
+            subtitle="This customer link is missing an identifier."
+          />
+        </OtwCard>
+      </OtwPageShell>
+    );
   }
 
   const customer = await getCustomer(params.id);

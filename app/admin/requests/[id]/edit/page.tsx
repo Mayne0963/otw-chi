@@ -7,7 +7,6 @@ import { requireRole } from '@/lib/auth';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { notFound } from 'next/navigation';
 
 const statusOptions = [
   'DRAFT',
@@ -110,8 +109,21 @@ export default async function AdminRequestEditPage({
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params.id) {
-    notFound();
+  if (!params?.id) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader
+          title="Edit Request"
+          subtitle="Update assignment, status, and notes."
+        />
+        <OtwCard className="mt-4 p-6">
+          <OtwEmptyState
+            title="Request ID missing"
+            subtitle="This request link is missing an identifier."
+          />
+        </OtwCard>
+      </OtwPageShell>
+    );
   }
 
   const { request, drivers } = await getRequestData(params.id);

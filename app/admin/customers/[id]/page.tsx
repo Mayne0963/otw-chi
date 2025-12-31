@@ -6,7 +6,6 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 
 async function getCustomer(id: string) {
   const prisma = getPrisma();
@@ -36,8 +35,21 @@ export default async function AdminCustomerDetailPage({
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params.id) {
-    notFound();
+  if (!params?.id) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader
+          title="Customer Details"
+          subtitle="Review customer profile, membership, and activity."
+        />
+        <OtwCard className="mt-4 p-6">
+          <OtwEmptyState
+            title="Customer ID missing"
+            subtitle="This customer link is missing an identifier."
+          />
+        </OtwCard>
+      </OtwPageShell>
+    );
   }
 
   const customer = await getCustomer(params.id);

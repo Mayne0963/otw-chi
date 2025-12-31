@@ -7,7 +7,6 @@ import { requireRole } from '@/lib/auth';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { notFound } from 'next/navigation';
 
 const statusOptions = ['ONLINE', 'BUSY', 'OFFLINE'] as const;
 
@@ -79,8 +78,21 @@ export default async function AdminDriverEditPage({
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params.id) {
-    notFound();
+  if (!params?.id) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader
+          title="Edit Driver"
+          subtitle="Update driver status, zone, and rating."
+        />
+        <OtwCard className="mt-4 p-6">
+          <OtwEmptyState
+            title="Driver ID missing"
+            subtitle="This driver link is missing an identifier."
+          />
+        </OtwCard>
+      </OtwPageShell>
+    );
   }
 
   const { driver, zones } = await getDriver(params.id);
