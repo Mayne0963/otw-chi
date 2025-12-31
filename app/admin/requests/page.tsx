@@ -168,13 +168,13 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     <Link
-                      href={`/admin/requests/${request.id}`}
+                      href={`/admin/requests/${request.id}?id=${request.id}`}
                       className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
                     >
                       View
                     </Link>
                     <Link
-                      href={`/admin/requests/${request.id}/edit`}
+                      href={`/admin/requests/${request.id}/edit?id=${request.id}`}
                       className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
                     >
                       Edit

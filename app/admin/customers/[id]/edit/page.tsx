@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Role } from '@prisma/client';
+import { headers } from 'next/headers';
 
 const roleOptions: Role[] = ['CUSTOMER', 'DRIVER', 'ADMIN', 'FRANCHISE'];
 
@@ -74,13 +75,43 @@ export async function updateCustomerAction(formData: FormData) {
 }
 
 export default async function AdminCustomerEditPage({
-  params
+  params,
+  searchParams
 }: {
   params: { id: string };
+  searchParams?: { id?: string };
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params?.id) {
+  const headerList = headers();
+  const rawUrl =
+    headerList.get('x-forwarded-path') ||
+    headerList.get('x-forwarded-uri') ||
+    headerList.get('x-original-url') ||
+    headerList.get('next-url') ||
+    headerList.get('x-nextjs-invoke-path') ||
+    headerList.get('x-invoke-path') ||
+    headerList.get('x-url') ||
+    headerList.get('referer') ||
+    '';
+  let derivedId = '';
+
+  if (rawUrl) {
+    try {
+      const path = rawUrl.startsWith('http')
+        ? new URL(rawUrl).pathname
+        : rawUrl.split('?')[0] ?? '';
+      const parts = path.split('/').filter(Boolean);
+      const customerIndex = parts.indexOf('customers');
+      derivedId = customerIndex >= 0 ? parts[customerIndex + 1] ?? '' : '';
+    } catch {
+      derivedId = '';
+    }
+  }
+
+  const resolvedId = params?.id || searchParams?.id || derivedId;
+
+  if (!resolvedId) {
     return (
       <OtwPageShell>
         <OtwSectionHeader
@@ -97,7 +128,7 @@ export default async function AdminCustomerEditPage({
     );
   }
 
-  const customer = await getCustomer(params.id);
+  const customer = await getCustomer(resolvedId);
 
   return (
     <OtwPageShell>
@@ -108,7 +139,7 @@ export default async function AdminCustomerEditPage({
 
       <div className="mt-6 flex items-center gap-2">
         <Link
-          href={`/admin/customers/${params.id}`}
+          href={`/admin/customers/${resolvedId}?id=${resolvedId}`}
           className="text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
         >
           Back to Details

@@ -244,13 +244,13 @@ function DriversTable({ drivers }: { drivers: any[] }) {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <Link
-                        href={`/admin/drivers/${driver.id}`}
+                        href={`/admin/drivers/${driver.id}?id=${driver.id}`}
                         className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
                       >
                         View
                       </Link>
                       <Link
-                        href={`/admin/drivers/${driver.id}/edit`}
+                        href={`/admin/drivers/${driver.id}/edit?id=${driver.id}`}
                         className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
                       >
                         Edit

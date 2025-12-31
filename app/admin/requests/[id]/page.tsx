@@ -6,6 +6,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 
 async function getRequest(id: string) {
   const prisma = getPrisma();
@@ -23,13 +24,43 @@ async function getRequest(id: string) {
 }
 
 export default async function AdminRequestDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: { id: string };
+  searchParams?: { id?: string };
 }) {
   await requireRole(['ADMIN']);
 
-  if (!params?.id) {
+  const headerList = headers();
+  const rawUrl =
+    headerList.get('x-forwarded-path') ||
+    headerList.get('x-forwarded-uri') ||
+    headerList.get('x-original-url') ||
+    headerList.get('next-url') ||
+    headerList.get('x-nextjs-invoke-path') ||
+    headerList.get('x-invoke-path') ||
+    headerList.get('x-url') ||
+    headerList.get('referer') ||
+    '';
+  let derivedId = '';
+
+  if (rawUrl) {
+    try {
+      const path = rawUrl.startsWith('http')
+        ? new URL(rawUrl).pathname
+        : rawUrl.split('?')[0] ?? '';
+      const parts = path.split('/').filter(Boolean);
+      const requestIndex = parts.indexOf('requests');
+      derivedId = requestIndex >= 0 ? parts[requestIndex + 1] ?? '' : '';
+    } catch {
+      derivedId = '';
+    }
+  }
+
+  const resolvedId = params?.id || searchParams?.id || derivedId;
+
+  if (!resolvedId) {
     return (
       <OtwPageShell>
         <OtwSectionHeader
@@ -46,7 +77,7 @@ export default async function AdminRequestDetailPage({
     );
   }
 
-  const request = await getRequest(params.id);
+  const request = await getRequest(resolvedId);
 
   return (
     <OtwPageShell>
@@ -64,7 +95,7 @@ export default async function AdminRequestDetailPage({
         </Link>
         {request && (
           <Link
-            href={`/admin/requests/${request.id}/edit`}
+            href={`/admin/requests/${resolvedId}/edit?id=${resolvedId}`}
             className="text-xs px-3 py-2 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
           >
             Edit Request

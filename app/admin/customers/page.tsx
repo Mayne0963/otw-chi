@@ -199,13 +199,13 @@ function CustomersTable({ customers }: { customers: any[] }) {
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       <Link
-                        href={`/admin/customers/${customer.id}`}
+                        href={`/admin/customers/${customer.id}?id=${customer.id}`}
                         className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
                       >
                         View
                       </Link>
                       <Link
-                        href={`/admin/customers/${customer.id}/edit`}
+                        href={`/admin/customers/${customer.id}/edit?id=${customer.id}`}
                         className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
                       >
                         Edit
