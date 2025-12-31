@@ -10,6 +10,7 @@ const SERVICE_RADIUS_MILES = 25;
 
 export interface GeocodedAddress {
   formattedAddress: string;
+  placeName?: string;
   streetAddress: string;
   city: string;
   state: string;
@@ -21,16 +22,20 @@ export interface GeocodedAddress {
 }
 
 export function formatAddressLines(address: GeocodedAddress) {
-  const displayName = address.formattedAddress?.split(',')[0]?.trim();
-  const primary =
-    displayName || address.streetAddress || address.formattedAddress || '';
+  const placeName = address.placeName?.trim();
+  const street = address.streetAddress?.trim();
+  const isPrimaryPlaceName = Boolean(placeName);
+  const primary = placeName || street || address.formattedAddress || '';
 
   const cityState = [address.city, address.state].filter(Boolean).join(', ');
   const cityStateZip = cityState + (address.zipCode ? ` ${address.zipCode}` : '');
 
   const secondaryParts: string[] = [];
-  const street = address.streetAddress?.trim();
-  if (street && primary && street.toLowerCase() !== primary.toLowerCase()) {
+  if (
+    street &&
+    primary &&
+    (isPrimaryPlaceName || street.toLowerCase() !== primary.toLowerCase())
+  ) {
     secondaryParts.push(street);
   }
   if (cityStateZip) {
@@ -91,6 +96,7 @@ export async function searchAddress(
     url.searchParams.append('q', searchQuery);
     url.searchParams.append('format', 'json');
     url.searchParams.append('addressdetails', '1');
+    url.searchParams.append('namedetails', '1');
     url.searchParams.append('limit', '5');
     url.searchParams.append('countrycodes', 'us');
     // Bias results towards Fort Wayne area
@@ -124,9 +130,23 @@ export async function searchAddress(
         const streetNumber = address.house_number || '';
         const street = address.road || '';
         const streetAddress = `${streetNumber} ${street}`.trim();
+        const placeName =
+          result.namedetails?.name ||
+          result.name ||
+          address.building ||
+          address.amenity ||
+          address.shop ||
+          address.tourism ||
+          address.leisure ||
+          address.office ||
+          address.historic ||
+          address.craft ||
+          address.man_made ||
+          '';
 
         return {
           formattedAddress: result.display_name,
+          placeName: placeName || undefined,
           streetAddress,
           city: address.city || address.town || address.village || '',
           state: address.state || '',
