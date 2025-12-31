@@ -100,8 +100,8 @@ function computeAuthenticity(
   return { score: combined, reason };
 }
 
-async function runOcr(buffer: ArrayBuffer) {
-  if (buffer.byteLength > MAX_OCR_BYTES) {
+async function runOcr(file: File) {
+  if (file.size > MAX_OCR_BYTES) {
     return { text: "", confidence: 0 };
   }
 
@@ -113,7 +113,7 @@ async function runOcr(buffer: ArrayBuffer) {
     }, OCR_TIMEOUT_MS);
   });
 
-  const result = await Promise.race([recognize(buffer, "eng"), timeoutPromise]);
+  const result = await Promise.race([recognize(file, "eng"), timeoutPromise]);
   return { text: result.data.text || "", confidence: result.data.confidence || 0 };
 }
 
@@ -224,7 +224,7 @@ export default function OrderPage() {
       let ocrText = "";
       let ocrConfidence = 0;
       try {
-        const ocrResult = await runOcr(buffer);
+        const ocrResult = await runOcr(receiptFile);
         ocrText = ocrResult.text;
         ocrConfidence = ocrResult.confidence;
       } catch (ocrError) {
@@ -243,7 +243,7 @@ export default function OrderPage() {
         parsed.items.length > 0
           ? parsed.items
           : generateFallbackItems(await buildHash(buffer), vendorName);
-      const authenticity = computeAuthenticity(ocrConfidence, buffer.byteLength);
+      const authenticity = computeAuthenticity(ocrConfidence, receiptFile.size);
 
       setReceiptAnalysis({
         vendorName,
