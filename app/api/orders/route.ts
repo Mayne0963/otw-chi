@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
-import { ServiceType } from '@prisma/client';
+import { Prisma, ServiceType } from '@prisma/client';
 
 const receiptItemSchema = z.object({
   name: z.string().min(1),
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         receiptImageData: data.receiptImageData || null,
         receiptVendor: data.receiptVendor || data.restaurantName || null,
         receiptLocation: data.receiptLocation || null,
-        receiptItems: data.receiptItems?.length ? data.receiptItems : null,
+        receiptItems: data.receiptItems?.length ? data.receiptItems : Prisma.JsonNull,
         receiptAuthenticityScore: data.receiptAuthenticityScore ?? null,
         deliveryFeeCents: data.deliveryFeeCents ?? null,
         deliveryFeePaid: data.deliveryFeePaid ?? false,
