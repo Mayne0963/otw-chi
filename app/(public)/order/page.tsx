@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,6 +121,7 @@ async function runOcr(file: File) {
 export default function OrderPage() {
   const { isSignedIn } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -143,6 +144,7 @@ export default function OrderPage() {
   const [deliveryFeeCents, setDeliveryFeeCents] = useState(995);
   const [feePaid, setFeePaid] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
 
   const requiresReceipt = serviceType === "FOOD";
 
@@ -165,8 +167,64 @@ export default function OrderPage() {
     if (serviceType !== "FOOD") {
       setStep("details");
       setFeePaid(false);
+      setDeliveryCheckoutSessionId(null);
     }
   }, [serviceType]);
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id");
+    if (!checkout) return;
+
+    if (checkout === "cancel") {
+      toast({
+        title: "Payment canceled",
+        description: "You can try again when you're ready.",
+      });
+      setPaymentProcessing(false);
+      setStep("review");
+      router.replace("/order");
+      return;
+    }
+
+    if (checkout === "success" && sessionId) {
+      setPaymentProcessing(true);
+      setStep("review");
+      fetch("/api/stripe/delivery-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.paid) {
+            setFeePaid(true);
+            setDeliveryCheckoutSessionId(sessionId);
+            toast({
+              title: "Delivery fee authorized",
+              description: "Payment confirmed. You can place your order now.",
+            });
+          } else {
+            toast({
+              title: "Payment not completed",
+              description: "We couldn't confirm the payment. Please try again.",
+              variant: "destructive",
+            });
+          }
+        })
+        .catch(() => {
+          toast({
+            title: "Payment verification failed",
+            description: "Please try again.",
+            variant: "destructive",
+          });
+        })
+        .finally(() => {
+          setPaymentProcessing(false);
+          router.replace("/order");
+        });
+    }
+  }, [router, searchParams, toast]);
 
   const receiptSubtotalCents = useMemo(
     () =>
@@ -291,15 +349,40 @@ export default function OrderPage() {
   }
 
   async function handlePayDeliveryFee() {
+    if (!isSignedIn) {
+      const returnUrl = encodeURIComponent("/order");
+      router.push(`/sign-in?redirect_url=${returnUrl}`);
+      return;
+    }
+
     setPaymentProcessing(true);
-    setTimeout(() => {
-      setFeePaid(true);
-      setPaymentProcessing(false);
-      toast({
-        title: "Delivery fee authorized",
-        description: "We reserved your delivery fee so we can dispatch a runner.",
+    try {
+      const response = await fetch("/api/stripe/delivery-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliveryFeeCents }),
       });
-    }, 900);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.error || "Unable to start checkout");
+      }
+
+      const data = await response.json();
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("Missing checkout URL");
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Payment setup failed",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+      setPaymentProcessing(false);
+    }
   }
 
   async function handleSubmit() {
@@ -348,6 +431,7 @@ export default function OrderPage() {
         payload.receiptAuthenticityScore = receiptAnalysis.authenticityScore;
         payload.deliveryFeeCents = deliveryFeeCents;
         payload.deliveryFeePaid = feePaid;
+        payload.deliveryCheckoutSessionId = deliveryCheckoutSessionId || undefined;
       }
 
       const response = await fetch("/api/orders", {

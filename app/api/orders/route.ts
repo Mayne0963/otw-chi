@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
+import { getStripe } from '@/lib/stripe';
 import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
 
@@ -24,6 +25,7 @@ const orderSchema = z.object({
   receiptAuthenticityScore: z.number().min(0).max(1).optional(),
   deliveryFeeCents: z.number().int().nonnegative().optional(),
   deliveryFeePaid: z.boolean().optional(),
+  deliveryCheckoutSessionId: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -46,6 +48,46 @@ export async function POST(req: Request) {
       if (!data.deliveryFeePaid) {
         return NextResponse.json(
           { error: 'Delivery fee authorization is required for food pickup.' },
+          { status: 400 }
+        );
+      }
+
+      if (!data.deliveryCheckoutSessionId) {
+        return NextResponse.json(
+          { error: 'Delivery fee verification is required.' },
+          { status: 400 }
+        );
+      }
+
+      const stripe = getStripe();
+      const session = await stripe.checkout.sessions.retrieve(
+        data.deliveryCheckoutSessionId
+      );
+
+      if (session.payment_status !== 'paid') {
+        return NextResponse.json(
+          { error: 'Delivery fee payment not completed.' },
+          { status: 400 }
+        );
+      }
+
+      if (
+        session.metadata?.purpose !== 'delivery_fee' ||
+        session.metadata?.clerkUserId !== clerkUserId
+      ) {
+        return NextResponse.json(
+          { error: 'Delivery fee payment could not be verified.' },
+          { status: 400 }
+        );
+      }
+
+      if (
+        typeof session.amount_total === 'number' &&
+        typeof data.deliveryFeeCents === 'number' &&
+        session.amount_total !== data.deliveryFeeCents
+      ) {
+        return NextResponse.json(
+          { error: 'Delivery fee amount mismatch.' },
           { status: 400 }
         );
       }
