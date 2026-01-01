@@ -58,6 +58,12 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
   const receiptItems: ReceiptItem[] = Array.isArray(order.receiptItems)
     ? (order.receiptItems as unknown as ReceiptItem[])
     : [];
+  const receiptItemsTotal = receiptItems.reduce(
+    (sum, item) => sum + Math.round((item.price || 0) * 100) * Math.max(1, item.quantity || 1),
+    0
+  );
+  const orderTotalCents =
+    receiptItemsTotal + (order.deliveryFeeCents ?? 0) - (order.discountCents ?? 0);
 
   return (
     <div className="space-y-6">
@@ -155,13 +161,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
                   <div className="flex items-center justify-between border-t border-white/10 pt-2 text-sm font-semibold">
                     <span className="text-white/70">Items total</span>
                     <span className="text-green-300">
-                      {formatCurrency(
-                        receiptItems.reduce(
-                          (sum, item) =>
-                            sum + Math.round((item.price || 0) * 100) * Math.max(1, item.quantity || 1),
-                          0
-                        )
-                      )}
+                      {formatCurrency(receiptItemsTotal)}
                     </span>
                   </div>
                 </div>
@@ -178,6 +178,27 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
               <Badge className={order.deliveryFeePaid ? 'bg-green-900 text-green-200' : 'bg-orange-900 text-orange-100'}>
                 {order.deliveryFeePaid ? 'Paid' : 'Awaiting payment'}
               </Badge>
+            </div>
+
+            {order.discountCents ? (
+              <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                <div>
+                  <div className="text-xs text-emerald-100">Coupon discount</div>
+                  <div className="text-sm font-semibold text-emerald-200">
+                    -{formatCurrency(order.discountCents)}
+                  </div>
+                  {order.couponCode && (
+                    <div className="text-xs text-emerald-200/70">Code {order.couponCode}</div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-3">
+              <div>
+                <div className="text-xs text-white/50">Order total</div>
+                <div className="text-sm font-semibold">{formatCurrency(orderTotalCents)}</div>
+              </div>
             </div>
 
             {order.receiptImageData && (

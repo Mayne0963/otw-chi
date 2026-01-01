@@ -145,6 +145,8 @@ export default function OrderPage() {
   const [feePaid, setFeePaid] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [discountCents, setDiscountCents] = useState(0);
 
   const requiresReceipt = serviceType === "FOOD";
 
@@ -168,6 +170,8 @@ export default function OrderPage() {
       setStep("details");
       setFeePaid(false);
       setDeliveryCheckoutSessionId(null);
+      setCouponCode("");
+      setDiscountCents(0);
     }
   }, [serviceType]);
 
@@ -200,8 +204,12 @@ export default function OrderPage() {
           if (data?.paid) {
             setFeePaid(true);
             setDeliveryCheckoutSessionId(sessionId);
+            if (typeof data.amountTotal === "number") {
+              const discount = Math.max(0, orderTotalCents - data.amountTotal);
+              setDiscountCents(discount);
+            }
             toast({
-              title: "Delivery fee authorized",
+              title: "Payment authorized",
               description: "Payment confirmed. You can place your order now.",
             });
           } else {
@@ -224,7 +232,7 @@ export default function OrderPage() {
           router.replace("/order");
         });
     }
-  }, [router, searchParams, toast]);
+  }, [orderTotalCents, router, searchParams, toast]);
 
   const receiptSubtotalCents = useMemo(
     () =>
@@ -234,6 +242,7 @@ export default function OrderPage() {
       ) ?? 0,
     [receiptAnalysis]
   );
+  const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
 
   function goToNextStep() {
     if (!pickupAddress || !dropoffAddress) {
@@ -360,7 +369,11 @@ export default function OrderPage() {
       const response = await fetch("/api/stripe/delivery-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deliveryFeeCents }),
+        body: JSON.stringify({
+          deliveryFeeCents,
+          subtotalCents: receiptSubtotalCents,
+          couponCode: couponCode.trim() || undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -399,7 +412,7 @@ export default function OrderPage() {
     if (requiresReceipt && !feePaid) {
       toast({
         title: "Payment needed",
-        description: "Pay the delivery fee so we can place your order.",
+        description: "Pay the order total so we can place your order.",
         variant: "destructive",
       });
       setStep("review");
@@ -432,6 +445,7 @@ export default function OrderPage() {
         payload.deliveryFeeCents = deliveryFeeCents;
         payload.deliveryFeePaid = feePaid;
         payload.deliveryCheckoutSessionId = deliveryCheckoutSessionId || undefined;
+        payload.couponCode = couponCode.trim() || undefined;
       }
 
       const response = await fetch("/api/orders", {
@@ -829,11 +843,15 @@ export default function OrderPage() {
                       )}
                     </div>
                     <Badge className="bg-white/10 text-white/80">
-                      Delivery fee {formatCurrency(deliveryFeeCents)}
+                      Checkout total {formatCurrency(orderTotalCents)}
                     </Badge>
                   </div>
 
                   <div className="rounded-lg border border-white/5 bg-white/5 p-3 space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Delivery fee</span>
+                      <span className="text-white/80">{formatCurrency(deliveryFeeCents)}</span>
+                    </div>
                     <div className="flex items-center justify-between">
                       <span className="text-white/60">Receipt items</span>
                       <span className="text-green-300 font-semibold">
@@ -858,6 +876,44 @@ export default function OrderPage() {
                     )}
                   </div>
 
+                  <div className="space-y-2">
+                    <div className="text-xs text-white/50">Coupon code</div>
+                    <div className="flex flex-wrap gap-2">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="Enter code"
+                        className="bg-black/20 border-white/10 flex-1 min-w-[200px]"
+                        disabled={feePaid}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-white/20 text-white/80"
+                        onClick={() => setCouponCode(couponCode.trim().toUpperCase())}
+                        disabled={feePaid || !couponCode.trim()}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    <div className="text-xs text-white/40">Applies to delivery + receipt total.</div>
+                  </div>
+
+                  {discountCents > 0 && (
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-emerald-100">Discount applied</span>
+                        <span className="text-emerald-200 font-semibold">
+                          -{formatCurrency(discountCents)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-emerald-200/70 mt-1">
+                        <span>Total after discount</span>
+                        <span>{formatCurrency(Math.max(0, orderTotalCents - discountCents))}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap gap-3">
                     <Button
                       onClick={handlePayDeliveryFee}
@@ -866,12 +922,13 @@ export default function OrderPage() {
                     >
                       {feePaid ? (
                         <>
-                          <CheckCircle2 className="h-4 w-4" /> Delivery fee ready
+                          <CheckCircle2 className="h-4 w-4" /> Payment ready
                         </>
                       ) : (
                         <>
                           {paymentProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
-                          Pay {formatCurrency(deliveryFeeCents)} <CreditCard className="h-4 w-4" />
+                          Pay {formatCurrency(Math.max(0, orderTotalCents - discountCents))}{" "}
+                          <CreditCard className="h-4 w-4" />
                         </>
                       )}
                     </Button>

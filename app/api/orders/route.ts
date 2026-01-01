@@ -2,8 +2,15 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
+import {
+  calculateDiscount,
+  findActiveCoupon,
+  normalizeCouponCode,
+  recordCouponRedemption,
+} from '@/lib/coupons';
 import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
+import type { PromoCode } from '@prisma/client';
 
 const receiptItemSchema = z.object({
   name: z.string().min(1),
@@ -26,6 +33,7 @@ const orderSchema = z.object({
   deliveryFeeCents: z.number().int().nonnegative().optional(),
   deliveryFeePaid: z.boolean().optional(),
   deliveryCheckoutSessionId: z.string().optional(),
+  couponCode: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -43,18 +51,34 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const data = orderSchema.parse(body);
+    const receiptSubtotalCents = data.receiptItems?.length
+      ? data.receiptItems.reduce(
+          (sum, item) => sum + Math.round(item.price * 100) * item.quantity,
+          0
+        )
+      : null;
+    let appliedCouponCode: string | null = null;
+    let discountCents: number | null = null;
+    let appliedCoupon: PromoCode | null = null;
 
     if (data.serviceType === ServiceType.FOOD) {
       if (!data.deliveryFeePaid) {
         return NextResponse.json(
-          { error: 'Delivery fee authorization is required for food pickup.' },
+          { error: 'Payment authorization is required for food pickup.' },
+          { status: 400 }
+        );
+      }
+
+      if (typeof data.deliveryFeeCents !== 'number') {
+        return NextResponse.json(
+          { error: 'Payment amount is required.' },
           { status: 400 }
         );
       }
 
       if (!data.deliveryCheckoutSessionId) {
         return NextResponse.json(
-          { error: 'Delivery fee verification is required.' },
+          { error: 'Payment verification is required.' },
           { status: 400 }
         );
       }
@@ -66,30 +90,88 @@ export async function POST(req: Request) {
 
       if (session.payment_status !== 'paid') {
         return NextResponse.json(
-          { error: 'Delivery fee payment not completed.' },
+          { error: 'Payment not completed.' },
           { status: 400 }
         );
       }
 
       if (
-        session.metadata?.purpose !== 'delivery_fee' ||
+        session.metadata?.purpose !== 'order_payment' ||
         session.metadata?.clerkUserId !== clerkUserId
       ) {
         return NextResponse.json(
-          { error: 'Delivery fee payment could not be verified.' },
+          { error: 'Payment could not be verified.' },
           { status: 400 }
         );
       }
 
-      if (
-        typeof session.amount_total === 'number' &&
-        typeof data.deliveryFeeCents === 'number' &&
-        session.amount_total !== data.deliveryFeeCents
-      ) {
+      const computedSubtotal = receiptSubtotalCents ?? 0;
+      const deliveryFeeCents = data.deliveryFeeCents ?? 0;
+      const baseTotal = computedSubtotal + deliveryFeeCents;
+      const sessionTotal = session.amount_total ?? null;
+
+      if (baseTotal <= 0 || sessionTotal === null) {
         return NextResponse.json(
-          { error: 'Delivery fee amount mismatch.' },
+          { error: 'Payment amount mismatch.' },
           { status: 400 }
         );
+      }
+
+      if (session.metadata?.deliveryFeeCents) {
+        const metaDeliveryFee = Number(session.metadata.deliveryFeeCents);
+        if (Number.isFinite(metaDeliveryFee) && metaDeliveryFee !== deliveryFeeCents) {
+          return NextResponse.json(
+            { error: 'Payment amount mismatch.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (session.metadata?.subtotalCents) {
+        const metaSubtotal = Number(session.metadata.subtotalCents);
+        if (Number.isFinite(metaSubtotal) && metaSubtotal !== computedSubtotal) {
+          return NextResponse.json(
+            { error: 'Receipt subtotal mismatch.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (sessionTotal > baseTotal) {
+        return NextResponse.json(
+          { error: 'Payment amount mismatch.' },
+          { status: 400 }
+        );
+      }
+
+      discountCents = Math.max(0, baseTotal - sessionTotal);
+      const sessionCoupon = session.metadata?.couponCode?.trim();
+      const providedCoupon = data.couponCode?.trim();
+      const couponSource = session.metadata?.couponSource;
+      appliedCouponCode =
+        sessionCoupon || (couponSource === 'internal' ? providedCoupon : null);
+
+      if (appliedCouponCode && couponSource === 'internal') {
+        const normalized = normalizeCouponCode(appliedCouponCode);
+        const couponResult = await findActiveCoupon(prisma, normalized, user.id);
+        if (couponResult) {
+          const expectedDiscount = calculateDiscount(
+            { subtotalCents: computedSubtotal, deliveryFeeCents },
+            couponResult.coupon
+          );
+          if (expectedDiscount !== discountCents) {
+            return NextResponse.json(
+              { error: 'Coupon discount mismatch.' },
+              { status: 400 }
+            );
+          }
+          appliedCoupon = couponResult.coupon;
+        } else {
+          return NextResponse.json(
+            { error: 'Coupon discount mismatch.' },
+            { status: 400 }
+          );
+        }
       }
 
       if (!(data.restaurantName || data.receiptVendor)) {
@@ -121,12 +203,23 @@ export async function POST(req: Request) {
         receiptLocation: data.receiptLocation || null,
         receiptItems: data.receiptItems?.length ? data.receiptItems : Prisma.JsonNull,
         receiptAuthenticityScore: data.receiptAuthenticityScore ?? null,
+        receiptSubtotalCents,
         deliveryFeeCents: data.deliveryFeeCents ?? null,
         deliveryFeePaid: data.deliveryFeePaid ?? false,
+        couponCode: appliedCouponCode,
+        discountCents,
         receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,
         status: 'REQUESTED',
       },
     });
+
+    if (appliedCoupon && (discountCents ?? 0) > 0) {
+      try {
+        await recordCouponRedemption(prisma, appliedCoupon, user.id, order.id);
+      } catch (redemptionError) {
+        console.error('Coupon redemption failed:', redemptionError);
+      }
+    }
 
     return NextResponse.json({ id: order.id });
   } catch (error) {

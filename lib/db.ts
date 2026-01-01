@@ -39,6 +39,9 @@ export function getPrisma(): PrismaClient {
       receiptImageData: null,
       deliveryFeeCents: 995,
       deliveryFeePaid: true,
+      receiptSubtotalCents: 1258,
+      couponCode: null,
+      discountCents: null,
     }
     const mockTicket = { id: 'stub-ticket', status: 'OPEN' }
     const mockEvent = { id: 'stub-event' }
@@ -103,6 +106,14 @@ export function getPrisma(): PrismaClient {
       },
       city: { findMany: listEmpty },
       zone: { findMany: listEmpty },
+      promoCode: {
+        findUnique: noop,
+        update: noop,
+      },
+      promoRedemption: {
+        findUnique: noop,
+        create: noop,
+      },
     }
     
     g.__OTW_PRISMA__ = stub as unknown as PrismaClient

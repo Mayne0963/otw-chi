@@ -21,9 +21,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ paid: false }, { status: 200 });
     }
 
+    if (
+      (session.metadata?.clerkUserId && session.metadata.clerkUserId !== userId) ||
+      session.metadata?.purpose !== "order_payment"
+    ) {
+      return NextResponse.json({ paid: false }, { status: 200 });
+    }
+
     return NextResponse.json({
       paid: true,
       amountTotal: session.amount_total ?? null,
+      currency: session.currency ?? null,
+      metadata: session.metadata ?? null,
     });
   } catch (error) {
     console.error("[STRIPE_DELIVERY_VERIFY]", error);
