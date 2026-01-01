@@ -175,6 +175,16 @@ export default function OrderPage() {
     }
   }, [serviceType]);
 
+  const receiptSubtotalCents = useMemo(
+    () =>
+      receiptAnalysis?.items.reduce(
+        (sum, item) => sum + Math.round(item.price * 100) * Math.max(1, item.quantity),
+        0
+      ) ?? 0,
+    [receiptAnalysis]
+  );
+  const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
+
   useEffect(() => {
     const checkout = searchParams.get("checkout");
     const sessionId = searchParams.get("session_id");
@@ -233,16 +243,6 @@ export default function OrderPage() {
         });
     }
   }, [orderTotalCents, router, searchParams, toast]);
-
-  const receiptSubtotalCents = useMemo(
-    () =>
-      receiptAnalysis?.items.reduce(
-        (sum, item) => sum + Math.round(item.price * 100) * Math.max(1, item.quantity),
-        0
-      ) ?? 0,
-    [receiptAnalysis]
-  );
-  const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
 
   function goToNextStep() {
     if (!pickupAddress || !dropoffAddress) {
