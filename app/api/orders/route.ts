@@ -221,6 +221,14 @@ export async function POST(req: Request) {
       }
     }
 
+    try {
+      await prisma.deliveryRequest.deleteMany({
+        where: { userId: user.id, status: 'DRAFT' as Prisma.DeliveryRequestStatus },
+      });
+    } catch (cleanupError) {
+      console.error('Draft cleanup failed:', cleanupError);
+    }
+
     return NextResponse.json({ id: order.id });
   } catch (error) {
     console.error('Create order error:', error);

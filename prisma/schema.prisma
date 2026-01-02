@@ -30,6 +30,7 @@ enum RequestStatus {
 }
 
 enum DeliveryRequestStatus {
+  DRAFT
   REQUESTED
   ASSIGNED
   PICKED_UP

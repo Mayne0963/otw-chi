@@ -83,6 +83,7 @@ export function getPrisma(): PrismaClient {
         findMany: listEmpty,
         update: returnMockDeliveryRequest,
         create: returnMockDeliveryRequest,
+        deleteMany: noop,
         count: countZero,
       },
       requestEvent: { 

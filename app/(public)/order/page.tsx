@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { AddressSearch } from "@/components/ui/address-search";
 import { ArrowRight, CheckCircle2, CreditCard, ExternalLink, Loader2, MapPin, Package, Upload, X } from "lucide-react";
-import { formatAddressLines, type GeocodedAddress } from "@/lib/geocoding";
+import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
 import { parseReceiptText, type ReceiptItem } from "@/lib/receipts/parse";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -101,6 +101,21 @@ function computeAuthenticity(
   return { score: combined, reason };
 }
 
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Failed to read receipt image"));
+      }
+    };
+    reader.onerror = () => reject(reader.error || new Error("Failed to read receipt image"));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function runOcr(file: File) {
   if (file.size > MAX_OCR_BYTES) {
     return { text: "", confidence: 0 };
@@ -147,6 +162,9 @@ export default function OrderPage() {
   const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [discountCents, setDiscountCents] = useState(0);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const draftSaveTimeout = useRef<number | null>(null);
 
   const requiresReceipt = serviceType === "FOOD";
 
@@ -174,6 +192,174 @@ export default function OrderPage() {
       setDiscountCents(0);
     }
   }, [serviceType]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    if (draftLoaded) return;
+
+    let cancelled = false;
+
+    async function loadDraft() {
+      try {
+        const response = await fetch("/api/orders/draft");
+        if (!response.ok) {
+          setDraftLoaded(true);
+          return;
+        }
+        const data = await response.json();
+        const draft = data?.draft;
+        if (!draft) {
+          setDraftLoaded(true);
+          return;
+        }
+
+        setDraftId(draft.id);
+        setServiceType(draft.serviceType || "FOOD");
+        setNotes(draft.notes || "");
+        setRestaurantName(draft.restaurantName || "");
+        setRestaurantWebsite(draft.restaurantWebsite || "");
+        if (typeof draft.deliveryFeeCents === "number") {
+          setDeliveryFeeCents(draft.deliveryFeeCents);
+        }
+        setFeePaid(Boolean(draft.deliveryFeePaid));
+        setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
+        setCouponCode(draft.couponCode || "");
+        setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
+        if (draft.receiptImageData) {
+          setReceiptPreview(draft.receiptImageData);
+        }
+
+        const receiptItems = Array.isArray(draft.receiptItems) ? draft.receiptItems : [];
+        if (receiptItems.length || draft.receiptVendor || draft.receiptLocation) {
+          setReceiptAnalysis({
+            vendorName: draft.receiptVendor || draft.restaurantName || "Detected Restaurant",
+            location:
+              draft.receiptLocation ||
+              inferLocation(draft.pickupAddress, draft.dropoffAddress),
+            items: receiptItems,
+            authenticityScore:
+              typeof draft.receiptAuthenticityScore === "number"
+                ? draft.receiptAuthenticityScore
+                : 0.9,
+            authenticityReason: "Draft restored",
+            imageData: draft.receiptImageData || undefined,
+          });
+        }
+
+        const hasReceiptItems = receiptItems.length > 0;
+        const hasRestaurantInfo = Boolean(draft.restaurantName || draft.receiptVendor);
+        const nextStep =
+          draft.serviceType !== "FOOD"
+            ? "details"
+            : hasReceiptItems
+              ? "review"
+              : hasRestaurantInfo
+                ? "receipt"
+                : "restaurant";
+        setStep(nextStep);
+
+        if (draft.pickupAddress) {
+          const restoredPickup = await validateAddress(draft.pickupAddress);
+          if (!cancelled && restoredPickup) setPickupAddress(restoredPickup);
+        }
+        if (draft.dropoffAddress) {
+          const restoredDropoff = await validateAddress(draft.dropoffAddress);
+          if (!cancelled && restoredDropoff) setDropoffAddress(restoredDropoff);
+        }
+      } catch (error) {
+        console.warn("Draft load failed:", error);
+      } finally {
+        if (!cancelled) {
+          setDraftLoaded(true);
+        }
+      }
+    }
+
+    loadDraft();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftLoaded, isSignedIn]);
+
+  function buildDraftPayload() {
+    if (!pickupAddress || !dropoffAddress) return null;
+    const receiptItems = receiptAnalysis ? receiptAnalysis.items : [];
+
+    const payload: Record<string, unknown> = {
+      draftId: draftId || undefined,
+      serviceType,
+      pickupAddress: pickupAddress.formattedAddress,
+      dropoffAddress: dropoffAddress.formattedAddress,
+      notes: notes.trim() || undefined,
+      restaurantName: restaurantName.trim() || undefined,
+      restaurantWebsite: restaurantWebsite.trim() || undefined,
+      receiptImageData: receiptAnalysis?.imageData || receiptPreview || undefined,
+      receiptVendor: receiptAnalysis?.vendorName || undefined,
+      receiptLocation: receiptAnalysis?.location || undefined,
+      receiptItems,
+      receiptAuthenticityScore: receiptAnalysis?.authenticityScore,
+      deliveryFeeCents,
+      deliveryFeePaid: feePaid,
+      deliveryCheckoutSessionId: deliveryCheckoutSessionId || undefined,
+      couponCode: couponCode.trim() || undefined,
+      discountCents,
+    };
+
+    return payload;
+  }
+
+  async function persistDraft(payload?: Record<string, unknown> | null) {
+    if (!isSignedIn) return;
+    const draftPayload = payload ?? buildDraftPayload();
+    if (!draftPayload) return;
+
+    const response = await fetch("/api/orders/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draftPayload),
+    });
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      if (data?.draftId) {
+        setDraftId(data.draftId);
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!draftLoaded || !isSignedIn) return;
+
+    if (draftSaveTimeout.current) {
+      window.clearTimeout(draftSaveTimeout.current);
+    }
+
+    draftSaveTimeout.current = window.setTimeout(() => {
+      persistDraft().catch(() => null);
+    }, 700);
+
+    return () => {
+      if (draftSaveTimeout.current) {
+        window.clearTimeout(draftSaveTimeout.current);
+      }
+    };
+  }, [
+    draftLoaded,
+    isSignedIn,
+    pickupAddress,
+    dropoffAddress,
+    serviceType,
+    notes,
+    restaurantName,
+    restaurantWebsite,
+    receiptAnalysis,
+    receiptPreview,
+    deliveryFeeCents,
+    feePaid,
+    deliveryCheckoutSessionId,
+    couponCode,
+    discountCents,
+  ]);
 
   const receiptSubtotalCents = useMemo(
     () =>
@@ -278,9 +464,14 @@ export default function OrderPage() {
       return;
     }
     setReceiptFile(file);
-    setReceiptPreview(URL.createObjectURL(file));
     setAnalysisError(null);
     setReceiptAnalysis(null);
+    fileToDataUrl(file)
+      .then((dataUrl) => setReceiptPreview(dataUrl))
+      .catch((error) => {
+        console.warn("Receipt preview failed:", error);
+        setReceiptPreview(null);
+      });
   }
 
   async function analyzeReceipt() {
@@ -293,6 +484,7 @@ export default function OrderPage() {
     setAnalysisError(null);
     try {
       const buffer = await receiptFile.arrayBuffer();
+      const imageData = receiptPreview || (await fileToDataUrl(receiptFile));
       let ocrText = "";
       let ocrConfidence = 0;
       try {
@@ -323,7 +515,7 @@ export default function OrderPage() {
         items,
         authenticityScore: authenticity.score,
         authenticityReason: authenticity.reason,
-        imageData: receiptPreview || undefined,
+        imageData,
       });
       toast({
         title: "Receipt analyzed",
@@ -370,6 +562,7 @@ export default function OrderPage() {
 
     setPaymentProcessing(true);
     try {
+      await persistDraft(buildDraftPayload()).catch(() => null);
       const response = await fetch("/api/stripe/delivery-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
