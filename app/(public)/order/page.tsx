@@ -197,7 +197,9 @@ export default function OrderPage() {
       });
       setPaymentProcessing(false);
       setStep("review");
-      router.replace("/order");
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", "/order");
+      }
       return;
     }
 
@@ -239,7 +241,9 @@ export default function OrderPage() {
         })
         .finally(() => {
           setPaymentProcessing(false);
-          router.replace("/order");
+          if (typeof window !== "undefined") {
+            window.history.replaceState(null, "", "/order");
+          }
         });
     }
   }, [orderTotalCents, router, searchParams, toast]);
