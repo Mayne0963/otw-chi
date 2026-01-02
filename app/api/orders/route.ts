@@ -146,7 +146,7 @@ export async function POST(req: Request) {
 
       discountCents = Math.max(0, baseTotal - sessionTotal);
       const sessionCoupon = session.metadata?.couponCode?.trim();
-      const providedCoupon = data.couponCode?.trim();
+      const providedCoupon = data.couponCode?.trim() ?? null;
       const couponSource = session.metadata?.couponSource;
       appliedCouponCode =
         sessionCoupon || (couponSource === 'internal' ? providedCoupon : null);
