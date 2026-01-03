@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 
-const DRAFT_STATUS = 'DRAFT' as Prisma.DeliveryRequestStatus;
+const DRAFT_STATUS = 'DRAFT' as const;
 
 const receiptItemSchema = z.object({
   name: z.string().min(1),
