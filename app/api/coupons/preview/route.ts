@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     });
 
     const promo = promos.data[0];
-    const coupon = promo?.coupon as
+    const coupon = (promo as any)?.coupon as
       | Stripe.Coupon
       | string
       | null
