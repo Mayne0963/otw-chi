@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type Stripe from "stripe";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
@@ -80,13 +81,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Total must be at least $0.50" }, { status: 400 });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const customerEmail = user.emailAddresses[0]?.emailAddress;
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],
       allow_promotion_codes: allowPromotionCodes,
       discounts: stripeDiscounts,
-      customer_email: user.emailAddresses[0]?.emailAddress,
-      customer_creation: "always",
       payment_intent_data: {
         setup_future_usage: "off_session",
         metadata: {
@@ -124,11 +124,19 @@ export async function POST(req: Request) {
       },
       success_url: `${appUrl}/order?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/order?checkout=cancel`,
-    });
+    };
+
+    if (customerEmail) {
+      sessionParams.customer_email = customerEmail;
+      sessionParams.customer_creation = "always";
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("[STRIPE_DELIVERY_CHECKOUT]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal Error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
