@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import type Stripe from 'stripe';
 import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
@@ -52,15 +53,18 @@ export async function POST(req: Request) {
       code: normalized,
       active: true,
       limit: 1,
-      expand: ['data.coupon'],
     });
 
     const promo = promos.data[0];
-    if (!promo || !promo.coupon || !promo.coupon.valid) {
+    const coupon = promo?.coupon as
+      | Stripe.Coupon
+      | string
+      | null
+      | undefined;
+    if (!promo || !coupon || typeof coupon === 'string' || !coupon.valid) {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 
-    const coupon = promo.coupon;
     if (coupon.currency && coupon.currency !== 'usd') {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
