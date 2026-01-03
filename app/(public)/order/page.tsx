@@ -37,6 +37,7 @@ type ReceiptAnalysis = {
 const AUTHENTICITY_THRESHOLD = 0.85;
 const MAX_OCR_BYTES = 1.2 * 1024 * 1024;
 const OCR_TIMEOUT_MS = 6_000;
+const SESSION_DRAFT_KEY = "otw-order-draft-cache-v1";
 
 async function buildHash(buffer: ArrayBuffer): Promise<string> {
   const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
@@ -168,6 +169,27 @@ export default function OrderPage() {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
   const receiptObjectUrl = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cached = window.sessionStorage.getItem(SESSION_DRAFT_KEY);
+    if (!cached) return;
+    try {
+      const parsed = JSON.parse(cached) as {
+        receiptImageData?: string;
+        receiptAnalysis?: ReceiptAnalysis;
+      };
+      if (parsed.receiptImageData && !receiptImageData) {
+        setReceiptPreview(parsed.receiptImageData);
+        setReceiptImageData(parsed.receiptImageData);
+      }
+      if (parsed.receiptAnalysis && !receiptAnalysis) {
+        setReceiptAnalysis(parsed.receiptAnalysis);
+      }
+    } catch (error) {
+      console.warn("Session draft restore failed:", error);
+    }
+  }, [receiptAnalysis, receiptImageData]);
 
   const requiresReceipt = serviceType === "FOOD";
 
@@ -368,6 +390,22 @@ export default function OrderPage() {
     discountCents,
   ]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!receiptImageData && !receiptAnalysis) {
+      window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(
+        SESSION_DRAFT_KEY,
+        JSON.stringify({ receiptImageData, receiptAnalysis })
+      );
+    } catch (error) {
+      console.warn("Session draft save failed:", error);
+    }
+  }, [receiptAnalysis, receiptImageData]);
+
   const receiptSubtotalCents = useMemo(
     () =>
       receiptAnalysis?.items.reduce(
@@ -478,6 +516,9 @@ export default function OrderPage() {
     if (receiptObjectUrl.current) {
       URL.revokeObjectURL(receiptObjectUrl.current);
       receiptObjectUrl.current = null;
+    }
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
     }
   }
 
@@ -737,6 +778,9 @@ export default function OrderPage() {
       }
 
       const data = await response.json();
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
+      }
       router.push(`/order/${data.id}`);
     } catch (_error) {
       toast({
