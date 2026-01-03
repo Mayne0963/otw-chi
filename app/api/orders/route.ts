@@ -223,7 +223,7 @@ export async function POST(req: Request) {
 
     try {
       await prisma.deliveryRequest.deleteMany({
-        where: { userId: user.id, status: 'DRAFT' as Prisma.DeliveryRequestStatus },
+        where: { userId: user.id, status: 'DRAFT' },
       });
     } catch (cleanupError) {
       console.error('Draft cleanup failed:', cleanupError);
