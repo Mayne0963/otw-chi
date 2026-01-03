@@ -162,6 +162,7 @@ export default function OrderPage() {
   const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [discountCents, setDiscountCents] = useState(0);
+  const [couponApplying, setCouponApplying] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
@@ -471,6 +472,46 @@ export default function OrderPage() {
         console.warn("Receipt preview failed:", error);
         setReceiptPreview(null);
       });
+  }
+
+  async function handleApplyCoupon() {
+    const code = couponCode.trim();
+    if (!code || feePaid) return;
+
+    setCouponApplying(true);
+    try {
+      const response = await fetch("/api/coupons/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deliveryFeeCents,
+          subtotalCents: receiptSubtotalCents,
+          couponCode: code,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.error || "Invalid coupon code");
+      }
+
+      const data = await response.json();
+      setCouponCode((data?.code || code).toUpperCase());
+      setDiscountCents(typeof data?.discountCents === "number" ? data.discountCents : 0);
+      toast({
+        title: "Coupon applied",
+        description: "Discount applied to your order total.",
+      });
+    } catch (error) {
+      setDiscountCents(0);
+      toast({
+        title: "Coupon not applied",
+        description: error instanceof Error ? error.message : "Invalid coupon code",
+        variant: "destructive",
+      });
+    } finally {
+      setCouponApplying(false);
+    }
   }
 
   async function analyzeReceipt() {
@@ -1077,7 +1118,10 @@ export default function OrderPage() {
                     <div className="flex flex-wrap gap-2">
                       <Input
                         value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setDiscountCents(0);
+                        }}
                         placeholder="Enter code"
                         className="bg-black/20 border-white/10 flex-1 min-w-[200px]"
                         disabled={feePaid}
@@ -1086,8 +1130,8 @@ export default function OrderPage() {
                         type="button"
                         variant="outline"
                         className="border-white/20 text-white/80"
-                        onClick={() => setCouponCode(couponCode.trim().toUpperCase())}
-                        disabled={feePaid || !couponCode.trim()}
+                        onClick={handleApplyCoupon}
+                        disabled={feePaid || couponApplying || !couponCode.trim()}
                       >
                         Apply
                       </Button>
