@@ -301,7 +301,6 @@ export default function OrderPage() {
       receiptAuthenticityScore: receiptAnalysis?.authenticityScore,
       deliveryFeeCents,
       deliveryFeePaid: feePaid,
-      deliveryCheckoutSessionId: deliveryCheckoutSessionId || undefined,
       couponCode: couponCode.trim() || undefined,
       discountCents,
     };

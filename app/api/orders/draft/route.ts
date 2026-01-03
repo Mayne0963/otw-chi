@@ -28,7 +28,6 @@ const draftSchema = z
     receiptAuthenticityScore: z.number().min(0).max(1).optional(),
     deliveryFeeCents: z.number().int().nonnegative().optional(),
     deliveryFeePaid: z.boolean().optional(),
-    deliveryCheckoutSessionId: z.string().optional(),
     couponCode: z.string().optional(),
     discountCents: z.number().int().nonnegative().optional(),
   })
@@ -103,7 +102,6 @@ export async function POST(req: Request) {
         data.receiptItems === undefined ? undefined : receiptSubtotalCents,
       deliveryFeeCents: data.deliveryFeeCents ?? undefined,
       deliveryFeePaid: data.deliveryFeePaid ?? undefined,
-      deliveryCheckoutSessionId: data.deliveryCheckoutSessionId ?? undefined,
       couponCode: data.couponCode ?? undefined,
       discountCents: data.discountCents ?? undefined,
       status: DRAFT_STATUS,
@@ -152,7 +150,6 @@ export async function POST(req: Request) {
         receiptSubtotalCents,
         deliveryFeeCents: data.deliveryFeeCents ?? null,
         deliveryFeePaid: data.deliveryFeePaid ?? false,
-        deliveryCheckoutSessionId: data.deliveryCheckoutSessionId ?? null,
         couponCode: data.couponCode ?? null,
         discountCents: data.discountCents ?? null,
         status: DRAFT_STATUS,
