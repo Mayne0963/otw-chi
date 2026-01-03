@@ -85,8 +85,8 @@ export async function POST(req: Request) {
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],
-      allow_promotion_codes: allowPromotionCodes,
-      discounts: stripeDiscounts,
+      ...(allowPromotionCodes ? { allow_promotion_codes: true } : {}),
+      ...(stripeDiscounts ? { discounts: stripeDiscounts } : {}),
       payment_intent_data: {
         setup_future_usage: "off_session",
         metadata: {
