@@ -3,9 +3,13 @@ import { getPrisma } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import OtwLiveMap from '@/components/otw/OtwLiveMap';
+import { validateAddress } from '@/lib/geocoding';
 import { revalidatePath } from 'next/cache';
 import { RequestStatus } from '@prisma/client';
 import { redirect } from 'next/navigation';
+import type { OtwLocation } from '@/lib/otw/otwTypes';
+import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 
 export default async function DriverDashboardPage() {
   const user = await getCurrentUser();
@@ -56,6 +60,57 @@ export default async function DriverDashboardPage() {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  const activeRequest = assignedRequests[0] ?? null;
+  let pickupLocation: OtwLocation | undefined;
+  let dropoffLocation: OtwLocation | undefined;
+  let driverLocations: OtwDriverLocation[] = [];
+
+  if (activeRequest) {
+    const [pickup, dropoff] = await Promise.all([
+      validateAddress(activeRequest.pickupAddress).catch(() => null),
+      validateAddress(activeRequest.dropoffAddress).catch(() => null),
+    ]);
+
+    if (pickup) {
+      pickupLocation = {
+        lat: pickup.latitude,
+        lng: pickup.longitude,
+        label: 'Pickup',
+      };
+    }
+
+    if (dropoff) {
+      dropoffLocation = {
+        lat: dropoff.latitude,
+        lng: dropoff.longitude,
+        label: 'Dropoff',
+      };
+    }
+
+    if (
+      typeof activeRequest.lastKnownLat === 'number' &&
+      typeof activeRequest.lastKnownLng === 'number'
+    ) {
+      const lastSeen =
+        activeRequest.lastKnownAt instanceof Date
+          ? activeRequest.lastKnownAt.toISOString()
+          : new Date().toISOString();
+
+      driverLocations = [
+        {
+          driverId: driverProfile.id,
+          location: {
+            lat: activeRequest.lastKnownLat,
+            lng: activeRequest.lastKnownLng,
+            label: 'You',
+          },
+          updatedAt: lastSeen,
+          currentRequestId: activeRequest.id,
+        },
+      ];
+    }
+  }
 
   async function acceptRequest(formData: FormData) {
     'use server';
@@ -154,6 +209,22 @@ export default async function DriverDashboardPage() {
   return (
       <div className="space-y-8 p-6">
         <h1 className="text-3xl font-bold text-otwOffWhite">Driver Dashboard</h1>
+
+        <section>
+            <h2 className="text-2xl font-semibold mb-4 text-white">Live Map</h2>
+            <Card className="bg-white/5 border-white/10 text-otwOffWhite">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Active Route Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <OtwLiveMap
+                        pickup={pickupLocation}
+                        dropoff={dropoffLocation}
+                        drivers={driverLocations}
+                    />
+                </CardContent>
+            </Card>
+        </section>
         
         {/* Active Jobs */}
         <section>
