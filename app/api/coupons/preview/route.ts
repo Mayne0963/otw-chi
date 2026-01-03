@@ -56,16 +56,25 @@ export async function POST(req: Request) {
     });
 
     const promo = promos.data[0];
-    const coupon = (promo as any)?.coupon as
+    const promoCoupon = (promo as any)?.coupon as
       | Stripe.Coupon
       | string
       | null
       | undefined;
-    if (!promo || !coupon || typeof coupon === 'string' || !coupon.valid) {
+    if (!promo || !promoCoupon) {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 
-    if (coupon.currency && coupon.currency !== 'usd') {
+    const coupon =
+      typeof promoCoupon === 'string'
+        ? await stripe.coupons.retrieve(promoCoupon)
+        : promoCoupon;
+
+    if (!coupon.valid) {
+      return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+    }
+
+    if (coupon.amount_off && coupon.currency && coupon.currency !== 'usd') {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 

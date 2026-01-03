@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status !== "paid") {
+    if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") {
       return NextResponse.json({ paid: false }, { status: 200 });
     }
 

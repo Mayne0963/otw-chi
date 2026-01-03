@@ -403,8 +403,19 @@ export default function OrderPage() {
             setFeePaid(true);
             setDeliveryCheckoutSessionId(sessionId);
             if (typeof data.amountTotal === "number") {
-              const discount = Math.max(0, orderTotalCents - data.amountTotal);
+              const metaDelivery = Number(data.metadata?.deliveryFeeCents);
+              const metaSubtotal = Number(data.metadata?.subtotalCents);
+              const baseTotal =
+                (Number.isFinite(metaDelivery) ? metaDelivery : deliveryFeeCents) +
+                (Number.isFinite(metaSubtotal) ? metaSubtotal : receiptSubtotalCents);
+              const discount = Math.max(0, baseTotal - data.amountTotal);
               setDiscountCents(discount);
+              if (Number.isFinite(metaDelivery)) {
+                setDeliveryFeeCents(metaDelivery);
+              }
+              if (data.metadata?.couponCode) {
+                setCouponCode(String(data.metadata.couponCode).toUpperCase());
+              }
             }
             toast({
               title: "Payment authorized",

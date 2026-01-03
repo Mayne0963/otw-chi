@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         data.deliveryCheckoutSessionId
       );
 
-      if (session.payment_status !== 'paid') {
+      if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
         return NextResponse.json(
           { error: 'Payment not completed.' },
           { status: 400 }
