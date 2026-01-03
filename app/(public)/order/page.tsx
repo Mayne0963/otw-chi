@@ -312,9 +312,11 @@ export default function OrderPage() {
     };
   }, [draftLoaded, isSignedIn]);
 
-  function buildDraftPayload() {
+  function buildDraftPayload(overrides?: { receiptImageData?: string | null }) {
     if (!pickupAddress || !dropoffAddress) return null;
     const receiptItems = receiptAnalysis ? receiptAnalysis.items : [];
+    const resolvedReceiptImageData =
+      overrides?.receiptImageData ?? receiptImageData ?? null;
 
     const payload: Record<string, unknown> = {
       draftId: draftId || undefined,
@@ -324,7 +326,7 @@ export default function OrderPage() {
       notes: notes.trim() || undefined,
       restaurantName: restaurantName.trim() || undefined,
       restaurantWebsite: restaurantWebsite.trim() || undefined,
-      receiptImageData: receiptAnalysis?.imageData || receiptImageData || undefined,
+      receiptImageData: receiptAnalysis?.imageData || resolvedReceiptImageData || undefined,
       receiptVendor: receiptAnalysis?.vendorName || undefined,
       receiptLocation: receiptAnalysis?.location || undefined,
       receiptItems,
@@ -674,6 +676,27 @@ export default function OrderPage() {
     });
   }
 
+  async function ensureReceiptImageData() {
+    if (receiptImageData) return receiptImageData;
+    if (receiptAnalysis?.imageData) {
+      setReceiptImageData(receiptAnalysis.imageData);
+      return receiptAnalysis.imageData;
+    }
+    if (receiptFile) {
+      try {
+        const dataUrl = await fileToDataUrl(receiptFile);
+        setReceiptImageData(dataUrl);
+        if (!receiptPreview || receiptPreview.startsWith("blob:")) {
+          setReceiptPreview(dataUrl);
+        }
+        return dataUrl;
+      } catch (error) {
+        console.warn("Receipt image cache failed:", error);
+      }
+    }
+    return null;
+  }
+
   async function handlePayDeliveryFee() {
     if (!isSignedIn) {
       const returnUrl = encodeURIComponent("/order");
@@ -683,7 +706,8 @@ export default function OrderPage() {
 
     setPaymentProcessing(true);
     try {
-      await persistDraft(buildDraftPayload()).catch(() => null);
+      const cachedImageData = await ensureReceiptImageData();
+      await persistDraft(buildDraftPayload({ receiptImageData: cachedImageData })).catch(() => null);
       const response = await fetch("/api/stripe/delivery-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
