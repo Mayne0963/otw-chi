@@ -152,6 +152,7 @@ export default function OrderPage() {
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [receiptImageData, setReceiptImageData] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [receiptAnalysis, setReceiptAnalysis] = useState<ReceiptAnalysis | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -166,6 +167,7 @@ export default function OrderPage() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
+  const receiptObjectUrl = useRef<string | null>(null);
 
   const requiresReceipt = serviceType === "FOOD";
 
@@ -228,6 +230,11 @@ export default function OrderPage() {
         setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
         if (draft.receiptImageData) {
           setReceiptPreview(draft.receiptImageData);
+          setReceiptImageData(draft.receiptImageData);
+          if (receiptObjectUrl.current) {
+            URL.revokeObjectURL(receiptObjectUrl.current);
+            receiptObjectUrl.current = null;
+          }
         }
 
         const receiptItems = Array.isArray(draft.receiptItems) ? draft.receiptItems : [];
@@ -295,7 +302,7 @@ export default function OrderPage() {
       notes: notes.trim() || undefined,
       restaurantName: restaurantName.trim() || undefined,
       restaurantWebsite: restaurantWebsite.trim() || undefined,
-      receiptImageData: receiptAnalysis?.imageData || receiptPreview || undefined,
+      receiptImageData: receiptAnalysis?.imageData || receiptImageData || undefined,
       receiptVendor: receiptAnalysis?.vendorName || undefined,
       receiptLocation: receiptAnalysis?.location || undefined,
       receiptItems,
@@ -465,8 +472,13 @@ export default function OrderPage() {
   function resetReceipt() {
     setReceiptFile(null);
     setReceiptPreview(null);
+    setReceiptImageData(null);
     setReceiptAnalysis(null);
     setAnalysisError(null);
+    if (receiptObjectUrl.current) {
+      URL.revokeObjectURL(receiptObjectUrl.current);
+      receiptObjectUrl.current = null;
+    }
   }
 
   function handleReceiptSelect(file: File | null) {
@@ -474,14 +486,22 @@ export default function OrderPage() {
       resetReceipt();
       return;
     }
+    if (receiptObjectUrl.current) {
+      URL.revokeObjectURL(receiptObjectUrl.current);
+      receiptObjectUrl.current = null;
+    }
     setReceiptFile(file);
+    setReceiptImageData(null);
     setAnalysisError(null);
     setReceiptAnalysis(null);
+    const previewUrl = URL.createObjectURL(file);
+    receiptObjectUrl.current = previewUrl;
+    setReceiptPreview(previewUrl);
     fileToDataUrl(file)
-      .then((dataUrl) => setReceiptPreview(dataUrl))
+      .then((dataUrl) => setReceiptImageData(dataUrl))
       .catch((error) => {
         console.warn("Receipt preview failed:", error);
-        setReceiptPreview(null);
+        setReceiptImageData(null);
       });
   }
 
@@ -535,7 +555,8 @@ export default function OrderPage() {
     setAnalysisError(null);
     try {
       const buffer = await receiptFile.arrayBuffer();
-      const imageData = receiptPreview || (await fileToDataUrl(receiptFile));
+      const imageData = receiptImageData || (await fileToDataUrl(receiptFile));
+      setReceiptImageData(imageData);
       let ocrText = "";
       let ocrConfidence = 0;
       try {
@@ -584,6 +605,14 @@ export default function OrderPage() {
       setAnalysisLoading(false);
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (receiptObjectUrl.current) {
+        URL.revokeObjectURL(receiptObjectUrl.current);
+      }
+    };
+  }, []);
 
   function updateReceiptItem(index: number, field: keyof ReceiptItem, value: string) {
     setReceiptAnalysis((prev) => {
