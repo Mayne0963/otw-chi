@@ -112,9 +112,9 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
 
       if (pickup && dropoff) {
         const routeData = {
-          type: "Feature",
+          type: "Feature" as const,
           geometry: {
-            type: "LineString",
+            type: "LineString" as const,
             coordinates: [
               [pickup.lng, pickup.lat],
               [dropoff.lng, dropoff.lat],
