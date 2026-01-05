@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { Protocol } from "pmtiles";
 import styles from "./OtwLiveMap.module.css";
 import type { OtwLocation } from "@/lib/otw/otwTypes";
 import type { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
@@ -33,6 +34,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const mapReadyRef = useRef(false);
+  const protocolRef = useRef<Protocol | null>(null);
 
   const markerData = useMemo<MapMarker[]>(() => {
     const markers: MapMarker[] = [];
@@ -67,6 +69,17 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
   }, [drivers, dropoff, pickup]);
 
   const hasAny = markerData.length > 0;
+
+  useEffect(() => {
+    const protocol = new Protocol();
+    maplibregl.addProtocol("pmtiles", protocol.tile);
+    protocolRef.current = protocol;
+
+    return () => {
+      maplibregl.removeProtocol("pmtiles");
+      protocolRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
