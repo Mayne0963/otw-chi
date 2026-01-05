@@ -43,11 +43,13 @@
   left: 12px;
   bottom: 12px;
   padding: 0.35rem 0.6rem;
-  border-radius: 999px;
+  border-radius: 10px;
   font-size: 0.72rem;
-  color: rgba(248, 250, 252, 0.8);
+  color: rgba(248, 250, 252, 0.9);
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  line-height: 1.35;
 }
 
 .mapLegend {
@@ -81,4 +83,18 @@
 
 .swatchDriver {
   background: #60a5fa;
+}
+
+.swatchRoute {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.swatchDriverRoute {
+  background: repeating-linear-gradient(
+    90deg,
+    #60a5fa,
+    #60a5fa 4px,
+    transparent 4px,
+    transparent 8px
+  );
 }
