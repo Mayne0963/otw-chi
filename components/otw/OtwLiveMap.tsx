@@ -11,6 +11,8 @@ import type { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
 interface OtwLiveMapProps {
   pickup?: OtwLocation;
   dropoff?: OtwLocation;
+  customer?: OtwLocation;
+  requestId?: string;
   drivers?: OtwDriverLocation[];
 }
 
@@ -33,6 +35,9 @@ type MapMarker = {
 
 type RouteFeature = GeoJSON.Feature<GeoJSON.LineString>;
 type LinePaint = NonNullable<maplibregl.LineLayerSpecification["paint"]>;
+type DriverTarget =
+  | { label: string; coords: [number, number] }
+  | null;
 
 type RouteSummary = {
   distanceText: string;
@@ -60,7 +65,31 @@ const makeFallbackLine = (start: [number, number], end: [number, number]): Route
   properties: {},
 });
 
-const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }) => {
+const coordsEqual = (a?: OtwLocation, b?: OtwLocation) =>
+  !!a &&
+  !!b &&
+  Math.abs(a.lat - b.lat) < 0.00001 &&
+  Math.abs(a.lng - b.lng) < 0.00001;
+
+const formatUpdatedAgo = (iso?: string) => {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const diff = Date.now() - date.getTime();
+  if (diff < 60000) return "just now";
+  const minutes = Math.round(diff / 60000);
+  if (minutes < 90) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours} hr ago`;
+};
+
+const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
+  pickup,
+  dropoff,
+  customer,
+  requestId,
+  drivers = [],
+}) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -70,6 +99,8 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
   const [mainRouteSummary, setMainRouteSummary] = useState<RouteSummary | null>(null);
   const [driverRoute, setDriverRoute] = useState<RouteFeature | null>(null);
   const [driverRouteSummary, setDriverRouteSummary] = useState<RouteSummary | null>(null);
+  const [activeDriver, setActiveDriver] = useState<OtwDriverLocation | null>(null);
+  const [driverTarget, setDriverTarget] = useState<DriverTarget>(null);
 
   const markerData = useMemo<MapMarker[]>(() => {
     const markers: MapMarker[] = [];
@@ -80,6 +111,15 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
         lat: pickup.lat,
         lng: pickup.lng,
         color: "#34d399",
+      });
+    }
+    if (customer && !coordsEqual(customer, pickup)) {
+      markers.push({
+        id: "customer",
+        label: customer.label || "Customer",
+        lat: customer.lat,
+        lng: customer.lng,
+        color: "#c084fc",
       });
     }
     if (dropoff) {
@@ -101,7 +141,38 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
       });
     });
     return markers;
-  }, [drivers, dropoff, pickup]);
+  }, [customer, drivers, dropoff, pickup]);
+
+  const routingDriver = useMemo(() => {
+    if (!drivers.length) return null;
+    const relevant = requestId
+      ? drivers.filter((d) => d.currentRequestId === requestId)
+      : drivers;
+    const pool = relevant.length > 0 ? relevant : drivers;
+    const sorted = [...pool].sort((a, b) => {
+      const aTime = new Date(a.updatedAt).getTime();
+      const bTime = new Date(b.updatedAt).getTime();
+      if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0;
+      if (Number.isNaN(aTime)) return 1;
+      if (Number.isNaN(bTime)) return -1;
+      return bTime - aTime;
+    });
+    return sorted[0] ?? null;
+  }, [drivers, requestId]);
+
+  useEffect(() => {
+    const targetLocation = customer ?? pickup ?? dropoff;
+    if (routingDriver && targetLocation) {
+      setActiveDriver(routingDriver);
+      setDriverTarget({
+        label: targetLocation.label || "Target",
+        coords: [targetLocation.lng, targetLocation.lat],
+      });
+    } else {
+      setActiveDriver(null);
+      setDriverTarget(null);
+    }
+  }, [customer, dropoff, pickup, routingDriver]);
 
   const hasAny = markerData.length > 0;
 
@@ -143,7 +214,10 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
   }, []);
 
   useEffect(() => {
-    if (!pickup || !dropoff) {
+    const routeStart = customer ?? pickup;
+    const routeEnd = dropoff ?? null;
+
+    if (!routeStart || !routeEnd) {
       setMainRoute(null);
       setMainRouteSummary(null);
       return;
@@ -152,7 +226,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
     const controller = new AbortController();
 
     const fetchRoute = async () => {
-      const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?overview=full&geometries=geojson`;
+      const url = `https://router.project-osrm.org/route/v1/driving/${routeStart.lng},${routeStart.lat};${routeEnd.lng},${routeEnd.lat}?overview=full&geometries=geojson`;
 
       try {
         const res = await fetch(url, { signal: controller.signal });
@@ -181,7 +255,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
         throw new Error("No route geometry returned");
       } catch (error) {
         if (controller.signal.aborted) return;
-        setMainRoute(makeFallbackLine([pickup.lng, pickup.lat], [dropoff.lng, dropoff.lat]));
+        setMainRoute(makeFallbackLine([routeStart.lng, routeStart.lat], [routeEnd.lng, routeEnd.lat]));
         setMainRouteSummary(null);
         console.error("[OTW map] Falling back to straight line route", error);
       }
@@ -190,11 +264,11 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
     fetchRoute();
 
     return () => controller.abort();
-  }, [pickup, dropoff]);
+  }, [customer, dropoff, pickup]);
 
   useEffect(() => {
-    const driver = drivers?.[0];
-    const target = pickup ?? dropoff;
+    const target = driverTarget;
+    const driver = activeDriver;
     if (!driver || !target) {
       setDriverRoute(null);
       setDriverRouteSummary(null);
@@ -204,7 +278,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
     const controller = new AbortController();
 
     const fetchDriverLeg = async () => {
-      const url = `https://router.project-osrm.org/route/v1/driving/${driver.location.lng},${driver.location.lat};${target.lng},${target.lat}?overview=full&geometries=geojson`;
+      const url = `https://router.project-osrm.org/route/v1/driving/${driver.location.lng},${driver.location.lat};${target.coords[0]},${target.coords[1]}?overview=full&geometries=geojson`;
 
       try {
         const res = await fetch(url, { signal: controller.signal });
@@ -234,7 +308,10 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
       } catch (error) {
         if (controller.signal.aborted) return;
         setDriverRoute(
-          makeFallbackLine([driver.location.lng, driver.location.lat], [target.lng, target.lat])
+          makeFallbackLine(
+            [driver.location.lng, driver.location.lat],
+            [target.coords[0], target.coords[1]]
+          )
         );
         setDriverRouteSummary(null);
         console.error("[OTW map] Falling back to straight line driver leg", error);
@@ -243,7 +320,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
 
     fetchDriverLeg();
     return () => controller.abort();
-  }, [drivers, pickup, dropoff]);
+  }, [activeDriver, driverTarget]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -361,18 +438,30 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
 
   const statusLines: string[] = [];
 
+  const driverUpdatedAgo = formatUpdatedAgo(activeDriver?.updatedAt);
+
   if (mainRouteSummary) {
-    statusLines.push(`Route: ${mainRouteSummary.distanceText} • ${mainRouteSummary.durationText}`);
+    statusLines.push(
+      `Customer route: ${mainRouteSummary.distanceText} • ${mainRouteSummary.durationText}`
+    );
   } else if (pickup && dropoff) {
-    statusLines.push("Route: calculating...");
+    statusLines.push("Customer route: calculating...");
+  } else if (pickup || customer || dropoff) {
+    statusLines.push("Customer route: add both endpoints to unlock directions.");
   }
 
-  if (driverRouteSummary) {
+  if (driverRouteSummary && activeDriver && driverTarget) {
     statusLines.push(
-      `Driver leg: ${driverRouteSummary.distanceText} • ${driverRouteSummary.durationText}`
+      `Driver ➜ ${driverTarget.label}: ${driverRouteSummary.distanceText} • ${driverRouteSummary.durationText}` +
+        (driverUpdatedAgo ? ` (${driverUpdatedAgo})` : "")
     );
-  } else if (drivers.length > 0 && (pickup || dropoff)) {
-    statusLines.push("Driver leg: syncing…");
+  } else if (activeDriver && driverTarget) {
+    statusLines.push(
+      `Driver ➜ ${driverTarget.label}: syncing…` +
+        (driverUpdatedAgo ? ` (last seen ${driverUpdatedAgo})` : "")
+    );
+  } else if (drivers.length > 0) {
+    statusLines.push("Driver leg: add a customer, pickup, or dropoff to anchor directions.");
   }
 
   return (
@@ -400,6 +489,10 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({ pickup, dropoff, drivers = [] }
         <span className={styles.legendItem}>
           <span className={`${styles.legendSwatch} ${styles.swatchPickup}`} />
           Pickup
+        </span>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.swatchCustomer}`} />
+          Customer
         </span>
         <span className={styles.legendItem}>
           <span className={`${styles.legendSwatch} ${styles.swatchDropoff}`} />

@@ -62,6 +62,7 @@ export default async function DriverDashboardPage() {
   });
 
   const activeRequest = assignedRequests[0] ?? null;
+  let customerLocation: OtwLocation | undefined;
   let pickupLocation: OtwLocation | undefined;
   let dropoffLocation: OtwLocation | undefined;
   let driverLocations: OtwDriverLocation[] = [];
@@ -77,6 +78,11 @@ export default async function DriverDashboardPage() {
         lat: pickup.latitude,
         lng: pickup.longitude,
         label: 'Pickup',
+      };
+      customerLocation = {
+        lat: pickup.latitude,
+        lng: pickup.longitude,
+        label: 'Customer',
       };
     }
 
@@ -218,8 +224,10 @@ export default async function DriverDashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <OtwLiveMap
+                        customer={customerLocation}
                         pickup={pickupLocation}
                         dropoff={dropoffLocation}
+                        requestId={activeRequest?.id}
                         drivers={driverLocations}
                     />
                 </CardContent>

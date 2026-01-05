@@ -173,6 +173,7 @@ const MyOtwRequests: React.FC = () => {
                 <OtwLiveMap
                   pickup={undefined}
                   dropoff={undefined}
+                  requestId={req.id}
                   drivers={mapDrivers}
                 />
               )}
