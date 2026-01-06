@@ -870,6 +870,7 @@ export default function OrderPage() {
                 <label className="text-sm font-medium text-otwGold/90 ml-1">Pickup Address</label>
                 <AddressSearch
                   placeholder="Search for pickup address..."
+                  enableCurrentLocation
                   onSelect={(address) => {
                     setPickupAddress(address);
                     const lines = formatAddressLines(address);
@@ -897,6 +898,7 @@ export default function OrderPage() {
                 <label className="text-sm font-medium text-otwGold/90 ml-1">Dropoff Address</label>
                 <AddressSearch
                   placeholder="Search for dropoff address..."
+                  enableCurrentLocation
                   onSelect={(address) => {
                     setDropoffAddress(address);
                     const lines = formatAddressLines(address);

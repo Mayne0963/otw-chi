@@ -3,7 +3,7 @@ import { getPrisma } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import OtwLiveMap from '@/components/otw/OtwLiveMap';
+import DriverLiveMap from '@/components/otw/DriverLiveMap';
 import { validateAddress } from '@/lib/geocoding';
 import { revalidatePath } from 'next/cache';
 import { RequestStatus } from '@prisma/client';
@@ -224,14 +224,14 @@ export default async function DriverDashboardPage() {
                     <CardTitle className="text-lg">Active Route Overview</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <OtwLiveMap
+                    <DriverLiveMap
+                        driverId={driverProfile.id}
                         customer={customerLocation}
                         pickup={pickupLocation}
                         dropoff={dropoffLocation}
                         requestId={activeRequest?.id}
                         jobStatus={activeRequest?.status}
-                        focusDriverId={driverProfile.id}
-                        drivers={driverLocations}
+                        initialDriverLocation={driverLocations[0] ?? null}
                     />
                 </CardContent>
             </Card>
