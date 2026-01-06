@@ -23,12 +23,14 @@ const publicRoutes = [
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const entries = [...marketingRoutes, ...publicRoutes].map((path) => ({
-    url: `${BASE_URL}${path}`,
-    lastModified: now,
-    changeFrequency: path === "" ? "weekly" : "monthly",
-    priority: path === "" ? 1 : 0.7,
-  }));
+  const entries: MetadataRoute.Sitemap = [...marketingRoutes, ...publicRoutes].map(
+    (path): MetadataRoute.Sitemap[number] => ({
+      url: `${BASE_URL}${path}`,
+      lastModified: now,
+      changeFrequency: path === "" ? "weekly" : "monthly",
+      priority: path === "" ? 1 : 0.7,
+    })
+  );
 
   return entries;
 }
