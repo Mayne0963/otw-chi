@@ -4,23 +4,32 @@ import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 
 const pingSchema = z.object({
-  lat: z.number(),
-  lng: z.number(),
+  lat: z.coerce
+    .number()
+    .refine((value) => Number.isFinite(value), { message: 'lat must be a finite number' }),
+  lng: z.coerce
+    .number()
+    .refine((value) => Number.isFinite(value), { message: 'lng must be a finite number' }),
 });
 
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
-    if (!userId) return new NextResponse('Unauthorized', { status: 401 });
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
 
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ 
-        where: { clerkId: userId },
-        include: { driverProfile: true }
+    const user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      include: { driverProfile: true },
     });
 
     if (!user || !user.driverProfile) {
-        return new NextResponse('Driver profile not found', { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'Driver profile not found' },
+        { status: 404 }
+      );
     }
 
     const body = await req.json();
@@ -45,13 +54,13 @@ export async function POST(req: Request) {
 
     // Save Ping
     await prisma.driverLocationPing.create({
-        data: {
-            driverId: user.driverProfile.id,
-            requestId: activeRequest?.id,
-            deliveryRequestId: activeDelivery?.id,
-            lat,
-            lng
-        }
+      data: {
+        driverId: user.driverProfile.id,
+        requestId: activeRequest?.id,
+        deliveryRequestId: activeDelivery?.id,
+        lat,
+        lng,
+      },
     });
 
     // Update last known location (for easy access)
@@ -78,6 +87,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Location ping error:', error);
-    return new NextResponse('Invalid request', { status: 400 });
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+          issues: error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { success: false, error: 'Unable to record driver location ping' },
+      { status: 500 }
+    );
   }
 }

@@ -20,6 +20,7 @@ type TrackingStatus = "idle" | "requesting" | "active" | "denied" | "unsupported
 
 const MIN_SEND_INTERVAL_MS = 15_000;
 const MIN_DISTANCE_KM = 0.03; // ~30m
+const FAILURE_BACKOFF_MS = 60_000;
 
 const formatTime = (iso?: string | null) => {
   if (!iso) return null;
@@ -57,6 +58,9 @@ const DriverLiveMap = ({
         }
       : null
   );
+
+  const backoffUntilRef = useRef<number>(0);
+  const syncDisabledRef = useRef(false);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -96,6 +100,8 @@ const DriverLiveMap = ({
           distanceKm > MIN_DISTANCE_KM;
 
         if (!shouldSend) return;
+        if (syncDisabledRef.current) return;
+        if (now < backoffUntilRef.current) return;
 
         lastSentRef.current = { lat, lng, at: now };
         setLastSentAt(updatedAt);
@@ -108,7 +114,20 @@ const DriverLiveMap = ({
             body: JSON.stringify({ lat, lng }),
           });
           if (!pingRes.ok) {
-            throw new Error(`Location ping failed with status ${pingRes.status}`);
+            const message = await pingRes.text().catch(() => "");
+            if (pingRes.status === 401 || pingRes.status === 403) {
+              syncDisabledRef.current = true;
+              setSyncError("Location sync requires a signed-in driver account.");
+              return;
+            }
+            if (pingRes.status === 404) {
+              syncDisabledRef.current = true;
+              setSyncError("Driver profile not found. Complete driver setup to sync live location.");
+              return;
+            }
+            throw new Error(
+              `Location ping failed with status ${pingRes.status}${message ? `: ${message}` : ""}`
+            );
           }
           const otwRes = await fetch("/api/otw/driver/location", {
             method: "PATCH",
@@ -122,10 +141,16 @@ const DriverLiveMap = ({
             }),
           });
           if (!otwRes.ok) {
-            throw new Error(`OTW location sync failed with status ${otwRes.status}`);
+            const message = await otwRes.text().catch(() => "");
+            throw new Error(
+              `OTW location sync failed with status ${otwRes.status}${message ? `: ${message}` : ""}`
+            );
           }
+
+          backoffUntilRef.current = 0;
         } catch (err) {
           console.error("Failed to sync driver location:", err);
+          backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS;
           setSyncError("Unable to sync location. Check your connection and try again.");
         }
       },
