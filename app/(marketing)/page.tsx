@@ -6,8 +6,8 @@ export default function HomePage() {
     <div className="otw-container otw-section space-y-10">
       {/* Hero Section */}
       <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/90 px-6 py-8 shadow-otwSoft sm:px-10 sm:py-10">
-        <div className="absolute -top-24 right-0 h-52 w-52 rounded-full bg-primary/12 blur-3xl" aria-hidden="true" />
-        <div className="absolute bottom-0 left-0 h-44 w-44 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
+        <div className="absolute -top-24 right-0 h-52 w-52 rounded-full bg-secondary/14 blur-3xl" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 h-44 w-44 rounded-full bg-primary/8 blur-3xl" aria-hidden="true" />
         <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-4">
             <span className="otw-pill">Premium Concierge</span>

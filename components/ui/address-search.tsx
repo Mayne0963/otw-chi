@@ -269,7 +269,7 @@ export function AddressSearch({
               enableCurrentLocation ? "right-12" : "right-3"
             )}
           >
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent motion-reduce:animate-none" />
           </div>
         )}
       </div>
@@ -315,7 +315,7 @@ export function AddressSearch({
 
               <button
                 type="button"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                className="inline-flex items-center gap-2 text-sm text-secondary hover:underline"
                 onClick={() => setLearnMoreOpen((prev) => !prev)}
                 aria-expanded={learnMoreOpen}
               >
@@ -333,7 +333,7 @@ export function AddressSearch({
                     <li>Control: you can revoke access anytime in your browser/device settings.</li>
                   </ul>
                   <div className="mt-3">
-                    <Link href="/privacy" className="text-primary hover:underline">
+                    <Link href="/privacy" className="text-secondary hover:underline">
                       View Privacy Policy
                     </Link>
                   </div>
@@ -410,7 +410,7 @@ export function AddressSearch({
                 selectedIndex === index && "bg-muted/60"
               )}
             >
-              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary/80" />
+              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-secondary/80" />
               <div className="flex-1 space-y-1">
                 <div className="font-medium">{lines.primary}</div>
                 {lines.secondary && (

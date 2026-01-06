@@ -851,7 +851,7 @@ export default function OrderPage() {
         <div className="text-center space-y-3">
           <span className="otw-pill">Customer Request</span>
           <h1 className="text-4xl font-semibold tracking-tight">
-            Request a <span className="text-primary">Delivery</span>
+            Request a <span className="text-secondary">Delivery</span>
           </h1>
           <p className="text-muted-foreground">Tell us what you need - we will handle the rest.</p>
         </div>
@@ -1184,7 +1184,7 @@ export default function OrderPage() {
                           href={restaurantWebsite}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-primary inline-flex items-center gap-1"
+                          className="text-xs text-secondary inline-flex items-center gap-1"
                         >
                           Visit menu <ExternalLink className="h-3 w-3" />
                         </a>

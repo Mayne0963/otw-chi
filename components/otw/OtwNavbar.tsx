@@ -14,16 +14,16 @@ const OtwNavbar: React.FC = () => {
         
         <nav className="flex items-center gap-4 text-sm font-medium text-foreground">
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/how-it-works" className="transition-colors duration-300 hover:text-primary">How It Works</Link>
-            <Link href="/pricing" className="transition-colors duration-300 hover:text-primary">Pricing</Link>
-            <Link href="/driver/apply" className="transition-colors duration-300 hover:text-primary">Drive</Link>
+            <Link href="/how-it-works" className="transition-colors duration-300 hover:text-secondary">How It Works</Link>
+            <Link href="/pricing" className="transition-colors duration-300 hover:text-secondary">Pricing</Link>
+            <Link href="/driver/apply" className="transition-colors duration-300 hover:text-secondary">Drive</Link>
             <Button asChild size="sm">
               <Link href="/order">Order Now</Link>
             </Button>
           </div>
 
           <SignedIn>
-            <Link href="/dashboard" className="transition-colors duration-300 hover:text-primary">Dashboard</Link>
+            <Link href="/dashboard" className="transition-colors duration-300 hover:text-secondary">Dashboard</Link>
             <Button asChild size="sm" className="hidden sm:inline-flex">
               <Link href="/order">Order Now</Link>
             </Button>

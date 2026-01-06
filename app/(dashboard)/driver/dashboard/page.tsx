@@ -239,7 +239,7 @@ export default async function DriverDashboardPage() {
         
         {/* Active Jobs */}
         <section>
-            <h2 className="text-2xl font-semibold mb-4 text-primary">My Active Jobs</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-secondary">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {assignedRequests.map((req: any) => (
                     <Card key={req.id} className="text-foreground">
