@@ -48,7 +48,7 @@ export default function AboutPage() {
     <div className="otw-container otw-section space-y-16">
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-otwBlack via-black to-otwGold/20 p-10 sm:p-14">
         <div className="absolute -top-20 right-0 h-56 w-56 rounded-full bg-otwGold/20 blur-3xl" />
-        <div className="absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-primary/12 blur-3xl" />
         <div className="relative space-y-6 max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.25em] text-white/60">
             <Package className="h-3.5 w-3.5 text-otwGold" />

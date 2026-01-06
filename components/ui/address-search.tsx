@@ -416,7 +416,7 @@ export function AddressSearch({
                 {lines.secondary && (
                   <div className="text-xs text-muted-foreground">{lines.secondary}</div>
                 )}
-                <div className="text-xs text-emerald-300">
+                <div className="text-xs text-secondary">
                   ✓ {address.distanceFromFortWayne} miles from Fort Wayne
                 </div>
               </div>

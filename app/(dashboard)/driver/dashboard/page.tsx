@@ -270,21 +270,21 @@ export default async function DriverDashboardPage() {
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="PICKED_UP" />
-                                        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">Picked Up</Button>
+                                        <Button type="submit" variant="secondary" className="w-full">Picked Up</Button>
                                     </form>
                                 )}
                                 {req.status === 'PICKED_UP' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="EN_ROUTE" />
-                                        <Button type="submit" className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">En Route</Button>
+                                        <Button type="submit" variant="secondary" className="w-full">En Route</Button>
                                     </form>
                                 )}
                                 {req.status === 'EN_ROUTE' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />   
-                                        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Delivered</Button>
+                                        <Button type="submit" className="w-full">Delivered</Button>
                                     </form>
                                 )}
                             </div>
@@ -320,14 +320,14 @@ export default async function DriverDashboardPage() {
                                     <form action={updateLegacyStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value={RequestStatus.PICKED_UP} />
-                                        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">Picked Up</Button>
+                                        <Button type="submit" variant="secondary" className="w-full">Picked Up</Button>
                                     </form>
                                 )}
                                 {req.status === RequestStatus.PICKED_UP && (
                                     <form action={updateLegacyStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value={RequestStatus.DELIVERED} />
-                                        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Delivered</Button>
+                                        <Button type="submit" className="w-full">Delivered</Button>
                                     </form>
                                 )}
                             </div>

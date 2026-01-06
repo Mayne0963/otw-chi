@@ -199,12 +199,12 @@ export default function RequestPage() {
                 className="w-full"
               />
               {pickupAddress && (
-                <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
+                <div className="flex items-start gap-2 rounded-lg border border-secondary/40 bg-secondary/10 p-2 text-xs text-secondary">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{pickupLines?.primary}</div>
                     {pickupLines?.secondary && (
-                      <div className="text-emerald-200/80">{pickupLines.secondary}</div>
+                      <div className="text-secondary/80">{pickupLines.secondary}</div>
                     )}
                   </div>
                 </div>
@@ -227,12 +227,12 @@ export default function RequestPage() {
                 className="w-full"
               />
               {dropoffAddress && (
-                <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
+                <div className="flex items-start gap-2 rounded-lg border border-secondary/40 bg-secondary/10 p-2 text-xs text-secondary">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{dropoffLines?.primary}</div>
                     {dropoffLines?.secondary && (
-                      <div className="text-emerald-200/80">{dropoffLines.secondary}</div>
+                      <div className="text-secondary/80">{dropoffLines.secondary}</div>
                     )}
                   </div>
                 </div>

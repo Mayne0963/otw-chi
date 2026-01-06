@@ -187,12 +187,12 @@ export function NewRequestForm() {
                 className="w-full"
               />
               {pickupAddress && (
-                <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
+                <div className="flex items-start gap-2 text-xs text-otwGold bg-otwGold/10 border border-otwGold/30 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{pickupLines?.primary}</div>
                     {pickupLines?.secondary && (
-                      <div className="text-green-600/80">{pickupLines.secondary}</div>
+                      <div className="text-otwGold/80">{pickupLines.secondary}</div>
                     )}
                   </div>
                 </div>
@@ -216,12 +216,12 @@ export function NewRequestForm() {
                 className="w-full"
               />
               {dropoffAddress && (
-                <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
+                <div className="flex items-start gap-2 text-xs text-otwGold bg-otwGold/10 border border-otwGold/30 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{dropoffLines?.primary}</div>
                     {dropoffLines?.secondary && (
-                      <div className="text-green-600/80">{dropoffLines.secondary}</div>
+                      <div className="text-otwGold/80">{dropoffLines.secondary}</div>
                     )}
                   </div>
                 </div>

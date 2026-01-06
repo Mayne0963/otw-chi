@@ -158,7 +158,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
                   ))}
                   <div className="flex items-center justify-between border-t border-border/70 pt-2 text-sm font-semibold">
                     <span className="text-foreground/70">Items total</span>
-                    <span className="text-green-300">
+                    <span className="text-secondary">
                       {formatCurrency(receiptItemsTotal)}
                     </span>
                   </div>
@@ -179,14 +179,14 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
             </div>
 
             {order.discountCents ? (
-              <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+              <div className="flex items-center justify-between rounded-xl border border-secondary/30 bg-secondary/10 p-3">
                 <div>
-                  <div className="text-xs text-emerald-100">Coupon discount</div>
-                  <div className="text-sm font-semibold text-emerald-200">
+                  <div className="text-xs text-secondary/90">Coupon discount</div>
+                  <div className="text-sm font-semibold text-secondary">
                     -{formatCurrency(order.discountCents)}
                   </div>
                   {order.couponCode && (
-                    <div className="text-xs text-emerald-200/70">Code {order.couponCode}</div>
+                    <div className="text-xs text-secondary/70">Code {order.couponCode}</div>
                   )}
                 </div>
               </div>

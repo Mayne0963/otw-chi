@@ -10,7 +10,7 @@ type Props = {
 
 const tones: Record<NonNullable<Props['tone']>, string> = {
   neutral: 'border-border/70 text-foreground/80',
-  success: 'border-emerald-500/35 text-emerald-300',
+  success: 'border-otwGold/50 text-otwGold',
   danger: 'border-otwRed/40 text-otwRed',
   gold: 'border-otwGold/50 text-otwGold'
 };

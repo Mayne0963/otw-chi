@@ -50,7 +50,7 @@ export default async function CityCoveragePage({ params }: Props) {
             <h3 className="font-bold text-lg">Service Status: ACTIVE</h3>
             <p className="text-sm opacity-90">Drivers are online in {city}.</p>
           </div>
-          <div className="h-3 w-3 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
+          <div className="h-3 w-3 rounded-full bg-otwGold shadow-[0_0_10px_rgba(230,195,106,0.8)]" />
         </OtwCard>
 
         {/* Zones */}

@@ -59,7 +59,7 @@ export default function OtwEstimateWidget() {
             <span>${result.basePrice.toFixed(2)}</span>
           </div>
           {result.discount > 0 && (
-            <div className="flex justify-between text-green-400">
+            <div className="flex justify-between text-otwGold">
               <span>Membership Discount:</span>
               <span>-{Math.round(result.discount * 100)}%</span>
             </div>

@@ -883,12 +883,12 @@ export default function OrderPage() {
                   className="w-full"
                 />
                 {pickupAddress && (
-                  <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
+                  <div className="flex items-start gap-2 rounded-lg border border-secondary/40 bg-secondary/10 p-2 text-xs text-secondary">
                     <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <div className="font-medium">{pickupLines?.primary}</div>
                       {pickupLines?.secondary && (
-                        <div className="text-emerald-200/80">{pickupLines.secondary}</div>
+                        <div className="text-secondary/80">{pickupLines.secondary}</div>
                       )}
                     </div>
                   </div>
@@ -911,12 +911,12 @@ export default function OrderPage() {
                   className="w-full"
                 />
                 {dropoffAddress && (
-                  <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
+                  <div className="flex items-start gap-2 rounded-lg border border-secondary/40 bg-secondary/10 p-2 text-xs text-secondary">
                     <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <div className="font-medium">{dropoffLines?.primary}</div>
                       {dropoffLines?.secondary && (
-                        <div className="text-emerald-200/80">{dropoffLines.secondary}</div>
+                        <div className="text-secondary/80">{dropoffLines.secondary}</div>
                       )}
                     </div>
                   </div>
@@ -1137,7 +1137,7 @@ export default function OrderPage() {
                   </div>
                   <div className="flex items-center justify-between border-t border-border/70 pt-3 text-sm">
                     <span className="text-muted-foreground">Items total</span>
-                    <span className="text-green-300 font-semibold">{formatCurrency(receiptSubtotalCents)}</span>
+                    <span className="text-secondary font-semibold">{formatCurrency(receiptSubtotalCents)}</span>
                   </div>
                 </div>
               )}
@@ -1202,7 +1202,7 @@ export default function OrderPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Receipt items</span>
-                      <span className="text-green-300 font-semibold">
+                      <span className="text-secondary font-semibold">
                         {receiptAnalysis ? formatCurrency(receiptSubtotalCents) : "Add receipt"}
                       </span>
                     </div>
@@ -1250,14 +1250,14 @@ export default function OrderPage() {
                   </div>
 
                   {discountCents > 0 && (
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm">
+                    <div className="rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-emerald-100">Discount applied</span>
-                        <span className="text-emerald-200 font-semibold">
+                        <span className="text-secondary/90">Discount applied</span>
+                        <span className="text-secondary font-semibold">
                           -{formatCurrency(discountCents)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-emerald-200/70 mt-1">
+                      <div className="flex items-center justify-between text-xs text-secondary/70 mt-1">
                         <span>Total after discount</span>
                         <span>{formatCurrency(Math.max(0, orderTotalCents - discountCents))}</span>
                       </div>
@@ -1268,7 +1268,7 @@ export default function OrderPage() {
                     <Button
                       onClick={handlePayDeliveryFee}
                       disabled={paymentProcessing || feePaid}
-                      className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                      className="gap-2"
                       isLoading={paymentProcessing}
                     >
                       {feePaid ? (

@@ -87,7 +87,7 @@ export default async function DriverEarningsPage() {
                 <div className="flex items-center justify-between">
                   <div className="text-xs opacity-70">Job {e.requestId?.slice(-6) ?? 'N/A'}</div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-xs rounded-full px-2 py-1 border border-white/10 opacity-70 ${e.status === 'available' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}>{e.status ?? 'pending'}</span>
+                    <span className={`text-xs rounded-full px-2 py-1 border border-white/10 opacity-70 ${e.status === 'available' ? 'bg-otwGold text-otwBlack' : 'bg-otwRed text-otwOffWhite'}`}>{e.status ?? 'pending'}</span>
                     <span>${(((e.amountCents ?? e.amount ?? 0)/100)).toFixed(2)}</span>
                   </div>
                 </div>

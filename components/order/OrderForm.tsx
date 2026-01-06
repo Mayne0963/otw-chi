@@ -179,7 +179,7 @@ export default function OrderForm() {
                 <div className="pt-4 border-t border-white/10 flex justify-between items-end">
                     <span className="text-white/60">Estimated Total</span>
                     <div className="text-right">
-                        <span className="text-2xl font-bold text-green-400">${((estimate?.basePrice || 0) / 100).toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-otwGold">${((estimate?.basePrice || 0) / 100).toFixed(2)}</span>
                         <p className="text-xs text-white/40">{estimate?.miles} miles est.</p>
                     </div>
                 </div>
@@ -196,7 +196,7 @@ export default function OrderForm() {
                 <Button 
                     onClick={submitOrder} 
                     disabled={loading}
-                    className="flex-1 bg-green-600 text-white hover:bg-green-700 font-bold"
+                    className="flex-1 font-bold"
                 >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Place Order

@@ -50,7 +50,7 @@ body {
     --popover: 0 0% 8%;
     --popover-foreground: 40 33% 96%;
 
-    --primary: 352 96% 42%; /* otwRed */
+    --primary: 352 100% 35%; /* otwRed */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 43 74% 66%; /* otwGold */
@@ -59,7 +59,7 @@ body {
     --muted: 0 0% 14%;
     --muted-foreground: 40 10% 72%;
 
-    --accent: 43 64% 55%;
+    --accent: 43 74% 66%;
     --accent-foreground: 0 0% 5%;
 
     --destructive: 0 70% 45%;
@@ -74,9 +74,9 @@ body {
     /* Chart colors tailored for dark theme */
     --chart-1: 352 100% 35%;
     --chart-2: 43 74% 66%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-3: 0 0% 22%;
+    --chart-4: 352 90% 55%;
+    --chart-5: 43 70% 50%;
 
     /* Spacing scale (4px base) */
     --space-1: 4px;
