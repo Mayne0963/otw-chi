@@ -82,10 +82,10 @@ export default async function CityCoveragePage({ params }: Props) {
         </section>
 
         {/* CTAs */}
-        <section className="bg-otwBlack rounded-3xl p-8 border border-otwGold/30 text-center space-y-6">
-          <h3 className="text-2xl font-bold">Get Moving in {city}</h3>
+        <section className="rounded-3xl p-8 border border-border/70 bg-card/90 text-center space-y-6 shadow-otwSoft">
+          <h3 className="text-2xl font-semibold">Get Moving in {city}</h3>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <OtwButton as="a" href="/dashboard" variant="gold">Request Delivery</OtwButton>
+            <OtwButton as="a" href="/request" variant="gold">Request Delivery</OtwButton>
             <OtwButton as="a" href="/driver/apply" variant="outline">Become a Driver</OtwButton>
             <OtwButton as="a" href="/franchise/apply" variant="ghost">Franchise Inquiry</OtwButton>
           </div>

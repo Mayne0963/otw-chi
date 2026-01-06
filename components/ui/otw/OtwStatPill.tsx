@@ -9,10 +9,10 @@ type Props = {
 };
 
 const tones: Record<NonNullable<Props['tone']>, string> = {
-  neutral: 'border-white/15 text-otwOffWhite/90',
-  success: 'border-green-500/35 text-green-400',
+  neutral: 'border-border/70 text-foreground/80',
+  success: 'border-emerald-500/35 text-emerald-300',
   danger: 'border-otwRed/40 text-otwRed',
-  gold: 'border-otwGold/60 text-otwGold'
+  gold: 'border-otwGold/50 text-otwGold'
 };
 
 export default function OtwStatPill({ label, value, className, tone = 'neutral' }: Props) {
@@ -20,7 +20,7 @@ export default function OtwStatPill({ label, value, className, tone = 'neutral' 
     <span
       className={clsx(
         'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs',
-        'bg-gradient-to-b from-white/5 to-white/0',
+        'bg-muted/40',
         tones[tone],
         className
       )}
@@ -30,4 +30,3 @@ export default function OtwStatPill({ label, value, className, tone = 'neutral' 
     </span>
   );
 }
-

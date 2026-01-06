@@ -8,6 +8,14 @@ export default {
     './lib/**/*.{ts,tsx}'
   ],
   theme: {
+    screens: {
+      xs: "320px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1440px",
+      "2xl": "1536px",
+    },
   	extend: {
   		colors: {
             // OTW Brand Aliases (Mapped to CSS variables for consistency)
@@ -59,9 +67,27 @@ export default {
   				'5': 'hsl(var(--chart-5))'
   			}
   		},
+      fontFamily: {
+        sans: [
+          "var(--font-sans)",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "sans-serif",
+        ],
+        display: [
+          "var(--font-display)",
+          "ui-serif",
+          "Georgia",
+          "Times New Roman",
+          "serif",
+        ],
+      },
   		boxShadow: {
-  			otwSoft: '0 10px 25px rgba(0,0,0,0.35)',
-  			otwGlow: '0 0 25px rgba(230,195,106,0.45)'
+  			otwSoft: 'var(--shadow-soft)',
+  			otwGlow: 'var(--shadow-glow)',
+  			otwElevated: 'var(--shadow-elevated)'
   		},
   		borderRadius: {
   			'2xl': '1rem',

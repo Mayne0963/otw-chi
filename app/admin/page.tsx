@@ -13,8 +13,8 @@ function AdminOverviewLoading() {
       {[1,2,3,4].map(i => (
         <OtwCard key={i}>
           <div className="animate-pulse">
-            <div className="h-4 bg-white/10 rounded w-3/4 mb-2"></div>
-            <div className="h-8 bg-white/5 rounded w-1/2"></div>
+            <div className="h-4 bg-muted/40 rounded w-3/4 mb-2"></div>
+            <div className="h-8 bg-muted/20 rounded w-1/2"></div>
           </div>
         </OtwCard>
       ))}
@@ -130,7 +130,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
         <OtwCard className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-otwGold/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
           <div className="relative z-10">
-            <div className="text-sm font-medium text-white/80">Requests Today</div>
+            <div className="text-sm font-medium text-muted-foreground">Requests Today</div>
             <div className="mt-2">
               <OtwStatPill 
                 label="Count" 
@@ -138,7 +138,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
                 tone={stats.requestsToday > stats.avgDailyRequests ? "success" : "neutral"}
               />
             </div>
-            <div className="text-xs text-white/50 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               Avg: {stats.avgDailyRequests}/day
             </div>
           </div>
@@ -147,7 +147,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
         <OtwCard className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
           <div className="relative z-10">
-            <div className="text-sm font-medium text-white/80">Active Drivers</div>
+            <div className="text-sm font-medium text-muted-foreground">Active Drivers</div>
             <div className="mt-2">
               <OtwStatPill 
                 label="Online" 
@@ -155,7 +155,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
                 tone="success" 
               />
             </div>
-            <div className="text-xs text-white/50 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               {stats.driverUtilization}% of {stats.totalDrivers} total
             </div>
           </div>
@@ -164,7 +164,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
         <OtwCard className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-red-500/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
           <div className="relative z-10">
-            <div className="text-sm font-medium text-white/80">Open Tickets</div>
+            <div className="text-sm font-medium text-muted-foreground">Open Tickets</div>
             <div className="mt-2">
               <OtwStatPill 
                 label="Support" 
@@ -172,7 +172,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
                 tone={stats.openTickets > 5 ? "danger" : "neutral"}
               />
             </div>
-            <div className="text-xs text-white/50 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               {stats.openTickets > 0 ? `${stats.openTickets} need attention` : 'All clear'}
             </div>
           </div>
@@ -181,7 +181,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
         <OtwCard className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-otwGold/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
           <div className="relative z-10">
-            <div className="text-sm font-medium text-white/80">TIREM Issued Today</div>
+            <div className="text-sm font-medium text-muted-foreground">TIREM Issued Today</div>
             <div className="mt-2">
               <OtwStatPill 
                 label="TIREM" 
@@ -189,7 +189,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
                 tone="gold" 
               />
             </div>
-            <div className="text-xs text-white/50 mt-2">
+            <div className="text-xs text-muted-foreground mt-2">
               Points distributed
             </div>
           </div>

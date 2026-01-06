@@ -70,28 +70,28 @@ export default function DriverApplyPage() {
         <OtwCard className="space-y-4">
           {submitted ? (
             <div className="space-y-2 text-center">
-              <h2 className="text-xl font-semibold text-otwOffWhite">Thanks for applying!</h2>
-              <p className="text-sm text-white/70">
+              <h2 className="text-xl font-semibold text-foreground">Thanks for applying!</h2>
+              <p className="text-sm text-muted-foreground">
                 Your application is under review. We will contact you with next steps.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="fullName" className="text-sm font-medium text-otwOffWhite block mb-1">Full Name</label>
+              <label htmlFor="fullName" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Full Name</label>
               <input 
                 id="fullName"
                 name="fullName"
                 required
                 value={formData.fullName}
                 onChange={handleChange}
-                className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-otwOffWhite focus:border-otwGold focus:outline-none" 
+                className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
                 placeholder="John Doe" 
               />
             </div>
             
             <div>
-              <label htmlFor="email" className="text-sm font-medium text-otwOffWhite block mb-1">Email</label>
+              <label htmlFor="email" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Email</label>
               <input 
                 id="email"
                 name="email"
@@ -99,13 +99,13 @@ export default function DriverApplyPage() {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-otwOffWhite focus:border-otwGold focus:outline-none" 
+                className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
                 placeholder="john@example.com" 
               />
             </div>
 
             <div>
-              <label htmlFor="phone" className="text-sm font-medium text-otwOffWhite block mb-1">Phone</label>
+              <label htmlFor="phone" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Phone</label>
               <input 
                 id="phone"
                 name="phone"
@@ -113,33 +113,33 @@ export default function DriverApplyPage() {
                 required
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-otwOffWhite focus:border-otwGold focus:outline-none" 
+                className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
                 placeholder="(555) 123-4567" 
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="city" className="text-sm font-medium text-otwOffWhite block mb-1">City</label>
+                <label htmlFor="city" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">City</label>
                 <input 
                   id="city"
                   name="city"
                   required
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-otwOffWhite focus:border-otwGold focus:outline-none" 
+                  className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
                   placeholder="Chicago" 
                 />
               </div>
               <div>
-                <label htmlFor="vehicleType" className="text-sm font-medium text-otwOffWhite block mb-1">Vehicle Type</label>
+                <label htmlFor="vehicleType" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Vehicle Type</label>
                 <select 
                   id="vehicleType"
                   name="vehicleType"
                   required
                   value={formData.vehicleType}
                   onChange={handleChange}
-                  className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-otwOffWhite focus:border-otwGold focus:outline-none" 
+                  className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
                 >
                   <option value="">Select...</option>
                   <option value="Sedan">Sedan</option>
@@ -152,14 +152,14 @@ export default function DriverApplyPage() {
             </div>
 
             <div>
-              <label htmlFor="availability" className="text-sm font-medium text-otwOffWhite block mb-1">Availability</label>
+              <label htmlFor="availability" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Availability</label>
               <select 
                 id="availability"
                 name="availability"
                 required
                 value={formData.availability}
                 onChange={handleChange}
-                className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-otwOffWhite focus:border-otwGold focus:outline-none" 
+                className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
               >
                 <option value="">Select...</option>
                 <option value="Full-time">Full-time</option>
@@ -170,14 +170,14 @@ export default function DriverApplyPage() {
             </div>
 
             <div>
-              <label htmlFor="message" className="text-sm font-medium text-otwOffWhite block mb-1">Why OTW? (Optional)</label>
+              <label htmlFor="message" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Why OTW? (Optional)</label>
               <textarea 
                 id="message"
                 name="message"
                 rows={3}
                 value={formData.message}
                 onChange={handleChange}
-                className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-otwOffWhite focus:border-otwGold focus:outline-none" 
+                className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
                 placeholder="Tell us a bit about yourself..." 
               />
             </div>

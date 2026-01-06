@@ -9,17 +9,17 @@ type Props = {
   children: React.ReactNode;
 };
 
-const base = 'rounded-3xl transition transform will-change-auto';
+const base = 'rounded-2xl transition-all duration-300 will-change-auto';
 
 const variants: Record<Variant, string> = {
   default:
-    'bg-otwBlack/50 backdrop-blur-sm border border-white/10 shadow-otwSoft hover:shadow-otwSoft hover:scale-[1.01]',
+    'bg-card/90 border border-border/70 shadow-otwSoft hover:-translate-y-0.5 hover:shadow-otwElevated',
   red:
-    'bg-gradient-to-b from-otwRed to-otwRedDark text-otwOffWhite border border-otwRedDark/40 shadow-otwGlow hover:shadow-otwGlow hover:brightness-105',
+    'bg-otwRed text-otwOffWhite border border-otwRed/40 shadow-otwGlow hover:shadow-otwElevated',
   gold:
-    'bg-gradient-to-b from-otwGold to-[#c5a65a] text-otwBlack border border-otwGold/60 shadow-otwGlow hover:shadow-otwGlow',
+    'bg-otwGold text-otwBlack border border-otwGold/60 shadow-otwGlow hover:shadow-otwElevated',
   ghost:
-    'bg-transparent border border-white/10 hover:border-white/20'
+    'bg-transparent border border-border/60 hover:border-secondary/60'
 };
 
 export default function OtwCard({ variant = 'default', className, children }: Props) {
@@ -29,4 +29,3 @@ export default function OtwCard({ variant = 'default', className, children }: Pr
     </section>
   );
 }
-

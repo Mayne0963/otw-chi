@@ -129,6 +129,12 @@ const DriverLiveMap = ({
               `Location ping failed with status ${pingRes.status}${message ? `: ${message}` : ""}`
             );
           }
+          const pingPayload = (await pingRes.json().catch(() => null)) as
+            | { warning?: string }
+            | null;
+          if (pingPayload?.warning) {
+            setSyncError(pingPayload.warning);
+          }
           const otwRes = await fetch("/api/otw/driver/location", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -208,12 +214,16 @@ const DriverLiveMap = ({
         focusDriverId={driverId}
         drivers={driverLocations}
       />
-      <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70">
+      <div
+        className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-xs text-muted-foreground"
+        role="status"
+        aria-live="polite"
+      >
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-white/80">Location status:</span>
+          <span className="font-medium text-foreground/80">Location status:</span>
           <span>{statusCopy}</span>
           {lastSentAt && (
-            <span className="text-white/60">Last sent {formatTime(lastSentAt)}.</span>
+            <span className="text-muted-foreground">Last sent {formatTime(lastSentAt)}.</span>
           )}
         </div>
         {locationError && <div className="mt-1 text-red-400">{locationError}</div>}

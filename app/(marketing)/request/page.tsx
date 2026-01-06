@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { AddressSearch } from '@/components/ui/address-search';
-import { Loader2, Package, Clock, DollarSign, ArrowRight, MapPin } from 'lucide-react';
+import { Package, Clock, DollarSign, ArrowRight, MapPin } from 'lucide-react';
 import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
 
 export default function RequestPage() {
@@ -168,23 +168,23 @@ export default function RequestPage() {
   };
 
   return (
-    <div className="otw-container otw-section min-h-[80vh] flex flex-col items-center justify-center">
+    <div className="otw-container otw-section min-h-[75vh] flex flex-col items-center justify-center">
       <div className="w-full max-w-lg space-y-8">
-        
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-otwOffWhite">
-            Request a <span className="text-otwGold">Delivery</span>
+        <div className="text-center space-y-3">
+          <span className="otw-pill">Concierge Request</span>
+          <h1 className="text-4xl font-semibold tracking-tight">
+            Request a <span className="text-secondary">Delivery</span>
           </h1>
-          <p className="text-white/60">
+          <p className="text-muted-foreground">
             Premium concierge service at your fingertips.
           </p>
         </div>
 
-        <div className="otw-card p-6 sm:p-8 space-y-6 shadow-2xl shadow-black/50">
+        <div className="otw-card space-y-6 p-6 sm:p-8">
           
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-otwGold/90 ml-1">Pickup Location</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Pickup Location</label>
               <AddressSearch
                 placeholder="Search for pickup address..."
                 enableCurrentLocation
@@ -199,12 +199,12 @@ export default function RequestPage() {
                 className="w-full"
               />
               {pickupAddress && (
-                <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
+                <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{pickupLines?.primary}</div>
                     {pickupLines?.secondary && (
-                      <div className="text-green-600/80">{pickupLines.secondary}</div>
+                      <div className="text-emerald-200/80">{pickupLines.secondary}</div>
                     )}
                   </div>
                 </div>
@@ -212,7 +212,7 @@ export default function RequestPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-otwGold/90 ml-1">Dropoff Destination</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Dropoff Destination</label>
               <AddressSearch
                 placeholder="Search for dropoff address..."
                 enableCurrentLocation
@@ -227,12 +227,12 @@ export default function RequestPage() {
                 className="w-full"
               />
               {dropoffAddress && (
-                <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
+                <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{dropoffLines?.primary}</div>
                     {dropoffLines?.secondary && (
-                      <div className="text-green-600/80">{dropoffLines.secondary}</div>
+                      <div className="text-emerald-200/80">{dropoffLines.secondary}</div>
                     )}
                   </div>
                 </div>
@@ -241,12 +241,12 @@ export default function RequestPage() {
 
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-otwGold/90 ml-1">Service Type</label>
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Service Type</label>
                 <div className="relative">
-                  <Package className="absolute left-3 top-3 h-4 w-4 text-white/40" />
+                  <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <select
                     name="serviceType"
-                    className="flex h-10 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 pl-9 text-sm text-otwOffWhite ring-offset-otwBlack focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-otwGold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
+                    className="flex h-11 w-full appearance-none rounded-lg border border-border/70 bg-input px-3 py-2 pl-9 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 hover:border-secondary/60"
                     value={serviceType}
                     onChange={(e) => setServiceType(e.target.value)}
                   >
@@ -260,11 +260,11 @@ export default function RequestPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-otwGold/90 ml-1">Notes (Optional)</label>
-              <Textarea 
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Notes (Optional)</label>
+              <Textarea
                 name="notes"
                 placeholder="Gate code, specific items, special instructions..."
-                className="bg-black/20 border-white/10 focus:border-otwGold/50 min-h-[80px]"
+                className="min-h-[110px]"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -272,20 +272,20 @@ export default function RequestPage() {
           </div>
 
           {estimate && step === 'estimate' && (
-            <div className="bg-otwGold/10 border border-otwGold/20 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+            <div className="rounded-xl border border-border/70 bg-muted/40 p-4 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-otwGold">
+                <div className="flex items-center gap-2 text-secondary">
                   <DollarSign className="h-5 w-5" />
                   <span className="font-bold text-lg">
                     ${(estimate.priceMin / 100).toFixed(2)}–${(estimate.priceMax / 100).toFixed(2)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-otwOffWhite/80">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="h-4 w-4" />
                   <span className="text-sm font-medium">{estimate.eta}</span>
                 </div>
               </div>
-              <p className="text-xs text-white/40 text-center mt-2">
+              <p className="text-xs text-muted-foreground text-center mt-2">
                 Distance: {estimate.miles} miles • Estimated price range and time window
               </p>
             </div>
@@ -295,21 +295,21 @@ export default function RequestPage() {
             {step === 'form' ? (
               <Button 
                 onClick={getEstimate} 
-                className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 font-bold h-12 text-base shadow-otwGlow"
+                className="w-full"
                 disabled={loading || !pickupAddress || !dropoffAddress}
+                isLoading={loading}
               >
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Get Estimate'}
+                Get Estimate
               </Button>
             ) : (
               <div className="space-y-3">
                 <Button 
                   onClick={handleSubmit} 
-                  className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 font-bold h-12 text-base shadow-otwGlow"
+                  className="w-full"
                   disabled={loading}
+                  isLoading={loading}
                 >
-                  {loading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
+                  {!loading && (
                     <span className="flex items-center gap-2">
                       {isSignedIn ? 'Confirm & Request' : 'Sign In to Request'}
                       <ArrowRight className="h-4 w-4" />
@@ -319,7 +319,7 @@ export default function RequestPage() {
                 <Button 
                   onClick={() => setStep('form')} 
                   variant="ghost" 
-                  className="w-full text-white/50 hover:text-white"
+                  className="w-full text-muted-foreground hover:text-foreground"
                   disabled={loading}
                 >
                   Edit Details
@@ -330,7 +330,7 @@ export default function RequestPage() {
 
         </div>
         
-        <p className="text-center text-xs text-white/30">
+        <p className="text-center text-xs text-muted-foreground">
           By proceeding, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>

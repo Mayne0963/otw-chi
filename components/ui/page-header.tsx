@@ -22,8 +22,8 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8", className)} {...props}>
       <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight text-otwOffWhite">{title}</h1>
-        {subtitle && <p className="text-white/60">{subtitle}</p>}
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground font-display">{title}</h1>
+        {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
       </div>
       {action && (
         <Button asChild variant={action.variant || "default"}>

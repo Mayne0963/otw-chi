@@ -214,12 +214,12 @@ export default async function DriverDashboardPage() {
   }
 
   return (
-      <div className="space-y-8 p-6">
-        <h1 className="text-3xl font-bold text-otwOffWhite">Driver Dashboard</h1>
+      <div className="otw-container otw-section space-y-8">
+        <h1 className="text-3xl font-semibold text-foreground">Driver Dashboard</h1>
 
         <section>
-            <h2 className="text-2xl font-semibold mb-4 text-white">Live Map</h2>
-            <Card className="bg-white/5 border-white/10 text-otwOffWhite">
+            <h2 className="text-2xl font-semibold mb-4 text-foreground">Live Map</h2>
+            <Card className="text-foreground">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Active Route Overview</CardTitle>
                 </CardHeader>
@@ -239,28 +239,28 @@ export default async function DriverDashboardPage() {
         
         {/* Active Jobs */}
         <section>
-            <h2 className="text-2xl font-semibold mb-4 text-otwGold">My Active Jobs</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-secondary">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {assignedRequests.map((req: any) => (
-                    <Card key={req.id} className="bg-otwBlack/40 border-otwGold/50 text-otwOffWhite">
+                    <Card key={req.id} className="text-foreground">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{req.serviceType}</span>
-                                <Badge variant="outline" className="border-otwGold text-otwGold">{req.status.replace('_', ' ')}</Badge>
+                                <Badge variant="outline">{req.status.replace('_', ' ')}</Badge>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2 text-sm mb-4">
                                 <div>
-                                    <span className="text-white/50 block text-xs">Pickup</span>
+                                    <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Pickup</span>
                                 <span>{req.pickupAddress}</span>
                             </div>
                             <div>
-                                <span className="text-white/50 block text-xs">Dropoff</span>
+                                <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Dropoff</span>
                                 <span>{req.dropoffAddress}</span>
                             </div>
                             {req.notes && (
-                                <div className="bg-white/5 p-2 rounded text-xs italic">
+                                <div className="bg-muted/40 p-2 rounded text-xs italic text-foreground/80">
                                     &quot;{req.notes}&quot;
                                 </div>
                             )}
@@ -292,25 +292,25 @@ export default async function DriverDashboardPage() {
                     </Card>
                 ))}
                 {assignedLegacyRequests.map((req: any) => (
-                    <Card key={req.id} className="bg-otwBlack/40 border-otwGold/50 text-otwOffWhite">
+                    <Card key={req.id} className="text-foreground">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{req.serviceType}</span>
-                                <Badge variant="outline" className="border-otwGold text-otwGold">LEGACY {req.status.replace('_', ' ')}</Badge>
+                                <Badge variant="outline">LEGACY {req.status.replace('_', ' ')}</Badge>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2 text-sm mb-4">
                                 <div>
-                                    <span className="text-white/50 block text-xs">Pickup</span>
+                                    <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Pickup</span>
                                     <span>{req.pickup}</span>
                                 </div>
                                 <div>
-                                    <span className="text-white/50 block text-xs">Dropoff</span>
+                                    <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Dropoff</span>
                                     <span>{req.dropoff}</span>
                                 </div>
                                 {req.notes && (
-                                    <div className="bg-white/5 p-2 rounded text-xs italic">
+                                    <div className="bg-muted/40 p-2 rounded text-xs italic text-foreground/80">
                                         &quot;{req.notes}&quot;
                                     </div>
                                 )}
@@ -335,57 +335,57 @@ export default async function DriverDashboardPage() {
                     </Card>
                 ))}
                 {assignedRequests.length === 0 && assignedLegacyRequests.length === 0 && (
-                    <p className="text-white/50 col-span-full py-4 text-center border border-dashed border-white/10 rounded-lg">No active jobs.</p>
+                    <p className="text-muted-foreground col-span-full py-4 text-center border border-dashed border-border/70 rounded-lg">No active jobs.</p>
                 )}
             </div>
         </section>
 
         {/* Available Jobs */}
         <section>
-            <h2 className="text-2xl font-semibold mb-4 text-white">Available Jobs</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-foreground">Available Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {availableRequests.map((req: any) => (
-                    <Card key={req.id} className="bg-white/5 border-white/10 text-otwOffWhite hover:bg-white/10 transition-colors">
+                    <Card key={req.id} className="text-foreground">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{req.serviceType}</span>
-                                <span className="text-xs uppercase tracking-wide text-white/60">Quote pending</span>
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Quote pending</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-white/60 mb-4">
+                            <p className="text-sm text-muted-foreground mb-4">
                                 {req.pickupAddress} <span className="text-otwGold">→</span> {req.dropoffAddress}
                             </p>
                             <form action={acceptRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />
                                 <input type="hidden" name="driverId" value={driverProfile.id} />
-                                <Button type="submit" variant="secondary" className="w-full hover:bg-otwGold hover:text-otwBlack">Accept Job</Button>
+                                <Button type="submit" variant="secondary" className="w-full">Accept Job</Button>
                             </form>
                         </CardContent>
                     </Card>
                 ))}
                 {availableLegacyRequests.map((req: any) => (
-                    <Card key={req.id} className="bg-white/5 border-white/10 text-otwOffWhite hover:bg-white/10 transition-colors">
+                    <Card key={req.id} className="text-foreground">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{req.serviceType}</span>
-                                <span className="text-xs uppercase tracking-wide text-white/60">Legacy</span>
+                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Legacy</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-white/60 mb-4">
+                            <p className="text-sm text-muted-foreground mb-4">
                                 {req.pickup} <span className="text-otwGold">→</span> {req.dropoff}
                             </p>
                             <form action={acceptLegacyRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />
                                 <input type="hidden" name="driverId" value={driverProfile.id} />
-                                <Button type="submit" variant="secondary" className="w-full hover:bg-otwGold hover:text-otwBlack">Accept Job</Button>
+                                <Button type="submit" variant="secondary" className="w-full">Accept Job</Button>
                             </form>
                         </CardContent>
                     </Card>
                 ))}
                 {availableRequests.length === 0 && availableLegacyRequests.length === 0 && (
-                    <p className="text-white/50 col-span-full py-4 text-center border border-dashed border-white/10 rounded-lg">No jobs available right now.</p>
+                    <p className="text-muted-foreground col-span-full py-4 text-center border border-dashed border-border/70 rounded-lg">No jobs available right now.</p>
                 )}
             </div>
         </section>

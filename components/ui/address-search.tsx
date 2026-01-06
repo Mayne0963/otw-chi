@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 import { Search, MapPin, AlertCircle, LocateFixed, ExternalLink, Info } from "lucide-react";
@@ -80,6 +80,7 @@ export function AddressSearch({
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const errorId = useId();
   const platformHint = getPlatformHint();
 
   // Close dropdown when clicking outside
@@ -228,18 +229,20 @@ export function AddressSearch({
   return (
     <div ref={wrapperRef} className={cn("relative w-full", className)}>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setIsOpen(true)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           placeholder={placeholder}
           className={cn(
-            "w-full rounded-xl border border-white/10 bg-black/20 py-2 pl-10 pr-10 text-sm text-otwOffWhite ring-offset-otwBlack",
-            "placeholder:text-white/40",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-otwGold focus-visible:ring-offset-2",
+            "w-full rounded-lg border border-border/70 bg-input py-2.5 pl-10 pr-10 text-sm text-foreground shadow-sm ring-offset-background transition-colors duration-300",
+            "placeholder:text-muted-foreground",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             "disabled:cursor-not-allowed disabled:opacity-50",
             enableCurrentLocation && "pr-20",
             error && "border-red-500"
@@ -266,14 +269,14 @@ export function AddressSearch({
               enableCurrentLocation ? "right-12" : "right-3"
             )}
           >
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent motion-reduce:animate-none" />
           </div>
         )}
       </div>
 
       {enableCurrentLocation && locationPref === "deny" && (
-        <div className="mt-2 flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-white/70">
-          <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-white/60" />
+        <div className="mt-2 flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 p-2 text-xs text-muted-foreground">
+          <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
           <div>
             Location access is off. Enter your address manually, or use “Use current location” to review options.
           </div>
@@ -291,18 +294,18 @@ export function AddressSearch({
         }}
       >
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-otwBlack p-5 text-otwOffWhite shadow-2xl shadow-black/60 focus:outline-none">
-            <Dialog.Title className="text-base font-semibold">
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border/70 bg-card/95 p-6 text-foreground shadow-otwElevated backdrop-blur-xl focus:outline-none">
+            <Dialog.Title className="text-base font-semibold text-foreground">
               Use your current location?
             </Dialog.Title>
-            <Dialog.Description className="mt-1 text-sm text-white/70">
+            <Dialog.Description className="mt-1 text-sm text-muted-foreground">
               We use your location to suggest and verify an address (service-area check) and to improve delivery accuracy.
             </Dialog.Description>
 
-            <div className="mt-4 space-y-3 text-sm text-white/70">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="font-medium text-otwOffWhite">What happens if you allow</div>
+            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+                <div className="font-medium text-foreground">What happens if you allow</div>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   <li>We request your device location only after you tap Allow.</li>
                   <li>We convert it to an address on-device and show it for confirmation.</li>
@@ -312,7 +315,7 @@ export function AddressSearch({
 
               <button
                 type="button"
-                className="inline-flex items-center gap-2 text-sm text-otwGold hover:underline"
+                className="inline-flex items-center gap-2 text-sm text-secondary hover:underline"
                 onClick={() => setLearnMoreOpen((prev) => !prev)}
                 aria-expanded={learnMoreOpen}
               >
@@ -321,8 +324,8 @@ export function AddressSearch({
               </button>
 
               {learnMoreOpen && (
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70">
-                  <div className="font-medium text-otwOffWhite">Privacy details</div>
+                <div className="rounded-xl border border-border/70 bg-muted/40 p-3 text-xs text-muted-foreground">
+                  <div className="font-medium text-foreground">Privacy details</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5">
                     <li>Consent-based: you control whether location is used.</li>
                     <li>Data minimization: we use a one-time lookup to suggest an address.</li>
@@ -330,7 +333,7 @@ export function AddressSearch({
                     <li>Control: you can revoke access anytime in your browser/device settings.</li>
                   </ul>
                   <div className="mt-3">
-                    <Link href="/privacy" className="text-otwGold hover:underline">
+                    <Link href="/privacy" className="text-secondary hover:underline">
                       View Privacy Policy
                     </Link>
                   </div>
@@ -361,7 +364,7 @@ export function AddressSearch({
                   setLearnMoreOpen(false);
                 }}
                 disabled={locationBusy}
-                className="border-white/10"
+                className="border-border/70"
               >
                 {platformHint === "ios" ? "Don’t Allow" : "Deny"}
               </Button>
@@ -382,14 +385,18 @@ export function AddressSearch({
       </Dialog.Root>
 
       {error && (
-        <div className="mt-1 flex items-center gap-1 text-sm text-red-500">
+        <div
+          id={errorId}
+          className="mt-1 flex items-center gap-1 text-sm text-red-400"
+          role="alert"
+        >
           <AlertCircle className="h-3 w-3" />
           <span>{error}</span>
         </div>
       )}
 
       {isOpen && results.length > 0 && (
-        <div className="absolute z-50 mt-1 max-h-[300px] w-full overflow-auto rounded-xl border border-white/10 bg-otwBlack/95 shadow-2xl shadow-black/60">
+        <div className="absolute z-50 mt-1 max-h-[300px] w-full overflow-auto rounded-xl border border-border/70 bg-card/95 shadow-otwElevated backdrop-blur">
           {results.map((address, index) => {
             const lines = formatAddressLines(address);
             return (
@@ -398,18 +405,18 @@ export function AddressSearch({
               type="button"
               onClick={() => handleSelect(address)}
               className={cn(
-                "flex w-full items-start gap-3 px-4 py-3 text-left text-sm text-otwOffWhite transition-colors",
-                "hover:bg-white/10",
-                selectedIndex === index && "bg-white/10"
+                "flex w-full items-start gap-3 px-4 py-3 text-left text-sm text-foreground transition-colors duration-300",
+                "hover:bg-muted/50",
+                selectedIndex === index && "bg-muted/60"
               )}
             >
-              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-otwGold/80" />
+              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-secondary/80" />
               <div className="flex-1 space-y-1">
                 <div className="font-medium">{lines.primary}</div>
                 {lines.secondary && (
-                  <div className="text-xs text-white/60">{lines.secondary}</div>
+                  <div className="text-xs text-muted-foreground">{lines.secondary}</div>
                 )}
-                <div className="text-xs text-green-500">
+                <div className="text-xs text-emerald-300">
                   ✓ {address.distanceFromFortWayne} miles from Fort Wayne
                 </div>
               </div>
@@ -420,8 +427,8 @@ export function AddressSearch({
       )}
 
       {isOpen && !isLoading && query.trim().length >= 3 && results.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-white/10 bg-otwBlack/95 p-4 text-center text-sm text-white/60 shadow-2xl shadow-black/60">
-          <AlertCircle className="mx-auto mb-2 h-5 w-5 text-white/50" />
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/70 bg-card/95 p-4 text-center text-sm text-muted-foreground shadow-otwElevated backdrop-blur">
+          <AlertCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
           <p>No addresses found within 25 miles of Fort Wayne.</p>
           <p className="mt-1 text-xs">Please try a different address.</p>
         </div>

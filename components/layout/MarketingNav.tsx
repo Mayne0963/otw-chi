@@ -16,25 +16,25 @@ function NavLinks() {
     <>
       <Link 
         href="/pricing" 
-        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
+        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
         Memberships
       </Link>
       <Link 
         href="/driver/apply" 
-        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
+        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
         Apply Today
       </Link>
       <Link 
         href="/franchise/apply" 
-        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
+        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
         Franchise
       </Link>
       <Link 
         href="/request" 
-        className="text-sm font-medium text-otwOffWhite/80 hover:text-otwGold transition-colors"
+        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
         Request a Service
       </Link>
@@ -44,12 +44,12 @@ function NavLinks() {
 
 export function MarketingNav() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-otwBlack/80 backdrop-blur supports-[backdrop-filter]:bg-otwBlack/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="otw-container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-otwGold">
+          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-secondary">
             <span>OTW</span>
-            <span className="hidden sm:inline-block text-white text-sm font-normal opacity-80">On The Way</span>
+            <span className="hidden sm:inline-block text-foreground/70 text-sm font-normal">On The Way</span>
           </Link>
         </div>
 
@@ -60,23 +60,23 @@ export function MarketingNav() {
 
         <div className="flex items-center gap-3">
           <SignedIn>
-            <Button asChild variant="ghost" size="sm" className="hidden sm:flex hover:text-otwGold hover:bg-otwGold/10">
+            <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
               <Link href="/dashboard">Dashboard</Link>
             </Button>
-            <Button asChild size="sm" className="hidden sm:flex bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
+            <Button asChild size="sm" className="hidden sm:flex">
               <Link href="/order">Order Now</Link>
             </Button>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           
           <SignedOut>
-            <Button asChild variant="ghost" size="sm" className="hidden md:flex text-otwOffWhite hover:text-otwGold hover:bg-white/5">
+            <Button asChild variant="ghost" size="sm" className="hidden md:flex">
               <Link href="/sign-in">Sign In</Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="hidden md:flex border-otwGold text-otwGold hover:bg-otwGold/10">
+            <Button asChild variant="outline" size="sm" className="hidden md:flex">
               <Link href="/order">Order Now</Link>
             </Button>
-            <Button asChild size="sm" className="bg-otwGold text-otwBlack hover:bg-otwGold/90 shadow-otwGlow">
+            <Button asChild size="sm">
               <Link href="/sign-up">Get Started</Link>
             </Button>
           </SignedOut>
@@ -85,49 +85,49 @@ export function MarketingNav() {
           <div className="md:hidden ml-2">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-otwOffWhite hover:bg-white/10">
+                <Button variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] border-l border-white/10 bg-otwBlack/95 backdrop-blur-xl text-otwOffWhite sm:w-[350px]">
-                <SheetHeader className="text-left border-b border-white/10 pb-4 mb-4">
-                  <SheetTitle className="text-otwGold">Menu</SheetTitle>
+              <SheetContent side="right" className="w-[300px] border-l border-border/70 bg-card/95 backdrop-blur-xl text-foreground sm:w-[350px]">
+                <SheetHeader className="text-left border-b border-border/70 pb-4 mb-4">
+                  <SheetTitle className="text-secondary">Menu</SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col gap-6">
                   <nav className="flex flex-col gap-4">
                     <SheetClose asChild>
-                      <Link href="/how-it-works" className="text-lg font-medium hover:text-otwGold transition-colors">
+                      <Link href="/how-it-works" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
                         How It Works
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link href="/pricing" className="text-lg font-medium hover:text-otwGold transition-colors">
+                      <Link href="/pricing" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
                         Pricing
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link href="/driver/apply" className="text-lg font-medium hover:text-otwGold transition-colors">
+                      <Link href="/driver/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
                         Drive
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link href="/franchise/apply" className="text-lg font-medium hover:text-otwGold transition-colors">
+                      <Link href="/franchise/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
                         Franchise
                       </Link>
                     </SheetClose>
                   </nav>
                   
-                  <div className="flex flex-col gap-3 pt-4 border-t border-white/10">
+                  <div className="flex flex-col gap-3 pt-4 border-t border-border/70">
                     <SheetClose asChild>
-                      <Button asChild className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90">
+                      <Button asChild className="w-full">
                         <Link href="/order">Order Now</Link>
                       </Button>
                     </SheetClose>
                     
                     <SignedOut>
                       <SheetClose asChild>
-                        <Button asChild variant="outline" className="w-full border-white/20 hover:bg-white/5 hover:text-otwGold">
+                        <Button asChild variant="outline" className="w-full">
                           <Link href="/sign-in">Sign In</Link>
                         </Button>
                       </SheetClose>
@@ -135,7 +135,7 @@ export function MarketingNav() {
                     
                     <SignedIn>
                       <SheetClose asChild>
-                        <Button asChild variant="outline" className="w-full border-white/20 hover:bg-white/5 hover:text-otwGold">
+                        <Button asChild variant="outline" className="w-full">
                           <Link href="/dashboard">Dashboard</Link>
                         </Button>
                       </SheetClose>

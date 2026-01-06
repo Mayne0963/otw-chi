@@ -12,23 +12,23 @@ interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  'inline-flex items-center justify-center rounded-2xl font-semibold transition transform focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-otwGold focus-visible:ring-offset-otwBlack';
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-otwGold focus-visible:ring-offset-otwBlack active:translate-y-0.5';
 
 const sizes: Record<Size, string> = {
-  sm: 'px-3 py-2 text-sm',
+  sm: 'px-3 py-2 text-xs',
   md: 'px-4 py-3 text-sm',
-  lg: 'px-5 py-3.5 text-base'
+  lg: 'px-6 py-3.5 text-base'
 };
 
 const variants: Record<Variant, string> = {
   gold:
-    'bg-gradient-to-b from-otwGold to-[#c5a65a] text-otwBlack shadow-otwGlow hover:brightness-105',
+    'bg-otwGold text-otwBlack shadow-otwGlow hover:bg-otwGold/90',
   red:
-    'bg-gradient-to-b from-otwRed to-otwRedDark text-otwOffWhite shadow-otwSoft hover:brightness-110',
+    'bg-otwRed text-otwOffWhite shadow-otwSoft hover:bg-otwRed/90',
   ghost:
-    'bg-transparent text-otwOffWhite/90 hover:text-otwOffWhite border border-white/10',
+    'bg-transparent text-otwOffWhite/90 border border-white/10 hover:bg-white/5',
   outline:
-    'bg-transparent text-otwGold border border-otwGold hover:bg-otwGold/10'
+    'bg-transparent text-otwGold border border-otwGold/50 hover:bg-otwGold/10'
 };
 
 export default function OtwButton({
@@ -56,4 +56,3 @@ export default function OtwButton({
     </button>
   );
 }
-

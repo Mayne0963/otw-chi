@@ -33,9 +33,9 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
 
   if (!order) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Order Not Found</h1>
-        <p className="text-white/60">We could not find the order you requested.</p>
+      <div className="otw-container otw-section space-y-6">
+        <h1 className="text-3xl font-semibold">Order Not Found</h1>
+        <p className="text-muted-foreground">We could not find the order you requested.</p>
       </div>
     );
   }
@@ -46,9 +46,9 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
 
   if (!isOwner && !isAssignedDriver && !isAdmin) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Access Denied</h1>
-        <p className="text-white/60">You are not authorized to view this order.</p>
+      <div className="otw-container otw-section space-y-6">
+        <h1 className="text-3xl font-semibold">Access Denied</h1>
+        <p className="text-muted-foreground">You are not authorized to view this order.</p>
       </div>
     );
   }
@@ -66,39 +66,37 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
     receiptItemsTotal + (order.deliveryFeeCents ?? 0) - (order.discountCents ?? 0);
 
   return (
-    <div className="space-y-6">
+    <div className="otw-container otw-section space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Order Status</h1>
-        <p className="text-white/60">Order ID {order.id.slice(-6).toUpperCase()}</p>
+        <h1 className="text-3xl font-semibold">Order Status</h1>
+        <p className="text-muted-foreground">Order ID {order.id.slice(-6).toUpperCase()}</p>
       </div>
 
-      <Card className="bg-white/5 border-white/10 text-otwOffWhite">
+      <Card className="text-foreground">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Status</span>
-            <Badge variant="secondary" className="bg-otwGold text-otwBlack">
-              {statusLabel}
-            </Badge>
+            <Badge variant="secondary">{statusLabel}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <div className="text-sm text-white/50">Service Type</div>
+            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Service Type</div>
             <div className="text-base font-medium">{order.serviceType}</div>
           </div>
-          <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+          <div className="space-y-3 rounded-xl border border-border/70 bg-muted/40 p-4">
             <div>
-              <div className="text-xs text-white/50">Pickup</div>
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pickup</div>
               <div className="text-sm font-medium">{order.pickupAddress}</div>
             </div>
             <div>
-              <div className="text-xs text-white/50">Dropoff</div>
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Dropoff</div>
               <div className="text-sm font-medium">{order.dropoffAddress}</div>
             </div>
             {order.notes && (
               <div>
-                <div className="text-xs text-white/50">Notes</div>
-                <div className="text-sm text-white/80">{order.notes}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Notes</div>
+                <div className="text-sm text-foreground/80">{order.notes}</div>
               </div>
             )}
           </div>
@@ -106,33 +104,33 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
       </Card>
 
       {order.serviceType === ServiceType.FOOD && (
-        <Card className="bg-white/5 border-white/10 text-otwOffWhite">
+        <Card className="text-foreground">
           <CardHeader>
             <CardTitle>Food Pickup &amp; Receipt</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <div className="text-xs text-white/50">Restaurant</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Restaurant</div>
                 <div className="text-sm font-medium">
                   {order.restaurantName || order.receiptVendor || 'Restaurant not provided'}
                 </div>
                 {order.receiptLocation && (
-                  <div className="text-xs text-white/60">{order.receiptLocation}</div>
+                  <div className="text-xs text-muted-foreground">{order.receiptLocation}</div>
                 )}
                 {order.restaurantWebsite && (
                   <a
                     href={order.restaurantWebsite}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs text-otwGold inline-flex items-center gap-1"
+                    className="text-xs text-secondary inline-flex items-center gap-1"
                   >
                     Visit menu <ArrowUpRight className="h-3 w-3" />
                   </a>
                 )}
               </div>
               {typeof order.receiptAuthenticityScore === 'number' && (
-                <Badge className="flex items-center gap-1 bg-green-900 text-green-200">
+                <Badge variant="success" className="flex items-center gap-1">
                   {order.receiptAuthenticityScore >= 0.65 ? (
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   ) : (
@@ -143,39 +141,39 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
               )}
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-              <div className="text-xs text-white/50 mb-2">Receipt items</div>
+            <div className="rounded-xl border border-border/70 bg-muted/40 p-3">
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">Receipt items</div>
               {receiptItems.length > 0 ? (
                 <div className="space-y-2">
                   {receiptItems.map((item, idx) => (
                     <div key={`${item.name}-${idx}`} className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="text-white/70">{item.name}</span>
-                        <span className="text-white/40">×{item.quantity || 1}</span>
+                        <span className="text-foreground/70">{item.name}</span>
+                        <span className="text-muted-foreground">×{item.quantity || 1}</span>
                       </div>
                       <span className="text-otwGold">
                         {formatCurrency(typeof item.price === 'number' ? Math.round((item.price || 0) * 100) : null)}
                       </span>
                     </div>
                   ))}
-                  <div className="flex items-center justify-between border-t border-white/10 pt-2 text-sm font-semibold">
-                    <span className="text-white/70">Items total</span>
+                  <div className="flex items-center justify-between border-t border-border/70 pt-2 text-sm font-semibold">
+                    <span className="text-foreground/70">Items total</span>
                     <span className="text-green-300">
                       {formatCurrency(receiptItemsTotal)}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-white/60">Receipt upload pending.</div>
+                <div className="text-sm text-muted-foreground">Receipt upload pending.</div>
               )}
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/40 p-3">
               <div>
-                <div className="text-xs text-white/50">Delivery fee</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Delivery fee</div>
                 <div className="text-sm font-semibold">{formatCurrency(order.deliveryFeeCents)}</div>
               </div>
-              <Badge className={order.deliveryFeePaid ? 'bg-green-900 text-green-200' : 'bg-orange-900 text-orange-100'}>
+              <Badge variant={order.deliveryFeePaid ? 'success' : 'warning'}>
                 {order.deliveryFeePaid ? 'Paid' : 'Awaiting payment'}
               </Badge>
             </div>
@@ -194,20 +192,20 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
               </div>
             ) : null}
 
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/40 p-3">
               <div>
-                <div className="text-xs text-white/50">Order total</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Order total</div>
                 <div className="text-sm font-semibold">{formatCurrency(orderTotalCents)}</div>
               </div>
             </div>
 
             {order.receiptImageData && (
               <div className="space-y-2">
-                <div className="text-xs text-white/50">Receipt preview</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Receipt preview</div>
                 <img
                   src={order.receiptImageData}
                   alt="Uploaded receipt"
-                  className="w-full max-w-2xl rounded-lg border border-white/10 shadow-lg"
+                  className="w-full max-w-2xl rounded-lg border border-border/70 shadow-otwSoft"
                 />
               </div>
             )}
@@ -215,7 +213,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
         </Card>
       )}
 
-      <Card className="bg-white/5 border-white/10 text-otwOffWhite">
+      <Card className="text-foreground">
         <CardHeader>
           <CardTitle>Driver</CardTitle>
         </CardHeader>
@@ -227,25 +225,25 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
         </CardContent>
       </Card>
 
-      <Card className="bg-white/5 border-white/10 text-otwOffWhite">
+      <Card className="text-foreground">
         <CardHeader>
           <CardTitle>Live Tracking</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {order.lastKnownLat && order.lastKnownLng ? (
-            <div className="space-y-1 text-sm text-white/70">
+            <div className="space-y-1 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-otwGold" />
                 <span>
                   {order.lastKnownLat.toFixed(4)}, {order.lastKnownLng.toFixed(4)}
                 </span>
               </div>
-              <div className="text-xs text-white/50">
+              <div className="text-xs text-muted-foreground">
                 Last update {formatDate(order.lastKnownAt || new Date())}
               </div>
             </div>
           ) : (
-            <div className="text-sm text-white/60">Waiting for driver location updates.</div>
+            <div className="text-sm text-muted-foreground">Waiting for driver location updates.</div>
           )}
         </CardContent>
       </Card>

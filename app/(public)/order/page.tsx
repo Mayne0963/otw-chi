@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { AddressSearch } from "@/components/ui/address-search";
-import { ArrowRight, CheckCircle2, CreditCard, ExternalLink, Loader2, MapPin, Package, Upload, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, CreditCard, ExternalLink, MapPin, Package, Upload, X } from "lucide-react";
 import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
 import { parseReceiptText, type ReceiptItem } from "@/lib/receipts/parse";
 
@@ -818,21 +818,21 @@ export default function OrderPage() {
   }
 
   const detailSummary = (
-    <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/40 p-4">
       <div>
-        <div className="text-xs text-white/50">Pickup</div>
+        <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pickup</div>
         <div className="text-sm font-medium">{pickupLines?.primary}</div>
-        {pickupLines?.secondary && <div className="text-xs text-white/50">{pickupLines.secondary}</div>}
+        {pickupLines?.secondary && <div className="text-xs text-muted-foreground">{pickupLines.secondary}</div>}
       </div>
       <div>
-        <div className="text-xs text-white/50">Dropoff</div>
+        <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Dropoff</div>
         <div className="text-sm font-medium">{dropoffLines?.primary}</div>
-        {dropoffLines?.secondary && <div className="text-xs text-white/50">{dropoffLines.secondary}</div>}
+        {dropoffLines?.secondary && <div className="text-xs text-muted-foreground">{dropoffLines.secondary}</div>}
       </div>
       {notes.trim() && (
         <div>
-          <div className="text-xs text-white/50">Notes</div>
-          <div className="text-sm text-white/80">{notes}</div>
+          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Notes</div>
+          <div className="text-sm text-foreground/80">{notes}</div>
         </div>
       )}
     </div>
@@ -846,28 +846,29 @@ export default function OrderPage() {
   }[step];
 
   return (
-    <div className="otw-container otw-section min-h-[80vh] flex flex-col items-center justify-center">
+    <div className="otw-container otw-section min-h-[75vh] flex flex-col items-center justify-center">
       <div className="w-full max-w-4xl space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-otwOffWhite">
-            Request a <span className="text-otwGold">Delivery</span>
+        <div className="text-center space-y-3">
+          <span className="otw-pill">Customer Request</span>
+          <h1 className="text-4xl font-semibold tracking-tight">
+            Request a <span className="text-secondary">Delivery</span>
           </h1>
-          <p className="text-white/60">Tell us what you need - we will handle the rest.</p>
+          <p className="text-muted-foreground">Tell us what you need - we will handle the rest.</p>
         </div>
 
-        <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-wide text-white/50">
-          <Badge variant="outline" className="border-white/20 text-white/80 bg-white/5">
+        <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+          <Badge variant="outline" className="border-border/70 bg-muted/40 text-muted-foreground">
             {SERVICE_LABELS[serviceType] || serviceType}
           </Badge>
           <span>•</span>
-          <span className="text-white/60">{stepLabel}</span>
+          <span className="text-muted-foreground">{stepLabel}</span>
         </div>
 
-        <div className="otw-card p-6 sm:p-8 space-y-6 shadow-2xl shadow-black/50">
+        <div className="otw-card p-6 sm:p-8 space-y-6">
           {step === "details" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-otwGold/90 ml-1">Pickup Address</label>
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Pickup Address</label>
                 <AddressSearch
                   placeholder="Search for pickup address..."
                   enableCurrentLocation
@@ -882,12 +883,12 @@ export default function OrderPage() {
                   className="w-full"
                 />
                 {pickupAddress && (
-                  <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
+                  <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
                     <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <div className="font-medium">{pickupLines?.primary}</div>
                       {pickupLines?.secondary && (
-                        <div className="text-green-600/80">{pickupLines.secondary}</div>
+                        <div className="text-emerald-200/80">{pickupLines.secondary}</div>
                       )}
                     </div>
                   </div>
@@ -895,7 +896,7 @@ export default function OrderPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-otwGold/90 ml-1">Dropoff Address</label>
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Dropoff Address</label>
                 <AddressSearch
                   placeholder="Search for dropoff address..."
                   enableCurrentLocation
@@ -910,12 +911,12 @@ export default function OrderPage() {
                   className="w-full"
                 />
                 {dropoffAddress && (
-                  <div className="flex items-start gap-2 text-xs text-green-600 bg-green-950/30 border border-green-900/50 rounded-lg p-2">
+                  <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
                     <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <div className="font-medium">{dropoffLines?.primary}</div>
                       {dropoffLines?.secondary && (
-                        <div className="text-green-600/80">{dropoffLines.secondary}</div>
+                        <div className="text-emerald-200/80">{dropoffLines.secondary}</div>
                       )}
                     </div>
                   </div>
@@ -923,12 +924,12 @@ export default function OrderPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-otwGold/90 ml-1">Service Type</label>
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Service Type</label>
                 <div className="relative">
-                  <Package className="absolute left-3 top-3 h-4 w-4 text-white/40" />
+                  <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <select
                     name="serviceType"
-                    className="flex h-10 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 pl-9 text-sm text-otwOffWhite ring-offset-otwBlack focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-otwGold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
+                    className="flex h-11 w-full appearance-none rounded-lg border border-border/70 bg-input px-3 py-2 pl-9 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 hover:border-secondary/60"
                     value={serviceType}
                     onChange={(e) => setServiceType(e.target.value)}
                   >
@@ -941,11 +942,11 @@ export default function OrderPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-otwGold/90 ml-1">Notes (Optional)</label>
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Notes (Optional)</label>
                 <Textarea
                   name="notes"
                   placeholder="Gate code, special instructions, order details..."
-                  className="bg-black/20 border-white/10 focus:border-otwGold/50 min-h-[80px]"
+                  className="min-h-[110px]"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
@@ -954,7 +955,7 @@ export default function OrderPage() {
               <div className="pt-2">
                 <Button
                   onClick={goToNextStep}
-                  className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 font-bold h-12 text-base shadow-otwGlow"
+                  className="w-full"
                   disabled={loading || !pickupAddress || !dropoffAddress}
                 >
                   Continue <ArrowRight className="ml-2 h-4 w-4" />
@@ -966,27 +967,25 @@ export default function OrderPage() {
           {step === "restaurant" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm text-white/60">Food pickup flow</div>
-                <Badge className="bg-otwGold/20 text-otwGold">Receipt required</Badge>
+                <div className="text-sm text-muted-foreground">Food pickup flow</div>
+                <Badge variant="secondary">Receipt required</Badge>
               </div>
               {detailSummary}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-otwGold/90 ml-1">Restaurant Name</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Restaurant Name</label>
                   <Input
                     value={restaurantName}
                     onChange={(e) => setRestaurantName(e.target.value)}
                     placeholder="e.g., Local Burger House"
-                    className="bg-black/20 border-white/10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-otwGold/90 ml-1">Restaurant Website</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Restaurant Website</label>
                   <Input
                     value={restaurantWebsite}
                     onChange={(e) => setRestaurantWebsite(e.target.value)}
                     placeholder="https://restaurant-menu.com"
-                    className="bg-black/20 border-white/10"
                     type="url"
                   />
                 </div>
@@ -1005,7 +1004,7 @@ export default function OrderPage() {
                 </Button>
                 <Button
                   onClick={() => setStep("receipt")}
-                  className="bg-otwGold text-otwBlack hover:bg-otwGold/90 gap-2"
+                  className="gap-2"
                   disabled={!pickupAddress || !dropoffAddress}
                 >
                   Upload receipt <ArrowRight className="h-4 w-4" />
@@ -1013,7 +1012,7 @@ export default function OrderPage() {
                 <Button
                   onClick={() => setStep("details")}
                   variant="ghost"
-                  className="text-white/60 hover:text-white"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   Back to details
                 </Button>
@@ -1023,13 +1022,13 @@ export default function OrderPage() {
 
           {step === "receipt" && (
             <div className="space-y-5">
-              <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-sm text-white/70 space-y-2">
-                <p className="font-semibold text-otwOffWhite">Upload your paid receipt</p>
+              <div className="rounded-lg border border-border/70 bg-muted/40 p-4 text-sm text-muted-foreground space-y-2">
+                <p className="font-semibold text-foreground">Upload your paid receipt</p>
                 <p>We will check that it looks real, pull the restaurant name, location, and the items you purchased. You can edit anything we find.</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/20 px-4 py-3 text-sm text-white/80 hover:border-otwGold/70 hover:text-otwGold">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border/70 px-4 py-3 text-sm text-muted-foreground transition-colors duration-300 hover:border-secondary/70 hover:text-secondary">
                   <Upload className="h-4 w-4" />
                   <span>{receiptFile ? receiptFile.name : "Upload receipt image"}</span>
                   <input
@@ -1040,12 +1039,16 @@ export default function OrderPage() {
                   />
                 </label>
                 {receiptFile && (
-                  <Button variant="ghost" size="sm" className="text-white/60" onClick={resetReceipt}>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={resetReceipt}>
                     <X className="mr-1 h-4 w-4" />Clear
                   </Button>
                 )}
-                <Button onClick={analyzeReceipt} disabled={!receiptFile || analysisLoading} className="gap-2">
-                  {analysisLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                <Button
+                  onClick={analyzeReceipt}
+                  disabled={!receiptFile || analysisLoading}
+                  className="gap-2"
+                  isLoading={analysisLoading}
+                >
                   Run AI receipt check
                 </Button>
               </div>
@@ -1054,17 +1057,17 @@ export default function OrderPage() {
 
               {receiptPreview && (
                 <div className="space-y-2">
-                  <div className="text-xs text-white/50">Receipt preview</div>
+                  <div className="text-xs text-muted-foreground">Receipt preview</div>
                   <img
                     src={receiptPreview}
                     alt="Receipt preview"
-                    className="w-full max-w-2xl rounded-lg border border-white/10"
+                    className="w-full max-w-2xl rounded-lg border border-border/70"
                   />
                 </div>
               )}
 
       {receiptAnalysis && (
-        <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
+        <div className="space-y-4 rounded-lg border border-border/70 bg-muted/40 p-4">
           {receiptAnalysis.authenticityScore < AUTHENTICITY_THRESHOLD && (
             <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
               This receipt didn’t pass our 85% authenticity check. Please upload a clearer photo or verify the details.
@@ -1072,35 +1075,33 @@ export default function OrderPage() {
           )}
           <div className="flex items-start justify-between gap-3">
             <div>
-                      <div className="text-xs text-white/50">Detected restaurant</div>
-                      <Input
-                        value={receiptAnalysis.vendorName}
-                        onChange={(e) =>
-                          setReceiptAnalysis((prev) => (prev ? { ...prev, vendorName: e.target.value } : prev))
-                        }
-                        className="bg-black/30 border-white/10"
-                      />
-                    </div>
-                    <Badge className="bg-green-900 text-green-200 flex items-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {(receiptAnalysis.authenticityScore * 100).toFixed(0)}% real
-                    </Badge>
-                  </div>
-                  <div>
-                    <div className="text-xs text-white/50 mb-1">Pickup location on receipt</div>
-                    <Input
-                      value={receiptAnalysis.location}
-                      onChange={(e) =>
-                        setReceiptAnalysis((prev) => (prev ? { ...prev, location: e.target.value } : prev))
-                      }
-                      className="bg-black/30 border-white/10"
-                    />
-                  </div>
+              <div className="text-xs text-muted-foreground">Detected restaurant</div>
+              <Input
+                value={receiptAnalysis.vendorName}
+                onChange={(e) =>
+                  setReceiptAnalysis((prev) => (prev ? { ...prev, vendorName: e.target.value } : prev))
+                }
+              />
+            </div>
+            <Badge variant="success" className="flex items-center gap-1">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {(receiptAnalysis.authenticityScore * 100).toFixed(0)}% real
+            </Badge>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-1">Pickup location on receipt</div>
+            <Input
+              value={receiptAnalysis.location}
+              onChange={(e) =>
+                setReceiptAnalysis((prev) => (prev ? { ...prev, location: e.target.value } : prev))
+              }
+            />
+          </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white/50">Items</div>
-                      <Button variant="outline" size="sm" onClick={addReceiptItem} className="border-white/20 text-white/80">
+                      <div className="text-xs text-muted-foreground">Items</div>
+                      <Button variant="outline" size="sm" onClick={addReceiptItem}>
                         Add item
                       </Button>
                     </div>
@@ -1110,14 +1111,14 @@ export default function OrderPage() {
                           <Input
                             value={item.name}
                             onChange={(e) => updateReceiptItem(idx, "name", e.target.value)}
-                            className="col-span-6 bg-black/30 border-white/10"
+                            className="col-span-6"
                           />
                           <Input
                             type="number"
                             min={1}
                             value={item.quantity}
                             onChange={(e) => updateReceiptItem(idx, "quantity", e.target.value)}
-                            className="col-span-2 bg-black/30 border-white/10"
+                            className="col-span-2"
                           />
                           <Input
                             type="number"
@@ -1125,7 +1126,7 @@ export default function OrderPage() {
                             step={0.01}
                             value={item.price}
                             onChange={(e) => updateReceiptItem(idx, "price", e.target.value)}
-                            className="col-span-3 bg-black/30 border-white/10"
+                            className="col-span-3"
                           />
                           <span className="col-span-1 text-right text-otwGold text-sm">
                             {formatCurrency(Math.round(item.price * 100) * Math.max(1, item.quantity))}
@@ -1134,8 +1135,8 @@ export default function OrderPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between border-t border-white/10 pt-3 text-sm">
-                    <span className="text-white/60">Items total</span>
+                  <div className="flex items-center justify-between border-t border-border/70 pt-3 text-sm">
+                    <span className="text-muted-foreground">Items total</span>
                     <span className="text-green-300 font-semibold">{formatCurrency(receiptSubtotalCents)}</span>
                   </div>
                 </div>
@@ -1144,7 +1145,7 @@ export default function OrderPage() {
               <div className="flex flex-wrap gap-3 pt-2">
                 <Button
                   onClick={() => setStep("review")}
-                  className="bg-otwGold text-otwBlack hover:bg-otwGold/90"
+                  className="gap-2"
                   disabled={!receiptAnalysis}
                 >
                   Continue to review <ArrowRight className="ml-2 h-4 w-4" />
@@ -1152,7 +1153,7 @@ export default function OrderPage() {
                 <Button
                   onClick={() => setStep("restaurant")}
                   variant="ghost"
-                  className="text-white/60 hover:text-white"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   Back to restaurant
                 </Button>
@@ -1163,19 +1164,19 @@ export default function OrderPage() {
           {step === "review" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="text-sm text-white/50">Service Type</div>
-                <div className="text-lg font-semibold text-otwOffWhite">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Service Type</div>
+                <div className="text-lg font-semibold text-foreground">
                   {SERVICE_LABELS[serviceType] || serviceType}
                 </div>
               </div>
               {detailSummary}
 
               {requiresReceipt && (
-                <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
+                <div className="rounded-xl border border-border/70 bg-muted/40 p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs text-white/50">Restaurant</div>
-                      <div className="text-sm font-semibold text-otwOffWhite">
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Restaurant</div>
+                      <div className="text-sm font-semibold text-foreground">
                         {restaurantName || receiptAnalysis?.vendorName || "Add restaurant"}
                       </div>
                       {restaurantWebsite && (
@@ -1183,24 +1184,24 @@ export default function OrderPage() {
                           href={restaurantWebsite}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-otwGold inline-flex items-center gap-1"
+                          className="text-xs text-secondary inline-flex items-center gap-1"
                         >
                           Visit menu <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
                     </div>
-                    <Badge className="bg-white/10 text-white/80">
+                    <Badge variant="outline">
                       Checkout total {formatCurrency(orderTotalCents)}
                     </Badge>
                   </div>
 
-                  <div className="rounded-lg border border-white/5 bg-white/5 p-3 space-y-2 text-sm">
+                  <div className="rounded-lg border border-border/70 bg-card/80 p-3 space-y-2 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-white/60">Delivery fee</span>
-                      <span className="text-white/80">{formatCurrency(deliveryFeeCents)}</span>
+                      <span className="text-muted-foreground">Delivery fee</span>
+                      <span className="text-foreground/80">{formatCurrency(deliveryFeeCents)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-white/60">Receipt items</span>
+                      <span className="text-muted-foreground">Receipt items</span>
                       <span className="text-green-300 font-semibold">
                         {receiptAnalysis ? formatCurrency(receiptSubtotalCents) : "Add receipt"}
                       </span>
@@ -1209,8 +1210,8 @@ export default function OrderPage() {
                       <ul className="space-y-1">
                         {receiptAnalysis.items.map((item, idx) => (
                           <li key={idx} className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-white/70">
-                              {item.name} <span className="text-white/40">×{item.quantity}</span>
+                            <span className="text-foreground/70">
+                              {item.name} <span className="text-muted-foreground">×{item.quantity}</span>
                             </span>
                             <span className="text-otwGold">
                               {formatCurrency(Math.round(item.price * 100) * Math.max(1, item.quantity))}
@@ -1219,12 +1220,12 @@ export default function OrderPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-xs text-white/50">Attach your receipt to continue.</p>
+                      <p className="text-xs text-muted-foreground">Attach your receipt to continue.</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <div className="text-xs text-white/50">Coupon code</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Coupon code</div>
                     <div className="flex flex-wrap gap-2">
                       <Input
                         value={couponCode}
@@ -1233,20 +1234,19 @@ export default function OrderPage() {
                           setDiscountCents(0);
                         }}
                         placeholder="Enter code"
-                        className="bg-black/20 border-white/10 flex-1 min-w-[200px]"
+                        className="flex-1 min-w-[200px]"
                         disabled={feePaid}
                       />
                       <Button
                         type="button"
                         variant="outline"
-                        className="border-white/20 text-white/80"
                         onClick={handleApplyCoupon}
                         disabled={feePaid || couponApplying || !couponCode.trim()}
                       >
                         Apply
                       </Button>
                     </div>
-                    <div className="text-xs text-white/40">Applies to delivery + receipt total.</div>
+                    <div className="text-xs text-muted-foreground">Applies to delivery + receipt total.</div>
                   </div>
 
                   {discountCents > 0 && (
@@ -1268,7 +1268,8 @@ export default function OrderPage() {
                     <Button
                       onClick={handlePayDeliveryFee}
                       disabled={paymentProcessing || feePaid}
-                      className="gap-2 bg-green-600 hover:bg-green-700"
+                      className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                      isLoading={paymentProcessing}
                     >
                       {feePaid ? (
                         <>
@@ -1276,7 +1277,6 @@ export default function OrderPage() {
                         </>
                       ) : (
                         <>
-                          {paymentProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
                           Pay {formatCurrency(Math.max(0, orderTotalCents - discountCents))}{" "}
                           <CreditCard className="h-4 w-4" />
                         </>
@@ -1285,7 +1285,6 @@ export default function OrderPage() {
                     <Button
                       variant="outline"
                       onClick={() => setStep("receipt")}
-                      className="border-white/20 text-white/80"
                     >
                       Edit receipt
                     </Button>
@@ -1296,15 +1295,16 @@ export default function OrderPage() {
               <div className="space-y-3 pt-2">
                 <Button
                   onClick={handleSubmit}
-                  className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 font-bold h-12 text-base shadow-otwGlow"
+                  className="w-full"
                   disabled={loading || (requiresReceipt && (!receiptAnalysis || !feePaid))}
+                  isLoading={loading}
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Place Order"}
+                  Place Order
                 </Button>
                 <Button
                   onClick={() => setStep(requiresReceipt ? "receipt" : "details")}
                   variant="ghost"
-                  className="w-full text-white/50 hover:text-white"
+                  className="w-full text-muted-foreground hover:text-foreground"
                   disabled={loading}
                 >
                   Edit Details
@@ -1314,7 +1314,7 @@ export default function OrderPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-white/30">
+        <p className="text-center text-xs text-muted-foreground">
           By proceeding, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
