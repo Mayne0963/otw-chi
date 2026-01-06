@@ -8,6 +8,18 @@ const FORT_WAYNE_LAT = 41.0793;
 const FORT_WAYNE_LNG = -85.1394;
 const SERVICE_RADIUS_MILES = 25;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === 'object';
+}
+
+function getRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function getString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 export interface GeocodedAddress {
   formattedAddress: string;
   placeName?: string;
@@ -113,12 +125,21 @@ export async function searchAddress(
       throw new Error(`Geocoding API error: ${response.status}`);
     }
 
-    const results = await response.json();
+    const payload = (await response.json()) as unknown;
+    if (!Array.isArray(payload)) return [];
 
-    return results
-      .map((result: any) => {
-        const lat = parseFloat(result.lat);
-        const lng = parseFloat(result.lon);
+    return payload
+      .map((value): GeocodedAddress | null => {
+        if (!isRecord(value)) return null;
+
+        const latText = getString(value.lat);
+        const lngText = getString(value.lon);
+        if (!latText || !lngText) return null;
+
+        const lat = Number.parseFloat(latText);
+        const lng = Number.parseFloat(lngText);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
         const distance = calculateDistance(
           FORT_WAYNE_LAT,
           FORT_WAYNE_LNG,
@@ -126,38 +147,45 @@ export async function searchAddress(
           lng
         );
 
-        const address = result.address || {};
-        const streetNumber = address.house_number || '';
-        const street = address.road || '';
+        const address = getRecord(value.address);
+        const namedetails = isRecord(value.namedetails)
+          ? value.namedetails
+          : undefined;
+
+        const streetNumber = getString(address.house_number);
+        const street = getString(address.road);
         const streetAddress = `${streetNumber} ${street}`.trim();
+
         const placeName =
-          result.namedetails?.name ||
-          result.name ||
-          address.building ||
-          address.amenity ||
-          address.shop ||
-          address.tourism ||
-          address.leisure ||
-          address.office ||
-          address.historic ||
-          address.craft ||
-          address.man_made ||
-          '';
+          (namedetails && getString(namedetails.name)) ||
+          getString(value.name) ||
+          getString(address.building) ||
+          getString(address.amenity) ||
+          getString(address.shop) ||
+          getString(address.tourism) ||
+          getString(address.leisure) ||
+          getString(address.office) ||
+          getString(address.historic) ||
+          getString(address.craft) ||
+          getString(address.man_made);
 
         return {
-          formattedAddress: result.display_name,
+          formattedAddress: getString(value.display_name),
           placeName: placeName || undefined,
           streetAddress,
-          city: address.city || address.town || address.village || '',
-          state: address.state || '',
-          zipCode: address.postcode || '',
+          city:
+            getString(address.city) ||
+            getString(address.town) ||
+            getString(address.village),
+          state: getString(address.state),
+          zipCode: getString(address.postcode),
           latitude: lat,
           longitude: lng,
           distanceFromFortWayne: Math.round(distance * 10) / 10,
           isWithinServiceArea: distance <= SERVICE_RADIUS_MILES,
         };
       })
-      .filter((addr: GeocodedAddress) => addr.isWithinServiceArea);
+      .filter((addr): addr is GeocodedAddress => Boolean(addr?.isWithinServiceArea));
   } catch (error) {
     console.error('Address search error:', error);
     throw new Error('Failed to search address. Please try again.');
@@ -172,6 +200,84 @@ export async function validateAddress(
 ): Promise<GeocodedAddress | null> {
   const results = await searchAddress(address);
   return results.length > 0 ? results[0] : null;
+}
+
+export async function reverseGeocodeAddress(
+  latitude: number,
+  longitude: number
+): Promise<GeocodedAddress | null> {
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/reverse');
+    url.searchParams.append('format', 'json');
+    url.searchParams.append('lat', String(latitude));
+    url.searchParams.append('lon', String(longitude));
+    url.searchParams.append('addressdetails', '1');
+    url.searchParams.append('namedetails', '1');
+    url.searchParams.append('zoom', '18');
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'User-Agent': 'OTW-Delivery-App',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Geocoding API error: ${response.status}`);
+    }
+
+    const payload = (await response.json()) as unknown;
+    if (payload == null || typeof payload !== 'object') return null;
+    const record = payload as Record<string, unknown>;
+    const displayName = typeof record.display_name === 'string' ? record.display_name : '';
+
+    const distance = calculateDistance(
+      FORT_WAYNE_LAT,
+      FORT_WAYNE_LNG,
+      latitude,
+      longitude
+    );
+    const isWithin = distance <= SERVICE_RADIUS_MILES;
+    if (!isWithin) return null;
+
+    const address =
+      record.address && typeof record.address === 'object'
+        ? (record.address as Record<string, unknown>)
+        : {};
+
+    const houseNumber = typeof address.house_number === 'string' ? address.house_number : '';
+    const road = typeof address.road === 'string' ? address.road : '';
+    const streetAddress = `${houseNumber} ${road}`.trim();
+
+    const namedetails =
+      record.namedetails && typeof record.namedetails === 'object'
+        ? (record.namedetails as Record<string, unknown>)
+        : {};
+    const placeName = typeof namedetails.name === 'string' ? namedetails.name : undefined;
+
+    const city =
+      (typeof address.city === 'string' && address.city) ||
+      (typeof address.town === 'string' && address.town) ||
+      (typeof address.village === 'string' && address.village) ||
+      '';
+    const state = typeof address.state === 'string' ? address.state : '';
+    const zipCode = typeof address.postcode === 'string' ? address.postcode : '';
+
+    return {
+      formattedAddress: displayName,
+      placeName,
+      streetAddress,
+      city,
+      state,
+      zipCode,
+      latitude,
+      longitude,
+      distanceFromFortWayne: Math.round(distance * 10) / 10,
+      isWithinServiceArea: true,
+    };
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return null;
+  }
 }
 
 /**

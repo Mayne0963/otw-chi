@@ -79,11 +79,6 @@ export default async function DriverDashboardPage() {
         lng: pickup.longitude,
         label: 'Pickup',
       };
-      customerLocation = {
-        lat: pickup.latitude,
-        lng: pickup.longitude,
-        label: 'Customer',
-      };
     }
 
     if (dropoff) {
@@ -91,6 +86,12 @@ export default async function DriverDashboardPage() {
         lat: dropoff.latitude,
         lng: dropoff.longitude,
         label: 'Dropoff',
+      };
+
+      customerLocation = {
+        lat: dropoff.latitude,
+        lng: dropoff.longitude,
+        label: 'Customer',
       };
     }
 
@@ -228,6 +229,8 @@ export default async function DriverDashboardPage() {
                         pickup={pickupLocation}
                         dropoff={dropoffLocation}
                         requestId={activeRequest?.id}
+                        jobStatus={activeRequest?.status}
+                        focusDriverId={driverProfile.id}
                         drivers={driverLocations}
                     />
                 </CardContent>

@@ -5,6 +5,7 @@ import styles from "./MyOtwRequests.module.css";
 import OtwLiveMap from "./OtwLiveMap";
 import { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
 import OtwFeedbackForm from "./OtwFeedbackForm";
+import type { OtwLocation } from "@/lib/otw/otwTypes";
 
 interface OtwRequest {
   id: string;
@@ -12,6 +13,8 @@ interface OtwRequest {
   urgency: string;
   pickupArea: string;
   dropoffArea: string;
+  pickupLocation?: OtwLocation;
+  dropoffLocation?: OtwLocation;
   notes?: string;
   createdAt: string;
   estimatedMiles: number;
@@ -171,9 +174,10 @@ const MyOtwRequests: React.FC = () => {
               )}
               {trackedRequestId === req.id && (
                 <OtwLiveMap
-                  pickup={undefined}
-                  dropoff={undefined}
+                  pickup={req.pickupLocation}
+                  customer={req.dropoffLocation}
                   requestId={req.id}
+                  jobStatus={req.status}
                   drivers={mapDrivers}
                 />
               )}

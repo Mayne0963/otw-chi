@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { OtwLocation } from "@/lib/otw/otwTypes";
 import { Urgency, UiServiceType as ServiceType } from "@/lib/otw/otwTypes";
 import {
   getMembershipForCustomer,
   updateMembershipMilesUsed,
   estimateRemainingMiles,
 } from "@/lib/otw/otwMembership";
+import { validateAddress } from "@/lib/geocoding";
 
 export interface OtwRequest {
   id: string;
@@ -12,12 +14,39 @@ export interface OtwRequest {
   urgency: Urgency;
   pickupArea: string;
   dropoffArea: string;
+  pickupLocation?: OtwLocation;
+  dropoffLocation?: OtwLocation;
   notes?: string;
   createdAt: string; // ISO timestamp
   estimatedMiles: number;
   status: "PENDING" | "MATCHED" | "COMPLETED" | "CANCELLED";
   customerId?: string; // mock linkage for now
 }
+
+const locationCache = new Map<string, OtwLocation | null>();
+
+const resolveLocation = async (label: string): Promise<OtwLocation | undefined> => {
+  const key = label.trim();
+  if (!key) return undefined;
+
+  if (locationCache.has(key)) {
+    const cached = locationCache.get(key);
+    return cached ?? undefined;
+  }
+
+  const result = await validateAddress(key).catch(() => null);
+  const location =
+    result == null
+      ? null
+      : {
+          lat: result.latitude,
+          lng: result.longitude,
+          label,
+        };
+
+  locationCache.set(key, location);
+  return location ?? undefined;
+};
 
 const baseByService: Record<ServiceType, number> = {
   MOVE: 500,
@@ -77,7 +106,22 @@ otwRequests.push(
 );
 
 export async function GET() {
-  return NextResponse.json({ success: true, requests: otwRequests }, { status: 200 });
+  const requests = await Promise.all(
+    otwRequests.map(async (req) => {
+      const [pickupLocation, dropoffLocation] = await Promise.all([
+        resolveLocation(req.pickupArea),
+        resolveLocation(req.dropoffArea),
+      ]);
+
+      return {
+        ...req,
+        pickupLocation,
+        dropoffLocation,
+      };
+    })
+  );
+
+  return NextResponse.json({ success: true, requests }, { status: 200 });
 }
 
 export async function POST(request: NextRequest) {

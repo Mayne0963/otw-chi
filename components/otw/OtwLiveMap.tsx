@@ -13,6 +13,8 @@ interface OtwLiveMapProps {
   dropoff?: OtwLocation;
   customer?: OtwLocation;
   requestId?: string;
+  jobStatus?: string;
+  focusDriverId?: string;
   drivers?: OtwDriverLocation[];
 }
 
@@ -71,6 +73,49 @@ const coordsEqual = (a?: OtwLocation, b?: OtwLocation) =>
   Math.abs(a.lat - b.lat) < 0.00001 &&
   Math.abs(a.lng - b.lng) < 0.00001;
 
+type JobPhase = "TO_PICKUP" | "TO_DROPOFF" | "NONE";
+
+const getJobPhase = (status?: string): JobPhase => {
+  const normalized = String(status || "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .toUpperCase();
+
+  if (!normalized) return "TO_PICKUP";
+
+  if (
+    normalized === "DELIVERED" ||
+    normalized === "COMPLETED" ||
+    normalized === "CANCELED" ||
+    normalized === "CANCELLED"
+  ) {
+    return "NONE";
+  }
+
+  if (normalized === "PICKED_UP" || normalized === "EN_ROUTE") {
+    return "TO_DROPOFF";
+  }
+
+  if (normalized === "ASSIGNED" || normalized === "MATCHED" || normalized === "ACCEPTED") {
+    return "TO_PICKUP";
+  }
+
+  return "TO_PICKUP";
+};
+
+const haversineKm = (a: OtwLocation, b: OtwLocation) => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
 const formatUpdatedAgo = (iso?: string) => {
   if (!iso) return null;
   const date = new Date(iso);
@@ -83,13 +128,15 @@ const formatUpdatedAgo = (iso?: string) => {
   return `${hours} hr ago`;
 };
 
-const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
+const OtwLiveMap = ({
   pickup,
   dropoff,
   customer,
   requestId,
+  jobStatus,
+  focusDriverId,
   drivers = [],
-}) => {
+}: OtwLiveMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -102,27 +149,35 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
   const [activeDriver, setActiveDriver] = useState<OtwDriverLocation | null>(null);
   const [driverTarget, setDriverTarget] = useState<DriverTarget>(null);
 
+  const jobPickup = pickup;
+  const jobDestination = customer ?? dropoff;
+  const jobPhase = getJobPhase(jobStatus);
+
   const markerData = useMemo<MapMarker[]>(() => {
     const markers: MapMarker[] = [];
-    if (pickup) {
+    if (jobPickup) {
       markers.push({
         id: "pickup",
-        label: pickup.label || "Pickup",
-        lat: pickup.lat,
-        lng: pickup.lng,
+        label: jobPickup.label || "Pickup",
+        lat: jobPickup.lat,
+        lng: jobPickup.lng,
         color: "#34d399",
       });
     }
-    if (customer && !coordsEqual(customer, pickup)) {
+
+    const customerEqualsDropoff = coordsEqual(customer, dropoff);
+
+    if (customer && !coordsEqual(customer, jobPickup)) {
       markers.push({
-        id: "customer",
-        label: customer.label || "Customer",
+        id: customerEqualsDropoff ? "destination" : "customer",
+        label: customer.label || (customerEqualsDropoff ? "Destination" : "Customer"),
         lat: customer.lat,
         lng: customer.lng,
         color: "#c084fc",
       });
     }
-    if (dropoff) {
+
+    if (dropoff && !customerEqualsDropoff && !coordsEqual(dropoff, jobPickup)) {
       markers.push({
         id: "dropoff",
         label: dropoff.label || "Dropoff",
@@ -132,23 +187,45 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
       });
     }
     drivers.forEach((driver, index) => {
+      const isFocus = focusDriverId && driver.driverId === focusDriverId;
       markers.push({
         id: `driver-${driver.driverId}-${index}`,
-        label: driver.driverId || "Driver",
+        label: isFocus ? "Driver (You)" : driver.driverId || "Driver",
         lat: driver.location.lat,
         lng: driver.location.lng,
         color: "#60a5fa",
       });
     });
     return markers;
-  }, [customer, drivers, dropoff, pickup]);
+  }, [customer, drivers, dropoff, focusDriverId, jobPickup]);
 
   const routingDriver = useMemo(() => {
     if (!drivers.length) return null;
-    const relevant = requestId
+
+    if (focusDriverId) {
+      const match = drivers.find((d) => d.driverId === focusDriverId);
+      if (match) return match;
+    }
+
+    const scoped = requestId
       ? drivers.filter((d) => d.currentRequestId === requestId)
       : drivers;
-    const pool = relevant.length > 0 ? relevant : drivers;
+    const pool = scoped.length > 0 ? scoped : drivers;
+
+    const targetLocation =
+      jobPhase === "TO_DROPOFF"
+        ? jobDestination
+        : jobPhase === "TO_PICKUP"
+          ? jobPickup
+          : jobPickup ?? jobDestination;
+
+    if (targetLocation) {
+      const withDistance = pool
+        .map((d) => ({ d, distanceKm: haversineKm(d.location, targetLocation) }))
+        .sort((a, b) => a.distanceKm - b.distanceKm);
+      if (withDistance[0]?.d) return withDistance[0].d;
+    }
+
     const sorted = [...pool].sort((a, b) => {
       const aTime = new Date(a.updatedAt).getTime();
       const bTime = new Date(b.updatedAt).getTime();
@@ -158,10 +235,15 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
       return bTime - aTime;
     });
     return sorted[0] ?? null;
-  }, [drivers, requestId]);
+  }, [drivers, focusDriverId, jobDestination, jobPhase, jobPickup, requestId]);
 
   useEffect(() => {
-    const targetLocation = customer ?? pickup ?? dropoff;
+    const targetLocation =
+      jobPhase === "TO_DROPOFF"
+        ? jobDestination
+        : jobPhase === "TO_PICKUP"
+          ? jobPickup
+          : jobPickup ?? jobDestination;
     if (routingDriver && targetLocation) {
       setActiveDriver(routingDriver);
       setDriverTarget({
@@ -172,7 +254,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
       setActiveDriver(null);
       setDriverTarget(null);
     }
-  }, [customer, dropoff, pickup, routingDriver]);
+  }, [jobDestination, jobPhase, jobPickup, routingDriver]);
 
   const hasAny = markerData.length > 0;
 
@@ -214,19 +296,22 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
   }, []);
 
   useEffect(() => {
-    const routeStart = customer ?? pickup;
-    const routeEnd = dropoff ?? null;
-
-    if (!routeStart || !routeEnd) {
+    if (!jobPickup || !jobDestination) {
       setMainRoute(null);
       setMainRouteSummary(null);
+      return;
+    }
+
+    if (coordsEqual(jobPickup, jobDestination)) {
+      setMainRoute(makeFallbackLine([jobPickup.lng, jobPickup.lat], [jobDestination.lng, jobDestination.lat]));
+      setMainRouteSummary({ distanceText: "0 m", durationText: "0 min" });
       return;
     }
 
     const controller = new AbortController();
 
     const fetchRoute = async () => {
-      const url = `https://router.project-osrm.org/route/v1/driving/${routeStart.lng},${routeStart.lat};${routeEnd.lng},${routeEnd.lat}?overview=full&geometries=geojson`;
+      const url = `https://router.project-osrm.org/route/v1/driving/${jobPickup.lng},${jobPickup.lat};${jobDestination.lng},${jobDestination.lat}?overview=full&geometries=geojson`;
 
       try {
         const res = await fetch(url, { signal: controller.signal });
@@ -255,7 +340,12 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
         throw new Error("No route geometry returned");
       } catch (error) {
         if (controller.signal.aborted) return;
-        setMainRoute(makeFallbackLine([routeStart.lng, routeStart.lat], [routeEnd.lng, routeEnd.lat]));
+        setMainRoute(
+          makeFallbackLine(
+            [jobPickup.lng, jobPickup.lat],
+            [jobDestination.lng, jobDestination.lat]
+          )
+        );
         setMainRouteSummary(null);
         console.error("[OTW map] Falling back to straight line route", error);
       }
@@ -264,7 +354,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
     fetchRoute();
 
     return () => controller.abort();
-  }, [customer, dropoff, pickup]);
+  }, [jobDestination, jobPickup]);
 
   useEffect(() => {
     const target = driverTarget;
@@ -272,6 +362,23 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
     if (!driver || !target) {
       setDriverRoute(null);
       setDriverRouteSummary(null);
+      return;
+    }
+
+    const driverLocation: OtwLocation = {
+      lat: driver.location.lat,
+      lng: driver.location.lng,
+      label: driver.location.label,
+    };
+    const targetLocation: OtwLocation = {
+      lat: target.coords[1],
+      lng: target.coords[0],
+      label: target.label,
+    };
+
+    if (coordsEqual(driverLocation, targetLocation)) {
+      setDriverRoute(makeFallbackLine([driver.location.lng, driver.location.lat], [target.coords[0], target.coords[1]]));
+      setDriverRouteSummary({ distanceText: "0 m", durationText: "0 min" });
       return;
     }
 
@@ -434,7 +541,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
     }
 
     applyUpdates();
-  }, [markerData, pickup, dropoff, mainRoute, driverRoute]);
+  }, [markerData, mainRoute, driverRoute]);
 
   const statusLines: string[] = [];
 
@@ -442,12 +549,12 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
 
   if (mainRouteSummary) {
     statusLines.push(
-      `Customer route: ${mainRouteSummary.distanceText} • ${mainRouteSummary.durationText}`
+      `Job route: ${mainRouteSummary.distanceText} • ${mainRouteSummary.durationText}`
     );
-  } else if (pickup && dropoff) {
-    statusLines.push("Customer route: calculating...");
-  } else if (pickup || customer || dropoff) {
-    statusLines.push("Customer route: add both endpoints to unlock directions.");
+  } else if (jobPickup && jobDestination) {
+    statusLines.push("Job route: calculating...");
+  } else if (jobPickup || jobDestination) {
+    statusLines.push("Job route: add pickup and destination to unlock directions.");
   }
 
   if (driverRouteSummary && activeDriver && driverTarget) {
@@ -461,7 +568,7 @@ const OtwLiveMap: React.FC<OtwLiveMapProps> = ({
         (driverUpdatedAgo ? ` (last seen ${driverUpdatedAgo})` : "")
     );
   } else if (drivers.length > 0) {
-    statusLines.push("Driver leg: add a customer, pickup, or dropoff to anchor directions.");
+    statusLines.push("Driver leg: add pickup and destination to anchor directions.");
   }
 
   return (
