@@ -1,55 +1,45 @@
 import React from 'react';
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const OtwNavbar: React.FC = () => {
   return (
-    <header className="bg-otwRed shadow-otwSoft rounded-b-2xl sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-baseline gap-2 hover:opacity-90 transition">
-          <span className="text-otwGold text-2xl font-bold font-mono tracking-tighter">OTW</span>
-          <span className="text-otwGold/80 text-xs hidden sm:inline-block font-medium">On The Way</span>
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur">
+      <div className="otw-container flex items-center justify-between py-4">
+        <Link href="/" className="flex items-baseline gap-2 transition-opacity duration-300 hover:opacity-90">
+          <span className="text-secondary text-2xl font-semibold tracking-tight">OTW</span>
+          <span className="text-muted-foreground text-xs hidden sm:inline-block">On The Way</span>
         </Link>
         
-        <nav className="flex items-center gap-6 text-sm font-medium text-otwOffWhite">
-          <div className="hidden md:flex gap-6">
-            <Link href="/how-it-works" className="hover:text-otwGold transition">How It Works</Link>
-            <Link href="/pricing" className="hover:text-otwGold transition">Pricing</Link>
-            <Link href="/driver/apply" className="hover:text-otwGold transition">Drive</Link>
-              <Link
-              href="/order"
-              className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20"
-            >
-              Order Now
-            </Link>
+        <nav className="flex items-center gap-4 text-sm font-medium text-foreground">
+          <div className="hidden md:flex items-center gap-6">
+            <Link href="/how-it-works" className="transition-colors duration-300 hover:text-secondary">How It Works</Link>
+            <Link href="/pricing" className="transition-colors duration-300 hover:text-secondary">Pricing</Link>
+            <Link href="/driver/apply" className="transition-colors duration-300 hover:text-secondary">Drive</Link>
+            <Button asChild size="sm">
+              <Link href="/order">Order Now</Link>
+            </Button>
           </div>
 
           <SignedIn>
-            <Link href="/dashboard" className="hover:text-otwGold transition">Dashboard</Link>
-            <Link
-              href="/order"
-              className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20 hidden sm:inline-block"
-            >
-              Order Now
-            </Link>
+            <Link href="/dashboard" className="transition-colors duration-300 hover:text-secondary">Dashboard</Link>
+            <Button asChild size="sm" className="hidden sm:inline-flex">
+              <Link href="/order">Order Now</Link>
+            </Button>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           
           <SignedOut>
-             <div className="flex gap-3">
-              <Link
-                href="/order"
-                className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20 hidden md:inline-block"
-              >
-                Order Now
-              </Link>
+             <div className="flex items-center gap-3">
+              <Button asChild size="sm" className="hidden md:inline-flex">
+                <Link href="/order">Order Now</Link>
+              </Button>
               <SignInButton mode="modal">
-                <button className="hover:text-otwGold transition">Sign In</button>
+                <Button variant="ghost" size="sm">Sign In</Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <button className="bg-otwGold text-otwBlack px-4 py-2 rounded-xl font-bold hover:bg-white transition shadow-lg shadow-otwGold/20">
-                  Get Started
-                </button>
+                <Button size="sm">Get Started</Button>
               </SignUpButton>
              </div>
           </SignedOut>

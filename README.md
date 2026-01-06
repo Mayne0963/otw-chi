@@ -16,9 +16,20 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Style Guide
+
+- **Theme**: Premium minimal, dark-first OTW brand theme via CSS variables in `styles/globals.css`.
+- **Core tokens**: `background`, `foreground`, `primary` (OTW red), `secondary` (OTW gold), `border`, `ring`, `surface-1/2/3`.
+- **Typography**: Display = Fraunces, body = Manrope (set in `app/layout.tsx`).
+- **Spacing**: 4px base unit (`--space-1` to `--space-10`).
+- **Interactive palette**: Use `secondary` (gold) for primary CTAs; reserve `primary` (red) for critical or destructive actions.
+- **Motion**: Use `duration-300` with `transition-colors`/`transition-opacity`; respect `prefers-reduced-motion`.
+- **Accessibility**: Maintain clear focus states (`focus-visible:ring-2` + `ring`) and strong contrast.
+- **Reference**: Full design system notes live in `docs/ui-design-system.md`.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to load Fraunces and Manrope for display and body typography.
 
 ## Learn More
 
