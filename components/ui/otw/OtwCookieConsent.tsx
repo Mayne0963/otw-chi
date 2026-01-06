@@ -22,7 +22,7 @@ export default function OtwCookieConsent() {
         <div className="text-sm text-foreground/85">
           <strong>We use cookies</strong> to improve your experience and for analytics.
           By using OTW, you agree to our{" "}
-          <a href="/privacy" className="underline hover:text-secondary transition-colors duration-300">Privacy Policy</a>.
+          <a href="/privacy" className="underline hover:text-primary transition-colors duration-300">Privacy Policy</a>.
         </div>
         <div className="flex justify-end">
           <OtwButton onClick={accept} variant="gold" size="sm">Accept</OtwButton>

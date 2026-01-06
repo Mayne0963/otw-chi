@@ -16,25 +16,25 @@ function NavLinks() {
     <>
       <Link 
         href="/pricing" 
-        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
+        className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors duration-300"
       >
         Memberships
       </Link>
       <Link 
         href="/driver/apply" 
-        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
+        className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors duration-300"
       >
         Apply Today
       </Link>
       <Link 
         href="/franchise/apply" 
-        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
+        className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors duration-300"
       >
         Franchise
       </Link>
       <Link 
         href="/request" 
-        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
+        className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors duration-300"
       >
         Request a Service
       </Link>
@@ -47,7 +47,7 @@ export function MarketingNav() {
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="otw-container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-secondary">
+          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
             <span>OTW</span>
             <span className="hidden sm:inline-block text-foreground/70 text-sm font-normal">On The Way</span>
           </Link>
@@ -92,27 +92,27 @@ export function MarketingNav() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] border-l border-border/70 bg-card/95 backdrop-blur-xl text-foreground sm:w-[350px]">
                 <SheetHeader className="text-left border-b border-border/70 pb-4 mb-4">
-                  <SheetTitle className="text-secondary">Menu</SheetTitle>
+                  <SheetTitle className="text-primary">Menu</SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col gap-6">
                   <nav className="flex flex-col gap-4">
                     <SheetClose asChild>
-                      <Link href="/how-it-works" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
+                      <Link href="/how-it-works" className="text-lg font-medium hover:text-primary transition-colors duration-300">
                         How It Works
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link href="/pricing" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
+                      <Link href="/pricing" className="text-lg font-medium hover:text-primary transition-colors duration-300">
                         Pricing
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link href="/driver/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
+                      <Link href="/driver/apply" className="text-lg font-medium hover:text-primary transition-colors duration-300">
                         Drive
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link href="/franchise/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
+                      <Link href="/franchise/apply" className="text-lg font-medium hover:text-primary transition-colors duration-300">
                         Franchise
                       </Link>
                     </SheetClose>

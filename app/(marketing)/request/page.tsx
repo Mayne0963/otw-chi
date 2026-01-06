@@ -173,7 +173,7 @@ export default function RequestPage() {
         <div className="text-center space-y-3">
           <span className="otw-pill">Concierge Request</span>
           <h1 className="text-4xl font-semibold tracking-tight">
-            Request a <span className="text-secondary">Delivery</span>
+            Request a <span className="text-primary">Delivery</span>
           </h1>
           <p className="text-muted-foreground">
             Premium concierge service at your fingertips.

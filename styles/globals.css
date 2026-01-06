@@ -16,7 +16,7 @@
     @apply rounded-2xl border border-border/60 bg-muted/40 text-foreground shadow-otwSoft;
   }
   .otw-pill {
-    @apply inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/50 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground;
+    @apply inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs uppercase tracking-[0.18em] text-primary;
   }
 }
 
@@ -50,7 +50,7 @@ body {
     --popover: 0 0% 8%;
     --popover-foreground: 40 33% 96%;
 
-    --primary: 352 96% 38%; /* otwRed */
+    --primary: 352 96% 42%; /* otwRed */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 43 74% 66%; /* otwGold */
@@ -92,7 +92,7 @@ body {
 
     /* Shadow tokens */
     --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.35);
-    --shadow-glow: 0 10px 30px rgba(230, 195, 106, 0.25);
+    --shadow-glow: 0 10px 30px rgba(176, 0, 23, 0.28), 0 6px 18px rgba(230, 195, 106, 0.18);
     --shadow-elevated: 0 18px 45px rgba(0, 0, 0, 0.55);
   }
 
@@ -114,14 +114,15 @@ body {
     font-family: var(--font-sans), system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
     background-image:
       radial-gradient(520px circle at 12% -10%, hsl(var(--secondary) / 0.12), transparent 60%),
-      radial-gradient(520px circle at 88% 8%, hsl(var(--primary) / 0.18), transparent 55%),
+      radial-gradient(620px circle at 88% 8%, hsl(var(--primary) / 0.28), transparent 55%),
+      radial-gradient(420px circle at 10% 75%, hsl(var(--primary) / 0.18), transparent 60%),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
     background-attachment: fixed;
   }
 
   ::selection {
-    background: hsl(var(--secondary) / 0.3);
-    color: hsl(var(--secondary-foreground));
+    background: hsl(var(--primary) / 0.35);
+    color: hsl(var(--primary-foreground));
   }
   
   /* Typography Hierarchy */
@@ -149,7 +150,7 @@ body {
   
   /* Link Styles */
   a {
-    @apply transition-colors duration-300 hover:text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply transition-colors duration-300 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
     text-decoration-thickness: 1px;
     text-underline-offset: 4px;
   }
@@ -179,7 +180,7 @@ body {
 
   input[type="checkbox"],
   input[type="radio"] {
-    accent-color: hsl(var(--secondary));
+    accent-color: hsl(var(--primary));
   }
 }
 
