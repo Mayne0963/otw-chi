@@ -10,11 +10,14 @@ export default {
   theme: {
   	extend: {
   		colors: {
-  			otwRed: '#B00017',
-  			otwRedDark: '#7F0010',
-  			otwGold: '#E6C36A',
-  			otwBlack: '#0C0C0C',
-  			otwOffWhite: '#F9F5EC',
+            // OTW Brand Aliases (Mapped to CSS variables for consistency)
+  			otwRed: 'hsl(var(--primary))',
+  			otwRedDark: '#7F0010', // Keep hardcoded or define a variable if needed
+  			otwGold: 'hsl(var(--secondary))',
+  			otwBlack: 'hsl(var(--background))',
+  			otwOffWhite: 'hsl(var(--foreground))',
+            
+            // Standard Semantic Tokens
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

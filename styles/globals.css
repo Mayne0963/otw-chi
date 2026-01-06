@@ -10,31 +10,78 @@
     @apply py-10 sm:py-14;
   }
   .otw-card {
-    @apply rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur;
+    @apply rounded-2xl border border-border bg-card text-card-foreground shadow-sm;
   }
 }
 
-/* Minimal global styles for OTW skeleton */
-html, body { height: 100%; }
+/* Global Styles */
+html, body { 
+  height: 100%; 
+  scroll-behavior: smooth;
+}
 
 body {
-  background-color: #0C0C0C; /* otwBlack */
-  color: #F9F5EC; /* otwOffWhite */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  @apply bg-background text-foreground antialiased;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-
-
+/* 
+  Design System Tokens 
+  Based on OTW Brand:
+  - Red: #B00017 (HSL 352 100% 35%)
+  - Gold: #E6C36A (HSL 43 74% 66%)
+  - Black: #0C0C0C (HSL 0 0% 5%)
+  - OffWhite: #F9F5EC (HSL 43 33% 95%)
+*/
 @layer base {
-  :root { --background: 0 0% 100%; --foreground: 0 0% 3.9%; --card: 0 0% 100%; --card-foreground: 0 0% 3.9%; --popover: 0 0% 100%; --popover-foreground: 0 0% 3.9%; --primary: 0 0% 9%; --primary-foreground: 0 0% 98%; --secondary: 0 0% 96.1%; --secondary-foreground: 0 0% 9%; --muted: 0 0% 96.1%; --muted-foreground: 0 0% 45.1%; --accent: 0 0% 96.1%; --accent-foreground: 0 0% 9%; --destructive: 0 84.2% 60.2%; --destructive-foreground: 0 0% 98%; --border: 0 0% 89.8%; --input: 0 0% 89.8%; --ring: 0 0% 3.9%; --chart-1: 12 76% 61%; --chart-2: 173 58% 39%; --chart-3: 197 37% 24%; --chart-4: 43 74% 66%; --chart-5: 27 87% 67%; --radius: 0.5rem;
+  :root {
+    /* Default to Dark/OTW Theme */
+    --background: 0 0% 5%; /* #0C0C0C */
+    --foreground: 43 33% 95%; /* #F9F5EC */
+
+    --card: 0 0% 5%;
+    --card-foreground: 43 33% 95%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 43 33% 95%;
+
+    --primary: 352 100% 35%; /* otwRed */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 43 74% 66%; /* otwGold */
+    --secondary-foreground: 0 0% 5%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 43 10% 70%;
+
+    --accent: 43 74% 66%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%; /* Subtle border */
+    --input: 0 0% 20%;
+    --ring: 43 74% 66%; /* Gold focus ring */
+
+    --radius: 0.75rem; /* 12px default radius */
+    
+    /* Chart colors tailored for dark theme */
+    --chart-1: 352 100% 35%;
+    --chart-2: 43 74% 66%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
-  .dark { --background: 0 0% 3.9%; --foreground: 0 0% 98%; --card: 0 0% 3.9%; --card-foreground: 0 0% 98%; --popover: 0 0% 3.9%; --popover-foreground: 0 0% 98%; --primary: 0 0% 98%; --primary-foreground: 0 0% 9%; --secondary: 0 0% 14.9%; --secondary-foreground: 0 0% 98%; --muted: 0 0% 14.9%; --muted-foreground: 0 0% 63.9%; --accent: 0 0% 14.9%; --accent-foreground: 0 0% 98%; --destructive: 0 62.8% 30.6%; --destructive-foreground: 0 0% 98%; --border: 0 0% 14.9%; --input: 0 0% 14.9%; --ring: 0 0% 83.1%; --chart-1: 220 70% 50%; --chart-2: 160 60% 45%; --chart-3: 30 80% 55%; --chart-4: 280 65% 60%; --chart-5: 340 75% 55%;
+
+  /* 
+     If we ever need a light mode, we can define it here, 
+     but for now we enforce the brand identity.
+  */
+  .dark {
+    /* Inherits from :root since :root is already the dark brand theme */
   }
 }
-
-
 
 @layer base {
   * {
@@ -42,5 +89,27 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Typography Hierarchy */
+  h1 {
+    @apply text-4xl font-bold tracking-tight lg:text-5xl;
+  }
+  h2 {
+    @apply text-3xl font-semibold tracking-tight first:mt-0;
+  }
+  h3 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+  h4 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  p {
+    @apply leading-7 [&:not(:first-child)]:mt-6;
+  }
+  
+  /* Link Styles */
+  a {
+    @apply transition-colors duration-300 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
 }
