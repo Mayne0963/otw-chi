@@ -14,6 +14,7 @@ const buildHereRouteUrl = (params: {
   url.searchParams.set("transportMode", "car");
   url.searchParams.set("origin", params.origin);
   url.searchParams.set("destination", params.destination);
+  url.searchParams.set("polyline", "flexible");
   const returnFields = ["summary", "polyline", "actions", "instructions"];
   if (HERE_ENABLE_SPANS) {
     returnFields.push("spans");
@@ -78,9 +79,16 @@ export async function GET(request: Request) {
     }
     const route = parseHereRoute(data as any);
     if (!route) {
+      const routes = (data as any)?.routes;
+      const routeCount = Array.isArray(routes) ? routes.length : 0;
+      const firstSection = routes?.[0]?.sections?.[0];
+      const hasPolyline = Boolean(firstSection?.polyline);
       return NextResponse.json(
-        { success: false, error: "Unable to parse HERE route response." },
-        { status: 500 }
+        {
+          success: false,
+          error: `Unable to parse HERE route response. routes=${routeCount} polyline=${hasPolyline}`,
+        },
+        { status: 502 }
       );
     }
     const alternativesParsed = parseHereAlternatives(data as any);

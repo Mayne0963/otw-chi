@@ -103,7 +103,7 @@ const buildBounds = (coords: [number, number][]) => {
 };
 
 const parseRoute = (route?: HereRoute | null): NavigationRoute | null => {
-  const section = route?.sections?.[0];
+  const section = route?.sections?.find((entry) => Boolean(entry?.polyline));
   if (!section?.polyline) return null;
 
   let coords: [number, number][];
