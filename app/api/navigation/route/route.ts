@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseHereRoute, parseHereAlternatives } from "@/lib/navigation/here";
 
 const HERE_API_KEY = process.env.HERE_API_KEY;
+const HERE_ENABLE_SPANS = process.env.HERE_ROUTE_SPANS === "true";
 
 const buildHereRouteUrl = (params: {
   origin: string;
@@ -14,7 +15,9 @@ const buildHereRouteUrl = (params: {
   url.searchParams.set("origin", params.origin);
   url.searchParams.set("destination", params.destination);
   url.searchParams.set("return", "summary,polyline,actions,instructions");
-  url.searchParams.set("spans", "speedLimit,baseDuration,trafficDelay");
+  if (HERE_ENABLE_SPANS) {
+    url.searchParams.set("spans", "speedLimit,baseDuration,trafficDelay");
+  }
   url.searchParams.set("routingMode", "fast");
   url.searchParams.set("traffic", "enabled");
   if (params.alternatives && params.alternatives > 0) {
