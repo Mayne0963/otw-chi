@@ -51,7 +51,12 @@ export const decodeFlexiblePolyline = (encoded: string): DecodedPolyline => {
   if (!encoded) return [];
   const normalized = encoded.replace(/=+$/, "");
 
-  const header = decodeUnsignedVarint(normalized, 0);
+  const version = decodeUnsignedVarint(normalized, 0);
+  if (version.value !== 1) {
+    throw new Error("Unsupported flexible polyline version");
+  }
+
+  const header = decodeUnsignedVarint(normalized, version.index);
   const precision = header.value & 15;
   const thirdDim = (header.value >> 4) & 7;
   const thirdDimPrecision = (header.value >> 7) & 15;
