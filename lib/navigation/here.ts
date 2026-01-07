@@ -106,7 +106,13 @@ const parseRoute = (route?: HereRoute | null): NavigationRoute | null => {
   const section = route?.sections?.[0];
   if (!section?.polyline) return null;
 
-  const coords = decodeFlexiblePolyline(section.polyline);
+  let coords: [number, number][];
+  try {
+    coords = decodeFlexiblePolyline(section.polyline);
+  } catch (error) {
+    console.warn("HERE polyline decode failed:", error);
+    return null;
+  }
   if (!coords.length) return null;
 
   const summary = section.summary || {};

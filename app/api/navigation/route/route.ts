@@ -14,10 +14,12 @@ const buildHereRouteUrl = (params: {
   url.searchParams.set("transportMode", "car");
   url.searchParams.set("origin", params.origin);
   url.searchParams.set("destination", params.destination);
-  url.searchParams.set("return", "summary,polyline,actions,instructions");
+  const returnFields = ["summary", "polyline", "actions", "instructions"];
   if (HERE_ENABLE_SPANS) {
+    returnFields.push("spans");
     url.searchParams.set("spans", "speedLimit,baseDuration,trafficDelay");
   }
+  url.searchParams.set("return", returnFields.join(","));
   url.searchParams.set("routingMode", "fast");
   url.searchParams.set("traffic", "enabled");
   if (params.alternatives && params.alternatives > 0) {
@@ -56,15 +58,24 @@ export async function GET(request: Request) {
 
     const url = buildHereRouteUrl({ origin, destination, alternatives, lang });
     const res = await fetch(url, { cache: "no-store" });
+    const raw = await res.text().catch(() => "");
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
       return NextResponse.json(
-        { success: false, error: `HERE route failed: ${res.status} ${text}` },
+        { success: false, error: `HERE route failed: ${res.status} ${raw}` },
         { status: 502 }
       );
     }
 
-    const data = (await res.json()) as unknown;
+    let data: unknown = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      console.error("HERE route JSON parse failed:", error);
+      return NextResponse.json(
+        { success: false, error: "HERE route response could not be parsed." },
+        { status: 502 }
+      );
+    }
     const route = parseHereRoute(data as any);
     if (!route) {
       return NextResponse.json(
