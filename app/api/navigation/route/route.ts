@@ -13,7 +13,7 @@ const buildHereRouteUrl = (params: {
   url.searchParams.set("transportMode", "car");
   url.searchParams.set("origin", params.origin);
   url.searchParams.set("destination", params.destination);
-  url.searchParams.set("return", "summary,polyline,actions,instructions,spans");
+  url.searchParams.set("return", "summary,polyline,actions,instructions");
   url.searchParams.set("spans", "speedLimit,baseDuration,trafficDelay");
   url.searchParams.set("routingMode", "fast");
   url.searchParams.set("traffic", "enabled");

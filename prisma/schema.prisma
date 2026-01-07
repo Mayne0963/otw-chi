@@ -253,6 +253,7 @@ model DeliveryRequest {
   receiptSubtotalCents Int?
   deliveryFeeCents    Int?
   deliveryFeePaid     Boolean   @default(false)
+  deliveryCheckoutSessionId String?
   couponCode          String?
   discountCents       Int?
   receiptVerifiedAt   DateTime?

@@ -105,6 +105,16 @@ export default function OrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const initialCheckoutStatus = useRef<string | null>(null);
+  const initialCheckoutSessionId = useRef<string | null>(null);
+
+  if (initialCheckoutStatus.current === null) {
+    initialCheckoutStatus.current = searchParams.get("checkout");
+    initialCheckoutSessionId.current = searchParams.get("session_id");
+  }
+
+  const isCheckoutReturn =
+    initialCheckoutStatus.current === "success" && Boolean(initialCheckoutSessionId.current);
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>("details");
@@ -280,10 +290,12 @@ export default function OrderPage() {
         if (typeof draft.deliveryFeeCents === "number") {
           setDeliveryFeeCents(draft.deliveryFeeCents);
         }
-        setFeePaid(Boolean(draft.deliveryFeePaid));
-        setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
-        setCouponCode(draft.couponCode || "");
-        setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
+        if (!isCheckoutReturn) {
+          setFeePaid(Boolean(draft.deliveryFeePaid));
+          setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
+          setCouponCode(draft.couponCode || "");
+          setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
+        }
         if (draft.receiptImageData) {
           setReceiptPreview(draft.receiptImageData);
           setReceiptImageData(draft.receiptImageData);
@@ -342,13 +354,23 @@ export default function OrderPage() {
     return () => {
       cancelled = true;
     };
-  }, [draftLoaded, isSignedIn]);
+  }, [draftLoaded, isSignedIn, isCheckoutReturn]);
 
-  function buildDraftPayload(overrides?: { receiptImageData?: string | null }) {
+  function buildDraftPayload(overrides?: {
+    receiptImageData?: string | null;
+    deliveryCheckoutSessionId?: string | null;
+    feePaid?: boolean;
+    couponCode?: string;
+    discountCents?: number;
+    deliveryFeeCents?: number;
+  }) {
     if (!pickupAddress || !dropoffAddress) return null;
     const receiptItems = receiptAnalysis ? receiptAnalysis.items : [];
     const resolvedReceiptImageData =
       overrides?.receiptImageData ?? receiptImageData ?? null;
+    const resolvedCouponCode = (overrides?.couponCode ?? couponCode).trim();
+    const resolvedDeliveryFeeCents = overrides?.deliveryFeeCents ?? deliveryFeeCents;
+    const resolvedFeePaid = overrides?.feePaid ?? feePaid;
 
     const payload: Record<string, unknown> = {
       draftId: draftId || undefined,
@@ -363,10 +385,12 @@ export default function OrderPage() {
       receiptLocation: receiptAnalysis?.location || undefined,
       receiptItems,
       receiptAuthenticityScore: receiptAnalysis?.authenticityScore,
-      deliveryFeeCents: deliveryFeeCents > 0 ? deliveryFeeCents : undefined,
-      deliveryFeePaid: feePaid,
-      couponCode: couponCode.trim() || undefined,
-      discountCents,
+      deliveryFeeCents: resolvedDeliveryFeeCents > 0 ? resolvedDeliveryFeeCents : undefined,
+      deliveryFeePaid: resolvedFeePaid,
+      deliveryCheckoutSessionId:
+        overrides?.deliveryCheckoutSessionId ?? deliveryCheckoutSessionId ?? undefined,
+      couponCode: resolvedCouponCode || undefined,
+      discountCents: overrides?.discountCents ?? discountCents,
     };
 
     return payload;
@@ -486,23 +510,39 @@ export default function OrderPage() {
         .then((res) => res.json())
         .then((data) => {
           if (data?.paid) {
+            const metaDelivery = Number(data.metadata?.deliveryFeeCents);
+            const metaSubtotal = Number(data.metadata?.subtotalCents);
+            const resolvedDeliveryFeeCents = Number.isFinite(metaDelivery)
+              ? metaDelivery
+              : deliveryFeeCents;
+            const resolvedSubtotalCents = Number.isFinite(metaSubtotal)
+              ? metaSubtotal
+              : receiptSubtotalCents;
+            const baseTotal = resolvedDeliveryFeeCents + resolvedSubtotalCents;
+            const discount =
+              typeof data.amountTotal === "number" ? Math.max(0, baseTotal - data.amountTotal) : 0;
+            const resolvedCouponCode = data.metadata?.couponCode
+              ? String(data.metadata.couponCode).toUpperCase()
+              : couponCode.trim().toUpperCase();
+
             setFeePaid(true);
             setDeliveryCheckoutSessionId(sessionId);
-            if (typeof data.amountTotal === "number") {
-              const metaDelivery = Number(data.metadata?.deliveryFeeCents);
-              const metaSubtotal = Number(data.metadata?.subtotalCents);
-              const baseTotal =
-                (Number.isFinite(metaDelivery) ? metaDelivery : deliveryFeeCents) +
-                (Number.isFinite(metaSubtotal) ? metaSubtotal : receiptSubtotalCents);
-              const discount = Math.max(0, baseTotal - data.amountTotal);
-              setDiscountCents(discount);
-              if (Number.isFinite(metaDelivery)) {
-                setDeliveryFeeCents(metaDelivery);
-              }
-              if (data.metadata?.couponCode) {
-                setCouponCode(String(data.metadata.couponCode).toUpperCase());
-              }
+            setDiscountCents(discount);
+            if (Number.isFinite(metaDelivery)) {
+              setDeliveryFeeCents(metaDelivery);
             }
+            if (resolvedCouponCode) {
+              setCouponCode(resolvedCouponCode);
+            }
+            persistDraft(
+              buildDraftPayload({
+                deliveryCheckoutSessionId: sessionId,
+                feePaid: true,
+                discountCents: discount,
+                couponCode: resolvedCouponCode || undefined,
+                deliveryFeeCents: resolvedDeliveryFeeCents,
+              })
+            ).catch(() => null);
             toast({
               title: "Payment authorized",
               description: "Payment confirmed. You can place your order now.",
@@ -740,6 +780,26 @@ export default function OrderPage() {
       const returnUrl = encodeURIComponent("/order");
       router.push(`/sign-in?redirect_url=${returnUrl}`);
       return;
+    }
+    if (requiresReceipt) {
+      if (!receiptAnalysis) {
+        toast({
+          title: "Add your receipt",
+          description: "Upload and review your receipt before paying.",
+          variant: "destructive",
+        });
+        setStep("receipt");
+        return;
+      }
+      if (!receiptAnalysis.items.length) {
+        toast({
+          title: "Receipt items missing",
+          description: "Add at least one receipt item before paying.",
+          variant: "destructive",
+        });
+        setStep("receipt");
+        return;
+      }
     }
 
     setPaymentProcessing(true);

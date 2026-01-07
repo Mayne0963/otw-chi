@@ -206,6 +206,7 @@ export async function POST(req: Request) {
         receiptSubtotalCents,
         deliveryFeeCents: data.deliveryFeeCents ?? null,
         deliveryFeePaid: data.deliveryFeePaid ?? false,
+        deliveryCheckoutSessionId: data.deliveryCheckoutSessionId ?? null,
         couponCode: appliedCouponCode,
         discountCents,
         receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,
