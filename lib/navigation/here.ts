@@ -42,6 +42,8 @@ type HereRouteResponse = {
   }>;
 };
 
+type HereRoute = NonNullable<HereRouteResponse["routes"]>[number];
+
 export type NavigationSpan = {
   offset: number;
   length: number;
@@ -100,9 +102,7 @@ const buildBounds = (coords: [number, number][]) => {
   return { minLat, minLng, maxLat, maxLng };
 };
 
-const parseRoute = (
-  route: HereRouteResponse["routes"] extends Array<infer R> ? R : never
-): NavigationRoute | null => {
+const parseRoute = (route?: HereRoute | null): NavigationRoute | null => {
   const section = route?.sections?.[0];
   if (!section?.polyline) return null;
 
