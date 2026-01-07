@@ -39,53 +39,6 @@ const MAX_OCR_BYTES = 1.2 * 1024 * 1024;
 const OCR_TIMEOUT_MS = 6_000;
 const SESSION_DRAFT_KEY = "otw-order-draft-cache-v1";
 
-async function buildHash(buffer: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function inferVendorName(name?: string, filename?: string): string {
-  if (name?.trim()) return name.trim();
-  if (filename) {
-    const base = filename.replace(/\.[^/.]+$/, "");
-    if (base.length > 2) return base.replace(/[_-]+/g, " ").trim();
-  }
-  return "Detected Restaurant";
-}
-
-function inferLocation(pickup?: string, dropoff?: string): string {
-  if (pickup?.trim()) {
-    const parts = pickup.split(",").map((part) => part.trim());
-    return parts.slice(0, 2).join(", ") || pickup;
-  }
-  if (dropoff?.trim()) {
-    const parts = dropoff.split(",").map((part) => part.trim());
-    return parts.slice(0, 2).join(", ") || dropoff;
-  }
-  return "Location not detected";
-}
-
-function generateFallbackItems(hash: string, restaurantName: string): ReceiptItem[] {
-  const palette = [
-    "House Special",
-    "Signature Plate",
-    "Chef's Pick",
-    "Side Selection",
-    "Beverage",
-    "Dessert Bite",
-  ];
-  const numbers = hash.slice(0, 12).match(/.{1,2}/g) || [];
-  return numbers.slice(0, 3).map((chunk, idx) => {
-    const seed = parseInt(chunk, 16);
-    const price = Math.max(3, (seed % 1800) / 100);
-    const quantity = (seed % 2) + 1;
-    const name = `${restaurantName} ${palette[idx % palette.length]}`;
-    return { name, quantity, price: Number(price.toFixed(2)) };
-  });
-}
-
 function computeAuthenticity(
   ocrConfidence: number,
   sizeBytes: number
@@ -100,6 +53,19 @@ function computeAuthenticity(
         ? "Looks like a real photo but OCR confidence is moderate"
         : "Low OCR confidence; please double-check clarity";
   return { score: combined, reason };
+}
+
+function calculateMiles(a: GeocodedAddress, b: GeocodedAddress): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 3959;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return Math.max(0.1, 2 * R * Math.asin(Math.min(1, Math.sqrt(h))));
 }
 
 async function fileToDataUrl(file: File): Promise<string> {
@@ -158,7 +124,9 @@ export default function OrderPage() {
   const [receiptAnalysis, setReceiptAnalysis] = useState<ReceiptAnalysis | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
-  const [deliveryFeeCents, setDeliveryFeeCents] = useState(995);
+  const [deliveryFeeCents, setDeliveryFeeCents] = useState(0);
+  const [deliveryEstimateLoading, setDeliveryEstimateLoading] = useState(false);
+  const [deliveryEstimateError, setDeliveryEstimateError] = useState<string | null>(null);
   const [feePaid, setFeePaid] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
@@ -197,16 +165,81 @@ export default function OrderPage() {
   const dropoffLines = dropoffAddress ? formatAddressLines(dropoffAddress) : null;
 
   useEffect(() => {
-    if (pickupAddress && dropoffAddress) {
-      const latDiff = Math.abs(pickupAddress.latitude - dropoffAddress.latitude);
-      const lngDiff = Math.abs(pickupAddress.longitude - dropoffAddress.longitude);
-      const approxMiles = Math.max(1, Math.round(Math.sqrt(latDiff ** 2 + lngDiff ** 2) * 69));
-      const cents = Math.min(2999, Math.max(799, 650 + approxMiles * 55));
-      setDeliveryFeeCents(cents);
-    } else {
-      setDeliveryFeeCents(995);
+    if (!pickupAddress || !dropoffAddress) {
+      setDeliveryFeeCents(0);
+      setDeliveryEstimateError(null);
+      setDeliveryEstimateLoading(false);
+      return;
     }
-  }, [pickupAddress, dropoffAddress]);
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const estimate = async () => {
+      setDeliveryEstimateLoading(true);
+      setDeliveryEstimateError(null);
+
+      const origin = `${pickupAddress.latitude},${pickupAddress.longitude}`;
+      const destination = `${dropoffAddress.latitude},${dropoffAddress.longitude}`;
+
+      let miles = calculateMiles(pickupAddress, dropoffAddress);
+      try {
+        const routeRes = await fetch(
+          `/api/navigation/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`,
+          { signal: controller.signal }
+        );
+        if (routeRes.ok) {
+          const routeData = await routeRes.json();
+          const lengthMeters = routeData?.route?.summary?.length;
+          if (typeof lengthMeters === "number" && Number.isFinite(lengthMeters)) {
+            miles = Math.max(0.1, lengthMeters / 1609.34);
+          }
+        }
+      } catch (_error) {
+        // fall back to coordinate distance
+      }
+
+      try {
+        const fd = new FormData();
+        fd.set("miles", String(miles));
+        fd.set("serviceType", serviceType);
+        const estimateRes = await fetch("/api/otw/estimate", {
+          method: "POST",
+          body: fd,
+          signal: controller.signal,
+        });
+        if (!estimateRes.ok) {
+          const error = await estimateRes.json().catch(() => ({}));
+          throw new Error(error?.error || "Unable to calculate delivery fee.");
+        }
+        const data = await estimateRes.json();
+        const fee = Number(data?.discountedPrice ?? data?.basePrice);
+        if (!Number.isFinite(fee) || fee <= 0) {
+          throw new Error("Invalid pricing response.");
+        }
+        if (!cancelled) {
+          setDeliveryFeeCents(Math.round(fee));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setDeliveryEstimateError(
+            error instanceof Error ? error.message : "Unable to calculate delivery fee."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setDeliveryEstimateLoading(false);
+        }
+      }
+    };
+
+    estimate();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [pickupAddress, dropoffAddress, serviceType]);
 
   useEffect(() => {
     if (serviceType !== "FOOD") {
@@ -215,6 +248,7 @@ export default function OrderPage() {
       setDeliveryCheckoutSessionId(null);
       setCouponCode("");
       setDiscountCents(0);
+      setDeliveryEstimateError(null);
     }
   }, [serviceType]);
 
@@ -262,16 +296,14 @@ export default function OrderPage() {
         const receiptItems = Array.isArray(draft.receiptItems) ? draft.receiptItems : [];
         if (receiptItems.length || draft.receiptVendor || draft.receiptLocation) {
           setReceiptAnalysis({
-            vendorName: draft.receiptVendor || draft.restaurantName || "Detected Restaurant",
-            location:
-              draft.receiptLocation ||
-              inferLocation(draft.pickupAddress, draft.dropoffAddress),
+            vendorName: draft.receiptVendor || draft.restaurantName || "",
+            location: draft.receiptLocation || "",
             items: receiptItems,
             authenticityScore:
               typeof draft.receiptAuthenticityScore === "number"
                 ? draft.receiptAuthenticityScore
-                : 0.9,
-            authenticityReason: "Draft restored",
+                : 0,
+            authenticityReason: "Draft restored - run receipt check to verify.",
             imageData: draft.receiptImageData || undefined,
           });
         }
@@ -331,7 +363,7 @@ export default function OrderPage() {
       receiptLocation: receiptAnalysis?.location || undefined,
       receiptItems,
       receiptAuthenticityScore: receiptAnalysis?.authenticityScore,
-      deliveryFeeCents,
+      deliveryFeeCents: deliveryFeeCents > 0 ? deliveryFeeCents : undefined,
       deliveryFeePaid: feePaid,
       couponCode: couponCode.trim() || undefined,
       discountCents,
@@ -417,6 +449,13 @@ export default function OrderPage() {
     [receiptAnalysis]
   );
   const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
+  const deliveryFeeReady =
+    deliveryFeeCents > 0 && !deliveryEstimateLoading && !deliveryEstimateError;
+  const deliveryFeeLabel = deliveryEstimateLoading
+    ? "Calculating..."
+    : deliveryEstimateError
+      ? "Unavailable"
+      : formatCurrency(deliveryFeeCents);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -597,7 +636,6 @@ export default function OrderPage() {
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
-      const buffer = await receiptFile.arrayBuffer();
       const imageData = receiptImageData || (await fileToDataUrl(receiptFile));
       setReceiptImageData(imageData);
       let ocrText = "";
@@ -611,17 +649,9 @@ export default function OrderPage() {
       }
 
       const parsed = parseReceiptText(ocrText);
-      const fallbackVendor = inferVendorName(restaurantName, receiptFile.name);
-      const vendorName = parsed.vendorName || fallbackVendor;
-      const fallbackLocation = inferLocation(
-        pickupAddress?.formattedAddress,
-        dropoffAddress?.formattedAddress
-      );
-      const location = parsed.location || fallbackLocation;
-      const items =
-        parsed.items.length > 0
-          ? parsed.items
-          : generateFallbackItems(await buildHash(buffer), vendorName);
+      const vendorName = parsed.vendorName || restaurantName.trim() || "";
+      const location = parsed.location || pickupAddress?.formattedAddress || "";
+      const items = parsed.items;
       const authenticity = computeAuthenticity(ocrConfidence, receiptFile.size);
 
       setReceiptAnalysis({
@@ -671,7 +701,7 @@ export default function OrderPage() {
   function addReceiptItem() {
     setReceiptAnalysis((prev) => {
       const base = prev?.items ?? [];
-      const items = [...base, { name: "Custom item", quantity: 1, price: 0 }];
+      const items = [...base, { name: "", quantity: 1, price: 0 }];
       return prev ? { ...prev, items } : null;
     });
   }
@@ -698,6 +728,14 @@ export default function OrderPage() {
   }
 
   async function handlePayDeliveryFee() {
+    if (!deliveryFeeReady) {
+      toast({
+        title: "Delivery fee unavailable",
+        description: deliveryEstimateError || "Please wait for the delivery fee to finish calculating.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isSignedIn) {
       const returnUrl = encodeURIComponent("/order");
       router.push(`/sign-in?redirect_url=${returnUrl}`);
@@ -870,7 +908,7 @@ export default function OrderPage() {
               <div className="space-y-2">
                 <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Pickup Address</label>
                 <AddressSearch
-                  placeholder="Search for pickup address..."
+                  ariaLabel="Pickup address"
                   enableCurrentLocation
                   onSelect={(address) => {
                     setPickupAddress(address);
@@ -898,7 +936,7 @@ export default function OrderPage() {
               <div className="space-y-2">
                 <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Dropoff Address</label>
                 <AddressSearch
-                  placeholder="Search for dropoff address..."
+                  ariaLabel="Dropoff address"
                   enableCurrentLocation
                   onSelect={(address) => {
                     setDropoffAddress(address);
@@ -942,14 +980,13 @@ export default function OrderPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Notes (Optional)</label>
-                <Textarea
-                  name="notes"
-                  placeholder="Gate code, special instructions, order details..."
-                  className="min-h-[110px]"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Notes (Optional)</label>
+              <Textarea
+                name="notes"
+                className="min-h-[110px]"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
               </div>
 
               <div className="pt-2">
@@ -977,7 +1014,6 @@ export default function OrderPage() {
                   <Input
                     value={restaurantName}
                     onChange={(e) => setRestaurantName(e.target.value)}
-                    placeholder="e.g., Local Burger House"
                   />
                 </div>
                 <div className="space-y-2">
@@ -985,7 +1021,6 @@ export default function OrderPage() {
                   <Input
                     value={restaurantWebsite}
                     onChange={(e) => setRestaurantWebsite(e.target.value)}
-                    placeholder="https://restaurant-menu.com"
                     type="url"
                   />
                 </div>
@@ -1075,7 +1110,7 @@ export default function OrderPage() {
           )}
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs text-muted-foreground">Detected restaurant</div>
+              <div className="text-xs text-muted-foreground">Restaurant name</div>
               <Input
                 value={receiptAnalysis.vendorName}
                 onChange={(e) =>
@@ -1089,7 +1124,7 @@ export default function OrderPage() {
             </Badge>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-1">Pickup location on receipt</div>
+              <div className="text-xs text-muted-foreground mb-1">Pickup location on receipt</div>
             <Input
               value={receiptAnalysis.location}
               onChange={(e) =>
@@ -1177,7 +1212,7 @@ export default function OrderPage() {
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Restaurant</div>
                       <div className="text-sm font-semibold text-foreground">
-                        {restaurantName || receiptAnalysis?.vendorName || "Add restaurant"}
+                        {restaurantName || receiptAnalysis?.vendorName || "Restaurant name required"}
                       </div>
                       {restaurantWebsite && (
                         <a
@@ -1191,14 +1226,14 @@ export default function OrderPage() {
                       )}
                     </div>
                     <Badge variant="outline">
-                      Checkout total {formatCurrency(orderTotalCents)}
+                      Checkout total {deliveryFeeReady ? formatCurrency(orderTotalCents) : "Pending estimate"}
                     </Badge>
                   </div>
 
                   <div className="rounded-lg border border-border/70 bg-card/80 p-3 space-y-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Delivery fee</span>
-                      <span className="text-foreground/80">{formatCurrency(deliveryFeeCents)}</span>
+                      <span className="text-foreground/80">{deliveryFeeLabel}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Receipt items</span>
@@ -1223,6 +1258,12 @@ export default function OrderPage() {
                       <p className="text-xs text-muted-foreground">Attach your receipt to continue.</p>
                     )}
                   </div>
+                  {deliveryEstimateLoading && (
+                    <div className="text-xs text-muted-foreground">Calculating delivery fee…</div>
+                  )}
+                  {deliveryEstimateError && (
+                    <div className="text-xs text-red-400">{deliveryEstimateError}</div>
+                  )}
 
                   <div className="space-y-2">
                     <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Coupon code</div>
@@ -1233,7 +1274,6 @@ export default function OrderPage() {
                           setCouponCode(e.target.value.toUpperCase());
                           setDiscountCents(0);
                         }}
-                        placeholder="Enter code"
                         className="flex-1 min-w-[200px]"
                         disabled={feePaid}
                       />
@@ -1267,7 +1307,7 @@ export default function OrderPage() {
                   <div className="flex flex-wrap gap-3">
                     <Button
                       onClick={handlePayDeliveryFee}
-                      disabled={paymentProcessing || feePaid}
+                      disabled={paymentProcessing || feePaid || !deliveryFeeReady}
                       className="gap-2"
                       isLoading={paymentProcessing}
                     >
@@ -1277,7 +1317,9 @@ export default function OrderPage() {
                         </>
                       ) : (
                         <>
-                          Pay {formatCurrency(Math.max(0, orderTotalCents - discountCents))}{" "}
+                          {deliveryFeeReady
+                            ? `Pay ${formatCurrency(Math.max(0, orderTotalCents - discountCents))}`
+                            : "Payment pending estimate"}{" "}
                           <CreditCard className="h-4 w-4" />
                         </>
                       )}

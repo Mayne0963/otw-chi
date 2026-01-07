@@ -8,6 +8,8 @@ import { MapPin, User, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { redirect } from 'next/navigation';
+import OtwLiveMap from '@/components/otw/OtwLiveMap';
+import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +51,25 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
   const driverName = request.assignedDriver?.user?.name;
   const driverRating = request.assignedDriver?.rating;
+  const hasDriverSignal =
+    request.lastKnownLat != null &&
+    request.lastKnownLng != null &&
+    request.lastKnownAt != null;
+  const driverLabel = driverName?.trim() || 'Driver';
+  const driverLocations: OtwDriverLocation[] = hasDriverSignal
+    ? [
+        {
+          driverId: driverLabel,
+          location: {
+            lat: request.lastKnownLat as number,
+            lng: request.lastKnownLng as number,
+            label: driverLabel,
+          },
+          updatedAt: request.lastKnownAt!.toISOString(),
+          currentRequestId: request.id,
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-6">
@@ -65,7 +86,6 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             className="mb-0"
           />
         </div>
-        {/* Placeholder for action buttons like Cancel or Contact Support */}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -160,8 +180,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                     Live Tracking
                   </h3>
                   
-                  <div className="bg-black/40 rounded-xl border border-white/10 p-4 h-48 flex items-center justify-center relative overflow-hidden">
-                    {request.lastKnownLat && request.lastKnownLng ? (
+                  {hasDriverSignal ? (
+                    <div className="space-y-3">
+                      <OtwLiveMap
+                        drivers={driverLocations}
+                        requestId={request.id}
+                        jobStatus={request.status}
+                      />
                       <div className="text-center space-y-2">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-otwGold/20 text-otwGold text-sm font-medium animate-pulse">
                           <span className="relative flex h-2 w-2">
@@ -171,22 +196,21 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                           Driver Connected
                         </div>
                         <p className="text-sm text-white/60 font-mono">
-                          Lat: {request.lastKnownLat.toFixed(4)} | Lng: {request.lastKnownLng.toFixed(4)}
+                          Lat: {request.lastKnownLat!.toFixed(4)} | Lng: {request.lastKnownLng!.toFixed(4)}
                         </p>
                         <p className="text-xs text-white/40">
-                          Updated: {formatDate(request.lastKnownAt || new Date())}
+                          Updated: {formatDate(request.lastKnownAt!)}
                         </p>
                       </div>
-                    ) : (
-                      <div className="text-center text-white/40">
+                    </div>
+                  ) : (
+                    <div className="bg-black/40 rounded-xl border border-white/10 p-4 h-48 flex items-center justify-center text-center text-white/40">
+                      <div>
                         <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p>Waiting for driver location signal...</p>
                       </div>
-                    )}
-                    
-                    {/* Fake Map Background Effect */}
-                    <div className="absolute inset-0 z-[-1] opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

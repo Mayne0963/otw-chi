@@ -60,17 +60,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'EXEC')
             data: { stripeCustomerId },
         });
     } else {
-        // Create placeholder membership to store customer ID
-        // We need a planId, assume there's a default "FREE" plan or handle this differently
-        // For now, we'll upsert when the subscription webhook comes in.
-        // BUT, we need to store the customer ID. 
-        // Let's create a subscription record with NO plan/status just to hold the ID? 
-        // Or better, just pass it to checkout and let webhook handle DB creation.
-        // Actually, we should probably add stripeCustomerId to User model for easier access, 
-        // but instructions say MembershipSubscription.
-        
-        // Let's rely on webhook to create the DB record if it doesn't exist, 
-        // but we pass the ID to checkout.
+        // Membership records are created via webhook; checkout uses the customer ID directly.
     }
   }
 

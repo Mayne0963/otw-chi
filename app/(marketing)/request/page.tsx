@@ -186,7 +186,7 @@ export default function RequestPage() {
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Pickup Location</label>
               <AddressSearch
-                placeholder="Search for pickup address..."
+                ariaLabel="Pickup address"
                 enableCurrentLocation
                 onSelect={(address) => {
                   setPickupAddress(address);
@@ -214,7 +214,7 @@ export default function RequestPage() {
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Dropoff Destination</label>
               <AddressSearch
-                placeholder="Search for dropoff address..."
+                ariaLabel="Dropoff address"
                 enableCurrentLocation
                 onSelect={(address) => {
                   setDropoffAddress(address);
@@ -263,7 +263,6 @@ export default function RequestPage() {
               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Notes (Optional)</label>
               <Textarea
                 name="notes"
-                placeholder="Gate code, specific items, special instructions..."
                 className="min-h-[110px]"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}

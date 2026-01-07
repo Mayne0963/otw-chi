@@ -86,7 +86,6 @@ export default function DriverApplyPage() {
                 value={formData.fullName}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
-                placeholder="John Doe" 
               />
             </div>
             
@@ -100,7 +99,6 @@ export default function DriverApplyPage() {
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
-                placeholder="john@example.com" 
               />
             </div>
 
@@ -114,7 +112,6 @@ export default function DriverApplyPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
-                placeholder="(555) 123-4567" 
               />
             </div>
 
@@ -128,7 +125,6 @@ export default function DriverApplyPage() {
                   value={formData.city}
                   onChange={handleChange}
                   className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
-                  placeholder="Chicago" 
                 />
               </div>
               <div>
@@ -178,7 +174,6 @@ export default function DriverApplyPage() {
                 value={formData.message}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
-                placeholder="Tell us a bit about yourself..." 
               />
             </div>
 

@@ -21,9 +21,15 @@ export default async function SupportPage() {
         <>
           <OtwCard className="mt-3 space-y-3">
             <form action={createTicketAction} className="space-y-3">
-              <input name="subject" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Subject" />
-              <textarea name="message" className="w-full min-h-[120px] rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Describe your issue" />
-              <OtwButton variant="gold">Submit Ticket</OtwButton>
+              <div>
+                <label htmlFor="support-subject" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Subject</label>
+                <input id="support-subject" name="subject" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" />
+              </div>
+              <div>
+                <label htmlFor="support-message" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Message</label>
+                <textarea id="support-message" name="message" className="w-full min-h-[120px] rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" />
+              </div>
+              <OtwButton variant="gold" type="submit">Submit Ticket</OtwButton>
             </form>
           </OtwCard>
           <OtwCard className="mt-3">

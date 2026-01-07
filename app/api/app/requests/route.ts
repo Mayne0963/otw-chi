@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { CreateRequestSchema } from '@/lib/validation/request';
 import { getPrisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth/roles';
 
 export async function POST(req: Request) {
   try {
@@ -8,6 +9,10 @@ export async function POST(req: Request) {
     const parsed = CreateRequestSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: parsed.error.flatten() }, { status: 400 });
+    }
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const prisma = getPrisma();
     const created = await prisma.request.create({
@@ -17,7 +22,7 @@ export async function POST(req: Request) {
         serviceType: parsed.data.serviceType,
         notes: parsed.data.notes,
         status: 'DRAFT',
-        customerId: 'TEMP-CUSTOMER', // TODO: replace with real user id from auth
+        customerId: user.id,
       }
     });
     return NextResponse.json({ success: true, request: created }, { status: 201 });
@@ -26,4 +31,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
-

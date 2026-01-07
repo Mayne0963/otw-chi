@@ -16,6 +16,15 @@ interface OtwLiveMapProps {
   jobStatus?: string;
   focusDriverId?: string;
   drivers?: OtwDriverLocation[];
+  useExternalRoutes?: boolean;
+  mainRouteOverride?: RouteFeature | null;
+  mainRouteSummaryOverride?: RouteSummary | null;
+  driverRouteOverride?: RouteFeature | null;
+  driverRouteSummaryOverride?: RouteSummary | null;
+  turnMarkers?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
+  trafficFlow?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null;
+  incidents?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
+  pois?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
 }
 
 const MAP_STYLE_URL =
@@ -26,6 +35,15 @@ const ROUTE_SOURCE_ID = "otw-route-source";
 const ROUTE_LAYER_ID = "otw-route-layer";
 const DRIVER_ROUTE_SOURCE_ID = "otw-driver-route-source";
 const DRIVER_ROUTE_LAYER_ID = "otw-driver-route-layer";
+const TURN_SOURCE_ID = "otw-turn-source";
+const TURN_LAYER_ID = "otw-turn-layer";
+const TURN_LABEL_LAYER_ID = "otw-turn-label-layer";
+const TRAFFIC_SOURCE_ID = "otw-traffic-source";
+const TRAFFIC_LAYER_ID = "otw-traffic-layer";
+const INCIDENT_SOURCE_ID = "otw-incident-source";
+const INCIDENT_LAYER_ID = "otw-incident-layer";
+const POI_SOURCE_ID = "otw-poi-source";
+const POI_LAYER_ID = "otw-poi-layer";
 
 type MapMarker = {
   id: string;
@@ -136,6 +154,15 @@ const OtwLiveMap = ({
   jobStatus,
   focusDriverId,
   drivers = [],
+  useExternalRoutes = false,
+  mainRouteOverride,
+  mainRouteSummaryOverride,
+  driverRouteOverride,
+  driverRouteSummaryOverride,
+  turnMarkers,
+  trafficFlow,
+  incidents,
+  pois,
 }: OtwLiveMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -152,6 +179,10 @@ const OtwLiveMap = ({
   const jobPickup = pickup;
   const jobDestination = customer ?? dropoff;
   const jobPhase = getJobPhase(jobStatus);
+  const resolvedMainRoute = mainRouteOverride ?? mainRoute;
+  const resolvedMainSummary = mainRouteSummaryOverride ?? mainRouteSummary;
+  const resolvedDriverRoute = driverRouteOverride ?? driverRoute;
+  const resolvedDriverSummary = driverRouteSummaryOverride ?? driverRouteSummary;
 
   const markerData = useMemo<MapMarker[]>(() => {
     const markers: MapMarker[] = [];
@@ -201,6 +232,7 @@ const OtwLiveMap = ({
 
   const routingDriver = useMemo(() => {
     if (!drivers.length) return null;
+    if (jobPhase === "NONE") return null;
 
     if (focusDriverId) {
       const match = drivers.find((d) => d.driverId === focusDriverId);
@@ -217,7 +249,7 @@ const OtwLiveMap = ({
         ? jobDestination
         : jobPhase === "TO_PICKUP"
           ? jobPickup
-          : jobPickup ?? jobDestination;
+          : null;
 
     if (targetLocation) {
       const withDistance = pool
@@ -243,7 +275,7 @@ const OtwLiveMap = ({
         ? jobDestination
         : jobPhase === "TO_PICKUP"
           ? jobPickup
-          : jobPickup ?? jobDestination;
+          : null;
     if (routingDriver && targetLocation) {
       setActiveDriver(routingDriver);
       setDriverTarget({
@@ -296,6 +328,7 @@ const OtwLiveMap = ({
   }, []);
 
   useEffect(() => {
+    if (useExternalRoutes || mainRouteOverride) return;
     if (!jobPickup || !jobDestination) {
       setMainRoute(null);
       setMainRouteSummary(null);
@@ -354,9 +387,10 @@ const OtwLiveMap = ({
     fetchRoute();
 
     return () => controller.abort();
-  }, [jobDestination, jobPickup]);
+  }, [jobDestination, jobPickup, mainRouteOverride, useExternalRoutes]);
 
   useEffect(() => {
+    if (useExternalRoutes || driverRouteOverride) return;
     const target = driverTarget;
     const driver = activeDriver;
     if (!driver || !target) {
@@ -427,7 +461,7 @@ const OtwLiveMap = ({
 
     fetchDriverLeg();
     return () => controller.abort();
-  }, [activeDriver, driverTarget]);
+  }, [activeDriver, driverRouteOverride, driverTarget, useExternalRoutes]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -474,6 +508,46 @@ const OtwLiveMap = ({
           });
         }
       };
+      const updateGeoLayer = ({
+        sourceId,
+        layerId,
+        data,
+        type,
+        paint,
+        layout,
+      }: {
+        sourceId: string;
+        layerId: string;
+        data: GeoJSON.FeatureCollection | null;
+        type: "line" | "circle" | "symbol";
+        paint: Record<string, unknown>;
+        layout?: Record<string, unknown>;
+      }) => {
+        if (!data) {
+          if (map.getLayer(layerId)) map.removeLayer(layerId);
+          if (map.getSource(sourceId)) map.removeSource(sourceId);
+          return;
+        }
+
+        if (map.getSource(sourceId)) {
+          (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(data);
+        } else {
+          map.addSource(sourceId, {
+            type: "geojson",
+            data,
+          });
+        }
+
+        if (!map.getLayer(layerId)) {
+          map.addLayer({
+            id: layerId,
+            type,
+            source: sourceId,
+            layout,
+            paint,
+          } as maplibregl.LayerSpecification);
+        }
+      };
 
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
@@ -489,7 +563,7 @@ const OtwLiveMap = ({
       updateLineLayer({
         sourceId: ROUTE_SOURCE_ID,
         layerId: ROUTE_LAYER_ID,
-        data: mainRoute,
+        data: resolvedMainRoute,
         paint: {
           "line-color": "#22c55e",
           "line-width": 5,
@@ -500,7 +574,7 @@ const OtwLiveMap = ({
       updateLineLayer({
         sourceId: DRIVER_ROUTE_SOURCE_ID,
         layerId: DRIVER_ROUTE_LAYER_ID,
-        data: driverRoute,
+        data: resolvedDriverRoute,
         paint: {
           "line-color": "#60a5fa",
           "line-width": 4,
@@ -509,18 +583,119 @@ const OtwLiveMap = ({
         },
       });
 
+      updateGeoLayer({
+        sourceId: TRAFFIC_SOURCE_ID,
+        layerId: TRAFFIC_LAYER_ID,
+        data: trafficFlow ?? null,
+        type: "line",
+        paint: {
+          "line-color": [
+            "step",
+            ["coalesce", ["get", "jamFactor"], 0],
+            "#16a34a",
+            2,
+            "#eab308",
+            5,
+            "#ef4444",
+            8,
+            "#111827",
+          ],
+          "line-width": 3,
+          "line-opacity": 0.6,
+        },
+      });
+
+      updateGeoLayer({
+        sourceId: INCIDENT_SOURCE_ID,
+        layerId: INCIDENT_LAYER_ID,
+        data: incidents ?? null,
+        type: "circle",
+        paint: {
+          "circle-radius": 5,
+          "circle-color": [
+            "match",
+            ["downcase", ["to-string", ["get", "severity"]]],
+            "critical",
+            "#dc2626",
+            "major",
+            "#f97316",
+            "minor",
+            "#f59e0b",
+            "#f59e0b",
+          ],
+          "circle-stroke-color": "#111827",
+          "circle-stroke-width": 1,
+        },
+      });
+
+      updateGeoLayer({
+        sourceId: POI_SOURCE_ID,
+        layerId: POI_LAYER_ID,
+        data: pois ?? null,
+        type: "circle",
+        paint: {
+          "circle-radius": 4,
+          "circle-color": "#fbbf24",
+          "circle-stroke-color": "#111827",
+          "circle-stroke-width": 1,
+        },
+      });
+
+      if (turnMarkers) {
+        updateGeoLayer({
+          sourceId: TURN_SOURCE_ID,
+          layerId: TURN_LAYER_ID,
+          data: turnMarkers,
+          type: "circle",
+          paint: {
+            "circle-radius": 5,
+            "circle-color": "#f59e0b",
+            "circle-stroke-color": "#0f172a",
+            "circle-stroke-width": 1,
+          },
+        });
+
+        updateGeoLayer({
+          sourceId: TURN_SOURCE_ID,
+          layerId: TURN_LABEL_LAYER_ID,
+          data: turnMarkers,
+          type: "symbol",
+          layout: {
+            "text-field": ["get", "label"],
+            "text-size": 10,
+            "text-offset": [0, 1.1],
+            "text-anchor": "top",
+          },
+          paint: {
+            "text-color": "#fef08a",
+            "text-halo-color": "#0f172a",
+            "text-halo-width": 1,
+          },
+        });
+      } else {
+        if (map.getLayer(TURN_LABEL_LAYER_ID)) map.removeLayer(TURN_LABEL_LAYER_ID);
+        if (map.getLayer(TURN_LAYER_ID)) map.removeLayer(TURN_LAYER_ID);
+        if (map.getSource(TURN_SOURCE_ID)) map.removeSource(TURN_SOURCE_ID);
+      }
+
       const boundsCoordinates: [number, number][] = [];
       markerData.forEach((marker) => boundsCoordinates.push([marker.lng, marker.lat]));
-      if (mainRoute?.geometry?.coordinates) {
-        mainRoute.geometry.coordinates.forEach((coord) => {
+      if (resolvedMainRoute?.geometry?.coordinates) {
+        resolvedMainRoute.geometry.coordinates.forEach((coord) => {
           const [lng, lat] = coord;
           boundsCoordinates.push([lng, lat]);
         });
       }
-      if (driverRoute?.geometry?.coordinates) {
-        driverRoute.geometry.coordinates.forEach((coord) => {
+      if (resolvedDriverRoute?.geometry?.coordinates) {
+        resolvedDriverRoute.geometry.coordinates.forEach((coord) => {
           const [lng, lat] = coord;
           boundsCoordinates.push([lng, lat]);
+        });
+      }
+      if (turnMarkers?.features?.length) {
+        turnMarkers.features.forEach((feature) => {
+          const coords = feature.geometry.coordinates as [number, number];
+          boundsCoordinates.push(coords);
         });
       }
 
@@ -541,15 +716,15 @@ const OtwLiveMap = ({
     }
 
     applyUpdates();
-  }, [markerData, mainRoute, driverRoute]);
+  }, [markerData, resolvedMainRoute, resolvedDriverRoute, turnMarkers, trafficFlow, incidents, pois]);
 
   const statusLines: string[] = [];
 
   const driverUpdatedAgo = formatUpdatedAgo(activeDriver?.updatedAt);
 
-  if (mainRouteSummary) {
+  if (resolvedMainSummary) {
     statusLines.push(
-      `Job route: ${mainRouteSummary.distanceText} • ${mainRouteSummary.durationText}`
+      `Job route: ${resolvedMainSummary.distanceText} • ${resolvedMainSummary.durationText}`
     );
   } else if (jobPickup && jobDestination) {
     statusLines.push("Job route: calculating...");
@@ -557,9 +732,9 @@ const OtwLiveMap = ({
     statusLines.push("Job route: add pickup and destination to unlock directions.");
   }
 
-  if (driverRouteSummary && activeDriver && driverTarget) {
+  if (resolvedDriverSummary && activeDriver && driverTarget) {
     statusLines.push(
-      `Driver ➜ ${driverTarget.label}: ${driverRouteSummary.distanceText} • ${driverRouteSummary.durationText}` +
+      `Driver ➜ ${driverTarget.label}: ${resolvedDriverSummary.distanceText} • ${resolvedDriverSummary.durationText}` +
         (driverUpdatedAgo ? ` (${driverUpdatedAgo})` : "")
     );
   } else if (activeDriver && driverTarget) {
@@ -616,6 +791,22 @@ const OtwLiveMap = ({
         <span className={styles.legendItem}>
           <span className={`${styles.legendSwatch} ${styles.swatchDriverRoute}`} />
           Driver Leg
+        </span>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.swatchTurn}`} />
+          Turn Markers
+        </span>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.swatchTraffic}`} />
+          Traffic Flow
+        </span>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.swatchIncident}`} />
+          Incidents
+        </span>
+        <span className={styles.legendItem}>
+          <span className={`${styles.legendSwatch} ${styles.swatchPoi}`} />
+          POIs
         </span>
       </div>
     </div>

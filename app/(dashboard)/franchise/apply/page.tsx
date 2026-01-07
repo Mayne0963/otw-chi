@@ -2,19 +2,105 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import { getCurrentUser } from '@/lib/auth/roles';
+import { getPrisma } from '@/lib/db';
+import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 
-export default function FranchiseApplyPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function FranchiseApplyPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/sign-in');
+  }
+
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Apply for OTW Franchise" subtitle="Tell us about your city and plan." />
       <OtwCard className="mt-3 space-y-3">
-        <input className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Full Name" />
-        <input className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Email" />
-        <input className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="City / Zones" />
-        <textarea className="w-full min-h-[120px] rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Why you?" />
-        <OtwButton variant="gold" className="w-full">Submit Application</OtwButton>
+        <form action={submitFranchiseApplication} className="space-y-3">
+          <div>
+            <label htmlFor="franchise-full-name" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Full Name</label>
+            <input
+              id="franchise-full-name"
+              name="fullName"
+              defaultValue={user.name ?? ''}
+              className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="franchise-email" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Email</label>
+            <input
+              id="franchise-email"
+              name="email"
+              type="email"
+              defaultValue={user.email ?? ''}
+              className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="franchise-city-zones" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">City / Zones</label>
+            <input
+              id="franchise-city-zones"
+              name="cityZones"
+              className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="franchise-why" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Why you?</label>
+            <textarea
+              id="franchise-why"
+              name="message"
+              className="w-full min-h-[120px] rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2"
+            />
+          </div>
+          <OtwButton variant="gold" className="w-full" type="submit">Submit Application</OtwButton>
+        </form>
       </OtwCard>
     </OtwPageShell>
   );
 }
 
+export async function submitFranchiseApplication(formData: FormData) {
+  'use server';
+  const { auth } = await import('@clerk/nextjs/server');
+  const { userId } = await auth();
+  if (!userId) return;
+
+  const payload = {
+    fullName: String(formData.get('fullName') ?? '').trim(),
+    email: String(formData.get('email') ?? '').trim(),
+    cityZones: String(formData.get('cityZones') ?? '').trim(),
+    message: String(formData.get('message') ?? '').trim(),
+  };
+  const parsed = z
+    .object({
+      fullName: z.string().min(2),
+      email: z.string().email(),
+      cityZones: z.string().min(2),
+      message: z.string().optional(),
+    })
+    .safeParse(payload);
+  if (!parsed.success) return;
+
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  if (!user) return;
+
+  await prisma.franchiseApplication.create({
+    data: {
+      userId: user.id,
+      fullName: parsed.data.fullName,
+      email: parsed.data.email,
+      cityZones: parsed.data.cityZones,
+      message: parsed.data.message || null,
+    },
+  });
+
+  revalidatePath('/franchise/apply');
+}

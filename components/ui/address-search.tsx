@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 interface AddressSearchProps {
   value?: string;
   onSelect: (address: GeocodedAddress) => void;
-  placeholder?: string;
+  ariaLabel?: string;
   className?: string;
   error?: string;
   enableCurrentLocation?: boolean;
@@ -63,7 +63,7 @@ const writePreference = (choice: Exclude<LocationPreference, "unknown">) => {
 export function AddressSearch({
   value = "",
   onSelect,
-  placeholder = "Enter delivery address...",
+  ariaLabel = "Address search",
   className,
   error,
   enableCurrentLocation = false,
@@ -238,10 +238,9 @@ export function AddressSearch({
           onFocus={() => results.length > 0 && setIsOpen(true)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
-          placeholder={placeholder}
+          aria-label={ariaLabel}
           className={cn(
             "w-full rounded-lg border border-border/70 bg-input py-2.5 pl-10 pr-10 text-sm text-foreground shadow-sm ring-offset-background transition-colors duration-300",
-            "placeholder:text-muted-foreground",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             "disabled:cursor-not-allowed disabled:opacity-50",
             enableCurrentLocation && "pr-20",

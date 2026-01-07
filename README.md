@@ -16,6 +16,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Environment
+
+- `HERE_API_KEY` (required): routing, traffic, incidents, weather, and POI services.
+- `HERE_APP_ID` (optional): reserved for HERE services that still require an App ID.
+- Run Prisma migrations to add driver navigation settings + telemetry tables (`pnpm prisma migrate dev` or `pnpm prisma migrate deploy`).
+
 ## Style Guide
 
 - **Theme**: Premium minimal, dark-first OTW brand theme via CSS variables in `styles/globals.css`.

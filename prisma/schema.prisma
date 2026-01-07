@@ -77,6 +77,12 @@ enum DriverApplicationStatus {
   DENIED
 }
 
+enum FranchiseApplicationStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
 // Models
 model User {
   id                String    @id @default(cuid())
@@ -103,6 +109,8 @@ model User {
   driverApplications DriverApplication[]
   deliveryRequests   DeliveryRequest[]
   promoRedemptions   PromoRedemption[]
+  franchiseApplications FranchiseApplication[]
+  contactMessages    ContactMessage[]
 }
 
 model DriverApplication {
@@ -123,6 +131,36 @@ model DriverApplication {
   user         User?    @relation(fields: [userId], references: [id])
 }
 
+model FranchiseApplication {
+  id        String   @id @default(cuid())
+  userId    String?
+  fullName  String
+  email     String
+  cityZones String
+  message   String?
+  status    FranchiseApplicationStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
 model DriverProfile {
   id                String           @id @default(cuid())
   userId            String           @unique
@@ -137,6 +175,8 @@ model DriverProfile {
   locations         DriverLocation[]
   assignments       DriverAssignment[]
   locationPings     DriverLocationPing[]
+  navigationSettings DriverNavigationSettings?
+  telemetry         DriverTelemetry[]
 }
 
 model CustomerProfile {
@@ -401,6 +441,41 @@ model DriverLocationPing {
   deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
 
   @@index([driverId])
+  @@index([requestId])
+  @@index([deliveryRequestId])
+}
+
+model DriverNavigationSettings {
+  id            String   @id @default(cuid())
+  driverId      String   @unique
+  voiceEnabled  Boolean  @default(true)
+  voiceLocale   String   @default("en-US")
+  voiceVolume   Float    @default(0.7)
+  detailLevel   String   @default("standard")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  driver        DriverProfile @relation(fields: [driverId], references: [id])
+}
+
+model DriverTelemetry {
+  id               String   @id @default(cuid())
+  driverId         String
+  requestId        String?
+  deliveryRequestId String?
+  lat              Float
+  lng              Float
+  speedMps         Float?
+  heading          Float?
+  accuracy         Float?
+  altitude         Float?
+  batteryLevel     Float?
+  batteryCharging  Boolean?
+  recordedAt       DateTime @default(now())
+
+  driver           DriverProfile @relation(fields: [driverId], references: [id])
+
+  @@index([driverId, recordedAt])
   @@index([requestId])
   @@index([deliveryRequestId])
 }

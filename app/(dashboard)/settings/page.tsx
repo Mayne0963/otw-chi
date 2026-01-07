@@ -23,13 +23,22 @@ export default async function SettingsPage() {
         <OtwCard className="mt-3 space-y-3">
           <form action={saveSettings} className="space-y-3">
             <div>
-              <label className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Date of Birth (Required)</label>
-              <input type="date" name="dob" defaultValue={dobString} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-white placeholder-white/30" required />
+              <label htmlFor="settings-dob" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Date of Birth (Required)</label>
+              <input id="settings-dob" type="date" name="dob" defaultValue={dobString} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2 text-white" required />
             </div>
-            <input name="phone" defaultValue={profile?.phone ?? ''} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Phone" />
-            <input name="defaultPickup" defaultValue={profile?.defaultPickup ?? ''} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Default Pickup" />
-            <input name="defaultDropoff" defaultValue={profile?.defaultDropoff ?? ''} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" placeholder="Default Dropoff" />
-            <OtwButton variant="gold">Save</OtwButton>
+            <div>
+              <label htmlFor="settings-phone" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Phone</label>
+              <input id="settings-phone" name="phone" defaultValue={profile?.phone ?? ''} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" />
+            </div>
+            <div>
+              <label htmlFor="settings-default-pickup" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Default Pickup</label>
+              <input id="settings-default-pickup" name="defaultPickup" defaultValue={profile?.defaultPickup ?? ''} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" />
+            </div>
+            <div>
+              <label htmlFor="settings-default-dropoff" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Default Dropoff</label>
+              <input id="settings-default-dropoff" name="defaultDropoff" defaultValue={profile?.defaultDropoff ?? ''} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" />
+            </div>
+            <OtwButton variant="gold" type="submit">Save</OtwButton>
           </form>
         </OtwCard>
       )}

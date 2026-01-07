@@ -230,6 +230,7 @@ export default async function DriverDashboardPage() {
                         pickup={pickupLocation}
                         dropoff={dropoffLocation}
                         requestId={activeRequest?.id}
+                        requestType="delivery"
                         jobStatus={activeRequest?.status}
                         initialDriverLocation={driverLocations[0] ?? null}
                     />

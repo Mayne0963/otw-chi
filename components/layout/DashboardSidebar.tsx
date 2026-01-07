@@ -14,7 +14,9 @@ import {
   Truck,
   ShieldAlert,
   MapPin,
-  DollarSign
+  DollarSign,
+  Building2,
+  Mail
 } from "lucide-react"
 
 interface DashboardSidebarProps {
@@ -46,6 +48,8 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
     { label: "Drivers", href: "/admin/drivers", icon: Truck },
     { label: "Customers", href: "/admin/customers", icon: LayoutDashboard },
     { label: "Ledger", href: "/admin/nip-ledger", icon: Wallet },
+    { label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 },
+    { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
   ]
 
   let routes = commonRoutes

@@ -9,6 +9,57 @@ import { redirect } from 'next/navigation';
 
 import { ServiceType, RequestStatus } from '@prisma/client';
 
+const toRadians = (deg: number) => (deg * Math.PI) / 180;
+
+const haversineMiles = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const R = 3959;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const lat1Rad = toRadians(lat1);
+  const lat2Rad = toRadians(lat2);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1Rad) * Math.cos(lat2Rad) * sinLng * sinLng;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
+const computeMilesFromHere = async (
+  pickupLat: number,
+  pickupLng: number,
+  dropoffLat: number,
+  dropoffLng: number
+) => {
+  const apiKey = process.env.HERE_API_KEY;
+  if (!apiKey) {
+    return haversineMiles(pickupLat, pickupLng, dropoffLat, dropoffLng);
+  }
+
+  const url = new URL('https://router.hereapi.com/v8/routes');
+  url.searchParams.set('transportMode', 'car');
+  url.searchParams.set('origin', `${pickupLat},${pickupLng}`);
+  url.searchParams.set('destination', `${dropoffLat},${dropoffLng}`);
+  url.searchParams.set('return', 'summary');
+  url.searchParams.set('routingMode', 'fast');
+  url.searchParams.set('apiKey', apiKey);
+
+  try {
+    const res = await fetch(url.toString(), { cache: 'no-store' });
+    if (!res.ok) {
+      return haversineMiles(pickupLat, pickupLng, dropoffLat, dropoffLng);
+    }
+    const data = (await res.json()) as {
+      routes?: Array<{ sections?: Array<{ summary?: { length?: number } }> }>;
+    };
+    const lengthMeters = data.routes?.[0]?.sections?.[0]?.summary?.length;
+    if (typeof lengthMeters !== 'number' || !Number.isFinite(lengthMeters)) {
+      return haversineMiles(pickupLat, pickupLng, dropoffLat, dropoffLng);
+    }
+    return Math.max(0.1, lengthMeters / 1609.34);
+  } catch {
+    return haversineMiles(pickupLat, pickupLng, dropoffLat, dropoffLng);
+  }
+};
+
 
 export async function createRequestAction(formData: FormData) {
   const pickup = String(formData.get('pickup') ?? '');
@@ -17,7 +68,19 @@ export async function createRequestAction(formData: FormData) {
   const notes = String(formData.get('notes') ?? '');
   const cityId = String(formData.get('cityId') ?? '');
   const zoneId = String(formData.get('zoneId') ?? '');
-  const milesInput = Number(formData.get('miles') ?? '');
+  const parseNumber = (value: FormDataEntryValue | null) => {
+    if (typeof value !== 'string') return Number.NaN;
+    const trimmed = value.trim();
+    if (!trimmed) return Number.NaN;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  };
+
+  const milesInput = parseNumber(formData.get('miles'));
+  const pickupLat = parseNumber(formData.get('pickupLat'));
+  const pickupLng = parseNumber(formData.get('pickupLng'));
+  const dropoffLat = parseNumber(formData.get('dropoffLat'));
+  const dropoffLng = parseNumber(formData.get('dropoffLng'));
   
   // Validate service type
   const serviceType = (['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'].includes(st) ? st : 'FOOD') as ServiceType;
@@ -27,9 +90,21 @@ export async function createRequestAction(formData: FormData) {
   
   const prisma = getPrisma();
 
-  const fallbackMiles = Math.max(0, Math.round(((pickup + dropoff + (notes || '')).length / 32) * 10));
-  const miles = Number.isFinite(milesInput) && milesInput > 0 ? milesInput : fallbackMiles;
-  const milesEstimate = Math.max(0, Math.round(miles));
+  let miles =
+    Number.isFinite(milesInput) && milesInput > 0
+      ? milesInput
+      : Number.isFinite(pickupLat) &&
+        Number.isFinite(pickupLng) &&
+        Number.isFinite(dropoffLat) &&
+        Number.isFinite(dropoffLng)
+        ? await computeMilesFromHere(pickupLat, pickupLng, dropoffLat, dropoffLng)
+        : null;
+
+  if (!miles || !Number.isFinite(miles) || miles <= 0) {
+    throw new Error('Miles estimate is required to create a request.');
+  }
+
+  const milesEstimate = Math.max(1, Math.round(miles));
 
   // Get membership benefits
   const sub = await getActiveSubscription(user.id);

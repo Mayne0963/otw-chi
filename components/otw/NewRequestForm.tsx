@@ -134,6 +134,10 @@ export function NewRequestForm() {
       try {
         formData.set("pickup", pickupAddress.formattedAddress)
         formData.set("dropoff", dropoffAddress.formattedAddress)
+        formData.set("pickupLat", String(pickupAddress.latitude))
+        formData.set("pickupLng", String(pickupAddress.longitude))
+        formData.set("dropoffLat", String(dropoffAddress.latitude))
+        formData.set("dropoffLng", String(dropoffAddress.longitude))
         formData.set("serviceType", serviceType)
         if (estimate?.miles) {
           formData.set("miles", String(estimate.miles))
@@ -173,7 +177,7 @@ export function NewRequestForm() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-otwGold/90 ml-1">Pickup Address</label>
               <AddressSearch
-                placeholder="Search for pickup address..."
+                ariaLabel="Pickup address"
                 enableCurrentLocation
                 onSelect={(address) => {
                   setPickupAddress(address)
@@ -202,7 +206,7 @@ export function NewRequestForm() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-otwGold/90 ml-1">Dropoff Address</label>
               <AddressSearch
-                placeholder="Search for dropoff address..."
+                ariaLabel="Dropoff address"
                 enableCurrentLocation
                 onSelect={(address) => {
                   setDropoffAddress(address)
@@ -253,7 +257,6 @@ export function NewRequestForm() {
               <label className="text-sm font-medium text-otwGold/90 ml-1">Notes (Optional)</label>
               <Textarea
                 name="notes"
-                placeholder="Gate code, special instructions, order details..."
                 className="bg-black/20 border-white/10 focus:border-otwGold/50 min-h-[80px]"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
