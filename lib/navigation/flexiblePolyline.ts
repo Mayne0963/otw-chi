@@ -5,6 +5,11 @@ for (let i = 0; i < ENCODING_TABLE.length; i += 1) {
   DECODING_TABLE[ENCODING_TABLE[i]] = i;
 }
 
+// Accept standard Base64 characters as aliases for the URL-safe alphabet.
+// HERE may return flexible polylines using either representation.
+DECODING_TABLE["+"] = 62;
+DECODING_TABLE["/"] = 63;
+
 type DecodeResult = {
   value: number;
   index: number;
@@ -44,8 +49,9 @@ export type DecodedPolyline = [number, number][];
 
 export const decodeFlexiblePolyline = (encoded: string): DecodedPolyline => {
   if (!encoded) return [];
+  const normalized = encoded.replace(/=+$/, "");
 
-  const header = decodeUnsignedVarint(encoded, 0);
+  const header = decodeUnsignedVarint(normalized, 0);
   const precision = header.value & 15;
   const thirdDim = (header.value >> 4) & 7;
   const thirdDimPrecision = (header.value >> 7) & 15;
@@ -58,17 +64,17 @@ export const decodeFlexiblePolyline = (encoded: string): DecodedPolyline => {
   let z = 0;
   const coordinates: DecodedPolyline = [];
 
-  while (index < encoded.length) {
-    const latResult = decodeSignedVarint(encoded, index);
+  while (index < normalized.length) {
+    const latResult = decodeSignedVarint(normalized, index);
     lat += latResult.value;
     index = latResult.index;
 
-    const lngResult = decodeSignedVarint(encoded, index);
+    const lngResult = decodeSignedVarint(normalized, index);
     lng += lngResult.value;
     index = lngResult.index;
 
     if (thirdDim !== 0) {
-      const zResult = decodeSignedVarint(encoded, index);
+      const zResult = decodeSignedVarint(normalized, index);
       z += zResult.value;
       index = zResult.index;
     }

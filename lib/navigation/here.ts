@@ -1,4 +1,5 @@
 import { decodeFlexiblePolyline } from "./flexiblePolyline";
+import { decodeEncodedPolyline } from "./encodedPolyline";
 
 type HereRouteResponse = {
   routes?: Array<{
@@ -104,14 +105,19 @@ const buildBounds = (coords: [number, number][]) => {
 
 const parseRoute = (route?: HereRoute | null): NavigationRoute | null => {
   const section = route?.sections?.find((entry) => Boolean(entry?.polyline));
-  if (!section?.polyline) return null;
+  if (!section?.polyline || typeof section.polyline !== "string") return null;
 
   let coords: [number, number][];
   try {
     coords = decodeFlexiblePolyline(section.polyline);
   } catch (error) {
-    console.warn("HERE polyline decode failed:", error);
-    return null;
+    try {
+      coords = decodeEncodedPolyline(section.polyline);
+    } catch (fallbackError) {
+      console.warn("HERE polyline decode failed:", error);
+      console.warn("HERE encoded polyline fallback failed:", fallbackError);
+      return null;
+    }
   }
   if (!coords.length) return null;
 
