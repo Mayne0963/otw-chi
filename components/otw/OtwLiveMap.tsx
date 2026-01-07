@@ -539,13 +539,14 @@ const OtwLiveMap = ({
         }
 
         if (!map.getLayer(layerId)) {
-          map.addLayer({
+          const nextLayer: maplibregl.LayerSpecification = {
             id: layerId,
             type,
             source: sourceId,
-            layout,
             paint,
-          } as maplibregl.LayerSpecification);
+            ...(layout ? { layout } : {}),
+          } as maplibregl.LayerSpecification;
+          map.addLayer(nextLayer);
         }
       };
 
