@@ -104,10 +104,6 @@
   );
 }
 
-.swatchTurn {
-  background: #f59e0b;
-}
-
 .swatchTraffic {
   background: linear-gradient(90deg, #16a34a, #eab308, #ef4444, #111827);
 }

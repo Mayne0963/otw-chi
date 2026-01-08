@@ -7,9 +7,7 @@ import type { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
 import { haversineDistanceKm } from "@/lib/otw/otwGeo";
 import {
   buildGuidanceState,
-  buildTurnMarkers,
   type GuidanceState,
-  type TurnMarker,
 } from "@/lib/navigation/guidance";
 import type { NavigationRoute } from "@/lib/navigation/here";
 
@@ -71,11 +69,12 @@ const ROUTE_REFRESH_MS = 15_000;
 const TRAFFIC_REFRESH_MS = 30_000;
 const WEATHER_REFRESH_MS = 5 * 60_000;
 const POI_REFRESH_MS = 2 * 60_000;
+const REROUTE_TIMEOUT_MS = 2_000;
 
 const OFF_ROUTE_THRESHOLD_METERS = 50;
-const OFF_ROUTE_GRACE_MS = 10_000;
+const OFF_ROUTE_GRACE_MS = 2_000;
 
-const TURN_MARKER_DISTANCES = [300, 100, 50];
+const GUIDANCE_DISTANCE_MARKERS = [300, 100, 50];
 
 const toRadians = (deg: number) => (deg * Math.PI) / 180;
 
@@ -115,6 +114,19 @@ const formatSpeed = (mps?: number, locale = "en-US") => {
     return `${Math.round(mps * 2.23694)} mph`;
   }
   return `${Math.round(mps * 3.6)} km/h`;
+};
+
+const computeRouteDurationSeconds = (route?: NavigationRoute | null) => {
+  if (!route) return null;
+  const summary = route.summary || {};
+  const duration =
+    summary.duration ??
+    summary.baseDuration ??
+    summary.typicalDuration ??
+    (summary.baseDuration && summary.trafficDelay
+      ? summary.baseDuration + summary.trafficDelay
+      : undefined);
+  return typeof duration === "number" && !Number.isNaN(duration) ? duration : null;
 };
 
 const formatDistanceSpeech = (meters: number, locale: string) => {
@@ -163,17 +175,6 @@ const getJobPhase = (status?: string): "TO_PICKUP" | "TO_DROPOFF" | "NONE" => {
   return "TO_PICKUP";
 };
 
-const buildTurnMarkerCollection = (
-  markers: TurnMarker[]
-): GeoJSON.FeatureCollection<GeoJSON.Point> => ({
-  type: "FeatureCollection",
-  features: markers.map((marker) => ({
-    type: "Feature",
-    geometry: { type: "Point", coordinates: marker.coordinate },
-    properties: { label: `${Math.round(marker.distanceMeters)}m` },
-  })),
-});
-
 const buildInstructionText = (
   maneuver?: GuidanceState["nextManeuver"],
   detailLevel: DriverNavigationSettings["detailLevel"] = "standard"
@@ -212,12 +213,8 @@ const DriverLiveMap = ({
   const [navSettings, setNavSettings] = useState<DriverNavigationSettings | null>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [routeOptions, setRouteOptions] = useState<NavigationRoute[]>([]);
-  const [activeRouteIndex, setActiveRouteIndex] = useState(0);
   const [mainRoute, setMainRoute] = useState<NavigationRoute | null>(null);
   const [guidance, setGuidance] = useState<GuidanceState | null>(null);
-  const [turnMarkers, setTurnMarkers] = useState<GeoJSON.FeatureCollection<GeoJSON.Point> | null>(
-    null
-  );
   const [trafficFlow, setTrafficFlow] = useState<GeoJSON.FeatureCollection<GeoJSON.LineString> | null>(
     null
   );
@@ -231,6 +228,12 @@ const DriverLiveMap = ({
   const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
   const [offRoute, setOffRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [routeUpdateMeta, setRouteUpdateMeta] = useState<{
+    at: number;
+    etaSeconds?: number | null;
+    etaDeltaSeconds?: number | null;
+    reason?: string;
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -262,6 +265,7 @@ const DriverLiveMap = ({
   const lastRerouteAtRef = useRef<number>(0);
   const lastWeatherFetchRef = useRef<number>(0);
   const lastRouteRefreshRef = useRef<number>(0);
+  const etaRef = useRef<number | null>(null);
   const lastPoiFetchRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
   const batteryRef = useRef<{ level?: number; charging?: boolean } | null>(null);
 
@@ -274,7 +278,7 @@ const DriverLiveMap = ({
   }, [customer, dropoff, jobPhase, pickup]);
 
   const activeDriverLocation = driverLocations[0]?.location;
-  const activeRoute = routeOptions[activeRouteIndex] ?? null;
+  const activeRoute = routeOptions[0] ?? null;
   const settings = navSettings ?? DEFAULT_SETTINGS;
 
   useEffect(() => {
@@ -285,9 +289,7 @@ const DriverLiveMap = ({
     targetRef.current = targetLocation ?? null;
     if (!targetLocation) {
       setRouteOptions([]);
-      setActiveRouteIndex(0);
       setGuidance(null);
-      setTurnMarkers(null);
     }
   }, [targetLocation]);
 
@@ -590,8 +592,11 @@ const DriverLiveMap = ({
     lastRouteRefreshRef.current = now;
     rerouteInFlightRef.current = true;
     setRouteError(null);
+    const previousEta = etaRef.current;
 
     try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), REROUTE_TIMEOUT_MS);
       const params = new URLSearchParams({
         origin: `${origin.lat},${origin.lng}`,
         destination: `${destination.lat},${destination.lng}`,
@@ -600,6 +605,7 @@ const DriverLiveMap = ({
       });
       const res = await fetch(`/api/navigation/route?${params.toString()}`, {
         cache: "no-store",
+        signal: controller.signal,
       });
       if (!res.ok) {
         const message = await res.text().catch(() => "");
@@ -611,14 +617,29 @@ const DriverLiveMap = ({
       }
       const nextRoutes = [data.route, ...(data.alternatives || [])];
       setRouteOptions(nextRoutes);
-      setActiveRouteIndex((prev) => Math.min(prev, Math.max(0, nextRoutes.length - 1)));
+      const primaryRoute = nextRoutes[0] ?? null;
+      const nextEta = computeRouteDurationSeconds(primaryRoute);
+      if (nextEta != null && (reason === "off-route" || previousEta != null)) {
+        const etaDelta = previousEta != null ? nextEta - previousEta : null;
+        setRouteUpdateMeta({
+          at: Date.now(),
+          etaSeconds: nextEta,
+          etaDeltaSeconds: etaDelta,
+          reason: reason || "manual",
+        });
+      }
       if (reason === "off-route") {
-        speak("Re-routing to your destination.");
+        speak("Route updated.");
       }
     } catch (error) {
-      setRouteError(error instanceof Error ? error.message : "Unable to fetch navigation route.");
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setRouteError("Route update timed out. Retrying...");
+      } else {
+        setRouteError(error instanceof Error ? error.message : "Unable to fetch navigation route.");
+      }
     } finally {
       rerouteInFlightRef.current = false;
+      window.clearTimeout(timeoutId);
     }
   };
 
@@ -669,7 +690,6 @@ const DriverLiveMap = ({
   useEffect(() => {
     if (!activeRoute || !activeDriverLocation) {
       setGuidance(null);
-      setTurnMarkers(null);
       return;
     }
     const state = buildGuidanceState(activeRoute, [
@@ -677,8 +697,6 @@ const DriverLiveMap = ({
       activeDriverLocation.lat,
     ]);
     setGuidance(state);
-    const markers = buildTurnMarkers(activeRoute, state.nextManeuver, TURN_MARKER_DISTANCES);
-    setTurnMarkers(markers.length ? buildTurnMarkerCollection(markers) : null);
   }, [activeDriverLocation, activeRoute]);
 
   useEffect(() => {
@@ -686,16 +704,20 @@ const DriverLiveMap = ({
       setEtaSeconds(null);
       return;
     }
-    const summary = activeRoute.summary || {};
-    const duration =
-      summary.duration ??
-      summary.baseDuration ??
-      summary.typicalDuration ??
-      (summary.baseDuration && summary.trafficDelay
-        ? summary.baseDuration + summary.trafficDelay
-        : undefined);
-    setEtaSeconds(duration ?? null);
+    setEtaSeconds(computeRouteDurationSeconds(activeRoute));
   }, [activeRoute]);
+
+  useEffect(() => {
+    etaRef.current = etaSeconds;
+  }, [etaSeconds]);
+
+  useEffect(() => {
+    if (!routeUpdateMeta) return;
+    const timeout = window.setTimeout(() => {
+      setRouteUpdateMeta((prev) => (prev?.at === routeUpdateMeta.at ? null : prev));
+    }, 12_000);
+    return () => window.clearTimeout(timeout);
+  }, [routeUpdateMeta]);
 
   useEffect(() => {
     if (!guidance || !activeRoute) {
@@ -745,7 +767,7 @@ const DriverLiveMap = ({
     const baseThresholds =
       settings.detailLevel === "compact"
         ? [nearDistance]
-        : [earlyDistance, ...TURN_MARKER_DISTANCES, nearDistance];
+        : [earlyDistance, ...GUIDANCE_DISTANCE_MARKERS, nearDistance];
     const thresholds = Array.from(new Set(baseThresholds.map((value) => Math.round(value))));
 
     thresholds.forEach((threshold) => {
@@ -955,6 +977,21 @@ const DriverLiveMap = ({
   const trafficDelayLabel = formatDuration(activeRoute?.summary?.trafficDelay);
   const typicalDurationLabel = formatDuration(activeRoute?.summary?.typicalDuration);
   const lastSentLabel = mounted ? formatTime(lastSentAt) : null;
+  const driverSpeedKph = speedMps != null ? speedMps * 3.6 : null;
+  const etaUpdateSummary = useMemo(() => {
+    if (!routeUpdateMeta) return null;
+    if (Date.now() - routeUpdateMeta.at > 12_000) return null;
+    const delta = routeUpdateMeta.etaDeltaSeconds;
+    const deltaText =
+      delta == null
+        ? null
+        : delta === 0
+          ? "ETA unchanged"
+          : `${delta > 0 ? "+" : "-"}${Math.max(1, Math.round(Math.abs(delta) / 60))} min`;
+    const etaText =
+      routeUpdateMeta.etaSeconds != null ? formatDuration(routeUpdateMeta.etaSeconds) : "ETA refreshed";
+    return { deltaText, etaText };
+  }, [routeUpdateMeta]);
 
   const statusCopy = (() => {
     switch (trackingStatus) {
@@ -987,6 +1024,12 @@ const DriverLiveMap = ({
           {offRoute && (
             <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-200">
               Off route. Recalculating...
+            </div>
+          )}
+          {etaUpdateSummary && (
+            <div className="mt-2 rounded-lg border border-otwGold/50 bg-otwGold/10 px-2 py-1 text-[11px] text-otwGold">
+              Route updated{etaUpdateSummary.etaText ? ` • ETA ${etaUpdateSummary.etaText}` : ""}
+              {etaUpdateSummary.deltaText ? ` (${etaUpdateSummary.deltaText})` : ""}
             </div>
           )}
         </div>
@@ -1049,53 +1092,15 @@ const DriverLiveMap = ({
         mainRouteSummaryOverride={mainRouteSummary}
         driverRouteOverride={activeRoute?.geometry ?? null}
         driverRouteSummaryOverride={driverRouteSummary}
-        turnMarkers={turnMarkers}
         trafficFlow={trafficFlow}
         incidents={incidents}
         pois={pois}
+        driverSpeedKph={driverSpeedKph}
+        driverHeading={heading}
+        routePulseAt={routeUpdateMeta?.at ?? null}
       />
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-xl border border-border/70 bg-muted/40 p-4 text-sm">
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Alternative routes
-          </div>
-          <div className="mt-2 space-y-2">
-            {routeOptions.length === 0 && (
-              <div className="text-xs text-muted-foreground">
-                {routeError || "Waiting for route data..."}
-              </div>
-            )}
-            {routeOptions.map((route, index) => {
-              const active = index === activeRouteIndex;
-              return (
-                <button
-                  key={`route-${index}`}
-                  type="button"
-                  className={`w-full rounded-lg border px-3 py-2 text-left transition ${
-                    active
-                      ? "border-otwGold bg-otwGold/10 text-otwGold"
-                      : "border-border/70 bg-card/60 text-foreground hover:border-otwGold/60"
-                  }`}
-                  onClick={() => setActiveRouteIndex(index)}
-                >
-                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em]">
-                    <span>Route {index + 1}</span>
-                    {active && <span>Active</span>}
-                  </div>
-                  <div className="mt-1 text-sm font-semibold">
-                    {formatDistance(route.summary?.length, settings.voiceLocale)} ·{" "}
-                    {formatDuration(route.summary?.duration)}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Traffic {formatDuration(route.summary?.trafficDelay)} · Energy unavailable
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
+      <div className="grid gap-3">
         <div className="rounded-xl border border-border/70 bg-muted/40 p-4 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -1172,6 +1177,7 @@ const DriverLiveMap = ({
         </div>
         {locationError && <div className="mt-1 text-red-400">{locationError}</div>}
         {syncError && <div className="mt-1 text-amber-300">{syncError}</div>}
+        {routeError && <div className="mt-1 text-amber-300">Route update issue: {routeError}</div>}
       </div>
     </div>
   );

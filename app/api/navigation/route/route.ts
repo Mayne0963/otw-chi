@@ -3,6 +3,50 @@ import { parseHereRoute, parseHereAlternatives } from "@/lib/navigation/here";
 
 const HERE_API_KEY = process.env.HERE_API_KEY;
 const HERE_ENABLE_SPANS = process.env.HERE_ROUTE_SPANS === "true";
+const ROUTE_CACHE_TTL_MS = 30_000;
+const ROUTE_CACHE_MAX_ENTRIES = 100;
+
+type CachedRoutePayload = {
+  success: true;
+  route: NonNullable<ReturnType<typeof parseHereRoute>>;
+  alternatives: ReturnType<typeof parseHereAlternatives>;
+};
+
+const routeCache = new Map<string, { expires: number; payload: CachedRoutePayload }>();
+
+const buildCacheKey = (params: {
+  origin: string;
+  destination: string;
+  alternatives: number;
+  lang?: string;
+  spans?: boolean;
+}) => {
+  return [
+    params.origin,
+    params.destination,
+    params.alternatives,
+    params.lang || "default",
+    params.spans ? "spans" : "no-spans",
+  ].join("|");
+};
+
+const getCachedRoute = (key: string): CachedRoutePayload | null => {
+  const entry = routeCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) {
+    routeCache.delete(key);
+    return null;
+  }
+  return entry.payload;
+};
+
+const setCachedRoute = (key: string, payload: CachedRoutePayload) => {
+  routeCache.set(key, { expires: Date.now() + ROUTE_CACHE_TTL_MS, payload });
+  if (routeCache.size > ROUTE_CACHE_MAX_ENTRIES) {
+    const oldestKey = routeCache.keys().next().value;
+    if (oldestKey) routeCache.delete(oldestKey);
+  }
+};
 
 const buildHereRouteUrl = (params: {
   origin: string;
@@ -63,6 +107,18 @@ export async function GET(request: Request) {
       );
     }
 
+    const cacheKey = buildCacheKey({
+      origin,
+      destination,
+      alternatives,
+      lang,
+      spans: HERE_ENABLE_SPANS,
+    });
+    const cached = getCachedRoute(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, { headers: { "x-otw-route-cache": "hit" } });
+    }
+
     const url = buildHereRouteUrl({ origin, destination, alternatives, lang });
     const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
     const raw = await res.text().catch(() => "");
@@ -109,11 +165,10 @@ export async function GET(request: Request) {
     }
     const alternativesParsed = parseHereAlternatives(data as any);
 
-    return NextResponse.json({
-      success: true,
-      route,
-      alternatives: alternativesParsed,
-    });
+    const payload: CachedRoutePayload = { success: true, route, alternatives: alternativesParsed };
+    setCachedRoute(cacheKey, payload);
+
+    return NextResponse.json(payload, { headers: { "x-otw-route-cache": "miss" } });
   } catch (error) {
     console.error("Navigation route error:", error);
     return NextResponse.json(

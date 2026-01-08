@@ -21,29 +21,33 @@ interface OtwLiveMapProps {
   mainRouteSummaryOverride?: RouteSummary | null;
   driverRouteOverride?: RouteFeature | null;
   driverRouteSummaryOverride?: RouteSummary | null;
-  turnMarkers?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
   trafficFlow?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null;
   incidents?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
   pois?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
+  driverSpeedKph?: number | null;
+  driverHeading?: number | null;
+  routePulseAt?: number | null;
 }
 
 const MAP_STYLE_URL =
   process.env.NEXT_PUBLIC_MAP_STYLE_URL || "https://demotiles.maplibre.org/style.json";
 const DEFAULT_CENTER: [number, number] = [-85.1394, 41.0793];
-const DEFAULT_ZOOM = 11;
+const DEFAULT_ZOOM = 16;
 const ROUTE_SOURCE_ID = "otw-route-source";
 const ROUTE_LAYER_ID = "otw-route-layer";
 const DRIVER_ROUTE_SOURCE_ID = "otw-driver-route-source";
 const DRIVER_ROUTE_LAYER_ID = "otw-driver-route-layer";
-const TURN_SOURCE_ID = "otw-turn-source";
-const TURN_LAYER_ID = "otw-turn-layer";
-const TURN_LABEL_LAYER_ID = "otw-turn-label-layer";
 const TRAFFIC_SOURCE_ID = "otw-traffic-source";
 const TRAFFIC_LAYER_ID = "otw-traffic-layer";
 const INCIDENT_SOURCE_ID = "otw-incident-source";
 const INCIDENT_LAYER_ID = "otw-incident-layer";
 const POI_SOURCE_ID = "otw-poi-source";
 const POI_LAYER_ID = "otw-poi-layer";
+const MARKER_SOURCE_ID = "otw-marker-source";
+const MARKER_LAYER_ID = "otw-marker-layer";
+const MARKER_LABEL_LAYER_ID = "otw-marker-label-layer";
+const ROUTE_BASE_WIDTH = 5;
+const DRIVER_ROUTE_BASE_WIDTH = 4;
 
 type MapMarker = {
   id: string;
@@ -92,6 +96,7 @@ const coordsEqual = (a?: OtwLocation, b?: OtwLocation) =>
   Math.abs(a.lng - b.lng) < 0.00001;
 
 type JobPhase = "TO_PICKUP" | "TO_DROPOFF" | "NONE";
+type MarkerView = "overview" | "pickup" | "navigation";
 
 const getJobPhase = (status?: string): JobPhase => {
   const normalized = String(status || "")
@@ -159,14 +164,15 @@ const OtwLiveMap = ({
   mainRouteSummaryOverride,
   driverRouteOverride,
   driverRouteSummaryOverride,
-  turnMarkers,
   trafficFlow,
   incidents,
   pois,
+  driverSpeedKph,
+  driverHeading,
+  routePulseAt,
 }: OtwLiveMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
   const mapReadyRef = useRef(false);
   const protocolRef = useRef<Protocol | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -176,6 +182,11 @@ const OtwLiveMap = ({
   const [driverRouteSummary, setDriverRouteSummary] = useState<RouteSummary | null>(null);
   const [activeDriver, setActiveDriver] = useState<OtwDriverLocation | null>(null);
   const [driverTarget, setDriverTarget] = useState<DriverTarget>(null);
+  const [viewChangeVersion, setViewChangeVersion] = useState(0);
+  const lastMarkerViewRef = useRef<MarkerView | null>(null);
+  const lastCameraRef = useRef<{ center: [number, number]; zoom: number } | null>(null);
+  const lastRoutePulseRef = useRef<number | null>(null);
+  const routePulseTimeoutRef = useRef<number | null>(null);
 
   const jobPickup = pickup;
   const jobDestination = customer ?? dropoff;
@@ -184,6 +195,17 @@ const OtwLiveMap = ({
   const resolvedMainSummary = mainRouteSummaryOverride ?? mainRouteSummary;
   const resolvedDriverRoute = driverRouteOverride ?? driverRoute;
   const resolvedDriverSummary = driverRouteSummaryOverride ?? driverRouteSummary;
+  const navigationZoom = useMemo(() => {
+    const speed = driverSpeedKph ?? null;
+    if (speed == null) return 16;
+    if (speed < 30) return 18;
+    if (speed < 80) return 16;
+    return 14;
+  }, [driverSpeedKph]);
+  const activeDriverCoords = useMemo<[number, number] | null>(() => {
+    if (!activeDriver) return null;
+    return [activeDriver.location.lng, activeDriver.location.lat];
+  }, [activeDriver]);
 
   useEffect(() => {
     setMounted(true);
@@ -234,6 +256,45 @@ const OtwLiveMap = ({
     });
     return markers;
   }, [customer, drivers, dropoff, focusDriverId, jobPickup]);
+
+  const markerView: MarkerView = useMemo(() => {
+    if (activeDriver && resolvedDriverRoute) return "navigation";
+    if (jobPhase === "TO_PICKUP") return "pickup";
+    return "overview";
+  }, [activeDriver, jobPhase, resolvedDriverRoute]);
+
+  const visibleMarkers = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => {
+    const hasCustomerLike = markerData.some(
+      (marker) => marker.id === "customer" || marker.id === "pickup"
+    );
+    const filtered = markerData.filter((marker) => {
+      if (markerView === "navigation") {
+        return marker.id.startsWith("driver");
+      }
+      if (markerView === "pickup") {
+        if (marker.id === "customer" || marker.id === "pickup") return true;
+        if (!hasCustomerLike && (marker.id === "destination" || marker.id === "dropoff")) return true;
+        return false;
+      }
+      return marker.id === "destination" || marker.id === "dropoff";
+    });
+
+    return {
+      type: "FeatureCollection",
+      features: filtered.map((marker) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [marker.lng, marker.lat],
+        },
+        properties: {
+          id: marker.id,
+          label: marker.label,
+          color: marker.color,
+        },
+      })),
+    };
+  }, [markerData, markerView]);
 
   const routingDriver = useMemo(() => {
     if (!drivers.length) return null;
@@ -293,7 +354,10 @@ const OtwLiveMap = ({
     }
   }, [jobDestination, jobPhase, jobPickup, routingDriver]);
 
-  const hasAny = markerData.length > 0;
+  const hasAny =
+    visibleMarkers.features.length > 0 ||
+    Boolean(resolvedMainRoute) ||
+    Boolean(resolvedDriverRoute);
 
   useEffect(() => {
     const protocol = new Protocol();
@@ -318,6 +382,9 @@ const OtwLiveMap = ({
     });
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
     map.addControl(new maplibregl.AttributionControl({ compact: true }));
+    const handleViewChange = () => setViewChangeVersion((prev) => prev + 1);
+    map.on("moveend", handleViewChange);
+    map.on("zoomend", handleViewChange);
 
     map.on("load", () => {
       mapReadyRef.current = true;
@@ -326,6 +393,12 @@ const OtwLiveMap = ({
     mapRef.current = map;
 
     return () => {
+      if (routePulseTimeoutRef.current) {
+        window.clearTimeout(routePulseTimeoutRef.current);
+        routePulseTimeoutRef.current = null;
+      }
+      map.off("moveend", handleViewChange);
+      map.off("zoomend", handleViewChange);
       map.remove();
       mapRef.current = null;
       mapReadyRef.current = false;
@@ -554,17 +627,87 @@ const OtwLiveMap = ({
           map.addLayer(nextLayer);
         }
       };
+      const markerBounds = map.getBounds();
+      const culledMarkers: GeoJSON.FeatureCollection<GeoJSON.Point> =
+        markerBounds && visibleMarkers.features.length
+          ? {
+              type: "FeatureCollection",
+              features: visibleMarkers.features.filter((feature) => {
+                const coords = feature.geometry.coordinates as [number, number];
+                return markerBounds.contains(coords);
+              }) as GeoJSON.Feature<GeoJSON.Point>[],
+            }
+          : visibleMarkers;
 
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-
-      markerData.forEach((marker) => {
-        const markerInstance = new maplibregl.Marker({ color: marker.color })
-          .setLngLat([marker.lng, marker.lat])
-          .setPopup(new maplibregl.Popup({ offset: 16 }).setText(marker.label));
-        markerInstance.addTo(map);
-        markersRef.current.push(markerInstance);
+      updateGeoLayer({
+        sourceId: MARKER_SOURCE_ID,
+        layerId: MARKER_LAYER_ID,
+        data: culledMarkers.features.length ? culledMarkers : null,
+        type: "circle",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 6, 18, 10],
+          "circle-color": ["get", "color"],
+          "circle-stroke-color": "#0f172a",
+          "circle-stroke-width": 1,
+          "circle-opacity": 0.95,
+          "circle-radius-transition": { duration: 250 },
+          "circle-opacity-transition": { duration: 250 },
+        },
       });
+
+      updateGeoLayer({
+        sourceId: MARKER_SOURCE_ID,
+        layerId: MARKER_LABEL_LAYER_ID,
+        data: culledMarkers.features.length ? culledMarkers : null,
+        type: "symbol",
+        layout: {
+          "text-field": ["get", "label"],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 10, 0, 12, 12, 16, 14],
+          "text-offset": [0, 1],
+          "text-anchor": "top",
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#f8fafc",
+          "text-halo-color": "#0f172a",
+          "text-halo-width": 1,
+          "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 12, 0.75, 14, 0.92],
+          "text-opacity-transition": { duration: 250 },
+        },
+      });
+
+      const markerViewChanged = lastMarkerViewRef.current !== markerView;
+      if (markerViewChanged) {
+        lastMarkerViewRef.current = markerView;
+        if (map.getLayer(MARKER_LAYER_ID)) {
+          map.setPaintProperty(MARKER_LAYER_ID, "circle-opacity", 0);
+          requestAnimationFrame(() => {
+            map.setPaintProperty(MARKER_LAYER_ID, "circle-opacity", 0.95);
+          });
+        }
+        if (map.getLayer(MARKER_LABEL_LAYER_ID)) {
+          map.setPaintProperty(MARKER_LABEL_LAYER_ID, "text-opacity", 0);
+          requestAnimationFrame(() => {
+            map.setPaintProperty(MARKER_LABEL_LAYER_ID, "text-opacity", 0.92);
+          });
+        }
+      }
+
+      const shouldPulseRoute = routePulseAt && routePulseAt !== lastRoutePulseRef.current;
+      if (shouldPulseRoute) {
+        lastRoutePulseRef.current = routePulseAt;
+        if (routePulseTimeoutRef.current) {
+          window.clearTimeout(routePulseTimeoutRef.current);
+        }
+        if (map.getLayer(ROUTE_LAYER_ID)) {
+          map.setPaintProperty(ROUTE_LAYER_ID, "line-width", ROUTE_BASE_WIDTH + 2);
+          map.setPaintProperty(ROUTE_LAYER_ID, "line-opacity", 1);
+          routePulseTimeoutRef.current = window.setTimeout(() => {
+            map.setPaintProperty(ROUTE_LAYER_ID, "line-width", ROUTE_BASE_WIDTH);
+            map.setPaintProperty(ROUTE_LAYER_ID, "line-opacity", 0.9);
+          }, 900);
+        }
+      }
 
       updateLineLayer({
         sourceId: ROUTE_SOURCE_ID,
@@ -572,8 +715,11 @@ const OtwLiveMap = ({
         data: resolvedMainRoute,
         paint: {
           "line-color": "#22c55e",
-          "line-width": 5,
+          "line-width": ROUTE_BASE_WIDTH,
           "line-opacity": 0.9,
+          "line-color-transition": { duration: 220 },
+          "line-width-transition": { duration: 220 },
+          "line-opacity-transition": { duration: 220 },
         },
       });
 
@@ -583,9 +729,12 @@ const OtwLiveMap = ({
         data: resolvedDriverRoute,
         paint: {
           "line-color": "#60a5fa",
-          "line-width": 4,
+          "line-width": DRIVER_ROUTE_BASE_WIDTH,
           "line-opacity": 0.7,
           "line-dasharray": [2, 1.5],
+          "line-color-transition": { duration: 220 },
+          "line-width-transition": { duration: 220 },
+          "line-opacity-transition": { duration: 220 },
         },
       });
 
@@ -647,45 +796,11 @@ const OtwLiveMap = ({
         },
       });
 
-      if (turnMarkers) {
-        updateGeoLayer({
-          sourceId: TURN_SOURCE_ID,
-          layerId: TURN_LAYER_ID,
-          data: turnMarkers,
-          type: "circle",
-          paint: {
-            "circle-radius": 5,
-            "circle-color": "#f59e0b",
-            "circle-stroke-color": "#0f172a",
-            "circle-stroke-width": 1,
-          },
-        });
-
-        updateGeoLayer({
-          sourceId: TURN_SOURCE_ID,
-          layerId: TURN_LABEL_LAYER_ID,
-          data: turnMarkers,
-          type: "symbol",
-          layout: {
-            "text-field": ["get", "label"],
-            "text-size": 10,
-            "text-offset": [0, 1.1],
-            "text-anchor": "top",
-          },
-          paint: {
-            "text-color": "#fef08a",
-            "text-halo-color": "#0f172a",
-            "text-halo-width": 1,
-          },
-        });
-      } else {
-        if (map.getLayer(TURN_LABEL_LAYER_ID)) map.removeLayer(TURN_LABEL_LAYER_ID);
-        if (map.getLayer(TURN_LAYER_ID)) map.removeLayer(TURN_LAYER_ID);
-        if (map.getSource(TURN_SOURCE_ID)) map.removeSource(TURN_SOURCE_ID);
-      }
-
       const boundsCoordinates: [number, number][] = [];
-      markerData.forEach((marker) => boundsCoordinates.push([marker.lng, marker.lat]));
+      visibleMarkers.features.forEach((feature) => {
+        const coords = feature.geometry.coordinates as [number, number];
+        boundsCoordinates.push(coords);
+      });
       if (resolvedMainRoute?.geometry?.coordinates) {
         resolvedMainRoute.geometry.coordinates.forEach((coord) => {
           const [lng, lat] = coord;
@@ -698,20 +813,35 @@ const OtwLiveMap = ({
           boundsCoordinates.push([lng, lat]);
         });
       }
-      if (turnMarkers?.features?.length) {
-        turnMarkers.features.forEach((feature) => {
-          const coords = feature.geometry.coordinates as [number, number];
-          boundsCoordinates.push(coords);
-        });
-      }
 
-      if (boundsCoordinates.length > 0) {
+      const shouldFollowDriver = markerView === "navigation" && !!activeDriverCoords;
+      if (shouldFollowDriver && activeDriverCoords) {
+        const lastCamera = lastCameraRef.current;
+        const delta = lastCamera
+          ? Math.hypot(
+              activeDriverCoords[0] - lastCamera.center[0],
+              activeDriverCoords[1] - lastCamera.center[1]
+            )
+          : Number.POSITIVE_INFINITY;
+        const zoomDelta = lastCamera ? Math.abs(lastCamera.zoom - navigationZoom) : Number.POSITIVE_INFINITY;
+        if (delta > 0.00005 || zoomDelta > 0.05) {
+          lastCameraRef.current = { center: activeDriverCoords, zoom: navigationZoom };
+          map.easeTo({
+            center: activeDriverCoords,
+            zoom: navigationZoom,
+            duration: 550,
+            easing: (t) => t,
+          });
+        }
+      } else if (boundsCoordinates.length > 0) {
+        lastCameraRef.current = null;
         const bounds = boundsCoordinates.reduce(
           (acc, coord) => acc.extend(coord),
           new maplibregl.LngLatBounds(boundsCoordinates[0], boundsCoordinates[0])
         );
-        map.fitBounds(bounds, { padding: 72, duration: 700, maxZoom: 15 });
+        map.fitBounds(bounds, { padding: 72, duration: 700, maxZoom: 17 });
       } else {
+        lastCameraRef.current = null;
         map.easeTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM });
       }
     };
@@ -722,7 +852,32 @@ const OtwLiveMap = ({
     }
 
     applyUpdates();
-  }, [markerData, resolvedMainRoute, resolvedDriverRoute, turnMarkers, trafficFlow, incidents, pois]);
+  }, [
+    visibleMarkers,
+    resolvedMainRoute,
+    resolvedDriverRoute,
+    trafficFlow,
+    incidents,
+    pois,
+    markerView,
+    navigationZoom,
+    activeDriverCoords?.[0],
+    activeDriverCoords?.[1],
+    routePulseAt,
+    viewChangeVersion,
+  ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReadyRef.current) return;
+    if (markerView !== "navigation") return;
+    if (driverHeading == null || Number.isNaN(driverHeading)) return;
+    map.easeTo({
+      bearing: driverHeading,
+      duration: 400,
+      easing: (t) => t,
+    });
+  }, [driverHeading, markerView]);
 
   const statusLines: string[] = [];
 
@@ -757,7 +912,11 @@ const OtwLiveMap = ({
       <div className={styles.mapHeaderRow}>
         <span className={styles.mapTitle}>Live OTW Map</span>
         <span className={styles.mapHint}>
-          {hasAny ? "Live tracker with turn-by-turn geometry" : "Waiting for route data"}
+          {markerView === "navigation"
+            ? "Driver-focused navigation view"
+            : markerView === "pickup"
+              ? "Pickup focus view"
+              : "Route overview"}
         </span>
       </div>
       <div className={styles.mapCanvas}>
@@ -797,10 +956,6 @@ const OtwLiveMap = ({
         <span className={styles.legendItem}>
           <span className={`${styles.legendSwatch} ${styles.swatchDriverRoute}`} />
           Driver Leg
-        </span>
-        <span className={styles.legendItem}>
-          <span className={`${styles.legendSwatch} ${styles.swatchTurn}`} />
-          Turn Markers
         </span>
         <span className={styles.legendItem}>
           <span className={`${styles.legendSwatch} ${styles.swatchTraffic}`} />
