@@ -17,16 +17,16 @@ export default async function RequestsPage() {
     <div className="space-y-6">
       <PageHeader 
         title="My Requests" 
-        subtitle="Track and manage your delivery requests."
-        action={{ label: "New Request", href: "/requests/new" }}
+        subtitle="Track and manage your deliveries and past orders."
+        action={{ label: "Place Order", href: "/order" }}
       />
 
       {requests.length === 0 ? (
         <EmptyState
           icon={Package}
           title="No requests found"
-          description="You haven't made any delivery requests yet."
-          action={{ label: "Create Request", href: "/requests/new" }}
+          description="You haven't placed any deliveries yet."
+          action={{ label: "Place your first order", href: "/order" }}
         />
       ) : (
         <div className="rounded-md border border-white/10 bg-white/5">
@@ -34,6 +34,7 @@ export default async function RequestsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Service</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Route</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Cost</TableHead>
@@ -54,6 +55,9 @@ export default async function RequestsPage() {
                       {request.serviceType}
                     </div>
                   </TableCell>
+                  <TableCell className="text-white/70 text-xs">
+                    {request.kind === 'ORDER' ? 'Order' : 'Request'}
+                  </TableCell>
                   <TableCell>
                     <div className="text-xs">
                       <div className="text-white/80 truncate max-w-[150px]">{request.pickup}</div>
@@ -64,22 +68,22 @@ export default async function RequestsPage() {
                   <TableCell>
                     <Badge variant={
                       request.status === 'COMPLETED' || request.status === 'DELIVERED' ? 'success' :
-                      request.status === 'CANCELLED' ? 'destructive' :
-                      request.status === 'ASSIGNED' || request.status === 'PICKED_UP' ? 'secondary' :
+                      request.status === 'CANCELLED' || request.status === 'CANCELED' ? 'destructive' :
+                      request.status === 'ASSIGNED' || request.status === 'PICKED_UP' || request.status === 'EN_ROUTE' ? 'secondary' :
                       'outline'
                     }>
                       {request.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {request.costEstimate ? formatCurrency(request.costEstimate / 100) : '-'}
+                    {typeof request.costCents === 'number' ? formatCurrency(request.costCents) : '-'}
                   </TableCell>
                   <TableCell className="text-white/60 text-xs">
                     {formatDate(request.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="ghost" size="sm">
-                      <Link href={`/requests/${request.id}`}>View</Link>
+                      <Link href={request.href}>View</Link>
                     </Button>
                   </TableCell>
                 </TableRow>

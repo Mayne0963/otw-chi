@@ -7,7 +7,19 @@ import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { ServiceType, RequestStatus } from '@prisma/client';
+import { DeliveryRequestStatus, ServiceType, RequestStatus } from '@prisma/client';
+
+export type UserRequestListItem = {
+  id: string;
+  kind: 'REQUEST' | 'ORDER';
+  serviceType: ServiceType;
+  pickup: string;
+  dropoff: string;
+  status: string;
+  costCents: number | null;
+  createdAt: Date;
+  href: string;
+};
 
 const toRadians = (deg: number) => (deg * Math.PI) / 180;
 
@@ -174,10 +186,64 @@ export async function getUserRequests() {
   if (!user) return [];
 
   const prisma = getPrisma();
-  return prisma.request.findMany({
-    where: { customerId: user.id },
-    orderBy: { createdAt: 'desc' },
-  });
+
+  const [legacyRequests, orders] = await prisma.$transaction([
+    prisma.request.findMany({
+      where: { customerId: user.id },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.deliveryRequest.findMany({
+      where: { userId: user.id, status: { not: DeliveryRequestStatus.DRAFT } },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
+
+  const computeOrderTotalCents = (order: (typeof orders)[number]) => {
+    const deliveryFee = order.deliveryFeeCents ?? 0;
+    const discount = order.discountCents ?? 0;
+    const receiptSubtotal =
+      typeof order.receiptSubtotalCents === 'number'
+        ? order.receiptSubtotalCents
+        : Array.isArray(order.receiptItems)
+          ? (order.receiptItems as Array<{ price?: number; quantity?: number }>).reduce(
+              (sum, item) =>
+                sum +
+                Math.round((item.price || 0) * 100) *
+                  Math.max(1, item.quantity || 1),
+              0
+            )
+          : 0;
+
+    const total = receiptSubtotal + deliveryFee - discount;
+    return Number.isFinite(total) && total > 0 ? total : null;
+  };
+
+  const mapped: UserRequestListItem[] = [
+    ...orders.map((order) => ({
+      id: order.id,
+      kind: 'ORDER' as const,
+      serviceType: order.serviceType,
+      pickup: order.pickupAddress,
+      dropoff: order.dropoffAddress,
+      status: order.status === DeliveryRequestStatus.CANCELED ? 'CANCELLED' : order.status,
+      costCents: computeOrderTotalCents(order),
+      createdAt: order.createdAt,
+      href: `/order/${order.id}`,
+    })),
+    ...legacyRequests.map((request) => ({
+      id: request.id,
+      kind: 'REQUEST' as const,
+      serviceType: request.serviceType,
+      pickup: request.pickup,
+      dropoff: request.dropoff,
+      status: request.status,
+      costCents: request.costEstimate ?? null,
+      createdAt: request.createdAt,
+      href: `/requests/${request.id}`,
+    })),
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  return mapped;
 }
 
 export async function getRequest(id: string) {
