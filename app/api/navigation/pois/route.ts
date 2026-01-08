@@ -22,6 +22,12 @@ export async function GET(request: Request) {
       );
     }
 
+    const requestOrigin = new URL(request.url).origin;
+    const hereHeaders = {
+      Origin: requestOrigin,
+      Referer: `${requestOrigin}/`,
+    };
+
     const { searchParams } = new URL(request.url);
     const at = searchParams.get("at");
     const query = searchParams.get("query");
@@ -40,7 +46,7 @@ export async function GET(request: Request) {
     url.searchParams.set("limit", limit);
     url.searchParams.set("apiKey", HERE_API_KEY);
 
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(

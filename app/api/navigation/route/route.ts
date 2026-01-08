@@ -44,6 +44,12 @@ export async function GET(request: Request) {
       );
     }
 
+    const requestOrigin = new URL(request.url).origin;
+    const hereHeaders = {
+      Origin: requestOrigin,
+      Referer: `${requestOrigin}/`,
+    };
+
     const { searchParams } = new URL(request.url);
     const origin = searchParams.get("origin");
     const destination = searchParams.get("destination");
@@ -58,9 +64,19 @@ export async function GET(request: Request) {
     }
 
     const url = buildHereRouteUrl({ origin, destination, alternatives, lang });
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
     const raw = await res.text().catch(() => "");
     if (!res.ok) {
+      if (res.status === 401) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "HERE route failed: 401 Unauthorized. Check HERE key restrictions (allowed domains/referrers) and your Vercel env vars.",
+          },
+          { status: 502 }
+        );
+      }
       return NextResponse.json(
         { success: false, error: `HERE route failed: ${res.status} ${raw}` },
         { status: 502 }

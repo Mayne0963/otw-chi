@@ -13,9 +13,9 @@ async function runMigrations() {
   console.log('[migrate-deploy] Starting database migrations...');
   
   try {
-    // Check if DATABASE_URL and DIRECT_URL are set
-    if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
-      console.log('[migrate-deploy] DATABASE_URL or DIRECT_URL not set, skipping migrations');
+    // Check if DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      console.log('[migrate-deploy] DATABASE_URL not set, skipping migrations');
       process.exit(0);
     }
 
@@ -25,7 +25,6 @@ async function runMigrations() {
       env: {
         ...process.env,
         DATABASE_URL: process.env.DATABASE_URL,
-        DIRECT_URL: process.env.DIRECT_URL,
       },
     });
 
