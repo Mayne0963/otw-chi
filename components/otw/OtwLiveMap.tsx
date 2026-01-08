@@ -169,6 +169,7 @@ const OtwLiveMap = ({
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const mapReadyRef = useRef(false);
   const protocolRef = useRef<Protocol | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [mainRoute, setMainRoute] = useState<RouteFeature | null>(null);
   const [mainRouteSummary, setMainRouteSummary] = useState<RouteSummary | null>(null);
   const [driverRoute, setDriverRoute] = useState<RouteFeature | null>(null);
@@ -183,6 +184,10 @@ const OtwLiveMap = ({
   const resolvedMainSummary = mainRouteSummaryOverride ?? mainRouteSummary;
   const resolvedDriverRoute = driverRouteOverride ?? driverRoute;
   const resolvedDriverSummary = driverRouteSummaryOverride ?? driverRouteSummary;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const markerData = useMemo<MapMarker[]>(() => {
     const markers: MapMarker[] = [];
@@ -721,7 +726,7 @@ const OtwLiveMap = ({
 
   const statusLines: string[] = [];
 
-  const driverUpdatedAgo = formatUpdatedAgo(activeDriver?.updatedAt);
+  const driverUpdatedAgo = mounted ? formatUpdatedAgo(activeDriver?.updatedAt) : null;
 
   if (resolvedMainSummary) {
     statusLines.push(

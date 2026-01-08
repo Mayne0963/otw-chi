@@ -199,6 +199,7 @@ const DriverLiveMap = ({
   customer,
   initialDriverLocation,
 }: DriverLiveMapProps) => {
+  const [mounted, setMounted] = useState(false);
   const [driverLocations, setDriverLocations] = useState<OtwDriverLocation[]>(() =>
     initialDriverLocation ? [initialDriverLocation] : []
   );
@@ -230,6 +231,10 @@ const DriverLiveMap = ({
   const [etaSeconds, setEtaSeconds] = useState<number | null>(null);
   const [offRoute, setOffRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const lastSentRef = useRef<{ lat: number; lng: number; at: number } | null>(
     initialDriverLocation
@@ -949,7 +954,7 @@ const DriverLiveMap = ({
 
   const trafficDelayLabel = formatDuration(activeRoute?.summary?.trafficDelay);
   const typicalDurationLabel = formatDuration(activeRoute?.summary?.typicalDuration);
-  const lastSentLabel = formatTime(lastSentAt);
+  const lastSentLabel = mounted ? formatTime(lastSentAt) : null;
 
   const statusCopy = (() => {
     switch (trackingStatus) {
