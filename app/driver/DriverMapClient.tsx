@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -384,11 +383,22 @@ const DriverMapClient = () => {
             </Badge>
             <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs">
               <span>Demo Mode</span>
-              <Switch
-                checked={demoMode}
-                onCheckedChange={(val) => setDemoMode(val)}
+              <button
+                type="button"
+                onClick={() => setDemoMode((prev) => !prev)}
+                className={cn(
+                  "flex h-6 items-center rounded-full px-1 transition-colors",
+                  demoMode ? "bg-secondary/80" : "bg-muted"
+                )}
                 aria-label="Toggle demo stops"
-              />
+              >
+                <span
+                  className={cn(
+                    "h-4 w-4 rounded-full bg-background shadow transition-transform",
+                    demoMode ? "translate-x-4" : "translate-x-0"
+                  )}
+                />
+              </button>
             </div>
           </div>
         </div>
