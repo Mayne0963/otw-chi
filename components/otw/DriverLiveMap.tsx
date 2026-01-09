@@ -593,10 +593,11 @@ const DriverLiveMap = ({
     rerouteInFlightRef.current = true;
     setRouteError(null);
     const previousEta = etaRef.current;
+    let timeoutId: number | null = null;
 
     try {
       const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), REROUTE_TIMEOUT_MS);
+      timeoutId = window.setTimeout(() => controller.abort(), REROUTE_TIMEOUT_MS);
       const params = new URLSearchParams({
         origin: `${origin.lat},${origin.lng}`,
         destination: `${destination.lat},${destination.lng}`,
@@ -639,7 +640,9 @@ const DriverLiveMap = ({
       }
     } finally {
       rerouteInFlightRef.current = false;
-      window.clearTimeout(timeoutId);
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
     }
   };
 
