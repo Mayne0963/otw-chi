@@ -6,6 +6,7 @@ import {
   getCachedRouteResponse,
   parseHereRouteToOtw,
   safeFetchJson,
+  type HereRouteResponse,
 } from "@/lib/here";
 import { requireHereApiKey } from "@/lib/navigation/hereEnv";
 import { rateLimit } from "@/lib/rateLimit";
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
 
     const apiKey = requireHereApiKey();
     const url = buildRoutingV8Url({ origin, stops, apiKey, mode, avoid });
-    const data = await safeFetchJson(url, {
+    const data = await safeFetchJson<HereRouteResponse>(url, {
       headers: {
         Origin: new URL(request.url).origin,
         Referer: `${new URL(request.url).origin}/`,

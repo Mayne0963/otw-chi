@@ -3,7 +3,7 @@ import { decodeEncodedPolyline } from "./navigation/encodedPolyline";
 
 type Stop = { lat: number; lng: number; type?: string };
 
-type HereRouteResponse = {
+export type HereRouteResponse = {
   routes?: Array<{
     sections?: Array<{
       polyline?: string;
