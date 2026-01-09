@@ -10,6 +10,8 @@ export default async function MembershipPage() {
   const user = await getCurrentUser();
   const sub = user ? await getActiveSubscription(user.id) : null;
   const planCode = getPlanCodeFromSubscription(sub as any);
+  const stripeReady =
+    Boolean(process.env.STRIPE_SECRET_KEY) && Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
   const plans = [
     {
@@ -41,10 +43,16 @@ export default async function MembershipPage() {
         title="Membership Plans" 
         subtitle="Upgrade your OTW experience with exclusive benefits." 
       />
+      {!stripeReady && (
+        <div className="rounded-lg border border-amber-200/30 bg-amber-200/10 p-3 text-sm text-amber-100">
+          Stripe is not fully configured in this environment. Plan checkout is disabled.
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         {plans.map((plan) => {
           const isCurrent = plan.code === planCode;
+          const disabled = isCurrent || !stripeReady;
           return (
             <Card key={plan.code} className={`relative flex flex-col ${isCurrent ? 'border-otwGold bg-otwGold/5' : ''}`}>
               {isCurrent && (
@@ -72,10 +80,10 @@ export default async function MembershipPage() {
               <CardFooter>
                 <PlanCheckoutButton
                   plan={plan.code.toLowerCase() as 'basic' | 'plus' | 'executive'}
-                  className={`w-full ${isCurrent ? 'opacity-50 cursor-default' : 'bg-otwGold text-otwBlack hover:bg-otwGold/90'}`}
-                  disabled={isCurrent}
+                  className={`w-full ${isCurrent ? 'opacity-50 cursor-default' : 'bg-otwGold text-otwBlack hover:bg-otwGold/90'} disabled:opacity-60`}
+                  disabled={disabled}
                 >
-                  {isCurrent ? 'Active' : 'Choose Plan'}
+                  {isCurrent ? 'Active' : stripeReady ? 'Choose Plan' : 'Coming soon'}
                 </PlanCheckoutButton>
               </CardFooter>
             </Card>

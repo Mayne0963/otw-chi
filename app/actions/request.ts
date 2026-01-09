@@ -228,7 +228,7 @@ export async function getUserRequests() {
       status: order.status === DeliveryRequestStatus.CANCELED ? 'CANCELLED' : order.status,
       costCents: computeOrderTotalCents(order),
       createdAt: order.createdAt,
-      href: `/order/${order.id}`,
+      href: `/track/${order.id}`,
     })),
     ...legacyRequests.map((request) => ({
       id: request.id,
@@ -239,7 +239,7 @@ export async function getUserRequests() {
       status: request.status,
       costCents: request.costEstimate ?? null,
       createdAt: request.createdAt,
-      href: `/requests/${request.id}`,
+      href: `/track/${request.id}`,
     })),
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 

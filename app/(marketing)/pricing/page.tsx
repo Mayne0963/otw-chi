@@ -8,6 +8,8 @@ export default async function PricingPage() {
   const prisma = getPrisma();
   const planRecords = await prisma.membershipPlan.findMany();
   const planMap = new Map(planRecords.map((plan: { name: string }) => [plan.name.toLowerCase(), plan]));
+  const stripeReady =
+    Boolean(process.env.STRIPE_SECRET_KEY) && Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
   const fallbackPriceIds = {
     basic: process.env.STRIPE_PRICE_BASIC,
     plus: process.env.STRIPE_PRICE_PLUS,
@@ -43,6 +45,11 @@ export default async function PricingPage() {
       <div className="text-center space-y-2">
         <h1 className="text-4xl font-bold">Memberships</h1>
         <p className="text-white/70">Upgrade your OTW experience and save on every delivery.</p>
+        {!stripeReady && (
+          <p className="text-xs text-amber-200">
+            Stripe checkout is not fully configured. Plans are view-only for now.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -50,6 +57,7 @@ export default async function PricingPage() {
           const planRecord = planMap.get(plan.name.toLowerCase());
           const priceId = (planRecord as any)?.stripePriceId ?? fallbackPriceIds[plan.code as keyof typeof fallbackPriceIds];
           const planId = (planRecord as any)?.id;
+          const planDisabled = !stripeReady || !priceId;
           return (
           <Card key={plan.code} className="relative flex flex-col">
             <Badge variant="secondary" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-otwGold text-otwBlack hover:bg-otwGold">
@@ -77,10 +85,10 @@ export default async function PricingPage() {
                 plan={plan.code as 'basic' | 'plus' | 'executive'}
                 planId={planId}
                 priceId={priceId}
-                disabled={!priceId}
-                className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90"
+                disabled={planDisabled}
+                className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 disabled:opacity-60"
               >
-                Choose Plan
+                {planDisabled ? 'Coming soon' : 'Choose Plan'}
               </PlanCheckoutButton>
             </CardFooter>
           </Card>

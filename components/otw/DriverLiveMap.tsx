@@ -304,6 +304,7 @@ const DriverLiveMap = ({
   const etaRef = useRef<number | null>(null);
   const lastPoiFetchRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
   const batteryRef = useRef<{ level?: number; charging?: boolean } | null>(null);
+  const navigationStartedRef = useRef(false);
 
   const jobPhase = getJobPhase(jobStatus);
   const targetLocation = useMemo(() => {
@@ -402,8 +403,26 @@ const DriverLiveMap = ({
   useEffect(() => {
     if (!settings.voiceEnabled) {
       setVoiceGestureHint(false);
+      navigationStartedRef.current = false;
+      return;
+    }
+    if (voiceQueueRef.current?.isBlocked()) {
+      setVoiceGestureHint(true);
     }
   }, [settings.voiceEnabled]);
+
+  useEffect(() => {
+    if (!settings.voiceEnabled || !activeRoute) return;
+    if (navigationStartedRef.current) return;
+    navigationStartedRef.current = true;
+    speakNavigation("Navigation started.", { flush: true });
+  }, [activeRoute, settings.voiceEnabled, settings.voiceLocale, settings.voiceVolume]);
+
+  useEffect(() => {
+    if (!activeRoute) {
+      navigationStartedRef.current = false;
+    }
+  }, [activeRoute]);
 
   const speakNavigation = (text: string, options: { flush?: boolean } = {}) => {
     const queue = voiceQueueRef.current;
@@ -924,12 +943,28 @@ const DriverLiveMap = ({
   ]);
 
   useEffect(() => {
-    if (!activeRoute && !activeDriverLocation) return;
+    let cancelled = false;
+    let timeoutId: number | null = null;
+    let backoffMs = TRAFFIC_REFRESH_MS;
+
+    const schedule = (delay: number) => {
+      if (cancelled) return;
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(refreshTraffic, delay);
+    };
 
     const refreshTraffic = async () => {
+      if (!activeRoute && !activeDriverLocation) {
+        schedule(TRAFFIC_REFRESH_MS);
+        return;
+      }
+
       const routeBounds = activeRoute?.bounds;
       const origin = activeDriverLocation ?? currentLocationRef.current;
-      if (!routeBounds && !origin) return;
+      if (!routeBounds && !origin) {
+        schedule(TRAFFIC_REFRESH_MS);
+        return;
+      }
 
       const padding = 0.02;
       const minLat = (routeBounds?.minLat ?? origin!.lat) - padding;
@@ -943,20 +978,8 @@ const DriverLiveMap = ({
           fetch(`/api/navigation/traffic?bbox=${encodeURIComponent(bbox)}`, { cache: "no-store" }),
           fetch(`/api/navigation/incidents?bbox=${encodeURIComponent(bbox)}`, { cache: "no-store" }),
         ]);
-        const flowData = flowRes.ok ? await flowRes.json() : null;
-        const incidentData = incidentRes.ok ? await incidentRes.json() : null;
-
-        if (flowData?.rateLimited) {
-          window.setTimeout(refreshTraffic, (flowData.retryAfterSec ?? 120) * 1000);
-          return;
-        }
-        if (incidentData?.rateLimited) {
-          window.setTimeout(refreshTraffic, (incidentData.retryAfterSec ?? 120) * 1000);
-          return;
-        }
-        if (flowData?.ok === false || incidentData?.ok === false) {
-          window.setTimeout(refreshTraffic, 5 * 60_000);
-        }
+        const flowData = flowRes.ok ? await flowRes.json().catch(() => null) : null;
+        const incidentData = incidentRes.ok ? await incidentRes.json().catch(() => null) : null;
 
         if (flowData?.flow) {
           setTrafficFlow(flowData.flow);
@@ -964,14 +987,37 @@ const DriverLiveMap = ({
         if (incidentData?.incidents) {
           setIncidents(incidentData.incidents);
         }
+
+        const retryAfterSec = Math.max(
+          flowData?.rateLimited ? flowData.retryAfterSec ?? 120 : 0,
+          incidentData?.rateLimited ? incidentData.retryAfterSec ?? 120 : 0
+        );
+
+        if (retryAfterSec > 0) {
+          backoffMs = Math.max(backoffMs * 1.5, retryAfterSec * 1000);
+          schedule(backoffMs);
+          return;
+        }
+
+        if (flowData?.ok === false || incidentData?.ok === false) {
+          backoffMs = Math.min(backoffMs * 2, 5 * 60_000);
+          schedule(backoffMs);
+          return;
+        }
+
+        backoffMs = TRAFFIC_REFRESH_MS;
+        schedule(TRAFFIC_REFRESH_MS);
       } catch (_error) {
-        // ignore
+        backoffMs = Math.min(backoffMs * 2, 5 * 60_000);
+        schedule(backoffMs);
       }
     };
 
     refreshTraffic();
-    const interval = window.setInterval(refreshTraffic, TRAFFIC_REFRESH_MS);
-    return () => window.clearInterval(interval);
+    return () => {
+      cancelled = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
   }, [activeDriverLocation, activeRoute]);
 
   useEffect(() => {
@@ -1271,7 +1317,7 @@ const DriverLiveMap = ({
             </label>
             {voiceGestureHint && settings.voiceEnabled && (
               <div className="flex items-center justify-between rounded-md border border-border/70 bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground">
-                <span>Tap to allow voice guidance to play on this device.</span>
+                <span>Safari/iOS: Tap to enable voice guidance.</span>
                 <button
                   type="button"
                   onClick={unlockVoiceQueue}

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { createVoiceQueue, VOICE_GUIDANCE_STORAGE_KEY } from "@/lib/navigation/voiceQueue";
+import { getClientEnvDiagnostics } from "@/lib/envDiagnostics";
 
 type LatLng = { lat: number; lng: number };
 type Stop = LatLng & { id: string; label?: string; type?: "pickup" | "dropoff" };
@@ -166,8 +167,9 @@ const DriverMapClient = () => {
   const initMap = async () => {
     if (mapRefs.current.map || mapReady) return;
     if (!hasContainerSize()) return;
-    if (!hereKey) {
-      setMapError("HERE Maps key is missing.");
+    const { missing } = getClientEnvDiagnostics(["NEXT_PUBLIC_HERE_MAPS_KEY"]);
+    if (!hereKey || missing.includes("NEXT_PUBLIC_HERE_MAPS_KEY")) {
+      setMapError("Missing NEXT_PUBLIC_HERE_MAPS_KEY in Vercel");
       return;
     }
     if (!mapContainerRef.current) return;
@@ -603,7 +605,7 @@ const DriverMapClient = () => {
         <div className="relative flex-1 overflow-hidden rounded-2xl border border-border/70 bg-muted/40 shadow-otwSoft">
           <div
             ref={mapContainerRef}
-            className="absolute inset-0 rounded-2xl"
+            className="absolute inset-0 min-h-[60vh] rounded-2xl sm:min-h-[520px] lg:min-h-[640px]"
             aria-label="Driver map"
           />
           <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-background/10 via-background/5 to-background/10" />
