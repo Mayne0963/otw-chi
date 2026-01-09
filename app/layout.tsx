@@ -41,6 +41,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
     >
       <html lang="en" className={`${manrope.variable} ${fraunces.variable}`}>
+        <head>
+          <meta name="theme-color" content="#0c0c0c" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <link rel="manifest" href="/manifest.webmanifest" />
+          <link rel="icon" href="/icons/otw-192.svg" />
+          <link rel="apple-touch-icon" href="/icons/otw-192.svg" />
+        </head>
         <body className="min-h-screen bg-background text-foreground antialiased relative font-sans">
           {children}
           <OtwCookieConsent />

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#B00017"/>
+      <stop offset="100%" stop-color="#E6C36A"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="24" fill="#0C0C0C"/>
+  <circle cx="96" cy="96" r="68" fill="url(#g)" opacity="0.9"/>
+  <text x="96" y="112" font-family="Arial, sans-serif" font-size="48" font-weight="700" text-anchor="middle" fill="#0C0C0C">OTW</text>
+</svg>

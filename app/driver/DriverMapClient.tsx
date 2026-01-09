@@ -77,6 +77,7 @@ const DriverMapClient = () => {
   const [mapReady, setMapReady] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
   const [jobLoading, setJobLoading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
 
   const activeStop = stops[activeStopIndex];
 
@@ -324,6 +325,24 @@ const DriverMapClient = () => {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .catch((err) => console.error("SW registration failed", err));
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: any) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  useEffect(() => {
     if (!mapReady) return;
     updateStopMarkers();
   }, [mapReady, stops, activeStopIndex]);
@@ -438,6 +457,18 @@ const DriverMapClient = () => {
             >
               Traffic: {trafficRisk}
             </Badge>
+            {installPrompt && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  installPrompt.prompt();
+                  installPrompt.userChoice.finally(() => setInstallPrompt(null));
+                }}
+              >
+                Install OTW
+              </Button>
+            )}
             {!jobId && (
               <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs">
                 <span>Demo Mode</span>
