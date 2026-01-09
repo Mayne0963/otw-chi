@@ -604,7 +604,12 @@ const OtwLiveMap = ({
         if (!data) {
           if (map.getLayer(layerId)) map.removeLayer(layerId);
           // Only remove the source after dependent layers are gone
-          if (map.getSource(sourceId) && !map.getStyle().layers?.some((l) => l.source === sourceId)) {
+          const layers = map.getStyle().layers || [];
+          const hasDependentLayer = layers.some((layer) => {
+            const maybeSource = (layer as { source?: string }).source;
+            return maybeSource === sourceId;
+          });
+          if (map.getSource(sourceId) && !hasDependentLayer) {
             map.removeSource(sourceId);
           }
           return;
