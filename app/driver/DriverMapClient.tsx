@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { createVoiceQueue, VOICE_GUIDANCE_STORAGE_KEY } from "@/lib/navigation/voiceQueue";
 
 type LatLng = { lat: number; lng: number };
 type Stop = LatLng & { id: string; label?: string; type?: "pickup" | "dropoff" };
@@ -63,6 +64,8 @@ const DriverMapClient = () => {
   const movingAwayTicksRef = useRef<number>(0);
   const finalApproachRef = useRef<boolean>(false);
   const finalApproachStartedAtRef = useRef<number | null>(null);
+  const voiceQueueRef = useRef<ReturnType<typeof createVoiceQueue> | null>(null);
+  const mapCleanupRef = useRef<(() => void) | null>(null);
 
   const [demoMode, setDemoMode] = useState(true);
   const [stops, setStops] = useState<Stop[]>(DEMO_STOPS);
@@ -78,10 +81,59 @@ const DriverMapClient = () => {
   const [jobError, setJobError] = useState<string | null>(null);
   const [jobLoading, setJobLoading] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   const activeStop = stops[activeStopIndex];
 
   const stopList = useMemo(() => stops, [stops]);
+
+  const shouldUseVoiceGuidance = () => {
+    if (typeof window === "undefined") return false;
+    const stored = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+    if (stored === "false") return false;
+    return true;
+  };
+
+  const resetMapRefs = () => {
+    mapRefs.current = {
+      platform: null,
+      map: null,
+      behavior: null,
+      ui: null,
+      driverMarker: null,
+      stopMarkers: {},
+      routePolyline: null,
+    };
+  };
+
+  const hasContainerSize = () => {
+    const el = mapContainerRef.current;
+    if (!el) return false;
+    const { width, height } = el.getBoundingClientRect();
+    return width > 40 && height > 40;
+  };
+
+  const speakNavigationPrime = () => {
+    const queue = voiceQueueRef.current;
+    if (!queue || !shouldUseVoiceGuidance()) return;
+    const lang =
+      typeof navigator !== "undefined" && navigator.language ? navigator.language : "en-US";
+    queue.setDefaults({ lang, volume: 0.75 });
+    queue.setEnabled(true);
+    queue.unlock();
+    queue.enqueue({ text: "Navigation started.", lang, volume: 0.75, flush: true });
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const queue = createVoiceQueue();
+    voiceQueueRef.current = queue;
+    const lang = navigator.language || "en-US";
+    queue.setDefaults({ lang, volume: 0.75 });
+    const stored = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+    queue.setEnabled(stored === "false" ? false : true);
+    return () => queue.cancel();
+  }, []);
 
   const ensureHereScripts = async () => {
     if (typeof window === "undefined") return;
@@ -112,34 +164,61 @@ const DriverMapClient = () => {
   };
 
   const initMap = async () => {
-    if (!hereKey || !mapContainerRef.current) return;
-    await ensureHereScripts();
+    if (mapRefs.current.map || mapReady) return;
+    if (!hasContainerSize()) return;
+    if (!hereKey) {
+      setMapError("HERE Maps key is missing.");
+      return;
+    }
+    if (!mapContainerRef.current) return;
+    try {
+      await ensureHereScripts();
+    } catch (_error) {
+      setMapError("Failed to load map libraries.");
+      return;
+    }
     const H = (window as any).H;
-    if (!H) return;
-    const platform = new H.service.Platform({
-      apikey: hereKey,
-    });
-    const layers = platform.createDefaultLayers();
-    const map = new H.Map(mapContainerRef.current, layers.vector.normal.map, {
-      zoom: 13,
-      center: { lat: 41.0793, lng: -85.1394 },
-      pixelRatio: window.devicePixelRatio || 1,
-    });
-    const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-    const ui = H.ui.UI.createDefault(map, layers);
-    // Remove default UI clutter for a cleaner, Apple-like look.
-    ui.getControls().forEach((control: any) => ui.removeControl(control));
-    mapRefs.current = {
-      platform,
-      map,
-      behavior,
-      ui,
-      driverMarker: null,
-      stopMarkers: {},
-      routePolyline: null,
-    };
-    setMapReady(true);
-    window.addEventListener("resize", () => map.getViewPort().resize());
+    if (!H) {
+      setMapError("HERE Maps is unavailable in this browser.");
+      return;
+    }
+    try {
+      const platform = new H.service.Platform({
+        apikey: hereKey,
+      });
+      const layers = platform.createDefaultLayers();
+      const map = new H.Map(mapContainerRef.current, layers.vector.normal.map, {
+        zoom: 13,
+        center: { lat: 41.0793, lng: -85.1394 },
+        pixelRatio: window.devicePixelRatio || 1,
+      });
+      const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+      const ui = H.ui.UI.createDefault(map, layers);
+      ui.getControls().forEach((control: any) => ui.removeControl(control));
+      mapRefs.current = {
+        platform,
+        map,
+        behavior,
+        ui,
+        driverMarker: null,
+        stopMarkers: {},
+        routePolyline: null,
+      };
+      const resizeHandler = () => map.getViewPort().resize();
+      window.addEventListener("resize", resizeHandler);
+      mapCleanupRef.current = () => {
+        window.removeEventListener("resize", resizeHandler);
+        if (mapRefs.current.map) {
+          map.dispose();
+        }
+        resetMapRefs();
+      };
+      setMapError(null);
+      setMapReady(true);
+    } catch (error) {
+      console.error("Map init failed", error);
+      setMapError("Map failed to initialize.");
+    }
   };
 
   const updateDriverMarker = (location: LatLng) => {
@@ -239,6 +318,7 @@ const DriverMapClient = () => {
       return;
     }
     setJobStarted(true);
+    speakNavigationPrime();
     finalApproachRef.current = false;
     finalApproachStartedAtRef.current = null;
     await computeRoute(driverLocation, stops.slice(activeStopIndex));
@@ -316,8 +396,33 @@ const DriverMapClient = () => {
   };
 
   useEffect(() => {
-    initMap();
+    let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+    let pollId: number | null = null;
+
+    const attemptInit = () => {
+      if (cancelled) return;
+      if (!mapRefs.current.map && hasContainerSize()) {
+        initMap();
+      }
+    };
+
+    attemptInit();
+
+    if (typeof ResizeObserver !== "undefined" && mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => attemptInit());
+      resizeObserver.observe(mapContainerRef.current);
+    } else if (typeof window !== "undefined") {
+      pollId = window.setInterval(attemptInit, 500);
+    }
+
     return () => {
+      cancelled = true;
+      resizeObserver?.disconnect();
+      if (pollId) {
+        window.clearInterval(pollId);
+      }
+      mapCleanupRef.current?.();
       if (watchIdRef.current && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
@@ -495,8 +600,29 @@ const DriverMapClient = () => {
       </header>
 
       <div className="flex flex-1 flex-col gap-3 lg:flex-row">
-        <div className="flex-1 rounded-2xl border border-border/70 bg-muted/40 shadow-otwSoft">
-          <div ref={mapContainerRef} className="h-[420px] w-full rounded-2xl sm:h-[520px] lg:h-[640px]" />
+        <div className="relative flex-1 overflow-hidden rounded-2xl border border-border/70 bg-muted/40 shadow-otwSoft">
+          <div
+            ref={mapContainerRef}
+            className="absolute inset-0 rounded-2xl"
+            aria-label="Driver map"
+          />
+          <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-background/10 via-background/5 to-background/10" />
+          {!mapReady && !mapError && (
+            <div className="absolute inset-0 flex min-h-[60vh] items-center justify-center sm:min-h-[520px] lg:min-h-[640px]">
+              <div className="rounded-lg border border-border/60 bg-card/70 px-4 py-3 text-sm text-muted-foreground shadow-otwSoft">
+                Loading map…
+              </div>
+            </div>
+          )}
+          {mapError && (
+            <div className="absolute inset-0 flex min-h-[60vh] items-center justify-center bg-background/80 sm:min-h-[520px] lg:min-h-[640px]">
+              <div className="max-w-md space-y-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100 shadow-otwSoft">
+                <div className="font-semibold text-red-200">Map unavailable</div>
+                <div>{mapError}</div>
+              </div>
+            </div>
+          )}
+          <div className="min-h-[60vh] sm:min-h-[520px] lg:min-h-[640px]" />
         </div>
         <div className="w-full max-w-md space-y-3 rounded-2xl border border-border/70 bg-card/60 p-4 shadow-otwSoft">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

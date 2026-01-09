@@ -10,6 +10,7 @@ import {
   type GuidanceState,
 } from "@/lib/navigation/guidance";
 import type { NavigationRoute } from "@/lib/navigation/here";
+import { createVoiceQueue, VOICE_GUIDANCE_STORAGE_KEY } from "@/lib/navigation/voiceQueue";
 
 interface DriverLiveMapProps {
   driverId: string;
@@ -74,9 +75,18 @@ const REROUTE_TIMEOUT_MS = 2_000;
 const OFF_ROUTE_THRESHOLD_METERS = 50;
 const OFF_ROUTE_GRACE_MS = 2_000;
 
-const GUIDANCE_DISTANCE_MARKERS = [300, 100, 50];
+const GUIDANCE_DISTANCE_THRESHOLDS = [500, 200, 60];
+const ARRIVAL_RADIUS_METERS = 90;
 
 const toRadians = (deg: number) => (deg * Math.PI) / 180;
+
+const readStoredVoiceEnabled = () => {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+  if (stored === "true") return true;
+  if (stored === "false") return false;
+  return null;
+};
 
 const formatDistance = (meters?: number, locale = "en-US") => {
   if (typeof meters !== "number" || Number.isNaN(meters)) return "—";
@@ -190,6 +200,16 @@ const buildInstructionText = (
   return `${action} ${direction}`.trim();
 };
 
+const buildSpokenInstruction = (maneuver?: GuidanceState["nextManeuver"]) => {
+  if (!maneuver) return "Continue straight";
+  const action = maneuver.action ? maneuver.action.replace(/_/g, " ").toLowerCase() : "continue";
+  const direction = maneuver.direction ? maneuver.direction.toLowerCase() : "";
+  const road = maneuver.roadName?.trim();
+  const base = `${action}${direction ? ` ${direction}` : ""}`.trim() || "continue";
+  const sentence = road ? `${base} onto ${road}` : base;
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+};
+
 const DriverLiveMap = ({
   driverId,
   requestId,
@@ -215,6 +235,7 @@ const DriverLiveMap = ({
   const [routeOptions, setRouteOptions] = useState<NavigationRoute[]>([]);
   const [mainRoute, setMainRoute] = useState<NavigationRoute | null>(null);
   const [guidance, setGuidance] = useState<GuidanceState | null>(null);
+  const [voiceGestureHint, setVoiceGestureHint] = useState(false);
   const [trafficFlow, setTrafficFlow] = useState<GeoJSON.FeatureCollection<GeoJSON.LineString> | null>(
     null
   );
@@ -239,6 +260,20 @@ const DriverLiveMap = ({
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    voiceQueueRef.current = createVoiceQueue();
+    return () => {
+      voiceQueueRef.current?.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    const storedVoice = readStoredVoiceEnabled();
+    if (storedVoice == null) return;
+    setNavSettings((prev) => ({ ...(prev ?? DEFAULT_SETTINGS), voiceEnabled: storedVoice }));
+  }, []);
+
   const lastSentRef = useRef<{ lat: number; lng: number; at: number } | null>(
     initialDriverLocation
       ? {
@@ -261,6 +296,7 @@ const DriverLiveMap = ({
   const lastManeuverIdRef = useRef<string | null>(null);
   const spokenRef = useRef<Set<string>>(new Set());
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  const voiceQueueRef = useRef<ReturnType<typeof createVoiceQueue> | null>(null);
   const settingsSaveTimeout = useRef<number | null>(null);
   const lastRerouteAtRef = useRef<number>(0);
   const lastWeatherFetchRef = useRef<number>(0);
@@ -326,6 +362,19 @@ const DriverLiveMap = ({
     };
   }, []);
 
+  const getPreferredVoice = (locale: string) => {
+    const voices = voicesRef.current || [];
+    return (
+      voices.find((voice) => voice.lang === locale) ||
+      voices.find((voice) => voice.lang?.startsWith(locale.split("-")[0]))
+    );
+  };
+
+  const unlockVoiceQueue = () => {
+    voiceQueueRef.current?.unlock();
+    setVoiceGestureHint(false);
+  };
+
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const synth = window.speechSynthesis;
@@ -339,37 +388,62 @@ const DriverLiveMap = ({
     };
   }, []);
 
-  const speak = (text: string) => {
-    if (!settings.voiceEnabled) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = settings.voiceLocale;
-    utterance.volume = settings.voiceVolume;
-    const voices = voicesRef.current || [];
-    const preferred =
-      voices.find((voice) => voice.lang === settings.voiceLocale) ||
-      voices.find((voice) => voice.lang.startsWith(settings.voiceLocale.split("-")[0]));
-    if (preferred) {
-      utterance.voice = preferred;
+  useEffect(() => {
+    const queue = voiceQueueRef.current;
+    if (!queue) return;
+    queue.setEnabled(settings.voiceEnabled);
+    queue.setDefaults({
+      lang: settings.voiceLocale,
+      volume: settings.voiceVolume,
+      voice: getPreferredVoice(settings.voiceLocale),
+    });
+  }, [settings.voiceEnabled, settings.voiceLocale, settings.voiceVolume]);
+
+  useEffect(() => {
+    if (!settings.voiceEnabled) {
+      setVoiceGestureHint(false);
     }
-    synth.cancel();
-    synth.speak(utterance);
+  }, [settings.voiceEnabled]);
+
+  const speakNavigation = (text: string, options: { flush?: boolean } = {}) => {
+    const queue = voiceQueueRef.current;
+    if (!queue || !settings.voiceEnabled) return;
+    const result = queue.enqueue({
+      text,
+      lang: settings.voiceLocale,
+      volume: settings.voiceVolume,
+      voice: getPreferredVoice(settings.voiceLocale),
+      flush: options.flush,
+    });
+    if (!result.accepted && result.reason === "blocked") {
+      setVoiceGestureHint(true);
+    }
   };
 
   useEffect(() => {
     let mounted = true;
     const loadSettings = async () => {
+      const storedVoice = readStoredVoiceEnabled();
       try {
         const res = await fetch("/api/driver/navigation/settings");
         if (!res.ok) {
-          if (mounted) setNavSettings(DEFAULT_SETTINGS);
+          if (mounted) {
+            setNavSettings({
+              ...DEFAULT_SETTINGS,
+              voiceEnabled:
+                typeof storedVoice === "boolean" ? storedVoice : DEFAULT_SETTINGS.voiceEnabled,
+            });
+          }
           return;
         }
         const data = await res.json();
         if (mounted && data?.settings) {
+          const nextVoiceEnabled =
+            typeof storedVoice === "boolean"
+              ? storedVoice
+              : Boolean(data.settings.voiceEnabled);
           setNavSettings({
-            voiceEnabled: Boolean(data.settings.voiceEnabled),
+            voiceEnabled: nextVoiceEnabled,
             voiceLocale: data.settings.voiceLocale || DEFAULT_SETTINGS.voiceLocale,
             voiceVolume:
               typeof data.settings.voiceVolume === "number"
@@ -377,9 +451,39 @@ const DriverLiveMap = ({
                 : DEFAULT_SETTINGS.voiceVolume,
             detailLevel: data.settings.detailLevel || DEFAULT_SETTINGS.detailLevel,
           });
+          if (typeof window !== "undefined" && typeof storedVoice !== "boolean") {
+            window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(nextVoiceEnabled));
+          }
+          return;
+        }
+        if (mounted) {
+          const nextVoiceEnabled =
+            typeof storedVoice === "boolean"
+              ? storedVoice
+              : DEFAULT_SETTINGS.voiceEnabled;
+          setNavSettings({
+            ...DEFAULT_SETTINGS,
+            voiceEnabled: nextVoiceEnabled,
+          });
+          if (typeof window !== "undefined" && typeof storedVoice !== "boolean") {
+            window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(nextVoiceEnabled));
+          }
         }
       } catch (_error) {
-        if (mounted) setNavSettings(DEFAULT_SETTINGS);
+        if (mounted) {
+          const storedVoiceFallback = readStoredVoiceEnabled();
+          const nextVoiceEnabled =
+            typeof storedVoiceFallback === "boolean"
+              ? storedVoiceFallback
+              : DEFAULT_SETTINGS.voiceEnabled;
+          setNavSettings({
+            ...DEFAULT_SETTINGS,
+            voiceEnabled: nextVoiceEnabled,
+          });
+          if (typeof window !== "undefined" && typeof storedVoiceFallback !== "boolean") {
+            window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(nextVoiceEnabled));
+          }
+        }
       }
     };
     loadSettings();
@@ -411,6 +515,12 @@ const DriverLiveMap = ({
   const updateSettings = (partial: Partial<DriverNavigationSettings>) => {
     setNavSettings((prev) => {
       const next = { ...(prev ?? DEFAULT_SETTINGS), ...partial };
+      if (typeof partial.voiceEnabled === "boolean" && typeof window !== "undefined") {
+        window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(partial.voiceEnabled));
+        if (partial.voiceEnabled) {
+          unlockVoiceQueue();
+        }
+      }
       queueSettingsSave(next);
       return next;
     });
@@ -629,9 +739,6 @@ const DriverLiveMap = ({
           reason: reason || "manual",
         });
       }
-      if (reason === "off-route") {
-        speak("Route updated.");
-      }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         setRouteError("Route update timed out. Retrying...");
@@ -711,6 +818,14 @@ const DriverLiveMap = ({
   }, [activeRoute]);
 
   useEffect(() => {
+    if (!activeRoute) {
+      spokenRef.current.clear();
+      lastManeuverIdRef.current = null;
+      lastDistanceRef.current = null;
+    }
+  }, [activeRoute]);
+
+  useEffect(() => {
     etaRef.current = etaSeconds;
   }, [etaSeconds]);
 
@@ -751,42 +866,62 @@ const DriverLiveMap = ({
     if (!guidance?.nextManeuver || guidance.distanceToNextMeters == null) return;
     if (!settings.voiceEnabled) return;
 
-    const maneuverId = guidance.nextManeuver.id;
+    const maneuver = guidance.nextManeuver;
+    const maneuverId = maneuver.id;
+    const currentDistance = guidance.distanceToNextMeters;
+    const previousDistance =
+      lastManeuverIdRef.current === maneuverId ? lastDistanceRef.current : null;
+
     if (maneuverId !== lastManeuverIdRef.current) {
       spokenRef.current.clear();
       lastManeuverIdRef.current = maneuverId;
-      lastDistanceRef.current = guidance.distanceToNextMeters;
+      lastDistanceRef.current = currentDistance;
+      if (currentDistance > GUIDANCE_DISTANCE_THRESHOLDS[0]) {
+        const introKey = `${maneuverId}:change`;
+        if (!spokenRef.current.has(introKey)) {
+          spokenRef.current.add(introKey);
+          speakNavigation(`Next, ${buildSpokenInstruction(maneuver)}`, { flush: true });
+        }
+      }
     }
 
-    const previousDistance = lastDistanceRef.current;
-    const currentDistance = guidance.distanceToNextMeters;
-    lastDistanceRef.current = currentDistance;
-    if (previousDistance == null) return;
-
-    const speed = speedMps ?? 13;
-    const earlyDistance = Math.max(150, Math.min(600, speed * 8));
-    const nearDistance = Math.max(40, Math.min(200, speed * 3));
-
-    const baseThresholds =
-      settings.detailLevel === "compact"
-        ? [nearDistance]
-        : [earlyDistance, ...GUIDANCE_DISTANCE_MARKERS, nearDistance];
-    const thresholds = Array.from(new Set(baseThresholds.map((value) => Math.round(value))));
-
-    thresholds.forEach((threshold) => {
-      if (previousDistance > threshold && currentDistance <= threshold) {
+    const instruction = buildSpokenInstruction(maneuver).replace(/\.+$/, "");
+    GUIDANCE_DISTANCE_THRESHOLDS.forEach((threshold) => {
+      const crossed =
+        previousDistance == null
+          ? currentDistance <= threshold
+          : previousDistance > threshold && currentDistance <= threshold;
+      if (crossed) {
         const key = `${maneuverId}:${threshold}`;
         if (spokenRef.current.has(key)) return;
         spokenRef.current.add(key);
-        const prefix =
-          threshold <= nearDistance || currentDistance <= 20
-            ? "Now"
-            : `In ${formatDistanceSpeech(threshold, settings.voiceLocale)}`;
-        const instruction = buildInstructionText(guidance.nextManeuver, settings.detailLevel);
-        speak(`${prefix}, ${instruction}`.trim());
+        const distanceText = formatDistanceSpeech(threshold, settings.voiceLocale);
+        speakNavigation(`In ${distanceText}, ${instruction}.`, { flush: true });
       }
     });
-  }, [guidance, settings.detailLevel, settings.voiceEnabled, settings.voiceLocale, speedMps]);
+
+    const finalManeuverId = activeRoute?.maneuvers?.[activeRoute.maneuvers.length - 1]?.id;
+    const arrivalKey = `${maneuverId}:arrival`;
+    if (
+      finalManeuverId &&
+      maneuverId === finalManeuverId &&
+      currentDistance <= ARRIVAL_RADIUS_METERS &&
+      !spokenRef.current.has(arrivalKey)
+    ) {
+      spokenRef.current.add(arrivalKey);
+      const arrivalText = jobPhase === "TO_PICKUP" ? "Arrived at pickup." : "Arrived at dropoff.";
+      speakNavigation(arrivalText, { flush: true });
+    }
+
+    lastDistanceRef.current = currentDistance;
+  }, [
+    activeRoute,
+    guidance,
+    jobPhase,
+    settings.voiceEnabled,
+    settings.voiceLocale,
+    settings.voiceVolume,
+  ]);
 
   useEffect(() => {
     if (!activeRoute && !activeDriverLocation) return;
@@ -1134,6 +1269,18 @@ const DriverLiveMap = ({
                 className="h-4 w-4 accent-otwGold"
               />
             </label>
+            {voiceGestureHint && settings.voiceEnabled && (
+              <div className="flex items-center justify-between rounded-md border border-border/70 bg-muted/60 px-3 py-2 text-[11px] text-muted-foreground">
+                <span>Tap to allow voice guidance to play on this device.</span>
+                <button
+                  type="button"
+                  onClick={unlockVoiceQueue}
+                  className="rounded border border-otwGold/40 bg-otwGold/10 px-2 py-1 text-[11px] font-semibold text-otwGold"
+                >
+                  Enable
+                </button>
+              </div>
+            )}
             <label className="flex items-center justify-between gap-3 text-xs">
               <span className="text-muted-foreground">Language</span>
               <select
