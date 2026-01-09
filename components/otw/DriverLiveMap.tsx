@@ -808,13 +808,26 @@ const DriverLiveMap = ({
           fetch(`/api/navigation/traffic?bbox=${encodeURIComponent(bbox)}`, { cache: "no-store" }),
           fetch(`/api/navigation/incidents?bbox=${encodeURIComponent(bbox)}`, { cache: "no-store" }),
         ]);
-        if (flowRes.ok) {
-          const flowData = await flowRes.json();
-          setTrafficFlow(flowData?.flow ?? null);
+        const flowData = flowRes.ok ? await flowRes.json() : null;
+        const incidentData = incidentRes.ok ? await incidentRes.json() : null;
+
+        if (flowData?.rateLimited) {
+          window.setTimeout(refreshTraffic, (flowData.retryAfterSec ?? 120) * 1000);
+          return;
         }
-        if (incidentRes.ok) {
-          const incidentData = await incidentRes.json();
-          setIncidents(incidentData?.incidents ?? null);
+        if (incidentData?.rateLimited) {
+          window.setTimeout(refreshTraffic, (incidentData.retryAfterSec ?? 120) * 1000);
+          return;
+        }
+        if (flowData?.ok === false || incidentData?.ok === false) {
+          window.setTimeout(refreshTraffic, 5 * 60_000);
+        }
+
+        if (flowData?.flow) {
+          setTrafficFlow(flowData.flow);
+        }
+        if (incidentData?.incidents) {
+          setIncidents(incidentData.incidents);
         }
       } catch (_error) {
         // ignore

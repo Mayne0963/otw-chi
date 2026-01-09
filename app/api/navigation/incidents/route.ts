@@ -26,6 +26,15 @@ const parseShapePoint = (value: string): [number, number] | null => {
   return [lng, lat];
 };
 
+const cache = new Map<
+  string,
+  { expires: number; data: any; cooldownUntil?: number }
+>();
+const TTL_MS = 120_000;
+const RATE_LIMIT_DEFAULT_COOLDOWN_MS = 120_000;
+const LOG_THROTTLE_MS = 60_000;
+let lastLogAt = 0;
+
 export async function GET(request: Request) {
   try {
     const HERE_API_KEY = requireHereApiKey();
@@ -45,17 +54,61 @@ export async function GET(request: Request) {
       );
     }
 
+    const cacheKey = bbox;
+    const now = Date.now();
+    const cached = cache.get(cacheKey);
+    if (cached && now < cached.expires) {
+      if (cached.cooldownUntil && now < cached.cooldownUntil) {
+        return NextResponse.json({
+          ok: false,
+          rateLimited: true,
+          retryAfterSec: Math.ceil((cached.cooldownUntil - now) / 1000),
+          data: null,
+        });
+      }
+      return NextResponse.json({ ok: true, incidents: cached.data });
+    }
+
+    if (cached?.cooldownUntil && now < cached.cooldownUntil) {
+      return NextResponse.json({
+        ok: false,
+        rateLimited: true,
+        retryAfterSec: Math.ceil((cached.cooldownUntil - now) / 1000),
+        data: null,
+      });
+    }
+
     const url = new URL("https://traffic.ls.hereapi.com/traffic/6.3/incidents.json");
     url.searchParams.set("bbox", bbox);
     url.searchParams.set("apiKey", HERE_API_KEY);
 
     const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
+    if (res.status === 429) {
+      const retryAfter = Number(res.headers.get("retry-after")) || RATE_LIMIT_DEFAULT_COOLDOWN_MS / 1000;
+      cache.set(cacheKey, {
+        expires: now + TTL_MS,
+        data: cached?.data ?? null,
+        cooldownUntil: now + retryAfter * 1000,
+      });
+      if (now - lastLogAt > LOG_THROTTLE_MS) {
+        console.warn("[HERE_INCIDENTS_RATE_LIMIT]", res.status);
+        lastLogAt = now;
+      }
+      return NextResponse.json({
+        ok: false,
+        rateLimited: true,
+        retryAfterSec: retryAfter,
+        data: null,
+      });
+    }
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      return NextResponse.json(
-        { success: false, error: `HERE incidents failed: ${res.status} ${text}` },
-        { status: 502 }
-      );
+      if (now - lastLogAt > LOG_THROTTLE_MS) {
+        console.warn("[HERE_INCIDENTS_ERROR]", res.status, text.slice(0, 200));
+        lastLogAt = now;
+      }
+      return NextResponse.json({ ok: false, error: "unavailable", data: null });
     }
 
     const data = (await res.json()) as HereIncidentResponse;
@@ -81,18 +134,18 @@ export async function GET(request: Request) {
       });
     });
 
-    return NextResponse.json({
-      success: true,
-      incidents: {
-        type: "FeatureCollection",
-        features,
-      },
-    });
+    const payload = {
+      type: "FeatureCollection",
+      features,
+    };
+    cache.set(cacheKey, { expires: now + TTL_MS, data: payload });
+
+    return NextResponse.json({ ok: true, incidents: payload });
   } catch (error) {
-    console.error("Incident fetch error:", error);
-    return NextResponse.json(
-      { success: false, error: "Unable to load incidents." },
-      { status: 500 }
-    );
+    if (Date.now() - lastLogAt > LOG_THROTTLE_MS) {
+      console.error("[INCIDENT_FETCH_ERROR]", error);
+      lastLogAt = Date.now();
+    }
+    return NextResponse.json({ ok: false, error: "unavailable", data: null });
   }
 }

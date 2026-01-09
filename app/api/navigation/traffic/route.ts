@@ -26,6 +26,16 @@ const parseShape = (value: string): [number, number][] => {
     .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat));
 };
 
+const cache = new Map<
+  string,
+  { expires: number; data: any; cooldownUntil?: number }
+>();
+
+const TTL_MS = 60_000;
+const RATE_LIMIT_DEFAULT_COOLDOWN_MS = 120_000;
+const LOG_THROTTLE_MS = 60_000;
+let lastLogAt = 0;
+
 export async function GET(request: Request) {
   try {
     const HERE_API_KEY = requireHereApiKey();
@@ -45,17 +55,61 @@ export async function GET(request: Request) {
       );
     }
 
+    const cacheKey = bbox;
+    const now = Date.now();
+    const cached = cache.get(cacheKey);
+    if (cached && now < cached.expires) {
+      if (cached.cooldownUntil && now < cached.cooldownUntil) {
+        return NextResponse.json({
+          ok: false,
+          rateLimited: true,
+          retryAfterSec: Math.ceil((cached.cooldownUntil - now) / 1000),
+          data: null,
+        });
+      }
+      return NextResponse.json({ ok: true, flow: cached.data });
+    }
+
+    if (cached?.cooldownUntil && now < cached.cooldownUntil) {
+      return NextResponse.json({
+        ok: false,
+        rateLimited: true,
+        retryAfterSec: Math.ceil((cached.cooldownUntil - now) / 1000),
+        data: null,
+      });
+    }
+
     const url = new URL("https://traffic.ls.hereapi.com/traffic/6.3/flow.json");
     url.searchParams.set("bbox", bbox);
     url.searchParams.set("apiKey", HERE_API_KEY);
 
     const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
+    if (res.status === 429) {
+      const retryAfter = Number(res.headers.get("retry-after")) || RATE_LIMIT_DEFAULT_COOLDOWN_MS / 1000;
+      cache.set(cacheKey, {
+        expires: now + TTL_MS,
+        data: cached?.data ?? null,
+        cooldownUntil: now + retryAfter * 1000,
+      });
+      if (now - lastLogAt > LOG_THROTTLE_MS) {
+        console.warn("[HERE_TRAFFIC_RATE_LIMIT]", res.status);
+        lastLogAt = now;
+      }
+      return NextResponse.json({
+        ok: false,
+        rateLimited: true,
+        retryAfterSec: retryAfter,
+        data: null,
+      });
+    }
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      return NextResponse.json(
-        { success: false, error: `HERE traffic flow failed: ${res.status} ${text}` },
-        { status: 502 }
-      );
+      if (now - lastLogAt > LOG_THROTTLE_MS) {
+        console.warn("[HERE_TRAFFIC_ERROR]", res.status, text.slice(0, 200));
+        lastLogAt = now;
+      }
+      return NextResponse.json({ ok: false, error: "unavailable", data: null });
     }
 
     const data = (await res.json()) as HereTrafficFlowResponse;
@@ -87,18 +141,18 @@ export async function GET(request: Request) {
       });
     });
 
-    return NextResponse.json({
-      success: true,
-      flow: {
-        type: "FeatureCollection",
-        features,
-      },
-    });
+    const payload = {
+      type: "FeatureCollection",
+      features,
+    };
+    cache.set(cacheKey, { expires: now + TTL_MS, data: payload });
+
+    return NextResponse.json({ ok: true, flow: payload });
   } catch (error) {
-    console.error("Traffic flow error:", error);
-    return NextResponse.json(
-      { success: false, error: "Unable to load traffic flow." },
-      { status: 500 }
-    );
+    if (Date.now() - lastLogAt > LOG_THROTTLE_MS) {
+      console.error("[TRAFFIC_FLOW_ERROR]", error);
+      lastLogAt = Date.now();
+    }
+    return NextResponse.json({ ok: false, error: "unavailable", data: null });
   }
 }
