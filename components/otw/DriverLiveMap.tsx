@@ -319,6 +319,17 @@ const DriverLiveMap = ({
   const settings = navSettings ?? DEFAULT_SETTINGS;
 
   useEffect(() => {
+    if (jobPhase === "NONE") {
+      setRouteOptions([]);
+      setMainRoute(null);
+      setGuidance(null);
+      setTrafficFlow(null);
+      setIncidents(null);
+      setPois(null);
+    }
+  }, [jobPhase]);
+
+  useEffect(() => {
     currentLocationRef.current = activeDriverLocation ?? null;
   }, [activeDriverLocation]);
 
