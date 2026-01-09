@@ -85,12 +85,12 @@ export default async function DriverJobsPage() {
                       </div>
                     <div className="flex gap-2">
                       <OtwButton as="a" href={`/driver/jobs/${r.id}`} variant="outline" size="sm">Open</OtwButton>
-                      <OtwButton as="a" href={`/driver?jobId=${r.id}`} variant="secondary" size="sm">
+                      <OtwButton as="a" href={`/driver?jobId=${r.id}`} variant="outline" size="sm">
                         Driver Map
                       </OtwButton>
                     </div>
-                    </div>
-                  </li>
+                  </div>
+                </li>
                 ))}
               </ul>
           )}
