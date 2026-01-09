@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,8 @@ type MapRefs = {
 const hereKey = process.env.NEXT_PUBLIC_HERE_MAPS_KEY;
 
 const DriverMapClient = () => {
+  const searchParams = useSearchParams();
+  const jobId = searchParams.get("jobId");
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRefs = useRef<MapRefs>({
     platform: null,
@@ -72,6 +75,8 @@ const DriverMapClient = () => {
   const [jobStarted, setJobStarted] = useState(false);
   const [trafficRisk] = useState<"LOW" | "MED" | "HIGH">("LOW");
   const [mapReady, setMapReady] = useState(false);
+  const [jobError, setJobError] = useState<string | null>(null);
+  const [jobLoading, setJobLoading] = useState(false);
 
   const activeStop = stops[activeStopIndex];
 
@@ -228,6 +233,10 @@ const DriverMapClient = () => {
 
   const startJob = async () => {
     if (!driverLocation || !activeStop) return;
+    if (stops.some((s) => typeof s.lat !== "number" || typeof s.lng !== "number")) {
+      setJobError("Stops missing coordinates; cannot start routing.");
+      return;
+    }
     setJobStarted(true);
     finalApproachRef.current = false;
     finalApproachStartedAtRef.current = null;
@@ -339,13 +348,61 @@ const DriverMapClient = () => {
   }, [mapReady, jobStarted, activeStopIndex, stops, route]);
 
   useEffect(() => {
-    if (demoMode) {
+    if (demoMode && !jobId) {
       setStops(DEMO_STOPS);
       setActiveStopIndex(0);
       setJobStarted(false);
       setRoute(null);
+      setJobError(null);
     }
-  }, [demoMode]);
+  }, [demoMode, jobId]);
+
+  useEffect(() => {
+    if (!jobId) return;
+    const load = async () => {
+      setJobLoading(true);
+      setJobError(null);
+      try {
+        const res = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
+        if (!res.ok) {
+          const msg = await res.text().catch(() => "Unable to load job");
+          throw new Error(msg || "Unable to load job");
+        }
+        const data = await res.json();
+        const nextStops: Stop[] = (data.stops || [])
+          .filter((s: any) => s?.id)
+          .map((s: any) => ({
+            id: s.id,
+            label: s.label || s.type,
+            type: s.type,
+            lat: typeof s.lat === "number" ? s.lat : NaN,
+            lng: typeof s.lng === "number" ? s.lng : NaN,
+          }));
+        if (!nextStops.length) {
+          throw new Error("Job has no stops");
+        }
+        setStops(nextStops);
+        setActiveStopIndex(0);
+        setJobStarted(false);
+        setRoute(null);
+        setDemoMode(false);
+        if (nextStops.some((s) => Number.isNaN(s.lat) || Number.isNaN(s.lng))) {
+          setJobError("This job is missing coordinates; routing may be unavailable.");
+        }
+      } catch (error) {
+        setJobError(error instanceof Error ? error.message : "Unable to load job");
+      } finally {
+        setJobLoading(false);
+      }
+    };
+    load();
+  }, [jobId]);
+
+  useEffect(() => {
+    if (jobId && !jobError && !jobLoading && driverLocation && stops.length && !jobStarted) {
+      startJob().catch(() => null);
+    }
+  }, [jobId, jobError, jobLoading, driverLocation, stops.length, jobStarted]);
 
   const nextStopLabel = activeStop?.label || (activeStop?.type === "pickup" ? "Pickup" : "Dropoff");
 
@@ -381,25 +438,27 @@ const DriverMapClient = () => {
             >
               Traffic: {trafficRisk}
             </Badge>
-            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs">
-              <span>Demo Mode</span>
-              <button
-                type="button"
-                onClick={() => setDemoMode((prev) => !prev)}
-                className={cn(
-                  "flex h-6 items-center rounded-full px-1 transition-colors",
-                  demoMode ? "bg-secondary/80" : "bg-muted"
-                )}
-                aria-label="Toggle demo stops"
-              >
-                <span
+            {!jobId && (
+              <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/60 px-3 py-2 text-xs">
+                <span>Demo Mode</span>
+                <button
+                  type="button"
+                  onClick={() => setDemoMode((prev) => !prev)}
                   className={cn(
-                    "h-4 w-4 rounded-full bg-background shadow transition-transform",
-                    demoMode ? "translate-x-4" : "translate-x-0"
+                    "flex h-6 items-center rounded-full px-1 transition-colors",
+                    demoMode ? "bg-secondary/80" : "bg-muted"
                   )}
-                />
-              </button>
-            </div>
+                  aria-label="Toggle demo stops"
+                >
+                  <span
+                    className={cn(
+                      "h-4 w-4 rounded-full bg-background shadow transition-transform",
+                      demoMode ? "translate-x-4" : "translate-x-0"
+                    )}
+                  />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -441,7 +500,9 @@ const DriverMapClient = () => {
                     <div>
                       <div className="font-semibold">{stop.label || stop.id}</div>
                       <div className="text-xs text-muted-foreground">
-                        {stop.lat.toFixed(4)}, {stop.lng.toFixed(4)}
+                        {Number.isFinite(stop.lat) && Number.isFinite(stop.lng)
+                          ? `${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}`
+                          : "Coordinates unavailable"}
                       </div>
                     </div>
                     {isActive && <Badge variant="outline">Active</Badge>}
@@ -451,6 +512,11 @@ const DriverMapClient = () => {
               {stopList.length === 0 && (
                 <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
                   Add stops to start routing.
+                </div>
+              )}
+              {jobError && (
+                <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+                  {jobError}
                 </div>
               )}
             </div>

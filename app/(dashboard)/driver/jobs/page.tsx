@@ -78,16 +78,21 @@ export default async function DriverJobsPage() {
             <ul className="mt-2 space-y-2 text-sm opacity-90">
               {active.map((r: any) => (
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold">{r.status}</div>
-                      <div className="text-xs opacity-70">{r.pickup} → {r.dropoff}</div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">{r.status}</div>
+                        <div className="text-xs opacity-70">{r.pickup} → {r.dropoff}</div>
+                      </div>
+                    <div className="flex gap-2">
+                      <OtwButton as="a" href={`/driver/jobs/${r.id}`} variant="outline" size="sm">Open</OtwButton>
+                      <OtwButton as="a" href={`/driver?jobId=${r.id}`} variant="secondary" size="sm">
+                        Driver Map
+                      </OtwButton>
                     </div>
-                    <OtwButton as="a" href={`/driver/jobs/${r.id}`} variant="outline" size="sm">Open</OtwButton>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    </div>
+                  </li>
+                ))}
+              </ul>
           )}
         </OtwCard>
         <OtwCard className="md:col-span-2">
