@@ -11,6 +11,9 @@ import { redirect } from 'next/navigation';
 import type { OtwLocation } from '@/lib/otw/otwTypes';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function DriverDashboardPage() {
   const user = await getCurrentUser();
   if (!user) {
@@ -221,19 +224,27 @@ export default async function DriverDashboardPage() {
             <h2 className="text-2xl font-semibold mb-4 text-foreground">Live Map</h2>
             <Card className="text-foreground">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Active Route Overview</CardTitle>
+                    <CardTitle className="text-lg">
+                      {activeRequest ? 'Active Route Overview' : 'No active route'}
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DriverLiveMap
-                        driverId={driverProfile.id}
-                        customer={customerLocation}
-                        pickup={pickupLocation}
-                        dropoff={dropoffLocation}
-                        requestId={activeRequest?.id}
-                        requestType="delivery"
-                        jobStatus={activeRequest?.status}
-                        initialDriverLocation={driverLocations[0] ?? null}
-                    />
+                    {activeRequest ? (
+                      <DriverLiveMap
+                          driverId={driverProfile.id}
+                          customer={customerLocation}
+                          pickup={pickupLocation}
+                          dropoff={dropoffLocation}
+                          requestId={activeRequest?.id}
+                          requestType="delivery"
+                          jobStatus={activeRequest?.status}
+                          initialDriverLocation={driverLocations[0] ?? null}
+                      />
+                    ) : (
+                      <div className="rounded-lg border border-border/70 bg-muted/40 p-4 text-sm text-muted-foreground">
+                        No active delivery assigned. Accept a request to start navigation.
+                      </div>
+                    )}
                 </CardContent>
             </Card>
         </section>
