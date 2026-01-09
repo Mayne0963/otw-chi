@@ -79,13 +79,7 @@ export const createVoiceQueue = (): VoiceQueue => {
     if (!synth) return { accepted: false, reason: "unavailable" };
     if (!enabled) return { accepted: false, reason: "disabled" };
 
-    const payload: VoiceRequest = {
-      lang: defaults.lang,
-      volume: defaults.volume,
-      voice: defaults.voice,
-      rate: defaults.rate,
-      ...request,
-    };
+    const payload: VoiceRequest = { ...defaults, ...request };
 
     if (payload.flush) {
       queue = [];
