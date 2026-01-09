@@ -118,7 +118,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
             ))}
           </ul>
           <div className="mt-4 flex gap-2">
-            <OtwButton as="a" href={`/driver?jobId=${req.id}`} variant="secondary">
+            <OtwButton as="a" href={`/driver?jobId=${req.id}`} variant="outline">
               Open in Driver Map
             </OtwButton>
           </div>
