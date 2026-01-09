@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseHereRoute, parseHereAlternatives } from "@/lib/navigation/here";
+import { requireHereApiKey } from "@/lib/navigation/hereEnv";
 
-const HERE_API_KEY = process.env.HERE_API_KEY;
 const HERE_ENABLE_SPANS = process.env.HERE_ROUTE_SPANS === "true";
 const ROUTE_CACHE_TTL_MS = 30_000;
 const ROUTE_CACHE_MAX_ENTRIES = 100;
@@ -53,6 +53,7 @@ const buildHereRouteUrl = (params: {
   destination: string;
   alternatives?: number;
   lang?: string;
+  apiKey: string;
 }) => {
   const url = new URL("https://router.hereapi.com/v8/routes");
   url.searchParams.set("transportMode", "car");
@@ -73,20 +74,13 @@ const buildHereRouteUrl = (params: {
   if (params.lang) {
     url.searchParams.set("lang", params.lang);
   }
-  if (HERE_API_KEY) {
-    url.searchParams.set("apiKey", HERE_API_KEY);
-  }
+  url.searchParams.set("apiKey", params.apiKey);
   return url.toString();
 };
 
 export async function GET(request: Request) {
   try {
-    if (!HERE_API_KEY) {
-      return NextResponse.json(
-        { success: false, error: "HERE_API_KEY is not configured." },
-        { status: 500 }
-      );
-    }
+    const HERE_API_KEY = requireHereApiKey();
 
     const requestOrigin = new URL(request.url).origin;
     const hereHeaders = {
@@ -119,7 +113,7 @@ export async function GET(request: Request) {
       return NextResponse.json(cached, { headers: { "x-otw-route-cache": "hit" } });
     }
 
-    const url = buildHereRouteUrl({ origin, destination, alternatives, lang });
+    const url = buildHereRouteUrl({ origin, destination, alternatives, lang, apiKey: HERE_API_KEY });
     const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
     const raw = await res.text().catch(() => "");
     if (!res.ok) {

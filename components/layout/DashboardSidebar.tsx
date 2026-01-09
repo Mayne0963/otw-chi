@@ -37,6 +37,7 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
 
   const driverRoutes = [
     { label: "Driver Dashboard", href: "/driver/dashboard", icon: Truck },
+    { label: "Driver Map", href: "/driver", icon: MapPin }, // Driver-only map entry
     { label: "Jobs", href: "/driver/jobs", icon: MapPin },
     { label: "Earnings", href: "/driver/earnings", icon: DollarSign },
     { label: "Profile", href: "/driver/profile", icon: Settings },

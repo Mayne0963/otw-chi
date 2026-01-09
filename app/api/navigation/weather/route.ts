@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-
-const HERE_API_KEY = process.env.HERE_API_KEY;
+import { requireHereApiKey } from "@/lib/navigation/hereEnv";
 
 type HereWeatherResponse = {
   observations?: {
@@ -22,12 +21,7 @@ type HereWeatherResponse = {
 
 export async function GET(request: Request) {
   try {
-    if (!HERE_API_KEY) {
-      return NextResponse.json(
-        { success: false, error: "HERE_API_KEY is not configured." },
-        { status: 500 }
-      );
-    }
+    const HERE_API_KEY = requireHereApiKey();
 
     const requestOrigin = new URL(request.url).origin;
     const hereHeaders = {

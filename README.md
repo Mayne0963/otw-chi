@@ -18,9 +18,16 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Environment
 
-- `HERE_API_KEY` (required): routing, traffic, incidents, weather, and POI services.
-- `HERE_APP_ID` (optional): reserved for HERE services that still require an App ID.
-- Run Prisma migrations to add driver navigation settings + telemetry tables (`pnpm prisma migrate dev` or `pnpm prisma migrate deploy`).
+HERE credentials:
+- `HERE_API_KEY` (required, server-only): used by API routes for Routing v8, Traffic, Incidents, Weather, and POIs. Never expose this key to the browser.
+- `NEXT_PUBLIC_HERE_MAPS_KEY` (required for HERE JS maps in the browser): domain-restrict this key to `otw-chi-two.vercel.app` and any custom domains you host on.
+- `HERE_APP_ID` (optional): reserved for legacy HERE services that still require an App ID.
+
+Local setup: add these to `.env.local`.  
+Vercel: add the same vars in Project Settings → Environment Variables (server for `HERE_API_KEY`; public for `NEXT_PUBLIC_HERE_MAPS_KEY`).  
+Run Prisma migrations to add driver navigation settings + telemetry tables (`pnpm prisma migrate dev` or `pnpm prisma migrate deploy`).
+
+Production notes: in-memory caches and rate limits are best-effort only. For production/Vercel, move route caching and rate limiting to Redis/Upstash so instances share limits and hit ratios across regions.
 
 ## Style Guide
 
