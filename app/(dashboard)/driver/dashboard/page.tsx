@@ -231,13 +231,14 @@ export default async function DriverDashboardPage() {
                 <CardContent>
                     {activeRequest ? (
                       <DriverLiveMap
+                          key={activeRequest.id}
                           driverId={driverProfile.id}
                           customer={customerLocation}
                           pickup={pickupLocation}
                           dropoff={dropoffLocation}
-                          requestId={activeRequest?.id}
+                          requestId={activeRequest.id}
                           requestType="delivery"
-                          jobStatus={activeRequest?.status}
+                          jobStatus={activeRequest.status}
                           initialDriverLocation={driverLocations[0] ?? null}
                       />
                     ) : (
