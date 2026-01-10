@@ -1,67 +1,156 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock, Coins } from 'lucide-react';
 
 export default function HomePage() {
   return (
-    <div className="otw-container otw-section space-y-10">
+    <div className="otw-container space-y-24 py-12">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/90 px-6 py-8 shadow-otwSoft sm:px-10 sm:py-10">
-        <div className="absolute -top-24 right-0 h-52 w-52 rounded-full bg-secondary/14 blur-3xl" aria-hidden="true" />
-        <div className="absolute bottom-0 left-0 h-44 w-44 rounded-full bg-primary/8 blur-3xl" aria-hidden="true" />
-        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl space-y-4">
-            <span className="otw-pill">Premium Concierge</span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl">On The Way</h1>
-            <p className="text-foreground/80">
-              Luxury delivery concierge for the block, the business, and the busy.
-              Your need moves when you do.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button asChild>
-                <Link href="/request">Request a Delivery</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/pricing">Become a Member</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/track">Track My Driver</Link>
-              </Button>
-            </div>
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/40 bg-card/40 px-6 py-12 shadow-2xl backdrop-blur-xl sm:px-12 sm:py-20">
+        <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-otwGold/10 blur-[100px]" aria-hidden="true" />
+        <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-blue-500/10 blur-[100px]" aria-hidden="true" />
+        
+        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-8">
+          <div className="inline-flex items-center rounded-full border border-otwGold/30 bg-otwGold/10 px-3 py-1 text-xs font-medium text-otwGold backdrop-blur-md">
+            <span className="mr-2 h-1.5 w-1.5 rounded-full bg-otwGold animate-pulse"></span>
+            Premium Concierge Delivery
           </div>
-
-          <div className="flex-1 lg:flex lg:justify-end">
-            <div className="h-32 w-32 rounded-full border border-secondary/40 bg-muted/40 sm:h-40 sm:w-40" aria-hidden="true" />
+          
+          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
+            Your city, <br className="hidden sm:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-otwGold via-yellow-200 to-otwGold">
+              delivered better.
+            </span>
+          </h1>
+          
+          <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl leading-relaxed">
+            Luxury delivery concierge for the block, the business, and the busy.
+            From gourmet food to fragile parcels, we move when you do.
+          </p>
+          
+          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6 pt-4">
+            <Button asChild size="lg" className="h-14 px-8 text-base rounded-full bg-otwGold text-black hover:bg-otwGold/90 shadow-[0_0_20px_rgba(255,215,0,0.2)] transition-all hover:scale-105">
+              <Link href="/order">
+                Request a Delivery
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="h-14 px-8 text-base rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all hover:scale-105">
+              <Link href="/pricing">View Membership</Link>
+            </Button>
+          </div>
+          
+          <div className="pt-8 flex items-center justify-center gap-8 text-sm text-muted-foreground/60">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Insured</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span>Real-time Tracking</span>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Service Tiles */}
       <section>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Everything we carry</h2>
+            <p className="text-muted-foreground mt-2">Specialized handling for every request type.</p>
+          </div>
+          <Button variant="link" asChild className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80">
+            <Link href="/order" className="flex items-center gap-2">
+              Start an order <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { title: 'Food Pickup', emoji: '🍔' },
-            { title: 'Store / Grocery', emoji: '🛒' },
-            { title: 'Fragile Delivery', emoji: '📦' },
-            { title: 'Custom Concierge', emoji: '🏁' },
-          ].map(({ title, emoji }) => (
-            <div key={title} className="rounded-2xl border border-border/70 bg-card/80 p-4 shadow-otwSoft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-otwElevated">
-              <div className="text-lg font-semibold flex items-center gap-2">
-                <span>{emoji}</span>
-                <span>{title}</span>
+            { 
+              title: 'Food Pickup', 
+              desc: 'Hot & fresh from your favorite spots.',
+              icon: ShoppingBag,
+              color: 'text-orange-400',
+              bg: 'bg-orange-400/10'
+            },
+            { 
+              title: 'Store / Grocery', 
+              desc: 'Errands run, shopping done.',
+              icon: Package,
+              color: 'text-blue-400',
+              bg: 'bg-blue-400/10'
+            },
+            { 
+              title: 'Fragile Delivery', 
+              desc: 'White-glove care for delicate items.',
+              icon: ShieldCheck,
+              color: 'text-purple-400',
+              bg: 'bg-purple-400/10'
+            },
+            { 
+              title: 'Concierge', 
+              desc: 'Custom requests, handled professionally.',
+              icon: Flag,
+              color: 'text-emerald-400',
+              bg: 'bg-emerald-400/10'
+            },
+          ].map(({ title, desc, icon: Icon, color, bg }) => (
+            <div key={title} className="group relative overflow-hidden rounded-3xl border border-white/5 bg-card/50 p-6 transition-all duration-300 hover:border-white/10 hover:bg-card hover:-translate-y-1">
+              <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl ${bg} ${color}`}>
+                <Icon className="h-6 w-6" />
               </div>
+              <h3 className="text-lg font-semibold mb-2">{title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Why OTW */}
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold font-display">Why OTW?</h2>
-        <ul className="list-disc pl-5 space-y-1 text-foreground/80">
-          <li>Membership-based savings</li>
-          <li>Fair driver payouts</li>
-          <li>TIREM coin rewards for the youth</li>
-        </ul>
+      <section className="grid gap-8 lg:grid-cols-3">
+        {[
+          {
+            title: "Fair for Drivers",
+            desc: "We believe in fair pay. Our drivers keep a larger share, meaning better service for you.",
+            icon: Truck
+          },
+          {
+            title: "Membership Value",
+            desc: "Unlock lower fees and priority dispatch with our monthly membership plans.",
+            icon: ShieldCheck
+          },
+          {
+            title: "Future Rewards",
+            desc: "Earn TIREM coins with every delivery. The future of loyalty is on the blockchain.",
+            icon: Coins
+          }
+        ].map((feature, i) => (
+          <div key={i} className="flex gap-4 rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+            <div className="shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-otwGold">
+                <feature.icon className="h-5 w-5" />
+              </div>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">{feature.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+      
+      {/* Footer CTA */}
+      <section className="rounded-[2rem] bg-otwGold/10 border border-otwGold/20 px-6 py-16 text-center backdrop-blur-sm">
+        <h2 className="text-3xl font-bold mb-4">Ready to get moving?</h2>
+        <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
+          Join the community that values quality, speed, and fairness.
+        </p>
+        <Button asChild size="lg" className="rounded-full bg-otwGold text-black hover:bg-otwGold/90">
+          <Link href="/order">Start Your First Request</Link>
+        </Button>
       </section>
     </div>
   );

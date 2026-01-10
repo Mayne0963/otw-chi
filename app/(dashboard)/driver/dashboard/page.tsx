@@ -252,95 +252,72 @@ export default async function DriverDashboardPage() {
         
         {/* Active Jobs */}
         <section>
-            <h2 className="text-2xl font-semibold mb-4 text-secondary">My Active Jobs</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-foreground">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {assignedRequests.map((req: any) => (
-                    <Card key={req.id} className="text-foreground">
+                {[...assignedRequests, ...assignedLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
+                    <Card key={req.id} className="text-foreground border-otwGold/20 bg-otwGold/5">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{req.serviceType}</span>
-                                <Badge variant="outline">{req.status.replace('_', ' ')}</Badge>
+                                <Badge variant={req.isLegacy ? "secondary" : "default"} className={req.isLegacy ? "opacity-70" : "bg-otwGold text-black"}>
+                                    {req.status.replace('_', ' ')}
+                                </Badge>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-2 text-sm mb-4">
-                                <div>
-                                    <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Pickup</span>
-                                <span>{req.pickupAddress}</span>
-                            </div>
-                            <div>
-                                <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Dropoff</span>
-                                <span>{req.dropoffAddress}</span>
-                            </div>
-                            {req.notes && (
-                                <div className="bg-muted/40 p-2 rounded text-xs italic text-foreground/80">
-                                    &quot;{req.notes}&quot;
+                            <div className="space-y-4 text-sm mb-6">
+                                <div className="grid grid-cols-[min-content_1fr] gap-x-3 gap-y-1">
+                                    <div className="flex flex-col items-center pt-1">
+                                        <div className="h-2 w-2 rounded-full bg-otwGold" />
+                                        <div className="w-0.5 grow bg-white/10 my-0.5" />
+                                    </div>
+                                    <div>
+                                        <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Pickup</span>
+                                        <p className="text-base leading-snug">{req.pickupAddress || req.pickup}</p>
+                                    </div>
+                                    
+                                    <div className="flex flex-col items-center pb-1">
+                                        <div className="h-2 w-2 rounded-full bg-white/50" />
+                                    </div>
+                                    <div>
+                                        <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Dropoff</span>
+                                        <p className="text-base leading-snug">{req.dropoffAddress || req.dropoff}</p>
+                                    </div>
                                 </div>
-                            )}
+
+                                {req.notes && (
+                                     <div className="bg-black/20 p-3 rounded-lg text-sm italic text-white/70 border border-white/5">
+                                         &quot;{req.notes}&quot;
+                                     </div>
+                                 )}
                             </div>
+
                             <div className="flex gap-2">
-                                {req.status === 'ASSIGNED' && (
-                                    <form action={updateStatus} className="w-full">
+                                {(req.status === 'ASSIGNED' || req.status === RequestStatus.ASSIGNED) && (
+                                    <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="PICKED_UP" />
-                                        <Button type="submit" variant="secondary" className="w-full">Picked Up</Button>
+                                        <Button type="submit" size="lg" className="w-full bg-otwGold text-black hover:bg-otwGold/90 font-semibold text-base h-12">
+                                            Confirm Pickup
+                                        </Button>
                                     </form>
                                 )}
-                                {req.status === 'PICKED_UP' && (
-                                    <form action={updateStatus} className="w-full">
+                                {(req.status === 'PICKED_UP' || req.status === RequestStatus.PICKED_UP) && (
+                                    <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value="EN_ROUTE" />
-                                        <Button type="submit" variant="secondary" className="w-full">En Route</Button>
+                                        <input type="hidden" name={req.isLegacy ? "status" : "status"} value={req.isLegacy ? RequestStatus.DELIVERED : "EN_ROUTE"} />
+                                        <Button type="submit" size="lg" className="w-full bg-otwGold text-black hover:bg-otwGold/90 font-semibold text-base h-12">
+                                            {req.isLegacy ? "Complete Delivery" : "Start Delivery"}
+                                        </Button>
                                     </form>
                                 )}
                                 {req.status === 'EN_ROUTE' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />   
-                                        <Button type="submit" className="w-full">Delivered</Button>
-                                    </form>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-                {assignedLegacyRequests.map((req: any) => (
-                    <Card key={req.id} className="text-foreground">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex justify-between items-center text-lg">
-                                <span>{req.serviceType}</span>
-                                <Badge variant="outline">LEGACY {req.status.replace('_', ' ')}</Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2 text-sm mb-4">
-                                <div>
-                                    <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Pickup</span>
-                                    <span>{req.pickup}</span>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground block text-xs uppercase tracking-[0.18em]">Dropoff</span>
-                                    <span>{req.dropoff}</span>
-                                </div>
-                                {req.notes && (
-                                    <div className="bg-muted/40 p-2 rounded text-xs italic text-foreground/80">
-                                        &quot;{req.notes}&quot;
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex gap-2">
-                                {req.status === RequestStatus.ASSIGNED && (
-                                    <form action={updateLegacyStatus} className="w-full">
-                                        <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value={RequestStatus.PICKED_UP} />
-                                        <Button type="submit" variant="secondary" className="w-full">Picked Up</Button>
-                                    </form>
-                                )}
-                                {req.status === RequestStatus.PICKED_UP && (
-                                    <form action={updateLegacyStatus} className="w-full">
-                                        <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value={RequestStatus.DELIVERED} />
-                                        <Button type="submit" className="w-full">Delivered</Button>
+                                        <Button type="submit" size="lg" className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold text-base h-12">
+                                            Complete Delivery
+                                        </Button>
                                     </form>
                                 )}
                             </div>
@@ -348,7 +325,9 @@ export default async function DriverDashboardPage() {
                     </Card>
                 ))}
                 {assignedRequests.length === 0 && assignedLegacyRequests.length === 0 && (
-                    <p className="text-muted-foreground col-span-full py-4 text-center border border-dashed border-border/70 rounded-lg">No active jobs.</p>
+                    <p className="text-muted-foreground col-span-full py-12 text-center border border-dashed border-border/40 bg-card/20 rounded-xl">
+                        No active jobs. Check available jobs below.
+                    </p>
                 )}
             </div>
         </section>
@@ -357,48 +336,48 @@ export default async function DriverDashboardPage() {
         <section>
             <h2 className="text-2xl font-semibold mb-4 text-foreground">Available Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {availableRequests.map((req: any) => (
-                    <Card key={req.id} className="text-foreground">
+                {[...availableRequests, ...availableLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
+                    <Card key={req.id} className="text-foreground hover:bg-white/5 transition-colors">
                         <CardHeader className="pb-2">
                             <CardTitle className="flex justify-between items-center text-lg">
                                 <span>{req.serviceType}</span>
-                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Quote pending</span>
+                                <Badge variant="outline" className="text-xs font-normal opacity-70">
+                                    {req.isLegacy ? 'LEGACY REQUEST' : 'NEW REQUEST'}
+                                </Badge>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                {req.pickupAddress} <span className="text-otwGold">→</span> {req.dropoffAddress}
-                            </p>
-                            <form action={acceptRequest}>
+                            <div className="space-y-3 mb-6">
+                                <div className="flex items-start gap-3">
+                                    <div className="mt-1 h-1.5 w-1.5 rounded-full bg-otwGold shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-medium">{req.pickupAddress || req.pickup}</p>
+                                        <p className="text-xs text-white/40 mt-0.5">Pickup</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="mt-1 h-1.5 w-1.5 rounded-full bg-white/40 shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-medium">{req.dropoffAddress || req.dropoff}</p>
+                                        <p className="text-xs text-white/40 mt-0.5">Dropoff</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <form action={req.isLegacy ? acceptLegacyRequest : acceptRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />
                                 <input type="hidden" name="driverId" value={driverProfile.id} />
-                                <Button type="submit" variant="secondary" className="w-full">Accept Job</Button>
-                            </form>
-                        </CardContent>
-                    </Card>
-                ))}
-                {availableLegacyRequests.map((req: any) => (
-                    <Card key={req.id} className="text-foreground">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex justify-between items-center text-lg">
-                                <span>{req.serviceType}</span>
-                                <span className="text-xs uppercase tracking-wide text-muted-foreground">Legacy</span>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                {req.pickup} <span className="text-otwGold">→</span> {req.dropoff}
-                            </p>
-                            <form action={acceptLegacyRequest}>
-                                <input type="hidden" name="requestId" value={req.id} />
-                                <input type="hidden" name="driverId" value={driverProfile.id} />
-                                <Button type="submit" variant="secondary" className="w-full">Accept Job</Button>
+                                <Button type="submit" variant="secondary" className="w-full h-10 border-white/10 hover:bg-white/10">
+                                    Accept Job
+                                </Button>
                             </form>
                         </CardContent>
                     </Card>
                 ))}
                 {availableRequests.length === 0 && availableLegacyRequests.length === 0 && (
-                    <p className="text-muted-foreground col-span-full py-4 text-center border border-dashed border-border/70 rounded-lg">No jobs available right now.</p>
+                    <p className="text-muted-foreground col-span-full py-12 text-center border border-dashed border-border/40 bg-card/20 rounded-xl">
+                        No jobs available right now.
+                    </p>
                 )}
             </div>
         </section>

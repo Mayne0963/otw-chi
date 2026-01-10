@@ -31,11 +31,33 @@ export default async function DashboardPage() {
     const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } });
     nipBalance = nip._sum?.amount ?? 0;
 
-    const req = await prisma.request.findFirst({
+    // Fetch latest from both tables
+    const legacyReq = await prisma.request.findFirst({
       where: { customerId: user.id, status: { in: ['SUBMITTED', 'ASSIGNED', 'PICKED_UP', 'DELIVERED'] } },
       orderBy: { createdAt: 'desc' },
     });
-    if (req) activeRequest = { id: req.id, status: req.status, pickup: req.pickup, dropoff: req.dropoff };
+
+    const newReq = await prisma.deliveryRequest.findFirst({
+        where: { userId: user.id, status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED'] } },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    // Determine which is more recent
+    if (newReq && (!legacyReq || newReq.createdAt > legacyReq.createdAt)) {
+        activeRequest = { 
+            id: newReq.id, 
+            status: newReq.status.replace('_', ' '), 
+            pickup: newReq.pickupAddress, 
+            dropoff: newReq.dropoffAddress 
+        };
+    } else if (legacyReq) {
+        activeRequest = { 
+            id: legacyReq.id, 
+            status: legacyReq.status.replace('_', ' '), 
+            pickup: legacyReq.pickup, 
+            dropoff: legacyReq.dropoff 
+        };
+    }
   }
 
   if (!user) {
@@ -57,7 +79,6 @@ export default async function DashboardPage() {
       
       <div className="grid md:grid-cols-3 gap-6">
         {/* Compliance Alert */}
-        {/* @ts-ignore: Prisma types not updating */}
         {!user.dob && (
           <div className="md:col-span-3">
             <Card className="border-l-4 border-l-red-500 bg-red-900/10 border-t-0 border-r-0 border-b-0">
@@ -93,7 +114,7 @@ export default async function DashboardPage() {
               <div className="text-center py-4">
                 <p className="text-xs text-white/50 mb-3">No active requests.</p>
                 <Button asChild variant="secondary" size="sm" className="w-full">
-                  <Link href="/requests/new">New Request</Link>
+                  <Link href="/order">New Request</Link>
                 </Button>
               </div>
             )}
