@@ -28,13 +28,17 @@ function AdminRequestsLoading() {
 
 function getStatusColor(status: string) {
   switch (status) {
-    case 'PENDING': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+    case 'SUBMITTED':
+    case 'REQUESTED':
+      return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
     case 'ASSIGNED': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
     case 'PICKED_UP': return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
+    case 'EN_ROUTE':
     case 'IN_TRANSIT': return 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30';
     case 'DELIVERED': return 'bg-green-500/20 text-green-400 border border-green-500/30';
     case 'COMPLETED': return 'bg-green-600/20 text-green-500 border border-green-600/30';
-    case 'CANCELLED': return 'bg-red-500/20 text-red-400 border border-red-500/30';
+    case 'CANCELLED':
+    case 'CANCELED': return 'bg-red-500/20 text-red-400 border border-red-500/30';
     default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
   }
 }
@@ -229,7 +233,7 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
                         Edit
                       </Link>
                     </Button>
-                    {request.status === 'PENDING' && drivers.length > 0 && (
+                    {(request.status === 'SUBMITTED' || request.status === 'REQUESTED') && drivers.length > 0 && (
                       <form action={assignDriverAction} className="inline-block">
                         <input type="hidden" name="id" value={request.id} />
                         <select 
@@ -300,7 +304,7 @@ export async function assignDriverAction(formData: FormData) {
         where: { id },
         data: { 
           assignedDriverId: driverProfileId,
-          status: req.status === 'PENDING' ? 'ASSIGNED' : undefined
+          status: req.status === 'SUBMITTED' ? 'ASSIGNED' : undefined
         }
       });
       
