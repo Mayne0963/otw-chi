@@ -1,9 +1,10 @@
-import { redirect, RedirectType } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 export default async function AdminDriverAliasPage({
   params
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  redirect(`/admin/drivers/${params.id}`, RedirectType.Permanent);
+  const { id } = await params;
+  permanentRedirect(`/admin/drivers/${id}`);
 }
