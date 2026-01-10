@@ -1,9 +1,9 @@
-import { redirect } from 'next/navigation';
+import { redirect, RedirectType } from 'next/navigation';
 
 export default async function AdminCustomerAliasPage({
   params
 }: {
   params: { id: string };
 }) {
-  redirect(`/admin/customers/${params.id}`);
+  redirect(`/admin/customers/${params.id}`, RedirectType.Permanent);
 }

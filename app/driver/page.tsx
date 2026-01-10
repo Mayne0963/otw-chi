@@ -2,6 +2,7 @@ import DriverMapClient from "./DriverMapClient";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/roles";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +20,16 @@ export default async function DriverPage() {
             Switch to a driver account to use live navigation and routing tools.
           </div>
           <div className="flex justify-center gap-2 text-sm">
-            <Link href="/dashboard" className="rounded-md border border-border/70 px-3 py-2 hover:border-secondary/60">
-              Go to dashboard
-            </Link>
-            <Link href="/support" className="rounded-md border border-border/70 px-3 py-2 hover:border-secondary/60">
-              Contact support
-            </Link>
+            <Button asChild variant="outline">
+              <Link href="/dashboard">
+                Go to dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/support">
+                Contact support
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

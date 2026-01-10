@@ -23,7 +23,7 @@ export default function HomePage() {
               <Button asChild variant="outline">
                 <Link href="/pricing">Become a Member</Link>
               </Button>
-              <Button asChild variant="ghost">
+              <Button asChild variant="outline">
                 <Link href="/track">Track My Driver</Link>
               </Button>
             </div>

@@ -2,6 +2,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import { Button } from '@/components/ui/button';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
@@ -162,23 +163,27 @@ function SupportTable({ tickets }: { tickets: any[] }) {
                     {ticket.status === 'OPEN' && (
                       <form action={resolveTicketAction}>
                         <input type="hidden" name="id" value={ticket.id} />
-                        <button 
+                        <Button 
                           type="submit"
-                          className="text-xs px-2 py-1 rounded bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 transition-colors"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-green-400 border-green-500/30 hover:bg-green-500/10 hover:text-green-300"
                         >
                           Resolve
-                        </button>
+                        </Button>
                       </form>
                     )}
                     {ticket.status !== 'CLOSED' && (
                       <form action={closeTicketAction}>
                         <input type="hidden" name="id" value={ticket.id} />
-                        <button 
+                        <Button 
                           type="submit"
-                          className="text-xs px-2 py-1 rounded bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 border border-gray-500/30 transition-colors"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-gray-400 border-gray-500/30 hover:bg-gray-500/10 hover:text-gray-300"
                         >
                           Close
-                        </button>
+                        </Button>
                       </form>
                     )}
                   </div>
@@ -199,12 +204,14 @@ function SupportErrorState({ error }: { error: unknown }) {
       <div className="text-xs text-white/40 mt-2">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
-      <button 
+      <Button 
         onClick={() => window.location.reload()} 
-        className="mt-4 text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+        variant="outline"
+        size="sm"
+        className="mt-4"
       >
         Retry
-      </button>
+      </Button>
     </OtwCard>
   );
 }

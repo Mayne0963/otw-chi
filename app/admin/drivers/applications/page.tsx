@@ -117,7 +117,7 @@ export default async function AdminDriverApplicationsPage() {
                             <form action={updateStatus}>
                                 <input type="hidden" name="id" value={app.id} />
                                 <input type="hidden" name="status" value="APPROVED" />
-                                <Button type="submit" className="bg-green-600 hover:bg-green-700 h-8 text-xs">
+                                <Button type="submit" variant="outline" className="h-8 text-xs border-green-600/50 text-green-500 hover:bg-green-600/10 hover:text-green-400">
                                     Approve
                                 </Button>
                             </form>

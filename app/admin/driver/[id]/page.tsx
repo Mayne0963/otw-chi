@@ -1,9 +1,9 @@
-import { redirect } from 'next/navigation';
+import { redirect, RedirectType } from 'next/navigation';
 
 export default async function AdminDriverAliasPage({
   params
 }: {
   params: { id: string };
 }) {
-  redirect(`/admin/drivers/${params.id}`);
+  redirect(`/admin/drivers/${params.id}`, RedirectType.Permanent);
 }

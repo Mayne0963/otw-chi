@@ -1,7 +1,8 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Metadata } from 'next';
 
 type Props = {
@@ -85,9 +86,15 @@ export default async function CityCoveragePage({ params }: Props) {
         <section className="rounded-3xl p-8 border border-border/70 bg-card/90 text-center space-y-6 shadow-otwSoft">
           <h3 className="text-2xl font-semibold">Get Moving in {city}</h3>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <OtwButton as="a" href="/request" variant="gold">Request Delivery</OtwButton>
-            <OtwButton as="a" href="/driver/apply" variant="outline">Become a Driver</OtwButton>
-            <OtwButton as="a" href="/franchise/apply" variant="ghost">Franchise Inquiry</OtwButton>
+            <Button asChild variant="default">
+              <Link href="/request">Request Delivery</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/driver/apply">Become a Driver</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/franchise/apply">Franchise Inquiry</Link>
+            </Button>
           </div>
         </section>
       </div>

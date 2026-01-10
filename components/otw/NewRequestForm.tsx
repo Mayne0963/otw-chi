@@ -166,16 +166,16 @@ export function NewRequestForm() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <div className="otw-card p-6 sm:p-8 space-y-6 shadow-2xl shadow-black/40">
+      <div className="otw-card p-6 sm:p-8 space-y-6">
         <div className="space-y-2">
-          <h2 className="text-2xl font-semibold text-otwOffWhite">New Delivery Request</h2>
-          <p className="text-white/60">Tell us what you need and where it needs to go.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">New Delivery Request</h2>
+          <p className="text-muted-foreground">Tell us what you need and where it needs to go.</p>
         </div>
 
         <form action={onSubmit} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-otwGold/90 ml-1">Pickup Address</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Pickup Address</label>
               <AddressSearch
                 ariaLabel="Pickup address"
                 enableCurrentLocation
@@ -191,12 +191,12 @@ export function NewRequestForm() {
                 className="w-full"
               />
               {pickupAddress && (
-                <div className="flex items-start gap-2 text-xs text-otwGold bg-otwGold/10 border border-otwGold/30 rounded-lg p-2">
+                <div className="flex items-start gap-2 text-xs text-secondary bg-secondary/10 border border-secondary/30 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{pickupLines?.primary}</div>
                     {pickupLines?.secondary && (
-                      <div className="text-otwGold/80">{pickupLines.secondary}</div>
+                      <div className="text-secondary/80">{pickupLines.secondary}</div>
                     )}
                   </div>
                 </div>
@@ -204,7 +204,7 @@ export function NewRequestForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-otwGold/90 ml-1">Dropoff Address</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Dropoff Address</label>
               <AddressSearch
                 ariaLabel="Dropoff address"
                 enableCurrentLocation
@@ -220,12 +220,12 @@ export function NewRequestForm() {
                 className="w-full"
               />
               {dropoffAddress && (
-                <div className="flex items-start gap-2 text-xs text-otwGold bg-otwGold/10 border border-otwGold/30 rounded-lg p-2">
+                <div className="flex items-start gap-2 text-xs text-secondary bg-secondary/10 border border-secondary/30 rounded-lg p-2">
                   <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">{dropoffLines?.primary}</div>
                     {dropoffLines?.secondary && (
-                      <div className="text-otwGold/80">{dropoffLines.secondary}</div>
+                      <div className="text-secondary/80">{dropoffLines.secondary}</div>
                     )}
                   </div>
                 </div>
@@ -233,12 +233,12 @@ export function NewRequestForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-otwGold/90 ml-1">Service Type</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Service Type</label>
               <div className="relative">
-                <Package className="absolute left-3 top-3 h-4 w-4 text-white/40" />
+                <Package className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <select
                   name="serviceType"
-                  className="flex h-10 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 pl-9 text-sm text-otwOffWhite ring-offset-otwBlack focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-otwGold focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
+                  className="flex h-10 w-full rounded-xl border border-input bg-input px-3 py-2 pl-9 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
                   value={serviceType}
                   onChange={(e) => {
                     setServiceType(e.target.value)
@@ -254,10 +254,10 @@ export function NewRequestForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-otwGold/90 ml-1">Notes (Optional)</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Notes (Optional)</label>
               <Textarea
                 name="notes"
-                className="bg-black/20 border-white/10 focus:border-otwGold/50 min-h-[80px]"
+                className="bg-input border-input min-h-[80px]"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -265,20 +265,20 @@ export function NewRequestForm() {
           </div>
 
           {estimate && step === "estimate" && (
-            <div className="bg-otwGold/10 border border-otwGold/20 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+            <div className="bg-secondary/10 border border-secondary/20 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-otwGold">
+                <div className="flex items-center gap-2 text-secondary">
                   <DollarSign className="h-5 w-5" />
                   <span className="font-bold text-lg">
                     ${(estimate.priceMin / 100).toFixed(2)} - ${(estimate.priceMax / 100).toFixed(2)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-otwOffWhite/80">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="h-4 w-4" />
                   <span className="text-sm font-medium">{estimate.eta}</span>
                 </div>
               </div>
-              <p className="text-xs text-white/40 text-center mt-2">
+              <p className="text-xs text-muted-foreground text-center mt-2">
                 Distance: {estimate.miles} miles - Estimated price range and time window
               </p>
             </div>
@@ -289,7 +289,9 @@ export function NewRequestForm() {
               <Button
                 type="button"
                 onClick={getEstimate}
-                className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 font-bold h-12 text-base shadow-otwGlow"
+                variant="default"
+                size="lg"
+                className="w-full font-bold shadow-otwGlow"
                 disabled={loading || isPending || !pickupAddress || !dropoffAddress}
               >
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Get Estimate"}
@@ -298,7 +300,9 @@ export function NewRequestForm() {
               <div className="space-y-3">
                 <Button
                   type="submit"
-                  className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 font-bold h-12 text-base shadow-otwGlow"
+                  variant="default"
+                  size="lg"
+                  className="w-full font-bold shadow-otwGlow"
                   disabled={loading || isPending}
                 >
                   {isPending ? (
@@ -313,7 +317,7 @@ export function NewRequestForm() {
                   type="button"
                   onClick={() => setStep("form")}
                   variant="ghost"
-                  className="w-full text-white/50 hover:text-white"
+                  className="w-full text-muted-foreground hover:text-foreground"
                   disabled={loading || isPending}
                 >
                   Edit Details
@@ -322,7 +326,7 @@ export function NewRequestForm() {
             )}
           </div>
 
-          <p className="text-xs text-center text-white/50">
+          <p className="text-xs text-center text-muted-foreground">
             Estimated price is calculated based on distance and service type.
           </p>
         </form>

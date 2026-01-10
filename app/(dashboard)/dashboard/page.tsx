@@ -117,7 +117,7 @@ export default async function DashboardPage() {
               )}
             </div>
             <Button asChild variant="outline" size="sm" className="w-full mt-2">
-              <a href="/membership/manage">Manage Plan</a>
+              <Link href="/membership/manage">Manage Plan</Link>
             </Button>
           </CardContent>
         </Card>
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
             <div className="text-2xl font-bold">{nipBalance.toLocaleString()}</div>
             <p className="text-xs text-white/50 mb-3">Available Rewards</p>
             <Button asChild variant="outline" size="sm" className="w-full">
-              <a href="/wallet/nip">View Wallet</a>
+              <Link href="/wallet/nip">View Wallet</Link>
             </Button>
           </CardContent>
         </Card>

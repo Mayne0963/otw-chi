@@ -1,7 +1,8 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
@@ -62,7 +63,7 @@ export default async function DriverJobsPage() {
                     </div>
                     <form action={acceptJobAction} className="flex gap-2">
                       <input type="hidden" name="id" value={r.id} />
-                      <OtwButton variant="outline" size="sm">Accept</OtwButton>
+                      <Button variant="outline" size="sm">Accept</Button>
                     </form>
                   </div>
                 </li>
@@ -84,10 +85,14 @@ export default async function DriverJobsPage() {
                         <div className="text-xs opacity-70">{r.pickup} → {r.dropoff}</div>
                       </div>
                     <div className="flex gap-2">
-                      <OtwButton as="a" href={`/driver/jobs/${r.id}`} variant="outline" size="sm">Open</OtwButton>
-                      <OtwButton as="a" href={`/driver?jobId=${r.id}`} variant="outline" size="sm">
-                        Driver Map
-                      </OtwButton>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/driver/jobs/${r.id}`}>Open</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/driver?jobId=${r.id}`}>
+                          Driver Map
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 </li>
