@@ -79,7 +79,7 @@ export default async function AdminRequestDetailPage({
     );
   }
 
-  const request = await getRequest(resolvedId);
+  const request = await getRequest(resolvedId) as any;
 
   return (
     <OtwPageShell>
@@ -191,6 +191,36 @@ export default async function AdminRequestDetailPage({
                 </div>
               </div>
             </div>
+
+            {/* Payment Details for DeliveryRequest */}
+            {request.isDeliveryRequest && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-white/5">
+                  <div className="text-xs text-white/50">Payment Status</div>
+                  <div className="mt-2 text-sm">
+                    {request.deliveryFeePaid ? (
+                      <span className="text-green-400 font-medium">Paid</span>
+                    ) : (
+                      <span className="text-yellow-400 font-medium">Unpaid</span>
+                    )}
+                  </div>
+                </div>
+                {request.receiptSubtotalCents && (
+                   <div className="p-4 rounded-lg bg-white/5">
+                    <div className="text-xs text-white/50">Receipt Subtotal</div>
+                    <div className="mt-2 text-sm text-white">
+                      ${(request.receiptSubtotalCents / 100).toFixed(2)}
+                    </div>
+                  </div>
+                )}
+                 <div className="p-4 rounded-lg bg-white/5">
+                  <div className="text-xs text-white/50">Coupon</div>
+                  <div className="mt-2 text-sm text-white">
+                    {request.couponCode || 'None'}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {request.notes && (
               <div className="p-4 rounded-lg bg-white/5">

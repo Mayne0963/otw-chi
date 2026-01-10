@@ -58,6 +58,28 @@ export async function POST(req: Request) {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
 
+      if (session.metadata?.purpose === 'order_payment') {
+        const userId = await findUserIdFromMetadata(session.metadata);
+        if (userId) {
+          // Attempt to find and update the draft order
+          const draft = await prisma.deliveryRequest.findFirst({
+            where: { 
+              userId, 
+              deliveryCheckoutSessionId: session.id 
+            }
+          });
+          
+          if (draft) {
+             await prisma.deliveryRequest.update({
+               where: { id: draft.id },
+               data: { deliveryFeePaid: true }
+             });
+             console.log(`Updated payment status for order draft ${draft.id}`);
+          }
+        }
+        return new NextResponse(null, { status: 200 });
+      }
+
       const userId = await findUserIdFromMetadata(session.metadata);
       if (!userId) {
         return new NextResponse('Webhook Error: No user ID in metadata', { status: 400 });

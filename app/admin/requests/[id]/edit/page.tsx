@@ -12,24 +12,45 @@ import { headers } from 'next/headers';
 const statusOptions = [
   'DRAFT',
   'SUBMITTED',
+  'REQUESTED', // DeliveryRequest
   'ASSIGNED',
   'PICKED_UP',
+  'EN_ROUTE',
   'DELIVERED',
   'COMPLETED',
-  'CANCELLED'
+  'CANCELLED',
+  'CANCELED' // DeliveryRequest
 ] as const;
 
 type RequestStatusOption = (typeof statusOptions)[number];
 
 async function getRequestData(id: string) {
   const prisma = getPrisma();
-  const request = await prisma.request.findUnique({
+  let request: any = await prisma.request.findUnique({
     where: { id },
     include: {
       customer: { select: { name: true, email: true } },
       assignedDriver: { include: { user: { select: { name: true, email: true } } } }
     }
   });
+
+  if (!request) {
+    const deliveryRequest = await prisma.deliveryRequest.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true, email: true } },
+        assignedDriver: { include: { user: { select: { name: true, email: true } } } }
+      }
+    });
+
+    if (deliveryRequest) {
+      request = {
+        ...deliveryRequest,
+        customer: deliveryRequest.user,
+        isDeliveryRequest: true
+      };
+    }
+  }
 
   const drivers = await prisma.driverProfile.findMany({
     include: { user: { select: { name: true, email: true } } }
@@ -50,51 +71,95 @@ export async function updateRequestAction(formData: FormData) {
   if (!id) return;
 
   const prisma = getPrisma();
-  const existing = await prisma.request.findUnique({
+  
+  // Check for Request
+  const req = await prisma.request.findUnique({
     where: { id },
     select: { status: true, assignedDriverId: true }
   });
 
-  if (!existing) return;
+  if (req) {
+    const data: {
+      status?: any;
+      assignedDriverId?: string | null;
+      notes?: string | null;
+    } = {};
 
-  const data: {
-    status?: RequestStatusOption;
-    assignedDriverId?: string | null;
-    notes?: string | null;
-  } = {};
+    if (statusOptions.includes(statusInput as RequestStatusOption)) {
+       // Validate against RequestStatus enum (basic check)
+       if (['DRAFT', 'SUBMITTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'COMPLETED', 'CANCELLED'].includes(statusInput)) {
+         data.status = statusInput;
+       }
+    }
 
-  if (statusOptions.includes(statusInput as RequestStatusOption)) {
-    data.status = statusInput as RequestStatusOption;
-  }
+    data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
+    data.notes = notesInput.length > 0 ? notesInput : null;
 
-  data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
-  data.notes = notesInput.length > 0 ? notesInput : null;
-
-  await prisma.request.update({
-    where: { id },
-    data
-  });
-
-  if (existing.status !== data.status && data.status) {
-    await prisma.requestEvent.create({
-      data: {
-        requestId: id,
-        type: `STATUS_${data.status}`,
-        message: `Status updated to ${data.status}`
-      }
+    await prisma.request.update({
+      where: { id },
+      data
     });
-  }
 
-  if (existing.assignedDriverId !== data.assignedDriverId) {
-    await prisma.requestEvent.create({
-      data: {
-        requestId: id,
-        type: 'ASSIGNED',
-        message: data.assignedDriverId
-          ? `Assigned to driver ${data.assignedDriverId}`
-          : 'Driver unassigned'
-      }
+    if (req.status !== data.status && data.status) {
+      await prisma.requestEvent.create({
+        data: {
+          requestId: id,
+          type: `STATUS_${data.status}`,
+          message: `Status updated to ${data.status}`
+        }
+      });
+    }
+
+    if (req.assignedDriverId !== data.assignedDriverId) {
+      await prisma.requestEvent.create({
+        data: {
+          requestId: id,
+          type: 'ASSIGNED',
+          message: data.assignedDriverId
+            ? `Assigned to driver ${data.assignedDriverId}`
+            : 'Driver unassigned'
+        }
+      });
+    }
+  } else {
+    // Check for DeliveryRequest
+    const dr = await prisma.deliveryRequest.findUnique({
+      where: { id },
+      select: { status: true, assignedDriverId: true }
     });
+
+    if (dr) {
+       const data: {
+        status?: any;
+        assignedDriverId?: string | null;
+        notes?: string | null;
+      } = {};
+
+      if (statusOptions.includes(statusInput as RequestStatusOption)) {
+         // Validate against DeliveryRequestStatus enum
+         if (['DRAFT', 'REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'CANCELED'].includes(statusInput)) {
+           data.status = statusInput;
+         }
+      }
+
+      data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
+      data.notes = notesInput.length > 0 ? notesInput : null;
+
+      await prisma.deliveryRequest.update({
+        where: { id },
+        data
+      });
+      
+      // Update driver assignment relation if driver changed
+      if (data.assignedDriverId && data.assignedDriverId !== dr.assignedDriverId) {
+          await prisma.driverAssignment.create({
+              data: {
+                  deliveryRequestId: id,
+                  driverId: data.assignedDriverId
+              }
+          });
+      }
+    }
   }
 
   revalidatePath('/admin/requests');

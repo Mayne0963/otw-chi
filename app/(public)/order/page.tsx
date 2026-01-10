@@ -251,16 +251,17 @@ export default function OrderPage() {
     };
   }, [pickupAddress, dropoffAddress, serviceType]);
 
-  useEffect(() => {
-    if (serviceType !== "FOOD") {
-      setStep("details");
-      setFeePaid(false);
-      setDeliveryCheckoutSessionId(null);
-      setCouponCode("");
-      setDiscountCents(0);
-      setDeliveryEstimateError(null);
-    }
-  }, [serviceType]);
+  // Effect to reset payment state when service type changes - REMOVED to allow payment for all types
+  // useEffect(() => {
+  //   if (serviceType !== "FOOD") {
+  //     setStep("details");
+  //     setFeePaid(false);
+  //     setDeliveryCheckoutSessionId(null);
+  //     setCouponCode("");
+  //     setDiscountCents(0);
+  //     setDeliveryEstimateError(null);
+  //   }
+  // }, [serviceType]);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -849,7 +850,7 @@ export default function OrderPage() {
       setStep("receipt");
       return;
     }
-    if (requiresReceipt && !feePaid) {
+    if (!feePaid) {
       toast({
         title: "Payment needed",
         description: "Pay the order total so we can place your order.",
@@ -872,6 +873,10 @@ export default function OrderPage() {
         pickupAddress: pickupAddress.formattedAddress,
         dropoffAddress: dropoffAddress.formattedAddress,
         notes: notes.trim() || undefined,
+        deliveryFeeCents: deliveryFeeCents,
+        deliveryFeePaid: feePaid,
+        deliveryCheckoutSessionId: deliveryCheckoutSessionId || undefined,
+        couponCode: couponCode.trim() || undefined,
       };
 
       if (requiresReceipt && receiptAnalysis) {
@@ -882,10 +887,6 @@ export default function OrderPage() {
         payload.receiptLocation = receiptAnalysis.location;
         payload.receiptItems = receiptAnalysis.items;
         payload.receiptAuthenticityScore = receiptAnalysis.authenticityScore;
-        payload.deliveryFeeCents = deliveryFeeCents;
-        payload.deliveryFeePaid = feePaid;
-        payload.deliveryCheckoutSessionId = deliveryCheckoutSessionId || undefined;
-        payload.couponCode = couponCode.trim() || undefined;
       }
 
       const response = await fetch("/api/orders", {
@@ -1266,8 +1267,9 @@ export default function OrderPage() {
               </div>
               {detailSummary}
 
-              {requiresReceipt && (
-                <div className="rounded-xl border border-border/70 bg-muted/40 p-4 space-y-3">
+              {/* Payment Block - Always visible */}
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-4 space-y-3">
+                {requiresReceipt && (
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Restaurant</div>
@@ -1289,110 +1291,116 @@ export default function OrderPage() {
                       Checkout total {deliveryFeeReady ? formatCurrency(orderTotalCents) : "Pending estimate"}
                     </Badge>
                   </div>
+                )}
 
-                  <div className="rounded-lg border border-border/70 bg-card/80 p-3 space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Delivery fee</span>
-                      <span className="text-foreground/80">{deliveryFeeLabel}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Receipt items</span>
-                      <span className="text-secondary font-semibold">
-                        {receiptAnalysis ? formatCurrency(receiptSubtotalCents) : "Add receipt"}
-                      </span>
-                    </div>
-                    {receiptAnalysis ? (
-                      <ul className="space-y-1">
-                        {receiptAnalysis.items.map((item, idx) => (
-                          <li key={idx} className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-foreground/70">
-                              {item.name} <span className="text-muted-foreground">×{item.quantity}</span>
-                            </span>
-                            <span className="text-otwGold">
-                              {formatCurrency(Math.round(item.price * 100) * Math.max(1, item.quantity))}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Attach your receipt to continue.</p>
-                    )}
+                <div className="rounded-lg border border-border/70 bg-card/80 p-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Delivery fee</span>
+                    <span className="text-foreground/80">{deliveryFeeLabel}</span>
                   </div>
-                  {deliveryEstimateLoading && (
-                    <div className="text-xs text-muted-foreground">Calculating delivery fee…</div>
-                  )}
-                  {deliveryEstimateError && (
-                    <div className="text-xs text-red-400">{deliveryEstimateError}</div>
-                  )}
-
-                  <div className="space-y-2">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Coupon code</div>
-                    <div className="flex flex-wrap gap-2">
-                      <Input
-                        value={couponCode}
-                        onChange={(e) => {
-                          setCouponCode(e.target.value.toUpperCase());
-                          setDiscountCents(0);
-                        }}
-                        className="flex-1 min-w-[200px]"
-                        disabled={feePaid}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleApplyCoupon}
-                        disabled={feePaid || couponApplying || !couponCode.trim()}
-                      >
-                        Apply
-                      </Button>
-                    </div>
-                    <div className="text-xs text-muted-foreground">Applies to delivery + receipt total.</div>
-                  </div>
-
-                  {discountCents > 0 && (
-                    <div className="rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-sm">
+                  {requiresReceipt && (
+                    <>
                       <div className="flex items-center justify-between">
-                        <span className="text-secondary/90">Discount applied</span>
+                        <span className="text-muted-foreground">Receipt items</span>
                         <span className="text-secondary font-semibold">
-                          -{formatCurrency(discountCents)}
+                          {receiptAnalysis ? formatCurrency(receiptSubtotalCents) : "Add receipt"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-secondary/70 mt-1">
-                        <span>Total after discount</span>
-                        <span>{formatCurrency(Math.max(0, orderTotalCents - discountCents))}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-3">
-                    <Button
-                      onClick={handlePayDeliveryFee}
-                      disabled={paymentProcessing || feePaid || !deliveryFeeReady}
-                      className="gap-2"
-                      isLoading={paymentProcessing}
-                    >
-                      {feePaid ? (
-                        <>
-                          <CheckCircle2 className="h-4 w-4" /> Payment ready
-                        </>
+                      {receiptAnalysis ? (
+                        <ul className="space-y-1">
+                          {receiptAnalysis.items.map((item, idx) => (
+                            <li key={idx} className="flex items-center justify-between text-xs sm:text-sm">
+                              <span className="text-foreground/70">
+                                {item.name} <span className="text-muted-foreground">×{item.quantity}</span>
+                              </span>
+                              <span className="text-otwGold">
+                                {formatCurrency(Math.round(item.price * 100) * Math.max(1, item.quantity))}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       ) : (
-                        <>
-                          {deliveryFeeReady
-                            ? `Pay ${formatCurrency(Math.max(0, orderTotalCents - discountCents))}`
-                            : "Payment pending estimate"}{" "}
-                          <CreditCard className="h-4 w-4" />
-                        </>
+                        <p className="text-xs text-muted-foreground">Attach your receipt to continue.</p>
                       )}
+                    </>
+                  )}
+                </div>
+                {deliveryEstimateLoading && (
+                  <div className="text-xs text-muted-foreground">Calculating delivery fee…</div>
+                )}
+                {deliveryEstimateError && (
+                  <div className="text-xs text-red-400">{deliveryEstimateError}</div>
+                )}
+
+                <div className="space-y-2">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Coupon code</div>
+                  <div className="flex flex-wrap gap-2">
+                    <Input
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value.toUpperCase());
+                        setDiscountCents(0);
+                      }}
+                      className="flex-1 min-w-[200px]"
+                      disabled={feePaid}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleApplyCoupon}
+                      disabled={feePaid || couponApplying || !couponCode.trim()}
+                    >
+                      Apply
                     </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground">Applies to delivery {requiresReceipt ? "+ receipt total" : "fee"}.</div>
+                </div>
+
+                {discountCents > 0 && (
+                  <div className="rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-secondary/90">Discount applied</span>
+                      <span className="text-secondary font-semibold">
+                        -{formatCurrency(discountCents)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-secondary/70 mt-1">
+                      <span>Total after discount</span>
+                      <span>{formatCurrency(Math.max(0, orderTotalCents - discountCents))}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={handlePayDeliveryFee}
+                    disabled={paymentProcessing || feePaid || !deliveryFeeReady}
+                    className="gap-2"
+                    isLoading={paymentProcessing}
+                  >
+                    {feePaid ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" /> Payment ready
+                      </>
+                    ) : (
+                      <>
+                        {deliveryFeeReady
+                          ? `Pay ${formatCurrency(Math.max(0, orderTotalCents - discountCents))}`
+                          : "Payment pending estimate"}{" "}
+                        <CreditCard className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                  {requiresReceipt && (
                     <Button
                       variant="outline"
                       onClick={() => setStep("receipt")}
                     >
                       Edit receipt
                     </Button>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               <div className="space-y-3 pt-2">
                 <Button

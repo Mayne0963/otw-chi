@@ -251,7 +251,7 @@ export async function getRequest(id: string) {
   if (!user) return null;
 
   const prisma = getPrisma();
-  const request = await prisma.request.findUnique({
+  let request: any = await prisma.request.findUnique({
     where: { id },
     include: { 
       events: { orderBy: { timestamp: 'desc' } },
@@ -259,9 +259,36 @@ export async function getRequest(id: string) {
         include: {
           user: true
         }
-      }
+      },
+      customer: true
     },
   });
+
+  if (!request) {
+    const deliveryRequest = await prisma.deliveryRequest.findUnique({
+      where: { id },
+      include: {
+        assignedDriver: {
+          include: { user: true }
+        },
+        user: true
+      }
+    });
+
+    if (deliveryRequest) {
+      // Map DeliveryRequest to Request-like shape
+      request = {
+        ...deliveryRequest,
+        customerId: deliveryRequest.userId,
+        customer: deliveryRequest.user,
+        pickup: deliveryRequest.pickupAddress,
+        dropoff: deliveryRequest.dropoffAddress,
+        costEstimate: deliveryRequest.deliveryFeeCents,
+        events: [], // DeliveryRequest doesn't have events relation yet?
+        isDeliveryRequest: true
+      };
+    }
+  }
 
   if (!request) return null;
 

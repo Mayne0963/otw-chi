@@ -8,6 +8,7 @@ import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { revalidatePath } from 'next/cache';
 
 // Loading component for better UX
 function AdminRequestsLoading() {
@@ -42,19 +43,54 @@ async function getRequestsData() {
   const prisma = getPrisma();
   
   try {
-    const requests = await prisma.request.findMany({ 
-      orderBy: { createdAt: 'desc' }, 
-      take: 50, 
-      include: { 
-        zone: { select: { name: true } }, 
-        assignedDriver: { 
-          include: { 
-            user: { select: { name: true, email: true } } 
-          } 
-        }, 
-        customer: { select: { name: true, email: true } }
-      }
-    });
+    const [requests, deliveryRequests] = await Promise.all([
+      prisma.request.findMany({ 
+        orderBy: { createdAt: 'desc' }, 
+        take: 50, 
+        include: { 
+          zone: { select: { name: true } }, 
+          assignedDriver: { 
+            include: { 
+              user: { select: { name: true, email: true } } 
+            } 
+          }, 
+          customer: { select: { name: true, email: true } }
+        }
+      }),
+      prisma.deliveryRequest.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        where: { status: { not: 'DRAFT' } },
+        include: {
+          assignedDriver: {
+            include: {
+              user: { select: { name: true, email: true } }
+            }
+          },
+          user: { select: { name: true, email: true } }
+        }
+      })
+    ]);
+
+    const mappedDeliveryRequests = deliveryRequests.map(dr => ({
+      id: dr.id,
+      serviceType: dr.serviceType,
+      status: dr.status,
+      tier: 'STANDARD', // Default or derived
+      pickup: dr.pickupAddress,
+      dropoff: dr.dropoffAddress,
+      customer: dr.user,
+      assignedDriver: dr.assignedDriver,
+      createdAt: dr.createdAt,
+      zone: null, // DeliveryRequest doesn't have zone yet
+      isDeliveryRequest: true,
+      paymentStatus: dr.deliveryFeePaid ? 'PAID' : 'UNPAID'
+    }));
+
+    // Merge and sort
+    const allRequests = [...requests, ...mappedDeliveryRequests].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     const drivers = await prisma.driverProfile.findMany({ 
       include: { 
@@ -63,7 +99,7 @@ async function getRequestsData() {
       where: { status: { not: 'OFFLINE' } }
     });
 
-    return { requests, drivers };
+    return { requests: allRequests, drivers };
   } catch (error) {
     console.error('[AdminRequests] Failed to fetch requests:', error);
     throw error;
@@ -127,9 +163,14 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
               <tr key={request.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                 <td className="px-4 py-3">
                   <div>
-                    <div className="font-medium text-xs">{request.id}</div>
+                    <div className="font-medium text-xs flex items-center gap-2">
+                      {request.id}
+                      {request.paymentStatus === 'PAID' && (
+                        <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">PAID</span>
+                      )}
+                    </div>
                     <div className="text-xs text-white/50">
-                      {request.serviceType} • {request.tier}
+                      {request.serviceType}
                     </div>
                   </div>
                 </td>
@@ -254,35 +295,53 @@ export async function assignDriverAction(formData: FormData) {
       select: { status: true }
     });
     
-    if (!req) {
-      console.warn('[assignDriverAction] Request not found:', id);
-      return;
+    if (req) {
+      await prisma.request.update({
+        where: { id },
+        data: { 
+          assignedDriverId: driverProfileId,
+          status: req.status === 'PENDING' ? 'ASSIGNED' : undefined
+        }
+      });
+      
+      await prisma.requestEvent.create({
+        data: {
+          requestId: id,
+          type: 'ASSIGNED',
+          message: `Assigned to driver ${driverProfileId}`
+        }
+      });
+    } else {
+      // Try DeliveryRequest
+      const dr = await prisma.deliveryRequest.findUnique({
+        where: { id },
+        select: { status: true }
+      });
+
+      if (dr) {
+         await prisma.deliveryRequest.update({
+            where: { id },
+            data: {
+              assignedDriverId: driverProfileId,
+              status: dr.status === 'REQUESTED' ? 'ASSIGNED' : undefined
+            }
+         });
+         
+         // Create assignment record
+         await prisma.driverAssignment.create({
+            data: {
+              deliveryRequestId: id,
+              driverId: driverProfileId
+            }
+         });
+      } else {
+        console.warn('[assignDriverAction] Request not found:', id);
+        return;
+      }
     }
-    
-    // Skip transition validation for now
-    if ((req.status as string) !== 'PENDING') {
-      console.warn('[assignDriverAction] Can only assign to PENDING requests:', req.status);
-      return;
-    }
-    
-    await prisma.request.update({ 
-      where: { id }, 
-      data: { 
-        assignedDriverId: driverProfileId, 
-        status: 'ASSIGNED' 
-      } 
-    });
-    
-    await prisma.requestEvent.create({ 
-      data: { 
-        requestId: id, 
-        type: 'ASSIGNED', 
-        message: `Assigned to driver ${driverProfileId}` 
-      } 
-    });
-    
-    console.log('[assignDriverAction] Successfully assigned driver:', { id, driverProfileId });
-    
+
+    revalidatePath('/admin/requests');
+    revalidatePath(`/admin/requests/${id}`);
   } catch (error) {
     console.error('[assignDriverAction] Failed to assign driver:', error);
     throw error; // Re-throw to trigger error boundary

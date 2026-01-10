@@ -62,118 +62,6 @@ export async function POST(req: Request) {
     let appliedCoupon: PromoCode | null = null;
 
     if (data.serviceType === ServiceType.FOOD) {
-      if (!data.deliveryFeePaid) {
-        return NextResponse.json(
-          { error: 'Payment authorization is required for food pickup.' },
-          { status: 400 }
-        );
-      }
-
-      if (typeof data.deliveryFeeCents !== 'number') {
-        return NextResponse.json(
-          { error: 'Payment amount is required.' },
-          { status: 400 }
-        );
-      }
-
-      if (!data.deliveryCheckoutSessionId) {
-        return NextResponse.json(
-          { error: 'Payment verification is required.' },
-          { status: 400 }
-        );
-      }
-
-      const stripe = getStripe();
-      const session = await stripe.checkout.sessions.retrieve(
-        data.deliveryCheckoutSessionId
-      );
-
-      if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
-        return NextResponse.json(
-          { error: 'Payment not completed.' },
-          { status: 400 }
-        );
-      }
-
-      if (
-        session.metadata?.purpose !== 'order_payment' ||
-        session.metadata?.clerkUserId !== clerkUserId
-      ) {
-        return NextResponse.json(
-          { error: 'Payment could not be verified.' },
-          { status: 400 }
-        );
-      }
-
-      const computedSubtotal = receiptSubtotalCents ?? 0;
-      const deliveryFeeCents = data.deliveryFeeCents ?? 0;
-      const baseTotal = computedSubtotal + deliveryFeeCents;
-      const sessionTotal = session.amount_total ?? null;
-
-      if (baseTotal <= 0 || sessionTotal === null) {
-        return NextResponse.json(
-          { error: 'Payment amount mismatch.' },
-          { status: 400 }
-        );
-      }
-
-      if (session.metadata?.deliveryFeeCents) {
-        const metaDeliveryFee = Number(session.metadata.deliveryFeeCents);
-        if (Number.isFinite(metaDeliveryFee) && metaDeliveryFee !== deliveryFeeCents) {
-          return NextResponse.json(
-            { error: 'Payment amount mismatch.' },
-            { status: 400 }
-          );
-        }
-      }
-
-      if (session.metadata?.subtotalCents) {
-        const metaSubtotal = Number(session.metadata.subtotalCents);
-        if (Number.isFinite(metaSubtotal) && metaSubtotal !== computedSubtotal) {
-          return NextResponse.json(
-            { error: 'Receipt subtotal mismatch.' },
-            { status: 400 }
-          );
-        }
-      }
-
-      if (sessionTotal > baseTotal) {
-        return NextResponse.json(
-          { error: 'Payment amount mismatch.' },
-          { status: 400 }
-        );
-      }
-
-      discountCents = Math.max(0, baseTotal - sessionTotal);
-      const sessionCoupon = session.metadata?.couponCode?.trim();
-      const providedCoupon = data.couponCode?.trim() ?? null;
-      const couponSource = session.metadata?.couponSource;
-      appliedCouponCode =
-        sessionCoupon || (couponSource === 'internal' ? providedCoupon : null);
-
-      if (appliedCouponCode && couponSource === 'internal') {
-        const normalized = normalizeCouponCode(appliedCouponCode);
-        const couponResult = await findActiveCoupon(prisma, normalized, user.id);
-        if (couponResult) {
-          const expectedDiscount = calculateDiscount(
-            { subtotalCents: computedSubtotal, deliveryFeeCents },
-            couponResult.coupon
-          );
-          if (expectedDiscount !== discountCents) {
-            return NextResponse.json(
-              { error: 'Coupon discount mismatch.' },
-              { status: 400 }
-            );
-          }
-          appliedCoupon = couponResult.coupon;
-        } else {
-          return NextResponse.json(
-            { error: 'Coupon discount mismatch.' },
-            { status: 400 }
-          );
-        }
-      }
-
       if (!(data.restaurantName || data.receiptVendor)) {
         return NextResponse.json(
           { error: 'Provide the restaurant or vendor detected on the receipt.' },
@@ -184,6 +72,118 @@ export async function POST(req: Request) {
       if (!data.receiptItems?.length) {
         return NextResponse.json(
           { error: 'We need the scanned receipt items to dispatch a runner.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (!data.deliveryFeePaid) {
+      return NextResponse.json(
+        { error: 'Payment authorization is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof data.deliveryFeeCents !== 'number') {
+      return NextResponse.json(
+        { error: 'Payment amount is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (!data.deliveryCheckoutSessionId) {
+      return NextResponse.json(
+        { error: 'Payment verification is required.' },
+        { status: 400 }
+      );
+    }
+
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(
+      data.deliveryCheckoutSessionId
+    );
+
+    if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
+      return NextResponse.json(
+        { error: 'Payment not completed.' },
+        { status: 400 }
+      );
+    }
+
+    if (
+      session.metadata?.purpose !== 'order_payment' ||
+      session.metadata?.clerkUserId !== clerkUserId
+    ) {
+      return NextResponse.json(
+        { error: 'Payment could not be verified.' },
+        { status: 400 }
+      );
+    }
+
+    const computedSubtotal = receiptSubtotalCents ?? 0;
+    const deliveryFeeCents = data.deliveryFeeCents ?? 0;
+    const baseTotal = computedSubtotal + deliveryFeeCents;
+    const sessionTotal = session.amount_total ?? null;
+
+    if (baseTotal <= 0 || sessionTotal === null) {
+      return NextResponse.json(
+        { error: 'Payment amount mismatch.' },
+        { status: 400 }
+      );
+    }
+
+    if (session.metadata?.deliveryFeeCents) {
+      const metaDeliveryFee = Number(session.metadata.deliveryFeeCents);
+      if (Number.isFinite(metaDeliveryFee) && metaDeliveryFee !== deliveryFeeCents) {
+        return NextResponse.json(
+          { error: 'Payment amount mismatch.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (session.metadata?.subtotalCents) {
+      const metaSubtotal = Number(session.metadata.subtotalCents);
+      if (Number.isFinite(metaSubtotal) && metaSubtotal !== computedSubtotal) {
+        return NextResponse.json(
+          { error: 'Receipt subtotal mismatch.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (sessionTotal > baseTotal) {
+      return NextResponse.json(
+        { error: 'Payment amount mismatch.' },
+        { status: 400 }
+      );
+    }
+
+    discountCents = Math.max(0, baseTotal - sessionTotal);
+    const sessionCoupon = session.metadata?.couponCode?.trim();
+    const providedCoupon = data.couponCode?.trim() ?? null;
+    const couponSource = session.metadata?.couponSource;
+    appliedCouponCode =
+      sessionCoupon || (couponSource === 'internal' ? providedCoupon : null);
+
+    if (appliedCouponCode && couponSource === 'internal') {
+      const normalized = normalizeCouponCode(appliedCouponCode);
+      const couponResult = await findActiveCoupon(prisma, normalized, user.id);
+      if (couponResult) {
+        const expectedDiscount = calculateDiscount(
+          { subtotalCents: computedSubtotal, deliveryFeeCents },
+          couponResult.coupon
+        );
+        if (expectedDiscount !== discountCents) {
+          return NextResponse.json(
+            { error: 'Coupon discount mismatch.' },
+            { status: 400 }
+          );
+        }
+        appliedCoupon = couponResult.coupon;
+      } else {
+        return NextResponse.json(
+          { error: 'Coupon discount mismatch.' },
           { status: 400 }
         );
       }
