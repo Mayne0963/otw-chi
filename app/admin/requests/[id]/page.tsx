@@ -7,6 +7,35 @@ import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import { revalidatePath } from 'next/cache';
+import { Button } from '@/components/ui/button';
+
+async function refundRequestAction(formData: FormData) {
+  'use server';
+  await requireRole(['ADMIN']);
+  const id = String(formData.get('id'));
+  const isDelivery = String(formData.get('isDelivery')) === 'true';
+
+  const prisma = getPrisma();
+
+  try {
+    if (isDelivery) {
+      await prisma.deliveryRequest.update({
+        where: { id },
+        data: { status: 'CANCELED' }
+      });
+    } else {
+      await prisma.request.update({
+        where: { id },
+        data: { status: 'CANCELLED' }
+      });
+    }
+  } catch (error) {
+    console.error('Failed to cancel request:', error);
+  }
+
+  revalidatePath(`/admin/requests/${id}`);
+}
 
 async function getRequest(id: string) {
   const prisma = getPrisma();
@@ -96,12 +125,28 @@ export default async function AdminRequestDetailPage({
           Back to Requests
         </Link>
         {request && (
-          <Link
-            href={`/admin/requests/${resolvedId}/edit?id=${resolvedId}`}
-            className="text-xs px-3 py-2 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
-          >
-            Edit Request
-          </Link>
+          <>
+            <Link
+              href={`/admin/requests/${resolvedId}/edit?id=${resolvedId}`}
+              className="text-xs px-3 py-2 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
+            >
+              Edit Request
+            </Link>
+            {!['CANCELLED', 'CANCELED', 'COMPLETED', 'DELIVERED'].includes(request.status) && (
+              <form action={refundRequestAction}>
+                <input type="hidden" name="id" value={resolvedId} />
+                <input type="hidden" name="isDelivery" value={String(!!request.isDeliveryRequest)} />
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  type="submit"
+                  className="h-8 text-xs"
+                >
+                  Cancel & Refund
+                </Button>
+              </form>
+            )}
+          </>
         )}
       </div>
 

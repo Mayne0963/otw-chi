@@ -4,7 +4,7 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 
@@ -27,6 +27,38 @@ async function getCustomer(id: string) {
       }
     }
   });
+}
+
+async function getCustomerRequests(customerId: string) {
+  const prisma = getPrisma();
+  
+  const [requests, deliveryRequests] = await Promise.all([
+    prisma.request.findMany({
+      where: { customerId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        assignedDriver: {
+          include: { user: { select: { name: true } } }
+        }
+      }
+    }),
+    prisma.deliveryRequest.findMany({
+      where: { userId: customerId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        assignedDriver: {
+          include: { user: { select: { name: true } } }
+        }
+      }
+    })
+  ]);
+
+  // Merge and sort
+  return [...requests.map(r => ({ ...r, type: 'RIDE' })), ...deliveryRequests.map(r => ({ ...r, type: 'DELIVERY' }))]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 50);
 }
 
 export default async function AdminCustomerDetailPage({
@@ -86,6 +118,7 @@ export default async function AdminCustomerDetailPage({
   }
 
   const customer = await getCustomer(resolvedId);
+  const requests = customer ? await getCustomerRequests(customer.id) : [];
 
   return (
     <OtwPageShell>
@@ -183,6 +216,67 @@ export default async function AdminCustomerDetailPage({
           </div>
         )}
       </OtwCard>
+
+      {requests.length > 0 && (
+        <OtwCard className="mt-6 p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-white">Recent Requests</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="opacity-60 border-b border-white/10">
+                <tr>
+                  <th className="text-left px-4 py-3">Date</th>
+                  <th className="text-left px-4 py-3">Type</th>
+                  <th className="text-left px-4 py-3">Status</th>
+                  <th className="text-left px-4 py-3">Service</th>
+                  <th className="text-left px-4 py-3">Driver</th>
+                  <th className="text-left px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((req) => (
+                  <tr key={req.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3 text-white/70">
+                      {format(new Date(req.createdAt), 'MMM d, yyyy h:mm a')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                        req.type === 'RIDE' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {req.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        ['COMPLETED', 'DELIVERED'].includes(req.status)
+                          ? 'bg-green-500/20 text-green-400'
+                          : ['CANCELLED', 'CANCELED'].includes(req.status)
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-white/80">{req.serviceType}</td>
+                    <td className="px-4 py-3 text-white/60">
+                      {req.assignedDriver?.user?.name || 'Unassigned'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link 
+                        href={`/admin/requests/${req.id}`}
+                        className="text-otwGold hover:underline"
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </OtwCard>
+      )}
     </OtwPageShell>
   );
 }

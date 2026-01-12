@@ -1,3 +1,5 @@
+import OtwLiveMap from '@/components/otw/OtwLiveMap';
+import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -111,8 +113,30 @@ async function DriversList() {
     return <DriversErrorState error={error} />;
   }
 
+  // Format drivers for map
+  const driverLocations: OtwDriverLocation[] = drivers
+    .filter(d => d.locations && d.locations.length > 0)
+    .map(d => ({
+      driverId: d.userId,
+      location: {
+        lat: d.locations[0].lat,
+        lng: d.locations[0].lng,
+        address: d.locations[0].address || undefined
+      },
+      updatedAt: d.locations[0].timestamp.toISOString(),
+      currentRequestId: undefined // We could fetch this if needed
+    }));
+
   return (
     <>
+      <OtwCard className="mt-3 p-0 overflow-hidden h-[400px]">
+        <OtwLiveMap 
+          drivers={driverLocations}
+          // Focus on the first driver if available
+          focusDriverId={driverLocations.length > 0 ? driverLocations[0].driverId : undefined}
+        />
+      </OtwCard>
+
       <OtwCard className="mt-3 p-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-center">
           <div className="p-4 bg-white/5 rounded-lg">

@@ -7,6 +7,26 @@ import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { revalidatePath } from 'next/cache';
+
+async function processPayoutAction(formData: FormData) {
+  'use server';
+  await requireRole(['ADMIN']);
+  const driverId = String(formData.get('driverId'));
+  
+  const prisma = getPrisma();
+  
+  // Update earnings to paid
+  await prisma.driverEarnings.updateMany({
+    where: { 
+      driverId,
+      status: 'pending'
+    },
+    data: { status: 'paid' }
+  });
+
+  revalidatePath('/admin/payouts');
+}
 
 // Loading component for better UX
 function AdminPayoutsLoading() {
@@ -40,17 +60,32 @@ async function getPayoutsData() {
       take: 100
     });
 
-    // Get driver earnings summary for context
-    const pendingEarnings = await prisma.driverEarnings.aggregate({
+    // Group pending earnings by driver
+    const pendingByDriver = await prisma.driverEarnings.groupBy({
+      by: ['driverId'],
       where: { status: 'pending' },
       _sum: { amount: true },
       _count: true
     });
 
-    const totalPending = pendingEarnings._sum.amount || 0;
-    const totalPendingCount = pendingEarnings._count || 0;
+    // Fetch driver details for these
+    const driverIds = pendingByDriver.map(p => p.driverId);
+    const drivers = await prisma.user.findMany({
+      where: { id: { in: driverIds } },
+      select: { id: true, name: true, email: true }
+    });
 
-    return { payouts, totalPending, totalPendingCount };
+    const pendingPayouts = pendingByDriver.map(p => ({
+      driverId: p.driverId,
+      amount: p._sum.amount || 0,
+      count: p._count,
+      driver: drivers.find(d => d.id === p.driverId)
+    }));
+
+    const totalPending = pendingPayouts.reduce((acc, p) => acc + p.amount, 0);
+    const totalPendingCount = pendingPayouts.reduce((acc, p) => acc + p.count, 0);
+
+    return { payouts, totalPending, totalPendingCount, pendingPayouts };
   } catch (error) {
     console.error('[AdminPayouts] Failed to fetch payouts:', error);
     throw error;
@@ -59,6 +94,7 @@ async function getPayoutsData() {
 
 async function PayoutsList() {
   let payouts: any[] = [];
+  let pendingPayouts: any[] = [];
   let totalPending = 0;
   let totalPendingCount = 0;
   let error: unknown = null;
@@ -66,6 +102,7 @@ async function PayoutsList() {
   try {
     const data = await getPayoutsData();
     payouts = data.payouts;
+    pendingPayouts = data.pendingPayouts;
     totalPending = data.totalPending;
     totalPendingCount = data.totalPendingCount;
   } catch (err) {
@@ -80,7 +117,7 @@ async function PayoutsList() {
     return <EmptyPayoutsState totalPending={totalPending} totalPendingCount={totalPendingCount} />;
   }
 
-  return <PayoutsContent payouts={payouts} totalPending={totalPending} totalPendingCount={totalPendingCount} />;
+  return <PayoutsContent payouts={payouts} pendingPayouts={pendingPayouts} totalPending={totalPending} totalPendingCount={totalPendingCount} />;
 }
 
 function EmptyPayoutsState({ totalPending, totalPendingCount }: { totalPending: number; totalPendingCount: number }) {
@@ -113,7 +150,7 @@ function EmptyPayoutsState({ totalPending, totalPendingCount }: { totalPending: 
   );
 }
 
-function PayoutsContent({ payouts, totalPending, totalPendingCount }: { payouts: any[]; totalPending: number; totalPendingCount: number }) {
+function PayoutsContent({ payouts, pendingPayouts, totalPending, totalPendingCount }: { payouts: any[]; pendingPayouts: any[]; totalPending: number; totalPendingCount: number }) {
   return (
     <>
       <OtwCard className="mt-3 p-6">
@@ -133,6 +170,53 @@ function PayoutsContent({ payouts, totalPending, totalPendingCount }: { payouts:
         </div>
       </OtwCard>
 
+      {pendingPayouts.length > 0 && (
+        <OtwCard className="mt-6">
+          <div className="p-4 border-b border-white/10">
+             <h3 className="text-lg font-semibold text-white">Pending Payouts</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="opacity-60 border-b border-white/10">
+                <tr>
+                  <th className="text-left px-4 py-3">Driver</th>
+                  <th className="text-left px-4 py-3">Pending Amount</th>
+                  <th className="text-left px-4 py-3">Trips</th>
+                  <th className="text-left px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingPayouts.map((p) => (
+                  <tr key={p.driverId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3">
+                      <div>
+                        <div className="font-medium">{p.driver?.name || 'Unknown Driver'}</div>
+                        <div className="text-xs text-white/50">{p.driver?.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-otwGold">
+                      ${(p.amount / 100).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-white/70">{p.count}</td>
+                    <td className="px-4 py-3">
+                      <form action={processPayoutAction}>
+                        <input type="hidden" name="driverId" value={p.driverId} />
+                        <Button size="sm" type="submit" className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs">
+                          Process Payout
+                        </Button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </OtwCard>
+      )}
+
+      <div className="mt-6 mb-2 px-1">
+        <h3 className="text-lg font-semibold text-white">Payout Support Tickets</h3>
+      </div>
       <OtwCard className="mt-3">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
