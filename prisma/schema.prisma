@@ -44,6 +44,7 @@ enum ServiceType {
   STORE
   FRAGILE
   CONCIERGE
+  RIDE
 }
 
 enum MembershipStatus {

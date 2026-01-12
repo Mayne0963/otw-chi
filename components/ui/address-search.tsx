@@ -17,6 +17,7 @@ interface AddressSearchProps {
   value?: string;
   onSelect: (address: GeocodedAddress) => void;
   ariaLabel?: string;
+  placeholder?: string;
   className?: string;
   error?: string;
   enableCurrentLocation?: boolean;
@@ -64,6 +65,7 @@ export function AddressSearch({
   value = "",
   onSelect,
   ariaLabel = "Address search",
+  placeholder = "Search for an address",
   className,
   error,
   enableCurrentLocation = false,
@@ -236,6 +238,7 @@ export function AddressSearch({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setIsOpen(true)}
+          placeholder={placeholder}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           aria-label={ariaLabel}
