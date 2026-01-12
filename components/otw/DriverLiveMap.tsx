@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import OtwLiveMap from "./OtwLiveMap";
 import type { OtwLocation } from "@/lib/otw/otwTypes";
 import type { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
@@ -24,6 +24,14 @@ interface DriverLiveMapProps {
 }
 
 type TrackingStatus = "idle" | "requesting" | "active" | "denied" | "unsupported" | "error";
+
+type PoiItem = {
+  position: { lat: number; lng: number };
+  title: string;
+  address: string;
+  categories?: string[];
+  distance?: number;
+};
 
 type DriverNavigationSettings = {
   voiceEnabled: boolean;
@@ -374,13 +382,13 @@ const DriverLiveMap = ({
     };
   }, []);
 
-  const getPreferredVoice = (locale: string) => {
+  const getPreferredVoice = useCallback((locale: string) => {
     const voices = voicesRef.current || [];
     return (
       voices.find((voice) => voice.lang === locale) ||
       voices.find((voice) => voice.lang?.startsWith(locale.split("-")[0]))
     );
-  };
+  }, []);
 
   const unlockVoiceQueue = () => {
     voiceQueueRef.current?.unlock();
@@ -409,7 +417,7 @@ const DriverLiveMap = ({
       volume: settings.voiceVolume,
       voice: getPreferredVoice(settings.voiceLocale),
     });
-  }, [settings.voiceEnabled, settings.voiceLocale, settings.voiceVolume]);
+  }, [settings.voiceEnabled, settings.voiceLocale, settings.voiceVolume, getPreferredVoice]);
 
   useEffect(() => {
     if (!settings.voiceEnabled) {
@@ -422,20 +430,7 @@ const DriverLiveMap = ({
     }
   }, [settings.voiceEnabled]);
 
-  useEffect(() => {
-    if (!settings.voiceEnabled || !activeRoute) return;
-    if (navigationStartedRef.current) return;
-    navigationStartedRef.current = true;
-    speakNavigation("Navigation started.", { flush: true });
-  }, [activeRoute, settings.voiceEnabled, settings.voiceLocale, settings.voiceVolume]);
-
-  useEffect(() => {
-    if (!activeRoute) {
-      navigationStartedRef.current = false;
-    }
-  }, [activeRoute]);
-
-  const speakNavigation = (text: string, options: { flush?: boolean } = {}) => {
+  const speakNavigation = useCallback((text: string, options: { flush?: boolean } = {}) => {
     const queue = voiceQueueRef.current;
     if (!queue || !settings.voiceEnabled) return;
     const result = queue.enqueue({
@@ -448,7 +443,20 @@ const DriverLiveMap = ({
     if (!result.accepted && result.reason === "blocked") {
       setVoiceGestureHint(true);
     }
-  };
+  }, [settings.voiceEnabled, settings.voiceLocale, settings.voiceVolume, getPreferredVoice]);
+
+  useEffect(() => {
+    if (!settings.voiceEnabled || !activeRoute) return;
+    if (navigationStartedRef.current) return;
+    navigationStartedRef.current = true;
+    speakNavigation("Navigation started.", { flush: true });
+  }, [activeRoute, settings.voiceEnabled, settings.voiceLocale, settings.voiceVolume, speakNavigation]);
+
+  useEffect(() => {
+    if (!activeRoute) {
+      navigationStartedRef.current = false;
+    }
+  }, [activeRoute]);
 
   useEffect(() => {
     let mounted = true;
@@ -720,7 +728,7 @@ const DriverLiveMap = ({
     };
   }, [driverId, requestId, requestType]);
 
-  const refreshDriverRoute = async (reason?: "off-route" | "scheduled" | "manual") => {
+  const refreshDriverRoute = useCallback(async (reason?: "off-route" | "scheduled" | "manual") => {
     const origin = currentLocationRef.current;
     const destination = targetRef.current;
     if (!origin || !destination) return;
@@ -781,12 +789,12 @@ const DriverLiveMap = ({
         window.clearTimeout(timeoutId);
       }
     }
-  };
+  }, [settings.voiceLocale]);
 
   useEffect(() => {
     if (!activeDriverLocation || !targetLocation) return;
     refreshDriverRoute("manual");
-  }, [activeDriverLocation, targetLocation, settings.voiceLocale]);
+  }, [activeDriverLocation, targetLocation, refreshDriverRoute]);
 
   useEffect(() => {
     if (!activeDriverLocation || !targetLocation) return;
@@ -794,7 +802,7 @@ const DriverLiveMap = ({
       refreshDriverRoute("scheduled");
     }, ROUTE_REFRESH_MS);
     return () => window.clearInterval(interval);
-  }, [activeDriverLocation, targetLocation, settings.voiceLocale]);
+  }, [activeDriverLocation, targetLocation, refreshDriverRoute]);
 
   useEffect(() => {
     if (!pickup || !dropoff) {
@@ -890,7 +898,7 @@ const DriverLiveMap = ({
       setOffRoute(false);
       offRouteSinceRef.current = null;
     }
-  }, [guidance, activeRoute]);
+  }, [guidance, activeRoute, refreshDriverRoute]);
 
   useEffect(() => {
     if (!guidance?.nextManeuver || guidance.distanceToNextMeters == null) return;
@@ -951,6 +959,7 @@ const DriverLiveMap = ({
     settings.voiceEnabled,
     settings.voiceLocale,
     settings.voiceVolume,
+    speakNavigation,
   ]);
 
   useEffect(() => {
@@ -1058,7 +1067,7 @@ const DriverLiveMap = ({
           }),
         ]);
         const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
-        const addItems = (items: Array<any>) => {
+        const addItems = (items: Array<PoiItem>) => {
           items.forEach((item) => {
             if (!item?.position) return;
             const { lat, lng } = item.position;

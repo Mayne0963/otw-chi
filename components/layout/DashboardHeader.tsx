@@ -1,6 +1,5 @@
 import { UserButton } from "@clerk/nextjs"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import OtwButton from "@/components/ui/otw/OtwButton"
 
 export function DashboardHeader() {
   return (
@@ -10,11 +9,9 @@ export function DashboardHeader() {
         <h2 className="text-lg font-semibold text-foreground">Dashboard</h2>
       </div>
       <div className="flex items-center gap-4">
-        <Button asChild variant="secondary" className="hidden sm:inline-flex shadow-md">
-          <Link href="/order">
-            Place Order
-          </Link>
-        </Button>
+        <OtwButton as="a" href="/order" variant="gold" className="hidden sm:inline-flex shadow-md">
+          Place Order
+        </OtwButton>
         <UserButton afterSignOutUrl="/" />
       </div>
     </header>

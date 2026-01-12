@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseHereRoute, parseHereAlternatives } from "@/lib/navigation/here";
+import { parseHereRoute, parseHereAlternatives, type HereRouteResponse } from "@/lib/navigation/here";
 import { requireHereApiKey } from "@/lib/navigation/hereEnv";
 
 const HERE_ENABLE_SPANS = process.env.HERE_ROUTE_SPANS === "true";
@@ -143,9 +143,9 @@ export async function GET(request: Request) {
         { status: 502 }
       );
     }
-    const route = parseHereRoute(data as any);
+    const route = parseHereRoute(data as HereRouteResponse);
     if (!route) {
-      const routes = (data as any)?.routes;
+      const routes = (data as HereRouteResponse)?.routes;
       const routeCount = Array.isArray(routes) ? routes.length : 0;
       const firstSection = routes?.[0]?.sections?.[0];
       const hasPolyline = Boolean(firstSection?.polyline);
@@ -157,7 +157,7 @@ export async function GET(request: Request) {
         { status: 502 }
       );
     }
-    const alternativesParsed = parseHereAlternatives(data as any);
+    const alternativesParsed = parseHereAlternatives(data as HereRouteResponse);
 
     const payload: CachedRoutePayload = { success: true, route, alternatives: alternativesParsed };
     setCachedRoute(cacheKey, payload);

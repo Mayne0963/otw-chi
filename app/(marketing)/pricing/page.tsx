@@ -1,6 +1,5 @@
 import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import OtwCard from '@/components/ui/otw/OtwCard';
 import { Check } from 'lucide-react';
 import { getPrisma } from '@/lib/db';
 
@@ -59,19 +58,18 @@ export default async function PricingPage() {
           const planId = (planRecord as any)?.id;
           const planDisabled = !stripeReady || !priceId;
           return (
-          <Card key={plan.code} className="relative flex flex-col">
-            <Badge variant="secondary" className="absolute -top-3 left-1/2 -translate-x-1/2 bg-otwGold text-otwBlack hover:bg-otwGold">
+          <OtwCard key={plan.code} className="relative flex flex-col">
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-otwGold text-otwBlack px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase shadow-lg hover:bg-otwGold cursor-default">
               Popular
-            </Badge>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                {plan.name}
+            </span>
+            <div className="p-6 flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-2xl font-semibold text-white">{plan.name}</h3>
                 <span className="text-lg text-white/60">{plan.price}</span>
-              </CardTitle>
-              <CardDescription>{plan.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <ul className="space-y-3">
+              </div>
+              <p className="text-sm text-white/50 mb-6">{plan.description}</p>
+              
+              <ul className="space-y-3 mb-8 flex-1">
                 {plan.features.map((feature, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm">
                     <Check className="h-4 w-4 text-otwGold shrink-0 mt-0.5" />
@@ -79,19 +77,20 @@ export default async function PricingPage() {
                   </li>
                 ))}
               </ul>
-            </CardContent>
-            <CardFooter>
-              <PlanCheckoutButton
-                plan={plan.code as 'basic' | 'plus' | 'executive'}
-                planId={planId}
-                priceId={priceId}
-                disabled={planDisabled}
-                className="w-full bg-otwGold text-otwBlack hover:bg-otwGold/90 disabled:opacity-60"
-              >
-                {planDisabled ? 'Coming soon' : 'Choose Plan'}
-              </PlanCheckoutButton>
-            </CardFooter>
-          </Card>
+              
+              <div className="mt-auto">
+                <PlanCheckoutButton
+                    plan={plan.code as 'basic' | 'plus' | 'executive'}
+                    planId={planId}
+                    priceId={priceId}
+                    disabled={planDisabled}
+                    className="w-full"
+                >
+                    {planDisabled ? 'Coming soon' : 'Choose Plan'}
+                </PlanCheckoutButton>
+              </div>
+            </div>
+          </OtwCard>
           );
         })}
       </div>

@@ -1,14 +1,17 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
- 
+import OtwPageShell from '@/components/ui/otw/OtwPageShell';
+import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+
 export default function NotFound() {
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-otwBlack text-otwOffWhite">
-      <h2 className="text-4xl font-bold text-otwGold">404 - Not Found</h2>
-      <p className="mt-4 text-lg opacity-80">Could not find requested resource</p>
-      <Button asChild className="mt-8" variant="default">
-        <Link href="/">Return Home</Link>
-      </Button>
-    </div>
-  )
+    <OtwPageShell className="flex min-h-[60vh] flex-col items-center justify-center">
+      <div className="w-full max-w-md">
+        <OtwEmptyState
+          title="404 - Not Found"
+          subtitle="Could not find requested resource"
+          actionHref="/"
+          actionLabel="Return Home"
+        />
+      </div>
+    </OtwPageShell>
+  );
 }

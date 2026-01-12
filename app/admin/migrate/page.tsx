@@ -4,6 +4,7 @@ import { useState } from 'react';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
+import OtwButton from '@/components/ui/otw/OtwButton';
 
 export default function MigratePage() {
   const [loading, setLoading] = useState(false);
@@ -54,13 +55,14 @@ export default function MigratePage() {
               </p>
             </div>
 
-            <button
+            <OtwButton
               onClick={runMigration}
               disabled={loading}
-              className="px-4 py-2 bg-otwGold hover:bg-otwGold/80 text-black font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              variant="gold"
+              className="w-auto"
             >
               {loading ? 'Running Migration...' : 'Run Migration'}
-            </button>
+            </OtwButton>
 
             {result && (
               <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">

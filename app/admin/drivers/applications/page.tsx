@@ -1,8 +1,10 @@
 import { requireRole } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import OtwPageShell from '@/components/ui/otw/OtwPageShell';
+import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
+import OtwCard from '@/components/ui/otw/OtwCard';
+import OtwButton from '@/components/ui/otw/OtwButton';
+import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { revalidatePath } from 'next/cache';
 import { clerkClient } from '@clerk/nextjs/server';
 
@@ -66,29 +68,29 @@ export default async function AdminDriverApplicationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Driver Applications</h1>
-      </div>
+    <OtwPageShell>
+      <OtwSectionHeader 
+        title="Driver Applications" 
+        subtitle="Review and approve driver applications."
+      />
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 mt-6">
         {applications.map((app) => (
-            <Card key={app.id} className="bg-white/5 border-white/10 text-otwOffWhite">
-                <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle>{app.fullName}</CardTitle>
-                            <p className="text-sm text-white/50">{app.email} • {app.phone}</p>
-                        </div>
-                        <Badge variant={
-                            app.status === 'APPROVED' ? 'default' : 
-                            app.status === 'DENIED' ? 'destructive' : 'secondary'
-                        } className={app.status === 'APPROVED' ? 'bg-green-500' : ''}>
-                            {app.status}
-                        </Badge>
+            <OtwCard key={app.id} className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <div className="text-lg font-semibold text-white">{app.fullName}</div>
+                        <p className="text-sm text-white/50">{app.email} • {app.phone}</p>
                     </div>
-                </CardHeader>
-                <CardContent>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        app.status === 'APPROVED' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
+                        app.status === 'DENIED' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 
+                        'bg-white/10 text-white/70 border border-white/20'
+                    }`}>
+                        {app.status}
+                    </span>
+                </div>
+                <div>
                     <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                         <div>
                             <p className="text-white/50">City</p>
@@ -117,26 +119,31 @@ export default async function AdminDriverApplicationsPage() {
                             <form action={updateStatus}>
                                 <input type="hidden" name="id" value={app.id} />
                                 <input type="hidden" name="status" value="APPROVED" />
-                                <Button type="submit" variant="outline" className="h-8 text-xs border-green-600/50 text-green-500 hover:bg-green-600/10 hover:text-green-400">
+                                <OtwButton type="submit" variant="outline" className="h-8 text-xs border-green-600/50 text-green-500 hover:bg-green-600/10 hover:text-green-400">
                                     Approve
-                                </Button>
+                                </OtwButton>
                             </form>
                             <form action={updateStatus}>
                                 <input type="hidden" name="id" value={app.id} />
                                 <input type="hidden" name="status" value="DENIED" />
-                                <Button type="submit" variant="destructive" className="h-8 text-xs">
+                                <OtwButton type="submit" variant="red" className="h-8 text-xs">
                                     Deny
-                                </Button>
+                                </OtwButton>
                             </form>
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </OtwCard>
         ))}
         {applications.length === 0 && (
-            <div className="text-center py-10 text-white/50">No applications found.</div>
+            <OtwCard className="p-8 text-center">
+                <OtwEmptyState 
+                    title="No applications found" 
+                    subtitle="Driver applications will appear here." 
+                />
+            </OtwCard>
         )}
       </div>
-    </div>
+    </OtwPageShell>
   );
 }

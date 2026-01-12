@@ -67,4 +67,7 @@ export async function createTicketAction(formData: FormData) {
   const message = String(formData.get('message') ?? '');
   if (!subject || !message) return;
   await prisma.supportTicket.create({ data: { userId: user.id, subject, message } });
+  
+  const { revalidatePath } = await import('next/cache');
+  revalidatePath('/support');
 }

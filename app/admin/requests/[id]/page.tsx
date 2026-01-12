@@ -2,13 +2,12 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
-import Link from 'next/link';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { Button } from '@/components/ui/button';
 
 async function refundRequestAction(formData: FormData) {
   'use server';
@@ -118,32 +117,35 @@ export default async function AdminRequestDetailPage({
       />
 
       <div className="mt-6 flex items-center gap-2">
-        <Link
+        <OtwButton
+          as="a"
           href="/admin/requests"
-          className="text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+          variant="ghost"
+          className="text-xs px-3 py-2"
         >
           Back to Requests
-        </Link>
+        </OtwButton>
         {request && (
           <>
-            <Link
+            <OtwButton
+              as="a"
               href={`/admin/requests/${resolvedId}/edit?id=${resolvedId}`}
-              className="text-xs px-3 py-2 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
+              variant="gold"
+              className="text-xs px-3 py-2"
             >
               Edit Request
-            </Link>
+            </OtwButton>
             {!['CANCELLED', 'CANCELED', 'COMPLETED', 'DELIVERED'].includes(request.status) && (
               <form action={refundRequestAction}>
                 <input type="hidden" name="id" value={resolvedId} />
                 <input type="hidden" name="isDelivery" value={String(!!request.isDeliveryRequest)} />
-                <Button 
-                  variant="destructive" 
-                  size="sm"
+                <OtwButton 
+                  variant="red" 
                   type="submit"
                   className="h-8 text-xs"
                 >
                   Cancel & Refund
-                </Button>
+                </OtwButton>
               </form>
             )}
           </>

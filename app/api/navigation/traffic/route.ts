@@ -28,7 +28,7 @@ const parseShape = (value: string): [number, number][] => {
 
 const cache = new Map<
   string,
-  { expires: number; data: any; cooldownUntil?: number }
+  { expires: number; data: GeoJSON.FeatureCollection | null; cooldownUntil?: number }
 >();
 
 const TTL_MS = 60_000;
@@ -141,7 +141,7 @@ export async function GET(request: Request) {
       });
     });
 
-    const payload = {
+    const payload: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features,
     };

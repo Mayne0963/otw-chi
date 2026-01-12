@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   try {
     // Check authentication
     const { userId } = await auth();
@@ -10,13 +10,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[Migrate] Starting database migration...');
+    // console.log('[Migrate] Starting database migration...');
     
     const prisma = getPrisma();
     
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
-    console.log('[Migrate] Database connection successful');
+    // console.log('[Migrate] Database connection successful');
     
     // Run the migration SQL directly
     const migrations = [
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     ];
     
     const existingTables = await prisma.$queryRawUnsafe(migrations[0]);
-    console.log('[Migrate] Existing tables:', existingTables);
+    // console.log('[Migrate] Existing tables:', existingTables);
     
     // If tables don't exist, we need to run migrations manually
     // For now, let's just report the status
@@ -45,13 +45,14 @@ export async function POST(request: Request) {
       message: `Database is set up with ${tableCount} tables`,
       tables: existingTables,
     });
-  } catch (error: any) {
-    console.error('[Migrate] Error:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    // console.error('[Migrate] Error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
-        details: error.toString(),
+        error: message,
+        details: String(error),
       },
       { status: 500 }
     );

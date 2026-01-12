@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
+import Link from 'next/link';
 import clsx from 'clsx';
 
 type Variant = 'gold' | 'red' | 'ghost' | 'outline';
-type Size = 'sm' | 'md' | 'lg';
+type Size = 'sm' | 'md' | 'lg' | 'icon';
 
 interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   as?: 'button' | 'a';
@@ -17,7 +18,8 @@ const base =
 const sizes: Record<Size, string> = {
   sm: 'px-3 py-2 text-xs',
   md: 'px-4 py-3 text-sm',
-  lg: 'px-6 py-3.5 text-base'
+  lg: 'px-6 py-3.5 text-base',
+  icon: 'h-10 w-10 p-0'
 };
 
 const variants: Record<Variant, string> = {
@@ -31,28 +33,54 @@ const variants: Record<Variant, string> = {
     'bg-transparent text-otwGold border border-otwGold/50 hover:bg-otwGold/10'
 };
 
-export default function OtwButton({
-  as = 'button',
-  href,
-  variant = 'gold',
-  size = 'md',
-  className,
-  children,
-  type = 'button',
-  disabled,
-  ...props
-}: Props) {
-  const classes = clsx(base, sizes[size], variants[variant], className, disabled && 'opacity-70 cursor-not-allowed');
-  if (as === 'a' && href) {
+const OtwButton = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
+  ({
+    as = 'button',
+    href,
+    variant = 'gold',
+    size = 'md',
+    className,
+    children,
+    type = 'button',
+    disabled,
+    ...props
+  }, ref) => {
+    const classes = clsx(base, sizes[size], variants[variant], className, disabled && 'opacity-70 cursor-not-allowed');
+
+    if (href) {
+      const isExternal = as === 'a' || href.startsWith('http') || href.startsWith('mailto:');
+      if (isExternal) {
+        return (
+          <a
+            ref={ref as React.Ref<HTMLAnchorElement>}
+            href={href}
+            className={classes}
+            {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+          >
+            {children}
+          </a>
+        );
+      }
+      return (
+        <Link
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          href={href}
+          className={classes}
+          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+        >
+          {children}
+        </Link>
+      );
+    }
+
     return (
-      <a href={href} className={classes}>
+      <button ref={ref as React.Ref<HTMLButtonElement>} type={type} className={classes} disabled={disabled} {...props}>
         {children}
-      </a>
+      </button>
     );
   }
-  return (
-    <button type={type} className={classes} disabled={disabled} {...props}>
-      {children}
-    </button>
-  );
-}
+);
+
+OtwButton.displayName = 'OtwButton';
+
+export default OtwButton;

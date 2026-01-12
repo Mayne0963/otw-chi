@@ -1,12 +1,95 @@
-"use client";
-
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { createVoiceQueue, VOICE_GUIDANCE_STORAGE_KEY } from "@/lib/navigation/voiceQueue";
 import { getClientEnvDiagnostics } from "@/lib/envDiagnostics";
+
+// --- HERE Maps Type Definitions ---
+interface HGeoPoint {
+  lat: number;
+  lng: number;
+}
+
+interface HMapObject {
+  setGeometry(geometry: HGeoPoint): void;
+  setVisibility(opt_visibility: boolean): void;
+  dispose(): void;
+}
+
+interface HMarker extends HMapObject {
+  setStyle(style: { fillColor: string; lineWidth: number }): void;
+  setData(data: string): void;
+}
+
+interface HCircle extends HMapObject {
+  setStyle(style: { strokeColor: string; lineWidth: number; fillColor: string }): void;
+}
+
+interface HPolyline extends HMapObject {
+  getBoundingBox(): HBoundingBox;
+}
+
+interface HBoundingBox {
+  getBoundingBox?(): unknown;
+}
+
+interface HMap {
+  addObject(object: unknown): void;
+  removeObject(object: unknown): void;
+  setZoom(zoom: number, animate?: boolean): void;
+  setCenter(center: HGeoPoint, animate?: boolean): void;
+  getViewPort(): { resize(): void };
+  getViewModel(): { setLookAtData(data: { bounds: unknown }): void };
+  dispose(): void;
+}
+
+interface HPlatform {
+  createDefaultLayers(): { vector: { normal: { map: unknown } } };
+}
+
+interface HBehavior {
+  disable(): void;
+}
+
+interface HUI {
+  getControls(): unknown[];
+  removeControl(control: unknown): void;
+}
+
+// Global H object on window
+interface WindowWithH extends Window {
+  H: {
+    service: {
+      Platform: new (options: { apikey: string }) => HPlatform;
+    };
+    Map: new (element: HTMLElement, mapLayer: unknown, options: unknown) => HMap;
+    mapevents: {
+      Behavior: new (events: unknown) => HBehavior;
+      MapEvents: new (map: HMap) => unknown;
+    };
+    ui: {
+      UI: {
+        createDefault: (map: HMap, layers: unknown) => HUI;
+      };
+    };
+    map: {
+      Marker: new (coords: HGeoPoint, options?: unknown) => HMarker;
+      Circle: new (coords: HGeoPoint, radius: number, options?: unknown) => HCircle;
+      Icon: new (svg: string) => unknown;
+      Polyline: new (strip: unknown, options?: unknown) => HPolyline;
+    };
+    geo: {
+      LineString: new () => { pushPoint(coords: HGeoPoint): void };
+    };
+  };
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
 
 type LatLng = { lat: number; lng: number };
 type Stop = LatLng & { id: string; label?: string; type?: "pickup" | "dropoff" };
@@ -16,6 +99,14 @@ type RouteResponse = {
   distanceMeters: number;
   durationSeconds: number;
 };
+
+interface ApiStopRaw {
+  id?: string;
+  label?: string;
+  type?: "pickup" | "dropoff";
+  lat?: number;
+  lng?: number;
+}
 
 const DEMO_STOPS: Stop[] = [
   { id: "pickup-1", label: "Pickup - The Hoppy Gnome", type: "pickup", lat: 41.0793, lng: -85.1394 },
@@ -36,13 +127,13 @@ const haversineMeters = (a: LatLng, b: LatLng) => {
 };
 
 type MapRefs = {
-  platform: any | null;
-  map: any | null;
-  behavior: any | null;
-  ui: any | null;
-  driverMarker: any | null;
-  stopMarkers: Record<string, any>;
-  routePolyline: any | null;
+  platform: HPlatform | null;
+  map: HMap | null;
+  behavior: HBehavior | null;
+  ui: HUI | null;
+  driverMarker: HCircle | null;
+  stopMarkers: Record<string, HMarker>;
+  routePolyline: HPolyline | null;
 };
 
 const hereKey = process.env.NEXT_PUBLIC_HERE_MAPS_KEY;
@@ -67,6 +158,7 @@ const DriverMapClient = () => {
   const finalApproachStartedAtRef = useRef<number | null>(null);
   const voiceQueueRef = useRef<ReturnType<typeof createVoiceQueue> | null>(null);
   const mapCleanupRef = useRef<(() => void) | null>(null);
+  const lastDistanceRef = useRef<number | null>(null);
 
   const [demoMode, setDemoMode] = useState(true);
   const [stops, setStops] = useState<Stop[]>(DEMO_STOPS);
@@ -81,21 +173,21 @@ const DriverMapClient = () => {
   const [mapReady, setMapReady] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
   const [jobLoading, setJobLoading] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
 
   const activeStop = stops[activeStopIndex];
 
-  const stopList = useMemo(() => stops, [stops]);
+  // Removed unused stopList useMemo since stops is already state
 
-  const shouldUseVoiceGuidance = () => {
+  const shouldUseVoiceGuidance = useCallback(() => {
     if (typeof window === "undefined") return false;
     const stored = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
     if (stored === "false") return false;
     return true;
-  };
+  }, []);
 
-  const resetMapRefs = () => {
+  const resetMapRefs = useCallback(() => {
     mapRefs.current = {
       platform: null,
       map: null,
@@ -105,16 +197,16 @@ const DriverMapClient = () => {
       stopMarkers: {},
       routePolyline: null,
     };
-  };
+  }, []);
 
-  const hasContainerSize = () => {
+  const hasContainerSize = useCallback(() => {
     const el = mapContainerRef.current;
     if (!el) return false;
     const { width, height } = el.getBoundingClientRect();
     return width > 40 && height > 40;
-  };
+  }, []);
 
-  const speakNavigationPrime = () => {
+  const speakNavigationPrime = useCallback(() => {
     const queue = voiceQueueRef.current;
     if (!queue || !shouldUseVoiceGuidance()) return;
     const lang =
@@ -123,7 +215,7 @@ const DriverMapClient = () => {
     queue.setEnabled(true);
     queue.unlock();
     queue.enqueue({ text: "Navigation started.", lang, volume: 0.75, flush: true });
-  };
+  }, [shouldUseVoiceGuidance]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -136,9 +228,9 @@ const DriverMapClient = () => {
     return () => queue.cancel();
   }, []);
 
-  const ensureHereScripts = async () => {
+  const ensureHereScripts = useCallback(async () => {
     if (typeof window === "undefined") return;
-    if ((window as any).H) return;
+    if ((window as unknown as WindowWithH).H) return;
     const scripts = [
       "https://js.api.here.com/v3/3.1/mapsjs-core.js",
       "https://js.api.here.com/v3/3.1/mapsjs-service.js",
@@ -162,9 +254,9 @@ const DriverMapClient = () => {
     link.rel = "stylesheet";
     link.href = "https://js.api.here.com/v3/3.1/mapsjs-ui.css";
     document.head.appendChild(link);
-  };
+  }, []);
 
-  const initMap = async () => {
+  const initMap = useCallback(async () => {
     if (mapRefs.current.map || mapReady) return;
     if (!hasContainerSize()) return;
     const { missing } = getClientEnvDiagnostics(["NEXT_PUBLIC_HERE_MAPS_KEY"]);
@@ -179,7 +271,7 @@ const DriverMapClient = () => {
       setMapError("Failed to load map libraries.");
       return;
     }
-    const H = (window as any).H;
+    const H = (window as unknown as WindowWithH).H;
     if (!H) {
       setMapError("HERE Maps is unavailable in this browser.");
       return;
@@ -196,7 +288,7 @@ const DriverMapClient = () => {
       });
       const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
       const ui = H.ui.UI.createDefault(map, layers);
-      ui.getControls().forEach((control: any) => ui.removeControl(control));
+      ui.getControls().forEach((control: unknown) => ui.removeControl(control));
       mapRefs.current = {
         platform,
         map,
@@ -221,10 +313,10 @@ const DriverMapClient = () => {
       console.error("Map init failed", error);
       setMapError("Map failed to initialize.");
     }
-  };
+  }, [mapReady, hasContainerSize, ensureHereScripts, resetMapRefs]);
 
-  const updateDriverMarker = (location: LatLng) => {
-    const H = (window as any).H;
+  const updateDriverMarker = useCallback((location: LatLng) => {
+    const H = (window as unknown as WindowWithH).H;
     const { map } = mapRefs.current;
     if (!H || !map) return;
     if (mapRefs.current.driverMarker) {
@@ -240,10 +332,10 @@ const DriverMapClient = () => {
     });
     map.addObject(dot);
     mapRefs.current.driverMarker = dot;
-  };
+  }, []);
 
-  const updateStopMarkers = () => {
-    const H = (window as any).H;
+  const updateStopMarkers = useCallback(() => {
+    const H = (window as unknown as WindowWithH).H;
     const { map, stopMarkers } = mapRefs.current;
     if (!H || !map) return;
     stops.forEach((stop, idx) => {
@@ -265,10 +357,10 @@ const DriverMapClient = () => {
       map.addObject(marker);
       stopMarkers[stop.id] = marker;
     });
-  };
+  }, [stops, activeStopIndex]);
 
-  const drawRoute = (coordinates: Array<{ lat: number; lng: number }> | null) => {
-    const H = (window as any).H;
+  const drawRoute = useCallback((coordinates: Array<{ lat: number; lng: number }> | null) => {
+    const H = (window as unknown as WindowWithH).H;
     const { map } = mapRefs.current;
     if (!H || !map) return;
     if (mapRefs.current.routePolyline) {
@@ -283,12 +375,13 @@ const DriverMapClient = () => {
     });
     map.addObject(polyline);
     mapRefs.current.routePolyline = polyline;
+    const bbox = polyline.getBoundingBox();
     map.getViewModel().setLookAtData({
-      bounds: polyline.getBoundingBox().getBoundingBox ? polyline.getBoundingBox().getBoundingBox() : polyline.getBoundingBox(),
+      bounds: bbox.getBoundingBox ? bbox.getBoundingBox() : bbox,
     });
-  };
+  }, []);
 
-  const computeRoute = async (origin: LatLng, remainingStops: Stop[]) => {
+  const computeRoute = useCallback(async (origin: LatLng, remainingStops: Stop[]) => {
     if (!remainingStops.length) return null;
     setLoadingRoute(true);
     try {
@@ -311,9 +404,9 @@ const DriverMapClient = () => {
     } finally {
       setLoadingRoute(false);
     }
-  };
+  }, [drawRoute]);
 
-  const startJob = async () => {
+  const startJob = useCallback(async () => {
     if (!driverLocation || !activeStop) return;
     if (stops.some((s) => typeof s.lat !== "number" || typeof s.lng !== "number")) {
       setJobError("Stops missing coordinates; cannot start routing.");
@@ -325,9 +418,9 @@ const DriverMapClient = () => {
     finalApproachStartedAtRef.current = null;
     await computeRoute(driverLocation, stops.slice(activeStopIndex));
     lastRerouteAtRef.current = Date.now();
-  };
+  }, [driverLocation, activeStop, stops, activeStopIndex, speakNavigationPrime, computeRoute]);
 
-  const advanceStop = async () => {
+  const advanceStop = useCallback(async () => {
     const nextIndex = activeStopIndex + 1;
     if (nextIndex >= stops.length) {
       setActiveStopIndex(nextIndex);
@@ -342,15 +435,15 @@ const DriverMapClient = () => {
       await computeRoute(driverLocation, stops.slice(nextIndex));
       lastRerouteAtRef.current = Date.now();
     }
-  };
+  }, [activeStopIndex, stops, driverLocation, computeRoute]);
 
-  const manualReroute = async () => {
+  const manualReroute = useCallback(async () => {
     if (!driverLocation || !jobStarted) return;
     await computeRoute(driverLocation, stops.slice(activeStopIndex));
     lastRerouteAtRef.current = Date.now();
-  };
+  }, [driverLocation, jobStarted, stops, activeStopIndex, computeRoute]);
 
-  const handleLocation = async (coords: LatLng) => {
+  const handleLocation = useCallback(async (coords: LatLng) => {
     setDriverLocation(coords);
     updateDriverMarker(coords);
     if (!jobStarted || !activeStop) return;
@@ -373,8 +466,8 @@ const DriverMapClient = () => {
     }
 
     const routeDistance = route?.distanceMeters ?? null;
-    const lastDistance = (mapRefs.current as any).__lastDistance || null;
-    (mapRefs.current as any).__lastDistance = distanceToActive;
+    const lastDistance = lastDistanceRef.current;
+    lastDistanceRef.current = distanceToActive;
 
     const movingAway = lastDistance != null && distanceToActive > lastDistance + 8;
     if (movingAway) {
@@ -395,7 +488,7 @@ const DriverMapClient = () => {
       lastRerouteAtRef.current = Date.now();
       movingAwayTicksRef.current = 0;
     }
-  };
+  }, [jobStarted, activeStop, route?.distanceMeters, stops, activeStopIndex, computeRoute, updateDriverMarker]);
 
   useEffect(() => {
     let cancelled = false;
@@ -429,7 +522,7 @@ const DriverMapClient = () => {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, []);
+  }, [hasContainerSize, initMap]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -441,9 +534,9 @@ const DriverMapClient = () => {
   }, []);
 
   useEffect(() => {
-    const handler = (event: any) => {
+    const handler = (event: Event) => {
       event.preventDefault();
-      setInstallPrompt(event);
+      setInstallPrompt(event as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
@@ -452,7 +545,7 @@ const DriverMapClient = () => {
   useEffect(() => {
     if (!mapReady) return;
     updateStopMarkers();
-  }, [mapReady, stops, activeStopIndex]);
+  }, [mapReady, updateStopMarkers]);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -471,7 +564,7 @@ const DriverMapClient = () => {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, [mapReady, jobStarted, activeStopIndex, stops, route]);
+  }, [handleLocation]);
 
   useEffect(() => {
     if (demoMode && !jobId) {
@@ -494,11 +587,11 @@ const DriverMapClient = () => {
           const msg = await res.text().catch(() => "Unable to load job");
           throw new Error(msg || "Unable to load job");
         }
-        const data = await res.json();
+        const data = (await res.json()) as { stops?: ApiStopRaw[] };
         const nextStops: Stop[] = (data.stops || [])
-          .filter((s: any) => s?.id)
-          .map((s: any) => ({
-            id: s.id,
+          .filter((s) => s?.id)
+          .map((s) => ({
+            id: s.id!,
             label: s.label || s.type,
             type: s.type,
             lat: typeof s.lat === "number" ? s.lat : NaN,
@@ -528,7 +621,7 @@ const DriverMapClient = () => {
     if (jobId && !jobError && !jobLoading && driverLocation && stops.length && !jobStarted) {
       startJob().catch(() => null);
     }
-  }, [jobId, jobError, jobLoading, driverLocation, stops.length, jobStarted]);
+  }, [jobId, jobError, jobLoading, driverLocation, stops.length, jobStarted, startJob]);
 
   const nextStopLabel = activeStop?.label || (activeStop?.type === "pickup" ? "Pickup" : "Dropoff");
 
@@ -644,31 +737,36 @@ const DriverMapClient = () => {
           <div className="space-y-2">
             <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Stops</div>
             <div className="space-y-1">
-              {stopList.map((stop, idx) => {
+              {stops.map((stop, idx) => {
                 const isActive = idx === activeStopIndex;
                 return (
                   <div
                     key={stop.id}
                     className={cn(
-                      "flex items-center justify-between rounded-xl border px-3 py-2 text-sm",
+                      "flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
                       isActive
-                        ? "border-secondary/60 bg-secondary/10 text-secondary"
-                        : "border-border/70 bg-muted/40 text-foreground/90"
+                        ? "border-amber-400/30 bg-amber-400/10"
+                        : "border-transparent bg-background/50 hover:bg-background/80"
                     )}
                   >
-                    <div>
-                      <div className="font-semibold">{stop.label || stop.id}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {Number.isFinite(stop.lat) && Number.isFinite(stop.lng)
-                          ? `${stop.lat.toFixed(4)}, ${stop.lng.toFixed(4)}`
-                          : "Coordinates unavailable"}
-                      </div>
+                    <div
+                      className={cn(
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                        isActive ? "bg-amber-400 text-amber-950" : "bg-sky-500/20 text-sky-400"
+                      )}
+                    >
+                      {idx + 1}
                     </div>
-                    {isActive && <Badge variant="outline">Active</Badge>}
+                    <div className="min-w-0 flex-1">
+                      <div className={cn("truncate text-sm font-medium", isActive && "text-amber-200")}>
+                        {stop.label || stop.id}
+                      </div>
+                      <div className="text-xs text-muted-foreground capitalize">{stop.type}</div>
+                    </div>
                   </div>
                 );
               })}
-              {stopList.length === 0 && (
+              {stops.length === 0 && (
                 <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
                   Add stops to start routing.
                 </div>

@@ -2,6 +2,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
@@ -193,12 +194,12 @@ function NipLedgerContent({ ledgerEntries, totalTransactions, totalIssued, byTyp
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button className="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">
+                      <OtwButton variant="ghost" className="text-xs px-2 py-1 h-auto bg-white/10 hover:bg-white/20">
                         View
-                      </button>
-                      <button className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors">
+                      </OtwButton>
+                      <OtwButton variant="ghost" className="text-xs px-2 py-1 h-auto bg-otwGold/20 hover:bg-otwGold/30 text-otwGold">
                         Details
-                      </button>
+                      </OtwButton>
                     </div>
                   </td>
                 </tr>

@@ -1,7 +1,7 @@
 import { decodeFlexiblePolyline } from "./flexiblePolyline";
 import { decodeEncodedPolyline } from "./encodedPolyline";
 
-type HereRouteResponse = {
+export type HereRouteResponse = {
   routes?: Array<{
     id?: string;
     sections?: Array<{

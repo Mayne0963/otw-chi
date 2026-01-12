@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   try {
     // Check authentication
     const { userId } = await auth();
@@ -10,8 +10,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[Setup Profiles] Setting up profiles for admin user...');
-    
     const prisma = getPrisma();
     
     // Get the user from database
@@ -34,8 +32,6 @@ export async function POST(request: Request) {
       create: { userId: user.id },
     });
 
-    console.log('[Setup Profiles] ✓ Customer profile created/verified');
-
     // Ensure driver profile exists
     const driverProfile = await prisma.driverProfile.upsert({
       where: { userId: user.id },
@@ -45,8 +41,6 @@ export async function POST(request: Request) {
         status: 'OFFLINE',
       },
     });
-
-    console.log('[Setup Profiles] ✓ Driver profile created/verified');
 
     return NextResponse.json({
       success: true,
@@ -58,13 +52,13 @@ export async function POST(request: Request) {
         driverProfileId: driverProfile.id,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Setup Profiles] Error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
-        details: error.toString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: String(error),
       },
       { status: 500 }
     );

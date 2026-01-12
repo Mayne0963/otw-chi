@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import OtwButton from '@/components/ui/otw/OtwButton';
 
 export default function PlanCheckoutButton({
   plan,
@@ -52,8 +52,8 @@ export default function PlanCheckoutButton({
   };
 
   return (
-    <Button onClick={startCheckout} className={className} disabled={disabled || loading}>
+    <OtwButton onClick={startCheckout} className={className} disabled={disabled || loading} variant="gold">
       {children ?? (loading ? 'Processing...' : 'Choose Plan')}
-    </Button>
+    </OtwButton>
   );
 }

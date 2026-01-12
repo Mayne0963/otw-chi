@@ -59,14 +59,14 @@ export const decodeFlexiblePolyline = (encoded: string): DecodedPolyline => {
   const header = decodeUnsignedVarint(normalized, version.index);
   const precision = header.value & 15;
   const thirdDim = (header.value >> 4) & 7;
-  const thirdDimPrecision = (header.value >> 7) & 15;
+  // const thirdDimPrecision = (header.value >> 7) & 15;
   const factor = Math.pow(10, precision);
-  const zFactor = Math.pow(10, thirdDimPrecision);
+  // const zFactor = Math.pow(10, thirdDimPrecision);
 
   let index = header.index;
   let lat = 0;
   let lng = 0;
-  let z = 0;
+  // let z = 0;
   const coordinates: DecodedPolyline = [];
 
   while (index < normalized.length) {
@@ -80,7 +80,7 @@ export const decodeFlexiblePolyline = (encoded: string): DecodedPolyline => {
 
     if (thirdDim !== 0) {
       const zResult = decodeSignedVarint(normalized, index);
-      z += zResult.value;
+      // z += zResult.value;
       index = zResult.index;
     }
 

@@ -1,9 +1,8 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { acceptJobAction, getAvailableJobs } from '@/app/actions/driver';
@@ -57,7 +56,7 @@ export default async function DriverJobsPage() {
             <OtwEmptyState title="No jobs" subtitle="No available requests in your zone." />
           ) : (
             <ul className="mt-2 space-y-2 text-sm opacity-90">
-              {available.map((r: any) => (
+              {available.map((r) => (
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                   <div className="flex items-center justify-between">
                     <div>
@@ -66,7 +65,7 @@ export default async function DriverJobsPage() {
                     </div>
                     <form action={acceptJobAction} className="flex gap-2">
                       <input type="hidden" name="id" value={r.id} />
-                      <Button variant="outline" size="sm">Accept</Button>
+                      <OtwButton variant="outline" size="sm">Accept</OtwButton>
                     </form>
                   </div>
                 </li>
@@ -80,7 +79,7 @@ export default async function DriverJobsPage() {
             <div className="mt-2 text-sm opacity-80">No active jobs.</div>
           ) : (
             <ul className="mt-2 space-y-2 text-sm opacity-90">
-              {active.map((r: any) => (
+              {active.map((r) => (
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                     <div className="flex items-center justify-between">
                       <div>
@@ -88,14 +87,12 @@ export default async function DriverJobsPage() {
                         <div className="text-xs opacity-70">{r.pickup} → {r.dropoff}</div>
                       </div>
                     <div className="flex gap-2">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/driver/jobs/${r.id}`}>Open</Link>
-                      </Button>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/driver?jobId=${r.id}`}>
-                          Driver Map
-                        </Link>
-                      </Button>
+                      <OtwButton as="a" href={`/driver/jobs/${r.id}`} variant="outline" size="sm">
+                        Open
+                      </OtwButton>
+                      <OtwButton as="a" href={`/driver?jobId=${r.id}`} variant="outline" size="sm">
+                        Driver Map
+                      </OtwButton>
                     </div>
                   </div>
                 </li>
@@ -109,7 +106,7 @@ export default async function DriverJobsPage() {
             <div className="mt-2 text-sm opacity-80">No completed jobs yet.</div>
           ) : (
             <ul className="mt-2 space-y-2 text-sm opacity-90">
-              {completed.map((r: any) => (
+              {completed.map((r) => (
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                   <div className="flex items-center justify-between">
                     <div>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   try {
     // Check authentication
     const { userId } = await auth();
@@ -10,12 +10,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[Seed] Starting database seed...');
+    // console.log('[Seed] Starting database seed...');
     
     const prisma = getPrisma();
     
     // Seed Cities
-    console.log('[Seed] Seeding cities...');
+    // console.log('[Seed] Seeding cities...');
     const chicago = await prisma.city.upsert({
       where: { name: 'Chicago' },
       update: {},
@@ -32,10 +32,10 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log(`[Seed] ✓ Created cities: ${chicago.name}, ${fortWayne.name}`);
+    // console.log(`[Seed] ✓ Created cities: ${chicago.name}, ${fortWayne.name}`);
 
     // Seed Zones for Chicago
-    console.log('[Seed] Seeding zones...');
+    // console.log('[Seed] Seeding zones...');
     const southSide = await prisma.zone.upsert({
       where: { id: 'south-side' },
       update: {},
@@ -107,10 +107,10 @@ export async function POST(request: Request) {
       },
     });
 
-    console.log(`[Seed] ✓ Created zones: ${southSide.name}, ${westSide.name}, ${downtown.name}, ${northOTW.name}, ${southOTW.name}, ${eastOTW.name}, ${westOTW.name}`);
+    // console.log(`[Seed] ✓ Created zones: ${southSide.name}, ${westSide.name}, ${downtown.name}, ${northOTW.name}, ${southOTW.name}, ${eastOTW.name}, ${westOTW.name}`);
 
     // Seed Membership Plans
-    console.log('[Seed] Seeding membership plans...');
+    // console.log('[Seed] Seeding membership plans...');
     
     const basicPlan = await prisma.membershipPlan.upsert({
       where: { name: 'Basic' },
@@ -153,13 +153,14 @@ export async function POST(request: Request) {
         plans: [basicPlan.name, plusPlan.name, executivePlan.name],
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error('[Seed] Error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
-        details: error.toString(),
+        error: message,
+        details: String(error),
       },
       { status: 500 }
     );

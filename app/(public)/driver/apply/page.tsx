@@ -5,7 +5,7 @@ import { useUser } from '@clerk/nextjs';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import { Button } from '@/components/ui/button';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -177,9 +177,9 @@ export default function DriverApplyPage() {
               />
             </div>
 
-            <Button type="submit" variant="default" className="w-full h-12 text-base font-semibold" disabled={loading}>
+            <OtwButton type="submit" variant="gold" className="w-full h-12 text-base font-semibold" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : "Submit Application"}
-            </Button>
+            </OtwButton>
           </form>
           )}
         </OtwCard>

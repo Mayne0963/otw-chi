@@ -1,3 +1,4 @@
+import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -192,9 +193,9 @@ async function SystemSettings() {
                       {plan.stripePriceId || 'Not configured'}
                     </td>
                     <td className="px-4 py-2">
-                      <button className="text-xs px-2 py-1 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors">
+                      <OtwButton variant="ghost" className="text-xs px-2 py-1 h-auto text-otwGold hover:bg-otwGold/20 hover:text-otwGold">
                         Edit
-                      </button>
+                      </OtwButton>
                     </td>
                   </tr>
                 ))}
@@ -244,12 +245,13 @@ function SettingsErrorState({ error }: { error: unknown }) {
       <div className="text-xs text-white/40 mt-2">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
-      <button 
+      <OtwButton 
         onClick={() => window.location.reload()} 
-        className="mt-4 text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+        variant="outline"
+        className="mt-4 h-8 text-xs"
       >
         Retry
-      </button>
+      </OtwButton>
     </OtwCard>
   );
 }

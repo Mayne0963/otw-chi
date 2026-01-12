@@ -19,6 +19,8 @@ const stopSchema = z.object({
   type: z.enum(["pickup", "dropoff"]).optional(),
 });
 
+type Stop = z.infer<typeof stopSchema>;
+
 const requestSchema = z.object({
   origin: stopSchema,
   stops: z.array(stopSchema).min(1),
@@ -34,7 +36,7 @@ const requestSchema = z.object({
 const roundCoord = (value: number, precision = 4) =>
   Math.round(value * 10 ** precision) / 10 ** precision;
 
-const buildCacheKey = (origin: any, stops: any[], avoid: any) => {
+const buildCacheKey = (origin: Stop, stops: Stop[], avoid?: { tolls?: boolean; ferries?: boolean }) => {
   const originKey = `${roundCoord(origin.lat)},${roundCoord(origin.lng)}`;
   const stopsKey = stops
     .map((s) => `${roundCoord(s.lat)},${roundCoord(s.lng)},${s.type || "x"}`)

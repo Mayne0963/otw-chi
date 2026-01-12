@@ -52,13 +52,13 @@ export default clerkMiddleware(async (auth, req) => {
 
     // Check admin route access
     if (isAdminRoute(req) && role !== 'ADMIN') {
-      console.log(`[Middleware] Access denied to admin route. User role: ${role}`);
+      // console.log(`[Middleware] Access denied to admin route. User role: ${role}`);
       return NextResponse.redirect(new URL('/', req.url));
     }
 
     // Check driver route access (drivers and admins can access)
     if (isDriverRoute(req) && !(role === 'DRIVER' || role === 'ADMIN')) {
-      console.log(`[Middleware] Access denied to driver route. User role: ${role}`);
+      // console.log(`[Middleware] Access denied to driver route. User role: ${role}`);
       return NextResponse.redirect(new URL('/', req.url));
     }
   }

@@ -2,11 +2,11 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Button } from '@/components/ui/button';
 import { revalidatePath } from 'next/cache';
 
 async function processPayoutAction(formData: FormData) {
@@ -201,9 +201,9 @@ function PayoutsContent({ payouts, pendingPayouts, totalPending, totalPendingCou
                     <td className="px-4 py-3">
                       <form action={processPayoutAction}>
                         <input type="hidden" name="driverId" value={p.driverId} />
-                        <Button size="sm" type="submit" className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs">
+                        <OtwButton type="submit" className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs w-full">
                           Process Payout
-                        </Button>
+                        </OtwButton>
                       </form>
                     </td>
                   </tr>
@@ -261,12 +261,13 @@ function PayoutsContent({ payouts, pendingPayouts, totalPending, totalPendingCou
                     {payout.status !== 'RESOLVED' && (
                       <form action={resolvePayoutAction}>
                         <input type="hidden" name="id" value={payout.id} />
-                        <button 
+                        <OtwButton 
                           type="submit"
-                          className="text-xs px-2 py-1 rounded bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 transition-colors"
+                          variant="ghost"
+                          className="text-xs px-2 py-1 h-auto bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30"
                         >
                           Mark Resolved
-                        </button>
+                        </OtwButton>
                       </form>
                     )}
                   </td>
@@ -287,14 +288,13 @@ function PayoutsErrorState({ error }: { error: unknown }) {
       <div className="text-xs text-white/40 mt-2">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
-      <Button 
+      <OtwButton 
         onClick={() => window.location.reload()} 
         variant="outline"
-        size="sm"
-        className="mt-4"
+        className="mt-4 h-8 text-xs"
       >
         Retry
-      </Button>
+      </OtwButton>
     </OtwCard>
   );
 }

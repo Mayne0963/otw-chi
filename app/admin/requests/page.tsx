@@ -2,12 +2,11 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { revalidatePath } from 'next/cache';
 
 // Loading component for better UX
@@ -213,26 +212,22 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
-                    <Button
-                      asChild
+                    <OtwButton
+                      as="a"
+                      href={`/admin/requests/${request.id}?id=${request.id}`}
                       variant="ghost"
-                      size="sm"
                       className="h-7 px-2 text-xs"
                     >
-                      <Link href={`/admin/requests/${request.id}?id=${request.id}`}>
-                        View
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="secondary"
-                      size="sm"
+                      View
+                    </OtwButton>
+                    <OtwButton
+                      as="a"
+                      href={`/admin/requests/${request.id}/edit?id=${request.id}`}
+                      variant="outline"
                       className="h-7 px-2 text-xs"
                     >
-                      <Link href={`/admin/requests/${request.id}/edit?id=${request.id}`}>
-                        Edit
-                      </Link>
-                    </Button>
+                      Edit
+                    </OtwButton>
                     {(request.status === 'SUBMITTED' || request.status === 'REQUESTED') && drivers.length > 0 && (
                       <form action={assignDriverAction} className="inline-block">
                         <input type="hidden" name="id" value={request.id} />
@@ -272,12 +267,13 @@ function RequestsErrorState({ error }: { error: unknown }) {
       <div className="text-xs text-white/40 mt-2">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
-      <button 
+      <OtwButton 
         onClick={() => window.location.reload()} 
-        className="mt-4 text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+        className="mt-4 text-xs px-3 py-2"
+        variant="ghost"
       >
         Retry
-      </button>
+      </OtwButton>
     </OtwCard>
   );
 }

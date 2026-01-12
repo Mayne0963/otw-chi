@@ -21,9 +21,10 @@ export async function POST(req: Request) {
 
   try {
     event = constructStripeEvent(body, signature, webhookSecret);
-  } catch (err: any) {
-    console.error(`Webhook signature verification failed.`, err.message);
-    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error(`Webhook signature verification failed.`, message);
+    return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
   }
 
   const prisma = getPrisma();
@@ -74,7 +75,6 @@ export async function POST(req: Request) {
                where: { id: draft.id },
                data: { deliveryFeePaid: true }
              });
-             console.log(`Updated payment status for order draft ${draft.id}`);
           }
         }
         return new NextResponse(null, { status: 200 });

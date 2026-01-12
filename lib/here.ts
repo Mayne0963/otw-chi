@@ -92,7 +92,7 @@ export const parseHereRouteToOtw = (payload: HereRouteResponse, stopCount: numbe
     }
   }
 
-  const summary = first.summary || {};
+  // const summary = first.summary || {};
   const legs =
     section?.map((sec, idx) => ({
       toStopIndex: Math.min(idx + 1, Math.max(stopCount - 1, 0)),
@@ -114,7 +114,7 @@ export const parseHereRouteToOtw = (payload: HereRouteResponse, stopCount: numbe
   };
 };
 
-type HereSequenceResponse = {
+export type HereSequenceResponse = {
   results?: Array<{
     waypoints?: Array<{
       id?: string;

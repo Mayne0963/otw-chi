@@ -2,9 +2,9 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Role } from '@prisma/client';
@@ -140,18 +140,22 @@ export default async function AdminCustomerEditPage({
       />
 
       <div className="mt-6 flex items-center gap-2">
-        <Link
+        <OtwButton
+          as="a"
           href={`/admin/customers/${resolvedId}?id=${resolvedId}`}
-          className="text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+          variant="ghost"
+          className="text-xs px-3 py-2"
         >
           Back to Details
-        </Link>
-        <Link
+        </OtwButton>
+        <OtwButton
+          as="a"
           href="/admin/customers"
-          className="text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+          variant="ghost"
+          className="text-xs px-3 py-2"
         >
           Back to Customers
-        </Link>
+        </OtwButton>
       </div>
 
       <OtwCard className="mt-4 p-6">
@@ -217,12 +221,13 @@ export default async function AdminCustomerEditPage({
             </div>
 
             <div className="flex justify-end">
-              <button
+              <OtwButton
                 type="submit"
-                className="text-sm px-4 py-2 rounded bg-otwGold/20 hover:bg-otwGold/30 text-otwGold transition-colors"
+                variant="gold"
+                className="text-sm px-4 py-2"
               >
                 Save Changes
-              </button>
+              </OtwButton>
             </div>
           </form>
         )}

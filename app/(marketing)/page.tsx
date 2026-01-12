@@ -1,6 +1,7 @@
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock, Coins } from 'lucide-react';
+import OtwButton from '@/components/ui/otw/OtwButton';
+import OtwCard from '@/components/ui/otw/OtwCard';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -29,15 +30,23 @@ export default function HomePage() {
           </p>
           
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6 pt-4">
-            <Button asChild size="lg" className="h-14 px-8 text-base rounded-full bg-otwGold text-black hover:bg-otwGold/90 shadow-[0_0_20px_rgba(255,215,0,0.2)] transition-all hover:scale-105">
-              <Link href="/order">
-                Request a Delivery
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="h-14 px-8 text-base rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all hover:scale-105">
-              <Link href="/pricing">View Membership</Link>
-            </Button>
+            <OtwButton 
+              as="a" 
+              href="/order" 
+              variant="gold" 
+              className="h-14 px-8 text-base rounded-full shadow-[0_0_20px_rgba(255,215,0,0.2)] transition-all hover:scale-105"
+            >
+              Request a Delivery
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </OtwButton>
+            <OtwButton 
+              as="a" 
+              href="/pricing" 
+              variant="outline" 
+              className="h-14 px-8 text-base rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all hover:scale-105"
+            >
+              View Membership
+            </OtwButton>
           </div>
           
           <div className="pt-8 flex items-center justify-center gap-8 text-sm text-muted-foreground/60">
@@ -60,11 +69,9 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold tracking-tight">Everything we carry</h2>
             <p className="text-muted-foreground mt-2">Specialized handling for every request type.</p>
           </div>
-          <Button variant="link" asChild className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80">
-            <Link href="/order" className="flex items-center gap-2">
-              Start an order <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <OtwButton as="a" href="/order" variant="ghost" className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80">
+            Start an order <ArrowRight className="ml-2 h-4 w-4" />
+          </OtwButton>
         </div>
         
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -98,13 +105,13 @@ export default function HomePage() {
               bg: 'bg-emerald-400/10'
             },
           ].map(({ title, desc, icon: Icon, color, bg }) => (
-            <div key={title} className="group relative overflow-hidden rounded-3xl border border-white/5 bg-card/50 p-6 transition-all duration-300 hover:border-white/10 hover:bg-card hover:-translate-y-1">
+            <OtwCard key={title} className="bg-card/50 border-white/5">
               <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl ${bg} ${color}`}>
                 <Icon className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-semibold mb-2">{title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
-            </div>
+            </OtwCard>
           ))}
         </div>
       </section>
@@ -128,7 +135,7 @@ export default function HomePage() {
             icon: Coins
           }
         ].map((feature, i) => (
-          <div key={i} className="flex gap-4 rounded-2xl border border-white/5 bg-white/[0.02] p-6">
+          <OtwCard key={i} className="flex flex-row gap-4 bg-white/[0.02] border-white/5 items-start">
             <div className="shrink-0">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-otwGold">
                 <feature.icon className="h-5 w-5" />
@@ -138,7 +145,7 @@ export default function HomePage() {
               <h3 className="font-semibold mb-2">{feature.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
             </div>
-          </div>
+          </OtwCard>
         ))}
       </section>
       
@@ -148,9 +155,9 @@ export default function HomePage() {
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
           Join the community that values quality, speed, and fairness.
         </p>
-        <Button asChild size="lg" className="rounded-full bg-otwGold text-black hover:bg-otwGold/90">
-          <Link href="/order">Start Your First Request</Link>
-        </Button>
+        <OtwButton as="a" href="/order" variant="gold" className="h-12 px-8 text-base rounded-full">
+          Start Your First Request
+        </OtwButton>
       </section>
     </div>
   );

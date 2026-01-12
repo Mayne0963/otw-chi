@@ -2,7 +2,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
-import { Button } from '@/components/ui/button';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
@@ -163,27 +163,25 @@ function SupportTable({ tickets }: { tickets: any[] }) {
                     {ticket.status === 'OPEN' && (
                       <form action={resolveTicketAction}>
                         <input type="hidden" name="id" value={ticket.id} />
-                        <Button 
+                        <OtwButton 
                           type="submit"
                           variant="outline"
-                          size="sm"
                           className="h-7 px-2 text-xs text-green-400 border-green-500/30 hover:bg-green-500/10 hover:text-green-300"
                         >
                           Resolve
-                        </Button>
+                        </OtwButton>
                       </form>
                     )}
                     {ticket.status !== 'CLOSED' && (
                       <form action={closeTicketAction}>
                         <input type="hidden" name="id" value={ticket.id} />
-                        <Button 
+                        <OtwButton 
                           type="submit"
                           variant="outline"
-                          size="sm"
                           className="h-7 px-2 text-xs text-gray-400 border-gray-500/30 hover:bg-gray-500/10 hover:text-gray-300"
                         >
                           Close
-                        </Button>
+                        </OtwButton>
                       </form>
                     )}
                   </div>
@@ -204,14 +202,14 @@ function SupportErrorState({ error }: { error: unknown }) {
       <div className="text-xs text-white/40 mt-2">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
-      <Button 
+      <OtwButton 
         onClick={() => window.location.reload()} 
         variant="outline"
         size="sm"
         className="mt-4"
       >
         Retry
-      </Button>
+      </OtwButton>
     </OtwCard>
   );
 }

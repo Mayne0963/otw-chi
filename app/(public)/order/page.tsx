@@ -3,15 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { AddressSearch } from "@/components/ui/address-search";
-import { ArrowRight, CheckCircle2, CreditCard, ExternalLink, MapPin, Package, Upload, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, CreditCard, ExternalLink, MapPin, Package, Upload, X, Loader2 } from "lucide-react";
 import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
 import { parseReceiptText, type ReceiptItem } from "@/lib/receipts/parse";
+import OtwPageShell from "@/components/ui/otw/OtwPageShell";
+import OtwCard from "@/components/ui/otw/OtwCard";
+import OtwButton from "@/components/ui/otw/OtwButton";
+import OtwStatPill from "@/components/ui/otw/OtwStatPill";
 
 const SERVICE_LABELS: Record<string, string> = {
   FOOD: "Food Pickup",
@@ -250,18 +252,6 @@ export default function OrderPage() {
       controller.abort();
     };
   }, [pickupAddress, dropoffAddress, serviceType]);
-
-  // Effect to reset payment state when service type changes - REMOVED to allow payment for all types
-  // useEffect(() => {
-  //   if (serviceType !== "FOOD") {
-  //     setStep("details");
-  //     setFeePaid(false);
-  //     setDeliveryCheckoutSessionId(null);
-  //     setCouponCode("");
-  //     setDiscountCents(0);
-  //     setDeliveryEstimateError(null);
-  //   }
-  // }, [serviceType]);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -945,10 +935,10 @@ export default function OrderPage() {
   }[step];
 
   return (
-    <div className="otw-container otw-section min-h-[75vh] flex flex-col items-center justify-center">
+    <OtwPageShell className="flex flex-col items-center justify-center min-h-[75vh]">
       <div className="w-full max-w-4xl space-y-8">
         <div className="text-center space-y-3">
-          <span className="otw-pill">Customer Request</span>
+          <OtwStatPill tone="gold">Customer Request</OtwStatPill>
           <h1 className="text-4xl font-semibold tracking-tight">
             Request a <span className="text-secondary">Delivery</span>
           </h1>
@@ -956,14 +946,14 @@ export default function OrderPage() {
         </div>
 
         <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-          <Badge variant="outline" className="border-border/70 bg-muted/40 text-muted-foreground">
+          <OtwStatPill tone="neutral">
             {SERVICE_LABELS[serviceType] || serviceType}
-          </Badge>
+          </OtwStatPill>
           <span>•</span>
           <span className="text-muted-foreground">{stepLabel}</span>
         </div>
 
-        <div className="otw-card p-6 sm:p-8 space-y-6">
+        <OtwCard className="p-6 sm:p-8 space-y-6">
           {step === "details" && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1051,13 +1041,14 @@ export default function OrderPage() {
               </div>
 
               <div className="pt-2">
-                <Button
+                <OtwButton
                   onClick={goToNextStep}
                   className="w-full"
                   disabled={loading || !pickupAddress || !dropoffAddress}
                 >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Continue <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                </OtwButton>
               </div>
             </div>
           )}
@@ -1066,7 +1057,7 @@ export default function OrderPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">Food pickup flow</div>
-                <Badge variant="secondary">Receipt required</Badge>
+                <span className="inline-flex items-center rounded-full border border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 px-2.5 py-0.5 text-xs font-semibold transition-colors">Receipt required</span>
               </div>
               {detailSummary}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1087,9 +1078,9 @@ export default function OrderPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button
+                <OtwButton
                   type="button"
-                  variant="secondary"
+                  variant="outline"
                   className="gap-2"
                   disabled={!restaurantWebsite}
                   onClick={() => {
@@ -1097,21 +1088,21 @@ export default function OrderPage() {
                   }}
                 >
                   Open restaurant site <ExternalLink className="h-4 w-4" />
-                </Button>
-                <Button
+                </OtwButton>
+                <OtwButton
                   onClick={() => setStep("receipt")}
                   className="gap-2"
                   disabled={!pickupAddress || !dropoffAddress}
                 >
                   Upload receipt <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button
+                </OtwButton>
+                <OtwButton
                   onClick={() => setStep("details")}
                   variant="ghost"
                   className="text-muted-foreground hover:text-foreground"
                 >
                   Back to details
-                </Button>
+                </OtwButton>
               </div>
             </div>
           )}
@@ -1135,18 +1126,18 @@ export default function OrderPage() {
                   />
                 </label>
                 {receiptFile && (
-                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={resetReceipt}>
+                  <OtwButton variant="ghost" size="sm" className="text-muted-foreground" onClick={resetReceipt}>
                     <X className="mr-1 h-4 w-4" />Clear
-                  </Button>
+                  </OtwButton>
                 )}
-                <Button
+                <OtwButton
                   onClick={analyzeReceipt}
                   disabled={!receiptFile || analysisLoading}
                   className="gap-2"
-                  isLoading={analysisLoading}
                 >
+                  {analysisLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Run AI receipt check
-                </Button>
+                </OtwButton>
               </div>
 
               {analysisError && <p className="text-sm text-red-400">{analysisError}</p>}
@@ -1179,10 +1170,10 @@ export default function OrderPage() {
                 }
               />
             </div>
-            <Badge variant="success" className="flex items-center gap-1">
+            <span className="inline-flex items-center rounded-full border border-transparent bg-green-500/20 text-green-400 px-2.5 py-0.5 text-xs font-semibold transition-colors gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" />
               {(receiptAnalysis.authenticityScore * 100).toFixed(0)}% real
-            </Badge>
+            </span>
           </div>
           <div>
               <div className="text-xs text-muted-foreground mb-1">Pickup location on receipt</div>
@@ -1197,9 +1188,9 @@ export default function OrderPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-muted-foreground">Items</div>
-                      <Button variant="outline" size="sm" onClick={addReceiptItem}>
+                      <OtwButton variant="outline" size="sm" onClick={addReceiptItem}>
                         Add item
-                      </Button>
+                      </OtwButton>
                     </div>
                     <div className="space-y-3">
                       {receiptAnalysis.items.map((item, idx) => (
@@ -1239,20 +1230,20 @@ export default function OrderPage() {
               )}
 
               <div className="flex flex-wrap gap-3 pt-2">
-                <Button
+                <OtwButton
                   onClick={() => setStep("review")}
                   className="gap-2"
                   disabled={!receiptAnalysis}
                 >
                   Continue to review <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button
+                </OtwButton>
+                <OtwButton
                   onClick={() => setStep("restaurant")}
                   variant="ghost"
                   className="text-muted-foreground hover:text-foreground"
                 >
                   Back to restaurant
-                </Button>
+                </OtwButton>
               </div>
             </div>
           )}
@@ -1287,9 +1278,9 @@ export default function OrderPage() {
                         </a>
                       )}
                     </div>
-                    <Badge variant="outline">
+                    <OtwStatPill tone="neutral">
                       Checkout total {deliveryFeeReady ? formatCurrency(orderTotalCents) : "Pending estimate"}
-                    </Badge>
+                    </OtwStatPill>
                   </div>
                 )}
 
@@ -1344,14 +1335,14 @@ export default function OrderPage() {
                       className="flex-1 min-w-[200px]"
                       disabled={feePaid}
                     />
-                    <Button
+                    <OtwButton
                       type="button"
                       variant="outline"
                       onClick={handleApplyCoupon}
                       disabled={feePaid || couponApplying || !couponCode.trim()}
                     >
                       Apply
-                    </Button>
+                    </OtwButton>
                   </div>
                   <div className="text-xs text-muted-foreground">Applies to delivery {requiresReceipt ? "+ receipt total" : "fee"}.</div>
                 </div>
@@ -1372,12 +1363,12 @@ export default function OrderPage() {
                 )}
 
                 <div className="flex flex-wrap gap-3">
-                  <Button
+                  <OtwButton
                     onClick={handlePayDeliveryFee}
                     disabled={paymentProcessing || feePaid || !deliveryFeeReady}
                     className="gap-2"
-                    isLoading={paymentProcessing}
                   >
+                    {paymentProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {feePaid ? (
                       <>
                         <CheckCircle2 className="h-4 w-4" /> Payment ready
@@ -1390,44 +1381,44 @@ export default function OrderPage() {
                         <CreditCard className="h-4 w-4" />
                       </>
                     )}
-                  </Button>
+                  </OtwButton>
                   {requiresReceipt && (
-                    <Button
+                    <OtwButton
                       variant="outline"
                       onClick={() => setStep("receipt")}
                     >
                       Edit receipt
-                    </Button>
+                    </OtwButton>
                   )}
                 </div>
               </div>
 
               <div className="space-y-3 pt-2">
-                <Button
+                <OtwButton
                   onClick={handleSubmit}
                   className="w-full"
                   disabled={loading || (requiresReceipt && (!receiptAnalysis || !feePaid))}
-                  isLoading={loading}
                 >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Place Order
-                </Button>
-                <Button
+                </OtwButton>
+                <OtwButton
                   onClick={() => setStep(requiresReceipt ? "receipt" : "details")}
                   variant="ghost"
                   className="w-full text-muted-foreground hover:text-foreground"
                   disabled={loading}
                 >
                   Edit Details
-                </Button>
+                </OtwButton>
               </div>
             </div>
           )}
-        </div>
+        </OtwCard>
 
         <p className="text-center text-xs text-muted-foreground">
           By proceeding, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
-    </div>
+    </OtwPageShell>
   );
 }

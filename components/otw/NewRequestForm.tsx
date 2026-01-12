@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { createRequestAction } from "@/app/actions/request"
-import { Button } from "@/components/ui/button"
+import OtwButton from "@/components/ui/otw/OtwButton"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { AddressSearch } from "@/components/ui/address-search"
@@ -286,21 +286,21 @@ export function NewRequestForm() {
 
           <div className="pt-2">
             {step === "form" ? (
-              <Button
+              <OtwButton
                 type="button"
                 onClick={getEstimate}
-                variant="default"
+                variant="gold"
                 size="lg"
                 className="w-full font-bold shadow-otwGlow"
                 disabled={loading || isPending || !pickupAddress || !dropoffAddress}
               >
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Get Estimate"}
-              </Button>
+              </OtwButton>
             ) : (
               <div className="space-y-3">
-                <Button
+                <OtwButton
                   type="submit"
-                  variant="default"
+                  variant="gold"
                   size="lg"
                   className="w-full font-bold shadow-otwGlow"
                   disabled={loading || isPending}
@@ -312,8 +312,8 @@ export function NewRequestForm() {
                       Confirm & Submit <ArrowRight className="h-4 w-4" />
                     </span>
                   )}
-                </Button>
-                <Button
+                </OtwButton>
+                <OtwButton
                   type="button"
                   onClick={() => setStep("form")}
                   variant="ghost"
@@ -321,7 +321,7 @@ export function NewRequestForm() {
                   disabled={loading || isPending}
                 >
                   Edit Details
-                </Button>
+                </OtwButton>
               </div>
             )}
           </div>

@@ -1,8 +1,8 @@
+import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
-import { Button } from '@/components/ui/button';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
@@ -49,9 +49,9 @@ export default async function AdminFranchiseApplicationsPage() {
           title="Franchise Applications"
           subtitle="Review incoming franchise applications."
         />
-        <Button asChild variant="outline" size="sm">
-          <a href="/api/admin/franchise-applications/export">Export CSV</a>
-        </Button>
+        <OtwButton as="a" href="/api/admin/franchise-applications/export" variant="outline" className="h-8 text-xs">
+          Export CSV
+        </OtwButton>
       </div>
 
       <OtwCard className="mt-3 p-6">

@@ -2,6 +2,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -263,12 +264,14 @@ export default async function AdminCustomerDetailPage({
                       {req.assignedDriver?.user?.name || 'Unassigned'}
                     </td>
                     <td className="px-4 py-3">
-                      <Link 
+                      <OtwButton 
+                        as="a"
                         href={`/admin/requests/${req.id}`}
-                        className="text-otwGold hover:underline"
+                        variant="ghost"
+                        className="text-otwGold hover:underline h-auto p-0"
                       >
                         View
-                      </Link>
+                      </OtwButton>
                     </td>
                   </tr>
                 ))}

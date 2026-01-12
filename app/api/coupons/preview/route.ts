@@ -56,11 +56,7 @@ export async function POST(req: Request) {
     });
 
     const promo = promos.data[0];
-    const promoCoupon = (promo as any)?.coupon as
-      | Stripe.Coupon
-      | string
-      | null
-      | undefined;
+    const promoCoupon = (promo as unknown as { coupon?: Stripe.Coupon | string })?.coupon;
     if (!promo || !promoCoupon) {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }

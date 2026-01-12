@@ -1,6 +1,6 @@
 import { Check, Compass, Package, Shield, Zap } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import OtwButton from '@/components/ui/otw/OtwButton';
+import OtwCard from '@/components/ui/otw/OtwCard';
 
 const VALUE_CARDS = [
   {
@@ -62,12 +62,12 @@ export default function AboutPage() {
             reliability, communication, and speed so every delivery feels intentional.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button asChild className="bg-otwGold text-otwBlack hover:bg-otwGold/90">
-              <Link href="/order">Order Now</Link>
-            </Button>
-            <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
-              <Link href="/driver/apply">Become a Driver</Link>
-            </Button>
+            <OtwButton as="a" href="/order" variant="gold">
+              Order Now
+            </OtwButton>
+            <OtwButton as="a" href="/driver/apply" variant="outline">
+              Become a Driver
+            </OtwButton>
           </div>
         </div>
       </section>
@@ -89,8 +89,8 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-        <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-6">
-          <h3 className="text-xl font-semibold text-otwOffWhite">Fast facts</h3>
+        <OtwCard className="bg-white/5">
+          <h3 className="text-xl font-semibold text-otwOffWhite mb-4">Fast facts</h3>
           <div className="space-y-4 text-sm text-white/70">
             <div className="flex items-center justify-between">
               <span>Average dispatch time</span>
@@ -105,7 +105,7 @@ export default function AboutPage() {
               <span className="text-otwGold font-semibold">Real-time</span>
             </div>
           </div>
-        </div>
+        </OtwCard>
       </section>
 
       <section className="space-y-6">
@@ -114,32 +114,34 @@ export default function AboutPage() {
           {VALUE_CARDS.map((value) => {
             const Icon = value.icon;
             return (
-              <div key={value.title} className="rounded-2xl border border-white/10 bg-black/40 p-6 space-y-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-otwGold/15 text-otwGold">
-                  <Icon className="h-5 w-5" />
+              <OtwCard key={value.title} className="bg-black/40">
+                <div className="space-y-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-otwGold/15 text-otwGold">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-otwOffWhite">{value.title}</h3>
+                  <p className="text-sm text-white/70">{value.description}</p>
                 </div>
-                <h3 className="text-xl font-semibold text-otwOffWhite">{value.title}</h3>
-                <p className="text-sm text-white/70">{value.description}</p>
-              </div>
+              </OtwCard>
             );
           })}
         </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] items-start">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+        <OtwCard className="bg-white/5">
           <h3 className="text-xl font-semibold text-otwOffWhite">How it works</h3>
           <p className="text-sm text-white/60 mt-2">
             A quick look at our concierge flow, optimized for clear handoffs.
           </p>
-        </div>
+        </OtwCard>
         <div className="grid gap-4">
           {TIMELINE.map((step) => (
-            <div key={step.step} className="rounded-2xl border border-white/10 bg-black/40 p-5">
+            <OtwCard key={step.step} className="bg-black/40">
               <div className="text-xs uppercase tracking-[0.2em] text-otwGold">{step.step}</div>
               <div className="mt-2 text-lg font-semibold text-otwOffWhite">{step.title}</div>
               <div className="mt-1 text-sm text-white/70">{step.body}</div>
-            </div>
+            </OtwCard>
           ))}
         </div>
       </section>

@@ -4,6 +4,7 @@ import {
   buildWaypointsSequenceUrl,
   parseHereSequenceToOtw,
   safeFetchJson,
+  type HereSequenceResponse,
 } from "@/lib/here";
 import { requireHereApiKey } from "@/lib/navigation/hereEnv";
 import { rateLimit } from "@/lib/rateLimit";
@@ -47,14 +48,14 @@ export async function POST(request: Request) {
       improveFor,
     });
 
-    const data = await safeFetchJson(url, {
+    const data = await safeFetchJson<HereSequenceResponse>(url, {
       headers: {
         Origin: new URL(request.url).origin,
         Referer: `${new URL(request.url).origin}/`,
       },
     });
 
-    const parsed = parseHereSequenceToOtw(data as any, new Set(stops.map((s) => s.id)));
+    const parsed = parseHereSequenceToOtw(data, new Set(stops.map((s) => s.id)));
     return NextResponse.json(parsed);
   } catch (error) {
     if (error instanceof z.ZodError) {

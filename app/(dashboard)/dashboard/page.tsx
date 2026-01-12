@@ -1,12 +1,13 @@
-import { PageHeader } from '@/components/ui/page-header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
+import OtwPageShell from '@/components/ui/otw/OtwPageShell';
+import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
+import OtwCard from '@/components/ui/otw/OtwCard';
+import OtwButton from '@/components/ui/otw/OtwButton';
+import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { syncUserOnDashboard } from '@/lib/user-sync';
 import { getPrisma } from '@/lib/db';
 import { getActiveSubscription, getPlanCodeFromSubscription, getMembershipBenefits } from '@/lib/membership';
-import { LayoutDashboard, Wallet, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Wallet, CreditCard, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -38,8 +39,8 @@ export default async function DashboardPage() {
     });
 
     const newReq = await prisma.deliveryRequest.findFirst({
-        where: { userId: user.id, status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED'] } },
-        orderBy: { createdAt: 'desc' },
+      where: { userId: user.id, status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED'] } },
+      orderBy: { createdAt: 'desc' },
     });
 
     // Determine which is more recent
@@ -62,102 +63,133 @@ export default async function DashboardPage() {
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
-        <EmptyState
-          title="Sign in to view your dashboard"
-          description="Access requests, membership and TIREM."
-          action={{ label: "Sign In", href: "/sign-in" }}
-        />
-      </div>
+      <OtwPageShell>
+        <OtwSectionHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
+        <OtwCard className="mt-3">
+          <OtwEmptyState
+            title="Sign in to view your dashboard"
+            subtitle="Access requests, membership and TIREM."
+            actionLabel="Sign In"
+            actionHref="/sign-in"
+          />
+        </OtwCard>
+      </OtwPageShell>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
+    <OtwPageShell>
+      <OtwSectionHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
       
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-3 gap-6 mt-6">
         {/* Compliance Alert */}
         {!user.dob && (
           <div className="md:col-span-3">
-            <Card className="border-l-4 border-l-red-500 bg-red-900/10 border-t-0 border-r-0 border-b-0">
-              <CardContent className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4">
+            <OtwCard className="border-l-4 border-l-red-500 bg-red-900/10 border-t-0 border-r-0 border-b-0 p-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="font-bold text-red-200">Profile Incomplete</div>
                   <div className="text-sm text-white/70">We need your Date of Birth to comply with age regulations.</div>
                 </div>
-                <Button asChild variant="destructive" size="sm">
-                  <Link href="/settings">Update Profile</Link>
-                </Button>
-              </CardContent>
-            </Card>
+                <OtwButton as="a" href="/settings" variant="red" size="sm">
+                  Update Profile
+                </OtwButton>
+              </div>
+            </OtwCard>
           </div>
         )}
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-otwGold flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" /> Active Request
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activeRequest ? (
-              <div className="text-sm space-y-2">
-                <div className="font-semibold text-white">{activeRequest.status}</div>
-                <div className="text-white/70">{activeRequest.pickup} → {activeRequest.dropoff}</div>
-                <Button asChild variant="outline" size="sm" className="w-full mt-2">
-                  <Link href={`/requests/${activeRequest.id}`}>View Details</Link>
-                </Button>
+        <OtwCard className="p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <LayoutDashboard className="h-4 w-4 text-otwGold" />
+            <h3 className="text-sm font-medium text-otwGold">Active Request</h3>
+          </div>
+          {activeRequest ? (
+            <div className="space-y-4">
+              <div>
+                <div className="text-2xl font-bold text-white capitalize">{activeRequest.status.toLowerCase()}</div>
+                <div className="text-sm text-white/60 truncate mt-1">To: {activeRequest.dropoff}</div>
               </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-xs text-white/50 mb-3">No active requests.</p>
-                <Button asChild variant="secondary" size="sm" className="w-full">
-                  <Link href="/order">New Request</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-otwGold flex items-center gap-2">
-              <CreditCard className="h-4 w-4" /> Membership
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-2xl font-bold">{membershipTier}</div>
-            <div className="space-y-1">
-              {membershipBenefits.discount > 0 && (
-                <div className="text-xs text-white/70">Discount: {Math.round(membershipBenefits.discount * 100)}%</div>
-              )}
-              {membershipBenefits.nipMultiplier > 1 && (
-                <div className="text-xs text-white/70">Multiplier: {membershipBenefits.nipMultiplier}x</div>
-              )}
+              <OtwButton as="a" href={`/track/${activeRequest.id}`} variant="gold" className="w-full">
+                Track Order
+              </OtwButton>
             </div>
-            <Button asChild variant="outline" size="sm" className="w-full mt-2">
-              <Link href="/membership/manage">Manage Plan</Link>
-            </Button>
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-sm text-white/50">No active requests</div>
+              <OtwButton as="a" href="/order" variant="outline" className="w-full">
+                New Order
+              </OtwButton>
+            </div>
+          )}
+        </OtwCard>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-otwGold flex items-center gap-2">
-              <Wallet className="h-4 w-4" /> TIREM Balance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{nipBalance.toLocaleString()}</div>
-            <p className="text-xs text-white/50 mb-3">Available Rewards</p>
-            <Button asChild variant="outline" size="sm" className="w-full">
-              <Link href="/wallet/nip">View Wallet</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <OtwCard className="p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Wallet className="h-4 w-4 text-otwGold" />
+            <h3 className="text-sm font-medium text-otwGold">TIREM Balance</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="text-2xl font-bold text-white">{nipBalance.toLocaleString()}</div>
+              <div className="text-sm text-white/60 mt-1">Tokens Available</div>
+            </div>
+            <OtwButton as="a" href="/wallet/nip" variant="outline" className="w-full">
+              Manage Wallet
+            </OtwButton>
+          </div>
+        </OtwCard>
+
+        <OtwCard className="p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <CreditCard className="h-4 w-4 text-otwGold" />
+            <h3 className="text-sm font-medium text-otwGold">Membership</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="text-2xl font-bold text-white">{membershipTier}</div>
+              <div className="text-sm text-white/60 mt-1">Current Plan</div>
+            </div>
+            <OtwButton as="a" href="/membership" variant="outline" className="w-full">
+              View Benefits
+            </OtwButton>
+          </div>
+        </OtwCard>
       </div>
-    </div>
+
+      <div className="mt-6">
+        <OtwCard className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link href="/order" className="flex flex-col items-center justify-center p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5 hover:border-otwGold/50 group">
+              <div className="h-10 w-10 rounded-full bg-otwGold/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <ArrowRight className="h-5 w-5 text-otwGold" />
+              </div>
+              <span className="text-sm font-medium text-white">Order Ride</span>
+            </Link>
+            <Link href="/order" className="flex flex-col items-center justify-center p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5 hover:border-otwGold/50 group">
+              <div className="h-10 w-10 rounded-full bg-otwGold/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <ArrowRight className="h-5 w-5 text-otwGold" />
+              </div>
+              <span className="text-sm font-medium text-white">Delivery</span>
+            </Link>
+            <Link href="/membership" className="flex flex-col items-center justify-center p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5 hover:border-otwGold/50 group">
+              <div className="h-10 w-10 rounded-full bg-otwGold/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <CreditCard className="h-5 w-5 text-otwGold" />
+              </div>
+              <span className="text-sm font-medium text-white">Membership</span>
+            </Link>
+            <Link href="/support" className="flex flex-col items-center justify-center p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5 hover:border-otwGold/50 group">
+              <div className="h-10 w-10 rounded-full bg-otwGold/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <LayoutDashboard className="h-5 w-5 text-otwGold" />
+              </div>
+              <span className="text-sm font-medium text-white">Support</span>
+            </Link>
+          </div>
+        </OtwCard>
+      </div>
+    </OtwPageShell>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import OtwButton from "@/components/ui/otw/OtwButton"
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 import { Menu } from "lucide-react"
 import {
@@ -60,35 +60,35 @@ export function MarketingNav() {
 
         <div className="flex items-center gap-3">
           <SignedIn>
-            <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-            <Button asChild size="sm" className="hidden sm:flex">
-              <Link href="/order">Order Now</Link>
-            </Button>
+            <OtwButton as="a" href="/dashboard" variant="ghost" size="sm" className="hidden sm:flex">
+              Dashboard
+            </OtwButton>
+            <OtwButton as="a" href="/order" size="sm" className="hidden sm:flex">
+              Order Now
+            </OtwButton>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           
           <SignedOut>
-            <Button asChild variant="ghost" size="sm" className="hidden md:flex">
-              <Link href="/sign-in">Sign In</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm" className="hidden md:flex">
-              <Link href="/order">Order Now</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/sign-up">Get Started</Link>
-            </Button>
+            <OtwButton as="a" href="/sign-in" variant="ghost" size="sm" className="hidden md:flex">
+              Sign In
+            </OtwButton>
+            <OtwButton as="a" href="/order" variant="outline" size="sm" className="hidden md:flex">
+              Order Now
+            </OtwButton>
+            <OtwButton as="a" href="/sign-up" size="sm">
+              Get Started
+            </OtwButton>
           </SignedOut>
 
           {/* Mobile Menu */}
           <div className="md:hidden ml-2">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <OtwButton variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle menu</span>
-                </Button>
+                </OtwButton>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] border-l border-border/70 bg-card/95 backdrop-blur-xl text-foreground sm:w-[350px]">
                 <SheetHeader className="text-left border-b border-border/70 pb-4 mb-4">
@@ -120,24 +120,24 @@ export function MarketingNav() {
                   
                   <div className="flex flex-col gap-3 pt-4 border-t border-border/70">
                     <SheetClose asChild>
-                      <Button asChild className="w-full">
-                        <Link href="/order">Order Now</Link>
-                      </Button>
+                      <OtwButton as="a" href="/order" className="w-full">
+                        Order Now
+                      </OtwButton>
                     </SheetClose>
                     
                     <SignedOut>
                       <SheetClose asChild>
-                        <Button asChild variant="outline" className="w-full">
-                          <Link href="/sign-in">Sign In</Link>
-                        </Button>
+                        <OtwButton as="a" href="/sign-in" variant="outline" className="w-full">
+                          Sign In
+                        </OtwButton>
                       </SheetClose>
                     </SignedOut>
                     
                     <SignedIn>
                       <SheetClose asChild>
-                        <Button asChild variant="outline" className="w-full">
-                          <Link href="/dashboard">Dashboard</Link>
-                        </Button>
+                        <OtwButton as="a" href="/dashboard" variant="outline" className="w-full">
+                          Dashboard
+                        </OtwButton>
                       </SheetClose>
                     </SignedIn>
                   </div>

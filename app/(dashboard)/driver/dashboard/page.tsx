@@ -1,8 +1,7 @@
-import { getCurrentUser } from '@/lib/auth/roles';
-import { getPrisma } from '@/lib/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import OtwPageShell from '@/components/ui/otw/OtwPageShell';
+import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
+import OtwCard from '@/components/ui/otw/OtwCard';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import DriverLiveMap from '@/components/otw/DriverLiveMap';
 import { validateAddress } from '@/lib/geocoding';
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
@@ -10,6 +9,9 @@ import { RequestStatus } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import type { OtwLocation } from '@/lib/otw/otwTypes';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
+import { getCurrentUser } from '@/lib/auth/roles';
+import { getPrisma } from '@/lib/db';
+import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -30,7 +32,14 @@ export default async function DriverDashboardPage() {
   });
 
   if (!driverProfile) {
-    return <div className="p-8 text-center text-xl text-red-500">Driver profile not found. Please contact support.</div>;
+    return (
+        <OtwPageShell>
+            <OtwSectionHeader title="Driver Dashboard" subtitle="Access denied." />
+            <OtwCard className="mt-4">
+                <div className="p-8 text-center text-xl text-red-400">Driver profile not found. Please contact support.</div>
+            </OtwCard>
+        </OtwPageShell>
+    );
   }
 
   const assignedRequests = await prisma.deliveryRequest.findMany({
@@ -218,18 +227,18 @@ export default async function DriverDashboardPage() {
   }
 
   return (
-      <div className="otw-container otw-section space-y-8">
-        <h1 className="text-3xl font-semibold text-foreground">Driver Dashboard</h1>
+      <OtwPageShell>
+        <OtwSectionHeader title="Driver Dashboard" subtitle="Manage your route and assignments." />
 
-        <section>
-            <h2 className="text-2xl font-semibold mb-4 text-foreground">Live Map</h2>
-            <Card className="text-foreground">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">
+        <section className="mt-6">
+            <h2 className="text-xl font-semibold mb-4 text-white">Live Map</h2>
+            <OtwCard>
+                <div className="p-4 border-b border-white/10">
+                    <h3 className="text-lg font-medium text-white">
                       {activeRequest ? 'Active Route Overview' : 'No active route'}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
+                    </h3>
+                </div>
+                <div className="p-0 overflow-hidden h-[500px]">
                     {activeRequest ? (
                       <DriverLiveMap
                           key={activeRequest.id}
@@ -243,29 +252,27 @@ export default async function DriverDashboardPage() {
                           initialDriverLocation={driverLocations[0] ?? null}
                       />
                     ) : (
-                      <div className="rounded-lg border border-border/70 bg-muted/40 p-4 text-sm text-muted-foreground">
+                      <div className="h-full flex items-center justify-center bg-white/5 text-sm text-white/50">
                         No active delivery assigned. Accept a request to start navigation.
                       </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </OtwCard>
         </section>
         
         {/* Active Jobs */}
-        <section>
-            <h2 className="text-2xl font-semibold mb-4 text-foreground">My Active Jobs</h2>
+        <section className="mt-8">
+            <h2 className="text-xl font-semibold mb-4 text-white">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...assignedRequests, ...assignedLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
-                    <Card key={req.id} className="text-foreground border-otwGold/20 bg-otwGold/5">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex justify-between items-center text-lg">
-                                <span>{req.serviceType}</span>
-                                <Badge variant={req.isLegacy ? "secondary" : "default"} className={req.isLegacy ? "opacity-70" : "bg-otwGold text-black"}>
-                                    {req.status.replace('_', ' ')}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
+                    <OtwCard key={req.id} className="border-otwGold/30 bg-otwGold/10">
+                        <div className="p-4 border-b border-otwGold/20 flex justify-between items-center">
+                            <span className="font-medium text-otwGold">{req.serviceType}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${req.isLegacy ? "bg-white/10 text-white/70" : "bg-otwGold text-black"}`}>
+                                {req.status.replace('_', ' ')}
+                            </span>
+                        </div>
+                        <div className="p-4">
                             <div className="space-y-4 text-sm mb-6">
                                 <div className="grid grid-cols-[min-content_1fr] gap-x-3 gap-y-1">
                                     <div className="flex flex-col items-center pt-1">
@@ -274,7 +281,7 @@ export default async function DriverDashboardPage() {
                                     </div>
                                     <div>
                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Pickup</span>
-                                        <p className="text-base leading-snug">{req.pickupAddress || req.pickup}</p>
+                                        <p className="text-base leading-snug text-white">{req.pickupAddress || req.pickup}</p>
                                     </div>
                                     
                                     <div className="flex flex-col items-center pb-1">
@@ -282,7 +289,7 @@ export default async function DriverDashboardPage() {
                                     </div>
                                     <div>
                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Dropoff</span>
-                                        <p className="text-base leading-snug">{req.dropoffAddress || req.dropoff}</p>
+                                        <p className="text-base leading-snug text-white">{req.dropoffAddress || req.dropoff}</p>
                                     </div>
                                 </div>
 
@@ -298,90 +305,100 @@ export default async function DriverDashboardPage() {
                                     <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="PICKED_UP" />
-                                        <Button type="submit" size="lg" className="w-full bg-otwGold text-black hover:bg-otwGold/90 font-semibold text-base h-12">
+                                        <OtwButton type="submit" className="w-full" variant="gold">
                                             Confirm Pickup
-                                        </Button>
+                                        </OtwButton>
                                     </form>
                                 )}
+                                
                                 {(req.status === 'PICKED_UP' || req.status === RequestStatus.PICKED_UP) && (
                                     <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name={req.isLegacy ? "status" : "status"} value={req.isLegacy ? RequestStatus.DELIVERED : "EN_ROUTE"} />
-                                        <Button type="submit" size="lg" className="w-full bg-otwGold text-black hover:bg-otwGold/90 font-semibold text-base h-12">
-                                            {req.isLegacy ? "Complete Delivery" : "Start Delivery"}
-                                        </Button>
+                                        <input type="hidden" name="status" value="DELIVERED" />
+                                        <OtwButton type="submit" className="w-full" variant="gold">
+                                            Complete Delivery
+                                        </OtwButton>
                                     </form>
                                 )}
+                                
                                 {req.status === 'EN_ROUTE' && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value="DELIVERED" />   
-                                        <Button type="submit" size="lg" className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold text-base h-12">
+                                        <input type="hidden" name="status" value="DELIVERED" />
+                                        <OtwButton type="submit" className="w-full" variant="gold">
                                             Complete Delivery
-                                        </Button>
+                                        </OtwButton>
                                     </form>
                                 )}
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </OtwCard>
                 ))}
-                {assignedRequests.length === 0 && assignedLegacyRequests.length === 0 && (
-                    <p className="text-muted-foreground col-span-full py-12 text-center border border-dashed border-border/40 bg-card/20 rounded-xl">
-                        No active jobs. Check available jobs below.
-                    </p>
+                
+                {[...assignedRequests, ...assignedLegacyRequests].length === 0 && (
+                    <div className="col-span-full">
+                        <OtwEmptyState
+                            title="No Active Jobs"
+                            subtitle="You don't have any assigned jobs at the moment."
+                        />
+                    </div>
                 )}
             </div>
         </section>
 
-        {/* Available Jobs */}
-        <section>
-            <h2 className="text-2xl font-semibold mb-4 text-foreground">Available Jobs</h2>
+        {/* Available Requests */}
+        <section className="mt-8">
+            <h2 className="text-xl font-semibold mb-4 text-white">Available Requests</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...availableRequests, ...availableLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
-                    <Card key={req.id} className="text-foreground hover:bg-white/5 transition-colors">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="flex justify-between items-center text-lg">
-                                <span>{req.serviceType}</span>
-                                <Badge variant="outline" className="text-xs font-normal opacity-70">
-                                    {req.isLegacy ? 'LEGACY REQUEST' : 'NEW REQUEST'}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3 mb-6">
-                                <div className="flex items-start gap-3">
-                                    <div className="mt-1 h-1.5 w-1.5 rounded-full bg-otwGold shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium">{req.pickupAddress || req.pickup}</p>
-                                        <p className="text-xs text-white/40 mt-0.5">Pickup</p>
-                                    </div>
+                    <OtwCard key={req.id}>
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                            <span className="font-medium text-white">{req.serviceType}</span>
+                            <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-medium uppercase">New</span>
+                        </div>
+                        <div className="p-4">
+                            <div className="space-y-4 text-sm mb-6">
+                                <div>
+                                    <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Pickup</span>
+                                    <p className="text-base leading-snug text-white truncate">{req.pickupAddress || req.pickup}</p>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <div className="mt-1 h-1.5 w-1.5 rounded-full bg-white/40 shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium">{req.dropoffAddress || req.dropoff}</p>
-                                        <p className="text-xs text-white/40 mt-0.5">Dropoff</p>
-                                    </div>
+                                <div>
+                                    <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Dropoff</span>
+                                    <p className="text-base leading-snug text-white truncate">{req.dropoffAddress || req.dropoff}</p>
+                                </div>
+                                <div className="flex gap-4 pt-2">
+                                     <div>
+                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Distance</span>
+                                         <p className="text-lg font-bold text-white">{req.distance || '0'} mi</p>
+                                     </div>
+                                     <div>
+                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Est. Payout</span>
+                                         <p className="text-lg font-bold text-otwGold">${req.price || '0.00'}</p>
+                                     </div>
                                 </div>
                             </div>
                             
                             <form action={req.isLegacy ? acceptLegacyRequest : acceptRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />
                                 <input type="hidden" name="driverId" value={driverProfile.id} />
-                                <Button type="submit" variant="secondary" className="w-full h-10 border-white/10 hover:bg-white/10">
+                                <OtwButton type="submit" className="w-full" variant="outline">
                                     Accept Job
-                                </Button>
+                                </OtwButton>
                             </form>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </OtwCard>
                 ))}
-                {availableRequests.length === 0 && availableLegacyRequests.length === 0 && (
-                    <p className="text-muted-foreground col-span-full py-12 text-center border border-dashed border-border/40 bg-card/20 rounded-xl">
-                        No jobs available right now.
-                    </p>
-                )}
+
+                {[...availableRequests, ...availableLegacyRequests].length === 0 && (
+                     <div className="col-span-full">
+                         <OtwEmptyState
+                             title="No Available Requests"
+                             subtitle="Check back later for new delivery opportunities."
+                         />
+                     </div>
+                 )}
             </div>
         </section>
-      </div>
+      </OtwPageShell>
   );
 }

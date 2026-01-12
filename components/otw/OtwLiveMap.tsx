@@ -869,11 +869,10 @@ const OtwLiveMap = ({
     pois,
     markerView,
     navigationZoom,
-    activeDriverCoords?.[0],
-    activeDriverCoords?.[1],
-    routePulseAt,
-    viewChangeVersion,
-  ]);
+    activeDriverCoords,
+          routePulseAt,
+          viewChangeVersion,
+        ]);
 
   useEffect(() => {
     const map = mapRef.current;

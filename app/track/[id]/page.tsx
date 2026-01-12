@@ -1,13 +1,13 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MapPin, Route as RouteIcon, Clock, ArrowLeft } from "lucide-react";
+import { Route as RouteIcon, ArrowLeft, Clock, MapPin } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/roles";
 import { getPrisma } from "@/lib/db";
 import { validateAddress } from "@/lib/geocoding";
 import OtwLiveMap from "@/components/otw/OtwLiveMap";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import OtwPageShell from "@/components/ui/otw/OtwPageShell";
+import OtwSectionHeader from "@/components/ui/otw/OtwSectionHeader";
+import OtwCard from "@/components/ui/otw/OtwCard";
+import OtwButton from "@/components/ui/otw/OtwButton";
 import { formatDate } from "@/lib/utils";
 import type { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
 import type { OtwLocation } from "@/lib/otw/otwTypes";
@@ -43,17 +43,13 @@ export default async function TrackDetailPage({
   const record = delivery ?? request;
   if (!record) {
     return (
-      <div className="otw-container otw-section space-y-4">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon">
-            <Link href="/track">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div className="text-lg font-semibold">Tracking Not Found</div>
-        </div>
-        <p className="text-sm text-muted-foreground">We could not find a delivery or request with that ID.</p>
-      </div>
+      <OtwPageShell>
+        <OtwSectionHeader title="Tracking Not Found" subtitle="We could not find a delivery or request with that ID." />
+        <OtwButton as="a" href="/track" variant="ghost">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Tracking
+        </OtwButton>
+      </OtwPageShell>
     );
   }
 
@@ -66,27 +62,13 @@ export default async function TrackDetailPage({
 
   if (!isOwner && !isAssignedDriver && !isAdmin) {
     return (
-      <div className="otw-container otw-section space-y-4">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon">
-            <Link href="/track">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div className="text-lg font-semibold">Unauthorized</div>
+      <OtwPageShell>
+        <OtwSectionHeader title="Unauthorized" subtitle="You do not have permission to view this tracking page." />
+        <div className="flex gap-4 mt-6">
+          <OtwButton as="a" href="/dashboard" variant="outline">Go to dashboard</OtwButton>
+          <OtwButton as="a" href="/support" variant="ghost">Contact support</OtwButton>
         </div>
-        <p className="text-sm text-muted-foreground">
-          You do not have permission to view this tracking page.
-        </p>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/dashboard">Go to dashboard</Link>
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/support">Contact support</Link>
-          </Button>
-        </div>
-      </div>
+      </OtwPageShell>
     );
   }
 
@@ -141,126 +123,125 @@ export default async function TrackDetailPage({
       : [];
 
   return (
-    <div className="otw-container otw-section space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="icon">
-            <Link href="/track">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div>
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {isDelivery ? "Delivery" : "Request"}
-            </div>
-            <div className="text-xl font-semibold">
-              Tracking {record.id.slice(-6).toUpperCase()}
-            </div>
-          </div>
+    <OtwPageShell>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+           <OtwButton as="a" href="/track" variant="ghost" size="sm" className="mb-2 -ml-2">
+               <ArrowLeft className="h-4 w-4 mr-2" />
+               Back
+           </OtwButton>
+           <OtwSectionHeader 
+              title={`Tracking ${record.id.slice(-6).toUpperCase()}`} 
+              subtitle={isDelivery ? "Delivery Details" : "Request Details"} 
+           />
         </div>
-        <Badge variant="outline">{statusText}</Badge>
+        <span className="bg-white/10 text-white px-3 py-1 rounded-full text-sm font-medium border border-white/10 uppercase tracking-wide">
+            {statusText}
+        </span>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border-border/70 bg-card/70">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <RouteIcon className="h-4 w-4 text-secondary" />
-              Route preview
-            </CardTitle>
-            <CardDescription>Read-only view of your current trip.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {pickupLocation || dropoffLocation ? (
-              <OtwLiveMap
-                pickup={pickupLocation ?? undefined}
-                dropoff={dropoffLocation ?? undefined}
-                customer={dropoffLocation ?? undefined}
-                requestId={record.id}
-                jobStatus={statusText}
-                drivers={driverLocations}
-                focusDriverId={driverLocations[0]?.driverId}
-                useExternalRoutes
-              />
-            ) : (
-              <div className="rounded-lg border border-border/70 bg-muted/40 p-4 text-sm text-muted-foreground">
-                We need pickup and dropoff coordinates to show the map. This route will be displayed
-                once locations are available.
+        <div className="lg:col-span-2">
+            <OtwCard>
+              <div className="p-4 border-b border-white/10">
+                <h3 className="flex items-center gap-2 text-lg font-medium text-white">
+                  <RouteIcon className="h-4 w-4 text-otwGold" />
+                  Route preview
+                </h3>
+                <p className="text-sm text-white/50 mt-1">Read-only view of your current trip.</p>
               </div>
-            )}
-            {driverLocations.length === 0 && (
-              <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-xs text-muted-foreground">
-                Waiting for driver location updates. You’ll see live position once the driver starts sharing.
+              <div className="p-0 overflow-hidden">
+                {pickupLocation || dropoffLocation ? (
+                  <div className="h-[500px] w-full relative">
+                      <OtwLiveMap
+                        pickup={pickupLocation ?? undefined}
+                        dropoff={dropoffLocation ?? undefined}
+                        customer={dropoffLocation ?? undefined}
+                        requestId={record.id}
+                        jobStatus={statusText}
+                        drivers={driverLocations}
+                        focusDriverId={driverLocations[0]?.driverId}
+                        useExternalRoutes
+                      />
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-sm text-white/50 bg-white/5">
+                    We need pickup and dropoff coordinates to show the map. This route will be displayed
+                    once locations are available.
+                  </div>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+              {driverLocations.length === 0 && (pickupLocation || dropoffLocation) && (
+                  <div className="p-3 text-xs text-white/50 bg-otwGold/10 border-t border-otwGold/20 text-center">
+                    Waiting for driver location updates. You’ll see live position once the driver starts sharing.
+                  </div>
+                )}
+            </OtwCard>
+        </div>
 
         <div className="space-y-4">
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader>
-              <CardTitle>Status</CardTitle>
-              <CardDescription>Latest delivery snapshot.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+          <OtwCard>
+             <div className="p-4 border-b border-white/10 mb-4">
+                <h3 className="text-lg font-medium text-white">Status</h3>
+                <p className="text-sm text-white/50">Latest delivery snapshot.</p>
+             </div>
+             <div className="space-y-3 text-sm px-4 pb-4">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Current state</span>
-                <Badge variant="secondary">{statusText}</Badge>
+                <span className="text-white/70">Current state</span>
+                <span className="bg-white/10 text-white px-2 py-0.5 rounded text-xs font-medium uppercase">{statusText}</span>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2 text-white/70">
                 <Clock className="h-4 w-4" />
                 <span>Created {formatDate(record.createdAt)}</span>
               </div>
               {lastKnownAt && (
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-white/70">
                   <MapPin className="h-4 w-4" />
                   <span>Last update {formatDate(lastKnownAt)}</span>
                 </div>
               )}
               {driverLabel && (
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-white/70">
                   <span className="text-xs uppercase tracking-[0.2em]">Driver</span>
-                  <span className="text-foreground">{driverLabel}</span>
+                  <span className="text-white">{driverLabel}</span>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </OtwCard>
 
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader>
-              <CardTitle>Route</CardTitle>
-              <CardDescription>Addresses we have on file.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+          <OtwCard>
+            <div className="p-4 border-b border-white/10 mb-4">
+                <h3 className="text-lg font-medium text-white">Route</h3>
+                <p className="text-sm text-white/50">Addresses we have on file.</p>
+            </div>
+            <div className="space-y-3 text-sm px-4 pb-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pickup</div>
-                <div className="text-foreground">{pickupText}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-white/50">Pickup</div>
+                <div className="text-white">{pickupText}</div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Dropoff</div>
-                <div className="text-foreground">{dropoffText}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-white/50">Dropoff</div>
+                <div className="text-white">{dropoffText}</div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </OtwCard>
 
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-              <CardDescription>Need help? We’re here.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <Button asChild className="w-full">
-                <Link href={isDelivery ? `/order/${record.id}` : `/requests/${record.id}`}>
+          <OtwCard>
+            <div className="p-4 border-b border-white/10 mb-4">
+                <h3 className="text-lg font-medium text-white">Actions</h3>
+                <p className="text-sm text-white/50">Need help? We’re here.</p>
+            </div>
+            <div className="space-y-2 text-sm px-4 pb-4">
+              <OtwButton as="a" href={isDelivery ? `/order/${record.id}` : `/requests/${record.id}`} className="w-full">
                   View details
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/support">Contact support</Link>
-              </Button>
-            </CardContent>
-          </Card>
+              </OtwButton>
+              <OtwButton as="a" href="/support" variant="outline" className="w-full">
+                  Contact support
+              </OtwButton>
+            </div>
+          </OtwCard>
         </div>
       </div>
-    </div>
+    </OtwPageShell>
   );
 }

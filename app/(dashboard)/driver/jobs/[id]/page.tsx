@@ -1,8 +1,7 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
@@ -81,7 +80,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
             {canAccept && (
               <form action={acceptJobAction}>
                 <input type="hidden" name="id" value={req.id} />
-                <Button type="submit" variant="outline">Accept</Button>
+                <OtwButton type="submit" variant="outline">Accept</OtwButton>
               </form>
             )}
             {isAssignedToMe && (
@@ -90,21 +89,21 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
                   <form action={updateJobStatusAction}>
                     <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="PICKED_UP" />
-                    <Button type="submit" variant="outline">Picked Up</Button>
+                    <OtwButton type="submit" variant="outline">Picked Up</OtwButton>
                   </form>
                 )}
                 {req.status === 'PICKED_UP' && (
                   <form action={updateJobStatusAction}>
                     <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="DELIVERED" />
-                    <Button type="submit" variant="default">Delivered</Button>
+                    <OtwButton type="submit" variant="gold">Delivered</OtwButton>
                   </form>
                 )}
                 {req.status === 'DELIVERED' && (
                   <form action={updateJobStatusAction}>
                     <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="COMPLETED" />
-                    <Button type="submit">Complete</Button>
+                    <OtwButton type="submit" variant="gold">Complete</OtwButton>
                   </form>
                 )}
               </>
@@ -116,17 +115,15 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
           <div className="text-sm font-medium">Events</div>
            <ul className="mt-2 text-sm opacity-80 list-disc pl-5">
             {req.events
-              .sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime())
-              .map((ev: any) => (
+              .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+              .map((ev) => (
               <li key={ev.id}>{ev.type}{ev.message ? ` — ${ev.message}` : ''}</li>
             ))}
           </ul>
           <div className="mt-4 flex gap-2">
-            <Button asChild variant="outline">
-              <Link href={`/driver?jobId=${req.id}`}>
-                Open in Driver Map
-              </Link>
-            </Button>
+            <OtwButton as="a" href={`/driver?jobId=${req.id}`} variant="outline">
+              Open in Driver Map
+            </OtwButton>
           </div>
         </OtwCard>
       </div>

@@ -2,7 +2,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
-import { Button } from '@/components/ui/button';
+import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,7 +21,8 @@ export default async function AdminContactInboxPage() {
     },
   });
 
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const lastDayCount = await prisma.contactMessage.count({
     where: { createdAt: { gte: since } },
   });
@@ -33,9 +34,9 @@ export default async function AdminContactInboxPage() {
           title="Contact Messages"
           subtitle="Inbound contact form submissions."
         />
-        <Button asChild variant="outline" size="sm">
-          <a href="/api/admin/contact-messages/export">Export CSV</a>
-        </Button>
+        <OtwButton as="a" href="/api/admin/contact-messages/export" variant="outline" className="h-8 text-xs">
+          Export CSV
+        </OtwButton>
       </div>
 
       <OtwCard className="mt-3 p-6">
