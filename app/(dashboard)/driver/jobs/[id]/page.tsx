@@ -7,10 +7,13 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { acceptJobAction, updateJobStatusAction } from '@/app/actions/driver';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function DriverJobDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  noStore();
   const { id } = await params;
   const prisma = getPrisma();
   const user = await getCurrentUser();

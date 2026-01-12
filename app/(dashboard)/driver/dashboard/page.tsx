@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import DriverLiveMap from '@/components/otw/DriverLiveMap';
 import { validateAddress } from '@/lib/geocoding';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 import { RequestStatus } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import type { OtwLocation } from '@/lib/otw/otwTypes';
@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function DriverDashboardPage() {
+  noStore();
   const user = await getCurrentUser();
   if (!user) {
     redirect('/sign-in');
