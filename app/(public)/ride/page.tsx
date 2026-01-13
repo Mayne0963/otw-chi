@@ -4,18 +4,23 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { AddressSearch } from "@/components/ui/address-search";
-import { MapPin, Car, Loader2 } from "lucide-react";
+import { MapPin, Car, Loader2, Users, ArrowRight, ArrowLeft, CheckCircle2, CreditCard } from "lucide-react";
 import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
 import OtwCard from "@/components/ui/otw/OtwCard";
 import OtwButton from "@/components/ui/otw/OtwButton";
 import OtwStatPill from "@/components/ui/otw/OtwStatPill";
 import { useToast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
 
 const formatCurrency = (value: number | null | undefined) =>
   typeof value === "number" ? `$${(value / 100).toFixed(2)}` : "—";
 
 const SESSION_RIDE_DRAFT_KEY = "otw-ride-draft-cache-v1";
+
+type Step = "locations" | "options" | "review";
+
+type RideOption = "STANDARD" | "XL";
 
 function calculateMiles(a: GeocodedAddress, b: GeocodedAddress): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -36,9 +41,11 @@ export default function RidePage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
+  const [step, setStep] = useState<Step>("locations");
   const [loading, setLoading] = useState(false);
   const [pickupAddress, setPickupAddress] = useState<GeocodedAddress | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState<GeocodedAddress | null>(null);
+  const [rideOption, setRideOption] = useState<RideOption>("STANDARD");
   const [notes, setNotes] = useState("");
 
   const [rideFeeCents, setRideFeeCents] = useState(0);
@@ -144,6 +151,9 @@ export default function RidePage() {
         const fd = new FormData();
         fd.set("miles", String(miles));
         fd.set("serviceType", "RIDE");
+        // Adjust multiplier for XL if needed
+        const multiplier = rideOption === "XL" ? 1.5 : 1.0;
+        
         const estimateRes = await fetch("/api/otw/estimate", {
           method: "POST",
           body: fd,
@@ -156,11 +166,13 @@ export default function RidePage() {
         }
         
         const data = await estimateRes.json();
-        const fee = Number(data?.discountedPrice ?? data?.basePrice);
+        let fee = Number(data?.discountedPrice ?? data?.basePrice);
         
         if (!Number.isFinite(fee) || fee <= 0) {
           throw new Error("Invalid pricing response.");
         }
+
+        fee = fee * multiplier;
         
         if (!cancelled) {
           setRideFeeCents(Math.round(fee));
@@ -184,7 +196,7 @@ export default function RidePage() {
       cancelled = true;
       controller.abort();
     };
-  }, [pickupAddress, dropoffAddress]);
+  }, [pickupAddress, dropoffAddress, rideOption]);
 
   // Persist Draft
   function buildDraftPayload() {
@@ -195,7 +207,7 @@ export default function RidePage() {
       serviceType: "RIDE",
       pickupAddress: pickupAddress.formattedAddress,
       dropoffAddress: dropoffAddress.formattedAddress,
-      notes: notes.trim() || undefined,
+      notes: `${rideOption} Ride. ${notes}`.trim(),
       deliveryFeeCents: rideFeeCents > 0 ? rideFeeCents : undefined,
     };
   }
@@ -234,7 +246,7 @@ export default function RidePage() {
         window.clearTimeout(draftSaveTimeout.current);
       }
     };
-  }, [draftLoaded, isSignedIn, pickupAddress, dropoffAddress, notes, rideFeeCents]);
+  }, [draftLoaded, isSignedIn, pickupAddress, dropoffAddress, notes, rideFeeCents, rideOption]);
 
   const handleRequestRide = async () => {
     if (!isSignedIn) {
@@ -252,20 +264,16 @@ export default function RidePage() {
     }
 
     setLoading(true);
-    // Proceed to checkout or final submission
-    // For now, we'll use the same flow as orders which might require payment
-    // We can reuse the checkout logic or simple submission
     
-    // Creating the Checkout Session
     try {
-       const res = await fetch("/api/checkout", {
+       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           draftId,
           serviceType: "RIDE",
           amountCents: rideFeeCents,
-          redirectUrl: "/ride", // Return here after payment
+          redirectUrl: `${window.location.origin}/ride`,
         }),
       });
 
@@ -277,7 +285,6 @@ export default function RidePage() {
         }
       }
       
-      // If free or error, handle accordingly
       toast({
         title: "Error",
         description: "Could not initiate payment.",
@@ -299,6 +306,9 @@ export default function RidePage() {
   const pickupLines = pickupAddress ? formatAddressLines(pickupAddress) : null;
   const dropoffLines = dropoffAddress ? formatAddressLines(dropoffAddress) : null;
 
+  const canProceedToOptions = !!pickupAddress && !!dropoffAddress;
+  const canProceedToReview = canProceedToOptions && rideFeeCents > 0;
+
   return (
     <OtwPageShell>
       <div className="mx-auto max-w-lg space-y-6">
@@ -312,96 +322,203 @@ export default function RidePage() {
           </p>
         </div>
 
+        {/* Step Indicator */}
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span className={cn(step === "locations" && "text-foreground font-medium")}>Locations</span>
+          <ArrowRight className="h-3 w-3" />
+          <span className={cn(step === "options" && "text-foreground font-medium")}>Options</span>
+          <ArrowRight className="h-3 w-3" />
+          <span className={cn(step === "review" && "text-foreground font-medium")}>Review</span>
+        </div>
+
         <OtwCard className="p-6 space-y-6">
-          {/* Pickup */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
-              <MapPin className="h-4 w-4 text-green-500" />
-              Pickup Location
-            </div>
-            {pickupAddress ? (
-              <div className="relative rounded-lg border bg-muted/30 p-3 pr-10">
-                <div className="text-sm font-medium">{pickupLines?.primary}</div>
-                <div className="text-xs text-muted-foreground">{pickupLines?.secondary}</div>
-                <button
-                  onClick={() => setPickupAddress(null)}
-                  className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-background hover:text-foreground"
-                >
-                  Change
-                </button>
-              </div>
-            ) : (
-              <AddressSearch
-                placeholder="Enter pickup address..."
-                onSelect={setPickupAddress}
-                className="w-full"
-              />
-            )}
-          </div>
-
-          {/* Dropoff */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
-              <MapPin className="h-4 w-4 text-otwRed" />
-              Dropoff Location
-            </div>
-            {dropoffAddress ? (
-              <div className="relative rounded-lg border bg-muted/30 p-3 pr-10">
-                <div className="text-sm font-medium">{dropoffLines?.primary}</div>
-                <div className="text-xs text-muted-foreground">{dropoffLines?.secondary}</div>
-                <button
-                  onClick={() => setDropoffAddress(null)}
-                  className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-background hover:text-foreground"
-                >
-                  Change
-                </button>
-              </div>
-            ) : (
-              <AddressSearch
-                placeholder="Enter destination..."
-                onSelect={setDropoffAddress}
-                className="w-full"
-              />
-            )}
-          </div>
-
-          {/* Estimate */}
-          <div className="rounded-lg border bg-muted/50 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Car className="h-5 w-5 text-secondary" />
-                <span className="font-medium">Estimated Fare</span>
-              </div>
-              <div className="text-right">
-                {estimateLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                ) : estimateError ? (
-                  <span className="text-sm text-destructive">Unavailable</span>
+          {/* Step 1: Locations */}
+          {step === "locations" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+                  <MapPin className="h-4 w-4 text-green-500" />
+                  Pickup Location
+                </div>
+                {pickupAddress ? (
+                  <div className="relative rounded-lg border bg-muted/30 p-3 pr-10">
+                    <div className="text-sm font-medium">{pickupLines?.primary}</div>
+                    <div className="text-xs text-muted-foreground">{pickupLines?.secondary}</div>
+                    <button
+                      onClick={() => setPickupAddress(null)}
+                      className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+                    >
+                      Change
+                    </button>
+                  </div>
                 ) : (
-                  <span className="text-xl font-bold">{formatCurrency(rideFeeCents)}</span>
+                  <AddressSearch
+                    placeholder="Enter pickup address..."
+                    onSelect={setPickupAddress}
+                    className="w-full"
+                  />
                 )}
               </div>
-            </div>
-            {estimateError && (
-              <p className="mt-2 text-xs text-destructive">{estimateError}</p>
-            )}
-          </div>
 
-          {/* Action */}
-          <OtwButton
-            onClick={handleRequestRide}
-            disabled={!pickupAddress || !dropoffAddress || estimateLoading || loading || rideFeeCents <= 0}
-            className="w-full h-12 text-lg"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              "Request Ride"
-            )}
-          </OtwButton>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+                  <MapPin className="h-4 w-4 text-otwRed" />
+                  Dropoff Location
+                </div>
+                {dropoffAddress ? (
+                  <div className="relative rounded-lg border bg-muted/30 p-3 pr-10">
+                    <div className="text-sm font-medium">{dropoffLines?.primary}</div>
+                    <div className="text-xs text-muted-foreground">{dropoffLines?.secondary}</div>
+                    <button
+                      onClick={() => setDropoffAddress(null)}
+                      className="absolute right-2 top-2 rounded-full p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <AddressSearch
+                    placeholder="Enter destination..."
+                    onSelect={setDropoffAddress}
+                    className="w-full"
+                  />
+                )}
+              </div>
+
+              <OtwButton
+                onClick={() => setStep("options")}
+                disabled={!canProceedToOptions}
+                className="w-full"
+              >
+                Continue
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </OtwButton>
+            </div>
+          )}
+
+          {/* Step 2: Options */}
+          {step === "options" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+               <div className="grid grid-cols-1 gap-4">
+                  <div 
+                    onClick={() => setRideOption("STANDARD")}
+                    className={cn(
+                      "cursor-pointer rounded-xl border p-4 transition-all hover:bg-muted/50",
+                      rideOption === "STANDARD" ? "border-secondary bg-secondary/5 ring-1 ring-secondary" : "border-border"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                          <Car className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="font-medium">Standard</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Users className="h-3 w-3" /> 1-4 seats
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-semibold">
+                         {/* We assume base price is standard */}
+                         {estimateLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : formatCurrency(rideFeeCents / (rideOption === "XL" ? 1.5 : 1))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div 
+                    onClick={() => setRideOption("XL")}
+                    className={cn(
+                      "cursor-pointer rounded-xl border p-4 transition-all hover:bg-muted/50",
+                      rideOption === "XL" ? "border-secondary bg-secondary/5 ring-1 ring-secondary" : "border-border"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                          <Car className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <div className="font-medium">Ride XL</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Users className="h-3 w-3" /> 1-6 seats
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-semibold">
+                         {estimateLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : formatCurrency((rideFeeCents / (rideOption === "XL" ? 1.5 : 1)) * 1.5)}
+                      </div>
+                    </div>
+                  </div>
+               </div>
+
+               <div className="flex gap-3">
+                <OtwButton
+                  variant="outline"
+                  onClick={() => setStep("locations")}
+                  className="flex-1"
+                >
+                  Back
+                </OtwButton>
+                <OtwButton
+                  onClick={() => setStep("review")}
+                  disabled={estimateLoading || rideFeeCents <= 0}
+                  className="flex-[2]"
+                >
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </OtwButton>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Review */}
+          {step === "review" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-4">
+                <div className="flex justify-between items-start border-b border-border/50 pb-4">
+                  <div>
+                    <div className="font-medium">{rideOption === "STANDARD" ? "Standard Ride" : "Ride XL"}</div>
+                    <div className="text-sm text-muted-foreground">{pickupLines?.primary} <ArrowRight className="inline h-3 w-3 mx-1" /> {dropoffLines?.primary}</div>
+                  </div>
+                  <div className="text-xl font-bold">{formatCurrency(rideFeeCents)}</div>
+                </div>
+                
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                   <CreditCard className="h-4 w-4" />
+                   <span>Payment via Stripe Checkout</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <OtwButton
+                  variant="outline"
+                  onClick={() => setStep("options")}
+                  className="flex-1"
+                >
+                  Back
+                </OtwButton>
+                <OtwButton
+                  onClick={handleRequestRide}
+                  disabled={loading}
+                  className="flex-[2] h-12 text-lg"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Pay & Request
+                      <CheckCircle2 className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </OtwButton>
+              </div>
+            </div>
+          )}
+
         </OtwCard>
       </div>
     </OtwPageShell>

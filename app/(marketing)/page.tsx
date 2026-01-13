@@ -1,4 +1,4 @@
-import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock, Coins } from 'lucide-react';
+import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock, Coins, Car } from 'lucide-react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import Link from 'next/link';
@@ -41,11 +41,12 @@ export default function HomePage() {
             </OtwButton>
             <OtwButton 
               as="a" 
-              href="/pricing" 
+              href="/ride" 
               variant="outline" 
-              className="h-14 px-8 text-base rounded-full border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm transition-all hover:scale-105"
+              className="h-14 px-8 text-base rounded-full border-otwGold/50 bg-otwGold/10 hover:bg-otwGold/20 backdrop-blur-sm transition-all hover:scale-105 text-otwGold"
             >
-              View Membership
+              Request a Ride
+              <Car className="ml-2 h-4 w-4" />
             </OtwButton>
           </div>
           
@@ -76,6 +77,13 @@ export default function HomePage() {
         
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
+            { 
+              title: 'Ride Service', 
+              desc: 'Comfortable rides to your destination.',
+              icon: Car,
+              color: 'text-otwGold',
+              bg: 'bg-otwGold/10'
+            },
             { 
               title: 'Food Pickup', 
               desc: 'Hot & fresh from your favorite spots.',
