@@ -266,14 +266,14 @@ export default function RidePage() {
     setLoading(true);
     
     try {
-       const res = await fetch("/api/stripe/checkout", {
+       const res = await fetch("/api/stripe/delivery-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          draftId,
-          serviceType: "RIDE",
-          amountCents: rideFeeCents,
-          redirectUrl: `${window.location.origin}/ride`,
+          deliveryFeeCents: rideFeeCents,
+          subtotalCents: 0,
+          successPath: "/ride?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+          cancelPath: "/ride?checkout=cancel",
         }),
       });
 

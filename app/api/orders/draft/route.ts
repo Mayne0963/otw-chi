@@ -15,9 +15,9 @@ const receiptItemSchema = z.object({
 const draftSchema = z
   .object({
     draftId: z.string().optional(),
-    serviceType: z.nativeEnum(ServiceType).optional(),
-    pickupAddress: z.string().min(5).optional(),
-    dropoffAddress: z.string().min(5).optional(),
+    serviceType: z.enum(['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE']).optional(),
+    pickupAddress: z.string().min(3).optional(),
+    dropoffAddress: z.string().min(3).optional(),
     notes: z.string().optional(),
     restaurantName: z.string().optional(),
     restaurantWebsite: z.string().url().optional(),
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       : null;
 
     const updateData: Prisma.DeliveryRequestUpdateInput = {
-      serviceType: data.serviceType,
+      serviceType: data.serviceType as ServiceType | undefined,
       pickupAddress: data.pickupAddress,
       dropoffAddress: data.dropoffAddress,
       notes: data.notes ?? undefined,
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     const created = await prisma.deliveryRequest.create({
       data: {
         userId: user.id,
-        serviceType: data.serviceType,
+        serviceType: data.serviceType as ServiceType,
         pickupAddress: data.pickupAddress,
         dropoffAddress: data.dropoffAddress,
         notes: data.notes ?? null,
@@ -162,7 +162,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ draftId: created.id }, { status: 201 });
   } catch (error) {
     console.error('Draft save error:', error);
-    return new NextResponse('Invalid request', { status: 400 });
+    if (error instanceof z.ZodError) {
+      return new NextResponse(JSON.stringify({ error: 'Validation failed', details: error.issues }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    return new NextResponse(JSON.stringify({ error: 'Invalid request' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 

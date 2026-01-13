@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { deliveryFeeCents, subtotalCents, couponCode } = await req.json();
+    const { deliveryFeeCents, subtotalCents, couponCode, successPath, cancelPath } = await req.json();
     if (!Number.isInteger(deliveryFeeCents) || deliveryFeeCents <= 0) {
       return NextResponse.json({ error: "Invalid delivery fee" }, { status: 400 });
     }
@@ -122,8 +122,8 @@ export async function POST(req: Request) {
         discountCents: String(discountCents),
         couponSource,
       },
-      success_url: `${appUrl}/order?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/order?checkout=cancel`,
+      success_url: `${appUrl}${successPath || "/order?checkout=success&session_id={CHECKOUT_SESSION_ID}"}`,
+      cancel_url: `${appUrl}${cancelPath || "/order?checkout=cancel"}`,
     };
 
     if (customerEmail) {
