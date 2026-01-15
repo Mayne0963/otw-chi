@@ -143,6 +143,28 @@ export function AddressSearch({
     setQuery(address.formattedAddress);
     setIsOpen(false);
     onSelect(address);
+    // Reset location quality if manually selected, unless it came from auto-detect
+    if (locationSource === "manual") {
+      setLocationQuality(null);
+    }
+  };
+
+  const fetchIpLocation = async (): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch("https://ipapi.co/json/", { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+        return { lat: data.latitude, lng: data.longitude };
+      }
+      return null;
+    } catch {
+      return null;
+    }
   };
 
   const requestCurrentLocation = async () => {
@@ -153,14 +175,57 @@ export function AddressSearch({
 
     setLocationError(null);
     setLocationBusy(true);
+    setLocationQuality(null);
+    setLocationSource("manual");
 
-    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: false,
-        timeout: 12_000,
-        maximumAge: 60_000,
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
       });
-    }).catch((err: unknown) => {
+
+      const { latitude: lat, longitude: lng, accuracy } = position.coords;
+      
+      // Determine accuracy level
+      if (accuracy <= 50) setLocationQuality("high");
+      else if (accuracy <= 100) setLocationQuality("medium");
+      else setLocationQuality("low");
+      
+      setLocationSource("gps");
+
+      const resolved = await reverseGeocodeAddress(lat, lng);
+      if (!resolved) {
+        throw new Error("Address verification failed");
+      }
+
+      handleSelect(resolved);
+      setLocationBusy(false);
+      setLocationModalOpen(false);
+      setLearnMoreOpen(false);
+      
+    } catch (err) {
+      console.warn("GPS failed, trying IP fallback...", err);
+      
+      // Fallback to IP Location
+      const ipLoc = await fetchIpLocation();
+      if (ipLoc) {
+        const resolved = await reverseGeocodeAddress(ipLoc.lat, ipLoc.lng);
+        if (resolved) {
+          setLocationQuality("low"); // IP is usually low accuracy
+          setLocationSource("ip");
+          handleSelect(resolved);
+          setLocationBusy(false);
+          setLocationModalOpen(false);
+          setLearnMoreOpen(false);
+          // Show a non-blocking notice
+          setLocationError("GPS signal weak. Using approximate network location.");
+          return;
+        }
+      }
+
       const geolocationError = err as Partial<GeolocationPositionError> | undefined;
       if (geolocationError?.code === 1) {
         writePreference("deny");
@@ -168,32 +233,11 @@ export function AddressSearch({
         setLocationError(
           "Location permission was denied. You can still enter your address manually."
         );
-        return null;
+      } else {
+        setLocationError("Unable to access your location. Please enter your address manually.");
       }
-      setLocationError("Unable to access your location. Please enter your address manually.");
-      return null;
-    });
-
-    if (!position) {
       setLocationBusy(false);
-      return;
     }
-
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const resolved = await reverseGeocodeAddress(lat, lng);
-    if (!resolved) {
-      setLocationError(
-        "We couldn't verify an address from this location (or it's outside our service area). Please enter your address manually."
-      );
-      setLocationBusy(false);
-      return;
-    }
-
-    handleSelect(resolved);
-    setLocationBusy(false);
-    setLocationModalOpen(false);
-    setLearnMoreOpen(false);
   };
 
   const openLocationModal = () => {
@@ -282,6 +326,46 @@ export function AddressSearch({
           <div>
             Location access is off. Enter your address manually, or use “Use current location” to review options.
           </div>
+        </div>
+      )}
+
+      {locationQuality && !error && (
+        <div className="mt-2 flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "h-2 w-2 rounded-full",
+                locationQuality === "high"
+                  ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                  : locationQuality === "medium"
+                  ? "bg-yellow-500"
+                  : "bg-orange-500"
+              )}
+            />
+            <span className="text-xs text-muted-foreground">
+              {locationQuality === "high"
+                ? "Precise location"
+                : locationQuality === "medium"
+                ? "Approximate location"
+                : "Low accuracy location"}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className="text-xs text-secondary hover:underline"
+            onClick={() => {
+              setQuery("");
+              setLocationQuality(null);
+              setLocationSource("manual");
+              if (wrapperRef.current) {
+                const input = wrapperRef.current.querySelector("input");
+                input?.focus();
+              }
+            }}
+          >
+            Wrong location?
+          </button>
         </div>
       )}
 
