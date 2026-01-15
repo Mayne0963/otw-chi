@@ -106,6 +106,7 @@ model User {
   driverEarnings     DriverEarnings[]
   driverPayouts      DriverPayout[]
   nipTransactions    NipTransaction[]
+  paymentTransactions PaymentTransaction[]
   franchiseProfile   FranchiseProfile?
   driverApplications DriverApplication[]
   deliveryRequests   DeliveryRequest[]
