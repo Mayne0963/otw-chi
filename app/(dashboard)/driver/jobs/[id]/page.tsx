@@ -95,15 +95,8 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
                 {req.status === 'PICKED_UP' && (
                   <form action={updateJobStatusAction}>
                     <input type="hidden" name="id" value={req.id} />
-                    <input type="hidden" name="status" value="DELIVERED" />
-                    <OtwButton type="submit" variant="gold">Delivered</OtwButton>
-                  </form>
-                )}
-                {req.status === 'DELIVERED' && (
-                  <form action={updateJobStatusAction}>
-                    <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="COMPLETED" />
-                    <OtwButton type="submit" variant="gold">Complete</OtwButton>
+                    <OtwButton type="submit" variant="gold">Delivered</OtwButton>
                   </form>
                 )}
               </>

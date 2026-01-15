@@ -1,7 +1,7 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription } from '@/lib/membership';
@@ -21,7 +21,7 @@ export default async function MembershipManagePage() {
       <OtwSectionHeader title="Manage Membership" subtitle="Your plan and billing." />
       
       {sub ? (
-        <OtwCard className="mt-3">
+        <Card className="mt-3 p-5 sm:p-6">
           <div className="flex justify-between items-start">
             <div>
               <div className="text-sm font-medium opacity-70 uppercase tracking-wider">Current Plan</div>
@@ -36,14 +36,14 @@ export default async function MembershipManagePage() {
               )}
             </div>
             <form action={createCustomerPortal}>
-                <OtwButton variant="outline">Manage Billing</OtwButton>
+                <Button variant="outline">Manage Billing</Button>
             </form>
           </div>
-        </OtwCard>
+        </Card>
       ) : (
         <div className="mt-3 grid md:grid-cols-3 gap-4">
             {/* Basic */}
-            <OtwCard>
+            <Card className="p-5 sm:p-6">
                 <div className="text-xl font-bold">Basic</div>
                 <div className="text-2xl mt-2">$9<span className="text-sm opacity-60">/mo</span></div>
                 <ul className="mt-4 text-sm space-y-2 opacity-80">
@@ -51,12 +51,12 @@ export default async function MembershipManagePage() {
                     <li>• 1.0x TIREM Rewards</li>
                 </ul>
                 <form action={async () => { 'use server'; await createCheckoutSession('BASIC'); }} className="mt-6">
-                    <OtwButton variant="outline" className="w-full">Choose Basic</OtwButton>
+                    <Button variant="outline" className="w-full">Choose Basic</Button>
                 </form>
-            </OtwCard>
+            </Card>
 
             {/* Plus */}
-            <OtwCard className="border-otwGold/50">
+            <Card className="border-otwGold/50 p-5 sm:p-6">
                 <div className="text-xl font-bold text-otwGold">Plus</div>
                 <div className="text-2xl mt-2">$19<span className="text-sm opacity-60">/mo</span></div>
                 <ul className="mt-4 text-sm space-y-2 opacity-80">
@@ -64,12 +64,12 @@ export default async function MembershipManagePage() {
                     <li>• 1.25x TIREM Rewards</li>
                 </ul>
                 <form action={async () => { 'use server'; await createCheckoutSession('PLUS'); }} className="mt-6">
-                    <OtwButton variant="gold" className="w-full">Choose Plus</OtwButton>
+                    <Button variant="gold" className="w-full">Choose Plus</Button>
                 </form>
-            </OtwCard>
+            </Card>
 
             {/* Exec */}
-            <OtwCard>
+            <Card className="p-5 sm:p-6">
                 <div className="text-xl font-bold">Executive</div>
                 <div className="text-2xl mt-2">$39<span className="text-sm opacity-60">/mo</span></div>
                 <ul className="mt-4 text-sm space-y-2 opacity-80">
@@ -78,9 +78,9 @@ export default async function MembershipManagePage() {
                     <li>• No Service Fees</li>
                 </ul>
                 <form action={async () => { 'use server'; await createCheckoutSession('EXEC'); }} className="mt-6">
-                    <OtwButton variant="outline" className="w-full">Choose Exec</OtwButton>
+                    <Button variant="outline" className="w-full">Choose Exec</Button>
                 </form>
-            </OtwCard>
+            </Card>
         </div>
       )}
     </OtwPageShell>

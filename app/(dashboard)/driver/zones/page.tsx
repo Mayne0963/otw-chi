@@ -1,6 +1,6 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
+import { Card } from '@/components/ui/card';
 
 export default function DriverZonesPage() {
   return (
@@ -8,9 +8,9 @@ export default function DriverZonesPage() {
       <OtwSectionHeader title="Driver Zones" subtitle="Your coverage areas." />
       <div className="mt-3 grid sm:grid-cols-3 gap-4">
         {['South Side', 'West Side', 'Downtown'].map((z) => (
-          <OtwCard key={z} variant="default" className="p-4">
+          <Card key={z} variant="default" className="p-4">
             <div className="font-semibold">{z}</div>
-          </OtwCard>
+          </Card>
         ))}
       </div>
     </OtwPageShell>

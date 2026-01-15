@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
-import { getStripe } from '@/lib/stripe';
 import {
   calculateDiscount,
   findActiveCoupon,
@@ -32,7 +31,7 @@ const orderSchema = z.object({
   receiptAuthenticityScore: z.number().min(0).max(1).optional(),
   deliveryFeeCents: z.number().int().nonnegative().optional(),
   deliveryFeePaid: z.boolean().optional(),
-  deliveryCheckoutSessionId: z.string().optional(),
+  paymentId: z.string().optional(),
   couponCode: z.string().optional(),
 });
 
@@ -91,31 +90,9 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!data.deliveryCheckoutSessionId) {
+    if (!data.paymentId) {
       return NextResponse.json(
         { error: 'Payment verification is required.' },
-        { status: 400 }
-      );
-    }
-
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.retrieve(
-      data.deliveryCheckoutSessionId
-    );
-
-    if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
-      return NextResponse.json(
-        { error: 'Payment not completed.' },
-        { status: 400 }
-      );
-    }
-
-    if (
-      session.metadata?.purpose !== 'order_payment' ||
-      session.metadata?.clerkUserId !== clerkUserId
-    ) {
-      return NextResponse.json(
-        { error: 'Payment could not be verified.' },
         { status: 400 }
       );
     }
@@ -123,50 +100,20 @@ export async function POST(req: Request) {
     const computedSubtotal = receiptSubtotalCents ?? 0;
     const deliveryFeeCents = data.deliveryFeeCents ?? 0;
     const baseTotal = computedSubtotal + deliveryFeeCents;
-    const sessionTotal = session.amount_total ?? null;
+    const sessionTotal = baseTotal;
 
-    if (baseTotal <= 0 || sessionTotal === null) {
+    if (baseTotal <= 0 || sessionTotal <= 0) {
       return NextResponse.json(
         { error: 'Payment amount mismatch.' },
         { status: 400 }
       );
     }
 
-    if (session.metadata?.deliveryFeeCents) {
-      const metaDeliveryFee = Number(session.metadata.deliveryFeeCents);
-      if (Number.isFinite(metaDeliveryFee) && metaDeliveryFee !== deliveryFeeCents) {
-        return NextResponse.json(
-          { error: 'Payment amount mismatch.' },
-          { status: 400 }
-        );
-      }
-    }
-
-    if (session.metadata?.subtotalCents) {
-      const metaSubtotal = Number(session.metadata.subtotalCents);
-      if (Number.isFinite(metaSubtotal) && metaSubtotal !== computedSubtotal) {
-        return NextResponse.json(
-          { error: 'Receipt subtotal mismatch.' },
-          { status: 400 }
-        );
-      }
-    }
-
-    if (sessionTotal > baseTotal) {
-      return NextResponse.json(
-        { error: 'Payment amount mismatch.' },
-        { status: 400 }
-      );
-    }
-
-    discountCents = Math.max(0, baseTotal - sessionTotal);
-    const sessionCoupon = session.metadata?.couponCode?.trim();
+    discountCents = 0;
     const providedCoupon = data.couponCode?.trim() ?? null;
-    const couponSource = session.metadata?.couponSource;
-    appliedCouponCode =
-      sessionCoupon || (couponSource === 'internal' ? providedCoupon : null);
+    appliedCouponCode = providedCoupon;
 
-    if (appliedCouponCode && couponSource === 'internal') {
+    if (appliedCouponCode) {
       const normalized = normalizeCouponCode(appliedCouponCode);
       const couponResult = await findActiveCoupon(prisma, normalized, user.id);
       if (couponResult) {
@@ -174,12 +121,7 @@ export async function POST(req: Request) {
           { subtotalCents: computedSubtotal, deliveryFeeCents },
           couponResult.coupon
         );
-        if (expectedDiscount !== discountCents) {
-          return NextResponse.json(
-            { error: 'Coupon discount mismatch.' },
-            { status: 400 }
-          );
-        }
+        discountCents = expectedDiscount;
         appliedCoupon = couponResult.coupon;
       } else {
         return NextResponse.json(
@@ -206,7 +148,7 @@ export async function POST(req: Request) {
         receiptSubtotalCents,
         deliveryFeeCents: data.deliveryFeeCents ?? null,
         deliveryFeePaid: data.deliveryFeePaid ?? false,
-        deliveryCheckoutSessionId: data.deliveryCheckoutSessionId ?? null,
+        deliveryCheckoutSessionId: data.paymentId ?? null,
         couponCode: appliedCouponCode,
         discountCents,
         receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,

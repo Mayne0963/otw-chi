@@ -349,6 +349,27 @@ model MembershipSubscription {
   plan MembershipPlan? @relation(fields: [planId], references: [id])
 }
 
+model PaymentTransaction {
+  id                   String   @id @default(cuid())
+  userId               String
+  amountCents          Int
+  currency             String   @default("usd")
+  status               String
+  provider             String   @default("NATIVE")
+  paymentMethodDisplay String?
+  errorCode            String?
+  errorMessage         String?
+  orderId              String?
+  metadata             Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+}
+
 model NIPLedger {
   id        String   @id @default(cuid())
   userId    String

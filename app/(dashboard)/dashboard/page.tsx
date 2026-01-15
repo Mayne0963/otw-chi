@@ -1,7 +1,7 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { syncUserOnDashboard } from '@/lib/user-sync';
@@ -34,12 +34,12 @@ export default async function DashboardPage() {
 
     // Fetch latest from both tables
     const legacyReq = await prisma.request.findFirst({
-      where: { customerId: user.id, status: { in: ['SUBMITTED', 'ASSIGNED', 'PICKED_UP', 'DELIVERED'] } },
+      where: { customerId: user.id, status: { in: ['SUBMITTED', 'ASSIGNED', 'PICKED_UP'] } },
       orderBy: { createdAt: 'desc' },
     });
 
     const newReq = await prisma.deliveryRequest.findFirst({
-      where: { userId: user.id, status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED'] } },
+      where: { userId: user.id, status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -65,14 +65,14 @@ export default async function DashboardPage() {
     return (
       <OtwPageShell>
         <OtwSectionHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
-        <OtwCard className="mt-3">
+        <Card className="mt-3 p-5 sm:p-6">
           <OtwEmptyState
             title="Sign in to view your dashboard"
             subtitle="Access requests, membership and TIREM."
             actionLabel="Sign In"
             actionHref="/sign-in"
           />
-        </OtwCard>
+        </Card>
       </OtwPageShell>
     );
   }
@@ -85,21 +85,23 @@ export default async function DashboardPage() {
         {/* Compliance Alert */}
         {!user.dob && (
           <div className="md:col-span-3">
-            <OtwCard className="border-l-4 border-l-red-500 bg-red-900/10 border-t-0 border-r-0 border-b-0 p-4">
+            <Card className="border-l-4 border-l-red-500 bg-red-900/10 border-t-0 border-r-0 border-b-0 p-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="font-bold text-red-200">Profile Incomplete</div>
                   <div className="text-sm text-white/70">We need your Date of Birth to comply with age regulations.</div>
                 </div>
-                <OtwButton as="a" href="/settings" variant="red" size="sm">
-                  Update Profile
-                </OtwButton>
+                <Button asChild variant="red" size="sm">
+                  <Link href="/settings">
+                    Update Profile
+                  </Link>
+                </Button>
               </div>
-            </OtwCard>
+            </Card>
           </div>
         )}
 
-        <OtwCard className="p-6">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <LayoutDashboard className="h-4 w-4 text-otwGold" />
             <h3 className="text-sm font-medium text-otwGold">Active Request</h3>
@@ -110,21 +112,25 @@ export default async function DashboardPage() {
                 <div className="text-2xl font-bold text-white capitalize">{activeRequest.status.toLowerCase()}</div>
                 <div className="text-sm text-white/60 truncate mt-1">To: {activeRequest.dropoff}</div>
               </div>
-              <OtwButton as="a" href={`/track/${activeRequest.id}`} variant="gold" className="w-full">
-                Track Order
-              </OtwButton>
+              <Button asChild variant="gold" className="w-full">
+                <Link href={`/track/${activeRequest.id}`}>
+                  Track Order
+                </Link>
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="text-sm text-white/50">No active requests</div>
-              <OtwButton as="a" href="/order" variant="outline" className="w-full">
-                New Order
-              </OtwButton>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/order">
+                  New Order
+                </Link>
+              </Button>
             </div>
           )}
-        </OtwCard>
+        </Card>
 
-        <OtwCard className="p-6">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="h-4 w-4 text-otwGold" />
             <h3 className="text-sm font-medium text-otwGold">TIREM Balance</h3>
@@ -134,13 +140,15 @@ export default async function DashboardPage() {
               <div className="text-2xl font-bold text-white">{nipBalance.toLocaleString()}</div>
               <div className="text-sm text-white/60 mt-1">Tokens Available</div>
             </div>
-            <OtwButton as="a" href="/wallet/nip" variant="outline" className="w-full">
-              Manage Wallet
-            </OtwButton>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/wallet/nip">
+                Manage Wallet
+              </Link>
+            </Button>
           </div>
-        </OtwCard>
+        </Card>
 
-        <OtwCard className="p-6">
+        <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <CreditCard className="h-4 w-4 text-otwGold" />
             <h3 className="text-sm font-medium text-otwGold">Membership</h3>
@@ -150,15 +158,17 @@ export default async function DashboardPage() {
               <div className="text-2xl font-bold text-white">{membershipTier}</div>
               <div className="text-sm text-white/60 mt-1">Current Plan</div>
             </div>
-            <OtwButton as="a" href="/membership" variant="outline" className="w-full">
-              View Benefits
-            </OtwButton>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/membership">
+                View Benefits
+              </Link>
+            </Button>
           </div>
-        </OtwCard>
+        </Card>
       </div>
 
       <div className="mt-6">
-        <OtwCard className="p-6">
+        <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
           </div>
@@ -188,7 +198,7 @@ export default async function DashboardPage() {
               <span className="text-sm font-medium text-white">Support</span>
             </Link>
           </div>
-        </OtwCard>
+        </Card>
       </div>
     </OtwPageShell>
   );

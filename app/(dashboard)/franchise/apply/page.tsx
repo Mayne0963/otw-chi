@@ -1,7 +1,7 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
@@ -19,7 +19,7 @@ export default async function FranchiseApplyPage() {
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Apply for OTW Franchise" subtitle="Tell us about your city and plan." />
-      <OtwCard className="mt-3 space-y-3">
+      <Card className="mt-3 space-y-3 p-5 sm:p-6">
         <form action={submitFranchiseApplication} className="space-y-3">
           <div>
             <label htmlFor="franchise-full-name" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Full Name</label>
@@ -59,9 +59,9 @@ export default async function FranchiseApplyPage() {
               className="w-full min-h-[120px] rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2"
             />
           </div>
-          <OtwButton variant="gold" className="w-full" type="submit">Submit Application</OtwButton>
+          <Button variant="gold" className="w-full" type="submit">Submit Application</Button>
         </form>
-      </OtwCard>
+      </Card>
     </OtwPageShell>
   );
 }

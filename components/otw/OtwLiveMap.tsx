@@ -30,7 +30,7 @@ interface OtwLiveMapProps {
 }
 
 const MAP_STYLE_URL =
-  process.env.NEXT_PUBLIC_MAP_STYLE_URL || "https://demotiles.maplibre.org/style.json";
+  process.env.NEXT_PUBLIC_MAP_STYLE_URL || "/maps/style.json";
 const DEFAULT_CENTER: [number, number] = [-85.1394, 41.0793];
 const DEFAULT_ZOOM = 16;
 const ROUTE_SOURCE_ID = "otw-route-source";
@@ -43,6 +43,7 @@ const INCIDENT_SOURCE_ID = "otw-incident-source";
 const INCIDENT_LAYER_ID = "otw-incident-layer";
 const POI_SOURCE_ID = "otw-poi-source";
 const POI_LAYER_ID = "otw-poi-layer";
+const POI_LABEL_LAYER_ID = "otw-poi-label-layer";
 const MARKER_SOURCE_ID = "otw-marker-source";
 const MARKER_LAYER_ID = "otw-marker-layer";
 const MARKER_LABEL_LAYER_ID = "otw-marker-label-layer";
@@ -219,7 +220,7 @@ const OtwLiveMap = ({
         label: jobPickup.label || "Pickup",
         lat: jobPickup.lat,
         lng: jobPickup.lng,
-        color: "#34d399",
+        color: "#0a84ff",
       });
     }
 
@@ -231,7 +232,7 @@ const OtwLiveMap = ({
         label: customer.label || (customerEqualsDropoff ? "Destination" : "Customer"),
         lat: customer.lat,
         lng: customer.lng,
-        color: "#c084fc",
+        color: "#5e5ce6",
       });
     }
 
@@ -241,7 +242,7 @@ const OtwLiveMap = ({
         label: dropoff.label || "Dropoff",
         lat: dropoff.lat,
         lng: dropoff.lng,
-        color: "#f59e0b",
+        color: "#ff9f0a",
       });
     }
     drivers.forEach((driver, index) => {
@@ -251,7 +252,7 @@ const OtwLiveMap = ({
         label: isFocus ? "Driver (You)" : driver.driverId || "Driver",
         lat: driver.location.lat,
         lng: driver.location.lng,
-        color: "#60a5fa",
+        color: "#32d74b",
       });
     });
     return markers;
@@ -722,7 +723,7 @@ const OtwLiveMap = ({
         layerId: ROUTE_LAYER_ID,
         data: resolvedMainRoute,
         paint: {
-          "line-color": "#22c55e",
+          "line-color": "#0a84ff",
           "line-width": ROUTE_BASE_WIDTH,
           "line-opacity": 0.9,
           "line-color-transition": { duration: 220 },
@@ -736,7 +737,7 @@ const OtwLiveMap = ({
         layerId: DRIVER_ROUTE_LAYER_ID,
         data: resolvedDriverRoute,
         paint: {
-          "line-color": "#60a5fa",
+          "line-color": "#5e5ce6",
           "line-width": DRIVER_ROUTE_BASE_WIDTH,
           "line-opacity": 0.7,
           "line-dasharray": [2, 1.5],
@@ -755,13 +756,13 @@ const OtwLiveMap = ({
           "line-color": [
             "step",
             ["coalesce", ["get", "jamFactor"], 0],
-            "#16a34a",
+            "#34c759",
             2,
-            "#eab308",
+            "#ffcc00",
             5,
-            "#ef4444",
+            "#ff9500",
             8,
-            "#111827",
+            "#ff3b30",
           ],
           "line-width": 3,
           "line-opacity": 0.6,
@@ -779,15 +780,15 @@ const OtwLiveMap = ({
             "match",
             ["downcase", ["to-string", ["get", "severity"]]],
             "critical",
-            "#dc2626",
+            "#ff3b30",
             "major",
-            "#f97316",
+            "#ff9f0a",
             "minor",
-            "#f59e0b",
-            "#f59e0b",
+            "#ffcc00",
+            "#ffcc00",
           ],
-          "circle-stroke-color": "#111827",
-          "circle-stroke-width": 1,
+          "circle-stroke-color": "rgba(12,12,12,0.7)",
+          "circle-stroke-width": 0.75,
         },
       });
 
@@ -797,10 +798,30 @@ const OtwLiveMap = ({
         data: pois ?? null,
         type: "circle",
         paint: {
-          "circle-radius": 4,
-          "circle-color": "#fbbf24",
-          "circle-stroke-color": "#111827",
-          "circle-stroke-width": 1,
+          "circle-radius": 3,
+          "circle-color": "rgba(255,159,10,0.9)",
+          "circle-stroke-color": "rgba(0,0,0,0.35)",
+          "circle-stroke-width": 0.75,
+        },
+      });
+
+      updateGeoLayer({
+        sourceId: POI_SOURCE_ID,
+        layerId: POI_LABEL_LAYER_ID,
+        data: pois ?? null,
+        type: "symbol",
+        layout: {
+          "text-field": ["get", "title"],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 10, 9, 16, 12],
+          "text-offset": [0, 0.8],
+          "text-anchor": "top",
+          "text-allow-overlap": false,
+        },
+        paint: {
+          "text-color": "#1c1c1e",
+          "text-halo-color": "rgba(242,242,247,0.9)",
+          "text-halo-width": 0.75,
+          "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 13, 0.85, 16, 1],
         },
       });
 

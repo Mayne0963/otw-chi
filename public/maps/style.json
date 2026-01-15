@@ -4,6 +4,11 @@
   "metadata": {
     "openmaptiles:version": "3.x"
   },
+  "light": {
+    "anchor": "viewport",
+    "color": "#ffffff",
+    "intensity": 0.4
+  },
   "sources": {
     "openmaptiles": {
       "type": "vector",
@@ -14,7 +19,7 @@
     {
       "id": "background",
       "paint": {
-        "background-color": "hsl(47, 26%, 88%)"
+        "background-color": "#f2f2f7"
       },
       "type": "background"
     },
@@ -36,8 +41,8 @@
       ],
       "id": "landuse-residential",
       "paint": {
-        "fill-color": "hsl(47, 13%, 86%)",
-        "fill-opacity": 0.7
+        "fill-color": "#e5e5ea",
+        "fill-opacity": 0.8
       },
       "source": "openmaptiles",
       "source-layer": "landuse",
@@ -51,8 +56,8 @@
       ],
       "id": "landcover_grass",
       "paint": {
-        "fill-color": "hsl(82, 46%, 72%)",
-        "fill-opacity": 0.45
+        "fill-color": "#d7e3d4",
+        "fill-opacity": 0.5
       },
       "source": "openmaptiles",
       "source-layer": "landcover",
@@ -66,7 +71,7 @@
       ],
       "id": "landcover_wood",
       "paint": {
-        "fill-color": "hsl(82, 46%, 72%)",
+        "fill-color": "#cbdcc8",
         "fill-opacity": {
           "base": 1,
           "stops": [
@@ -101,7 +106,7 @@
       ],
       "id": "water",
       "paint": {
-        "fill-color": "hsl(205, 56%, 73%)"
+        "fill-color": "#d6e8ff"
       },
       "source": "openmaptiles",
       "source-layer": "water",
@@ -123,8 +128,8 @@
       ],
       "id": "water_intermittent",
       "paint": {
-        "fill-color": "hsl(205, 56%, 73%)",
-        "fill-opacity": 0.7
+        "fill-color": "#d6e8ff",
+        "fill-opacity": 0.5
       },
       "source": "openmaptiles",
       "source-layer": "water",
@@ -138,7 +143,7 @@
       ],
       "id": "landcover-ice-shelf",
       "paint": {
-        "fill-color": "hsl(47, 26%, 88%)",
+        "fill-color": "#f5f5fb",
         "fill-opacity": 0.8
       },
       "source": "openmaptiles",
@@ -153,7 +158,7 @@
       ],
       "id": "landcover-glacier",
       "paint": {
-        "fill-color": "hsl(47, 22%, 94%)",
+        "fill-color": "#f9f9ff",
         "fill-opacity": {
           "base": 1,
           "stops": [
@@ -185,8 +190,8 @@
       "metadata": {},
       "paint": {
         "fill-antialias": false,
-        "fill-color": "rgba(232, 214, 38, 1)",
-        "fill-opacity": 0.3
+        "fill-color": "#f5efe6",
+        "fill-opacity": 0.35
       },
       "source": "openmaptiles",
       "source-layer": "landcover",
@@ -200,7 +205,7 @@
       ],
       "id": "landuse",
       "paint": {
-        "fill-color": "#eae0d0"
+        "fill-color": "#edeadf"
       },
       "source": "openmaptiles",
       "source-layer": "landuse",
@@ -214,7 +219,7 @@
       ],
       "id": "landuse_overlay_national_park",
       "paint": {
-        "fill-color": "#E1EBB0",
+        "fill-color": "#d5e6bd",
         "fill-opacity": {
           "base": 1,
           "stops": [
@@ -426,7 +431,7 @@
       "id": "building",
       "paint": {
         "fill-antialias": true,
-        "fill-color": "rgba(222, 211, 190, 1)",
+        "fill-color": "#e5e5ea",
         "fill-opacity": {
           "base": 1,
           "stops": [
@@ -458,6 +463,29 @@
       "type": "fill"
     },
     {
+      "id": "building-extrusion",
+      "type": "fill-extrusion",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-extrusion-color": "#e5e5ea",
+        "fill-extrusion-height": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          15,
+          0,
+          16,
+          8,
+          18,
+          30
+        ],
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": 0.9
+      }
+    },
+    {
       "id": "road_area_pier",
       "type": "fill",
       "metadata": {},
@@ -477,7 +505,7 @@
         ]
       ],
       "paint": {
-        "fill-color": "hsl(47, 26%, 88%)",
+        "fill-color": "#e5e5ea",
         "fill-antialias": true
       }
     },
@@ -538,7 +566,7 @@
       "id": "road_bridge_area",
       "layout": {},
       "paint": {
-        "fill-color": "hsl(47, 26%, 88%)",
+        "fill-color": "#e5e5ea",
         "fill-opacity": 0.5
       },
       "source": "openmaptiles",

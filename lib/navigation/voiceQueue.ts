@@ -1,5 +1,14 @@
 export const VOICE_GUIDANCE_STORAGE_KEY = "otw.voice-guidance-enabled";
 
+const isLikelyIOS = () => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  const maxTouchPoints = typeof navigator.maxTouchPoints === "number" ? navigator.maxTouchPoints : 0;
+
+  return /iPad|iPhone|iPod/i.test(ua) || (platform === "MacIntel" && maxTouchPoints > 1);
+};
+
 export type VoiceRequest = {
   text: string;
   lang: string;
@@ -37,7 +46,7 @@ export const createVoiceQueue = (): VoiceQueue => {
       : null;
 
   let enabled = true;
-  let gestureUnlocked = false;
+  let gestureUnlocked = !isLikelyIOS();
   let speaking = false;
   let queue: VoiceRequest[] = [];
   let defaults: VoiceDefaults = { lang: "en-US", volume: 0.8 };

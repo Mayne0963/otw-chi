@@ -3,8 +3,8 @@ import { getPrisma } from '@/lib/db';
 import { createCustomerPortal } from '@/app/actions/billing';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ success?: string, canceled?: string }> }) {
   const user = await getCurrentUser();
@@ -37,7 +37,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             </div>
         )}
 
-        <OtwCard className="mt-6">
+        <Card className="mt-6 p-5 sm:p-6">
             <div className="p-4 border-b border-white/10 mb-4">
                 <h3 className="text-lg font-medium text-white">Current Plan</h3>
                 <p className="text-sm text-white/50">Your membership status</p>
@@ -62,13 +62,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 
                 <div className="pt-4 mt-4 border-t border-white/10">
                   <form action={createCustomerPortal}>
-                    <OtwButton type="submit" variant="outline" className="w-full">
+                    <Button type="submit" variant="outline" className="w-full">
                       Manage Subscription
-                    </OtwButton>
+                    </Button>
                   </form>
                 </div>
             </div>
-        </OtwCard>
+        </Card>
     </OtwPageShell>
   );
 }

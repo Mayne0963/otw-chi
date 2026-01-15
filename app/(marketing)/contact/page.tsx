@@ -1,7 +1,7 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
@@ -14,7 +14,7 @@ export default async function ContactPage() {
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Contact OTW" subtitle="Reach the team for support or ops." />
-      <OtwCard className="mt-3 space-y-3">
+      <Card className="mt-3 space-y-3 p-5 sm:p-6">
         <form action={submitContactMessage} className="space-y-3">
           <div>
             <label htmlFor="contact-email" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Email</label>
@@ -36,9 +36,9 @@ export default async function ContactPage() {
               required
             />
           </div>
-          <OtwButton variant="gold" className="w-full" type="submit">Send</OtwButton>
+          <Button variant="gold" className="w-full" type="submit">Send</Button>
         </form>
-      </OtwCard>
+      </Card>
     </OtwPageShell>
   );
 }

@@ -1,12 +1,12 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
+import { Card } from '@/components/ui/card';
 
 export default function PrivacyPage() {
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Privacy Policy" subtitle="Effective Date: December 16, 2024" />
-      <OtwCard className="mt-3 space-y-6 text-sm opacity-90 leading-relaxed">
+      <Card className="mt-3 space-y-6 text-sm opacity-90 leading-relaxed p-5 sm:p-6">
         <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg text-red-200">
           <strong>LEGAL DISCLAIMER:</strong> This is a draft document for development purposes only. 
           It has not been reviewed by legal counsel. Do not use in production without professional legal review.
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             We may update this privacy policy from time to time. We will notify you of any changes by posting the new privacy policy on this page.
           </p>
         </section>
-      </OtwCard>
+      </Card>
     </OtwPageShell>
   );
 }

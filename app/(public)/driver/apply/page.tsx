@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -67,7 +67,7 @@ export default function DriverApplyPage() {
       <OtwSectionHeader title="Apply as OTW Driver" subtitle="Join the team and earn fair payouts." />
       
       <div className="mt-6 max-w-xl mx-auto">
-        <OtwCard className="space-y-4">
+        <Card className="space-y-4 p-5 sm:p-6">
           {submitted ? (
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-semibold text-foreground">Thanks for applying!</h2>
@@ -177,12 +177,12 @@ export default function DriverApplyPage() {
               />
             </div>
 
-            <OtwButton type="submit" variant="gold" className="w-full h-12 text-base font-semibold" disabled={loading}>
+            <Button type="submit" variant="gold" className="w-full h-12 text-base font-semibold" disabled={loading}>
               {loading ? <Loader2 className="animate-spin" /> : "Submit Application"}
-            </OtwButton>
+            </Button>
           </form>
           )}
-        </OtwCard>
+        </Card>
       </div>
     </OtwPageShell>
   );

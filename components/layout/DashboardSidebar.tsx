@@ -31,6 +31,7 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
     { label: "My Requests", href: "/requests", icon: Package },
     { label: "Wallet", href: "/wallet/nip", icon: Wallet },
     { label: "Membership", href: "/membership/manage", icon: CreditCard },
+    { label: "Design Lab", href: "/design-lab", icon: LayoutDashboard },
     { label: "Support", href: "/support", icon: LifeBuoy },
     { label: "Settings", href: "/settings", icon: Settings },
   ]

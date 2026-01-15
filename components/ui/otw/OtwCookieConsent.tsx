@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import OtwButton from './OtwButton';
+import { Button } from '@/components/ui/button';
 
 export default function OtwCookieConsent() {
   const [show, setShow] = useState<boolean>(() => {
@@ -25,7 +25,7 @@ export default function OtwCookieConsent() {
           <a href="/privacy" className="underline hover:text-secondary transition-colors duration-300">Privacy Policy</a>.
         </div>
         <div className="flex justify-end">
-          <OtwButton onClick={accept} variant="gold" size="sm">Accept</OtwButton>
+          <Button onClick={accept} variant="gold" size="sm">Accept</Button>
         </div>
       </div>
     </div>

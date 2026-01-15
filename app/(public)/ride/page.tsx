@@ -7,9 +7,9 @@ import { AddressSearch } from "@/components/ui/address-search";
 import { MapPin, Car, Loader2, Users, ArrowRight, ArrowLeft, CheckCircle2, CreditCard } from "lucide-react";
 import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
-import OtwCard from "@/components/ui/otw/OtwCard";
-import OtwButton from "@/components/ui/otw/OtwButton";
-import OtwStatPill from "@/components/ui/otw/OtwStatPill";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +55,10 @@ export default function RidePage() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
 
   // Load Draft
   useEffect(() => {
@@ -263,43 +267,63 @@ export default function RidePage() {
       return;
     }
 
+    if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim() || !cardCvc.trim()) {
+      toast({
+        title: "Payment details required",
+        description: "Enter your card details to confirm the ride.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
-       const res = await fetch("/api/stripe/delivery-checkout", {
+      const res = await fetch("/api/payments/native-charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          deliveryFeeCents: rideFeeCents,
-          subtotalCents: 0,
-          successPath: "/ride?checkout=success&session_id={CHECKOUT_SESSION_ID}",
-          cancelPath: "/ride?checkout=cancel",
+          amountCents: rideFeeCents,
+          cardBrand: "Card",
+          cardLast4: cardNumber.replace(/\s+/g, "").slice(-4),
+          cardholderName: cardName.trim(),
         }),
       });
 
-      if (res.ok) {
-        const { url } = await res.json();
-        if (url) {
-            window.location.href = url;
-            return;
-        }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast({
+          title: "Payment failed",
+          description: data?.error || "Unable to authorize payment.",
+          variant: "destructive",
+        });
+        return;
       }
-      
+
+      const data = await res.json();
+      if (!data?.paymentId) {
+        toast({
+          title: "Payment error",
+          description: "Missing payment confirmation.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
-        title: "Error",
-        description: "Could not initiate payment.",
-        variant: "destructive",
+        title: "Payment authorized",
+        description: "Your ride request has been confirmed.",
       });
 
+      router.push("/requests");
     } catch (error) {
-        console.error(error);
-        toast({
-            title: "Error",
-            description: "Something went wrong.",
-            variant: "destructive",
-        });
+      toast({
+        title: "Error",
+        description: "Something went wrong.",
+        variant: "destructive",
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -313,7 +337,7 @@ export default function RidePage() {
     <OtwPageShell>
       <div className="mx-auto max-w-lg space-y-6">
         <div className="text-center space-y-3">
-          <OtwStatPill tone="info">Ride Service</OtwStatPill>
+          <Badge variant="secondary">Ride Service</Badge>
           <h1 className="text-4xl font-semibold tracking-tight">
             Request a <span className="text-secondary">Ride</span>
           </h1>
@@ -331,7 +355,7 @@ export default function RidePage() {
           <span className={cn(step === "review" && "text-foreground font-medium")}>Review</span>
         </div>
 
-        <OtwCard className="p-6 space-y-6">
+        <Card className="p-6 space-y-6">
           {/* Step 1: Locations */}
           {step === "locations" && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
@@ -385,14 +409,14 @@ export default function RidePage() {
                 )}
               </div>
 
-              <OtwButton
+              <Button
                 onClick={() => setStep("options")}
                 disabled={!canProceedToOptions}
                 className="w-full"
               >
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </OtwButton>
+              </Button>
             </div>
           )}
 
@@ -453,21 +477,21 @@ export default function RidePage() {
                </div>
 
                <div className="flex gap-3">
-                <OtwButton
+                <Button
                   variant="outline"
                   onClick={() => setStep("locations")}
                   className="flex-1"
                 >
                   Back
-                </OtwButton>
-                <OtwButton
+                </Button>
+                <Button
                   onClick={() => setStep("review")}
                   disabled={estimateLoading || rideFeeCents <= 0}
                   className="flex-[2]"
                 >
                   Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </OtwButton>
+                </Button>
               </div>
             </div>
           )}
@@ -485,20 +509,51 @@ export default function RidePage() {
                 </div>
                 
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                   <CreditCard className="h-4 w-4" />
-                   <span>Payment via Stripe Checkout</span>
+                  <CreditCard className="h-4 w-4" />
+                  <span>Pay securely with your card</span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  <input
+                    value={cardName}
+                    onChange={(e) => setCardName(e.target.value)}
+                    placeholder="Name on card"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                  />
+                  <input
+                    value={cardNumber}
+                    onChange={(e) => setCardNumber(e.target.value)}
+                    placeholder="Card number"
+                    inputMode="numeric"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      value={cardExpiry}
+                      onChange={(e) => setCardExpiry(e.target.value)}
+                      placeholder="MM/YY"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                    />
+                    <input
+                      value={cardCvc}
+                      onChange={(e) => setCardCvc(e.target.value)}
+                      placeholder="CVC"
+                      inputMode="numeric"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <OtwButton
+                <Button
                   variant="outline"
                   onClick={() => setStep("options")}
                   className="flex-1"
                 >
                   Back
-                </OtwButton>
-                <OtwButton
+                </Button>
+                <Button
                   onClick={handleRequestRide}
                   disabled={loading}
                   className="flex-[2] h-12 text-lg"
@@ -514,12 +569,12 @@ export default function RidePage() {
                       <CheckCircle2 className="ml-2 h-5 w-5" />
                     </>
                   )}
-                </OtwButton>
+                </Button>
               </div>
             </div>
           )}
 
-        </OtwCard>
+        </Card>
       </div>
     </OtwPageShell>
   );

@@ -75,23 +75,23 @@
 }
 
 .swatchPickup {
-  background: #34d399;
+	background: #0a84ff;
 }
 
 .swatchCustomer {
-  background: #c084fc;
+	background: #5e5ce6;
 }
 
 .swatchDropoff {
-  background: #f59e0b;
+	background: #ff9f0a;
 }
 
 .swatchDriver {
-  background: #60a5fa;
+	background: #32d74b;
 }
 
 .swatchRoute {
-  background: linear-gradient(90deg, #22c55e, #16a34a);
+	background: linear-gradient(90deg, #0a84ff, #5e5ce6);
 }
 
 .swatchDriverRoute {

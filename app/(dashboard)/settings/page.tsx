@@ -1,7 +1,7 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 
@@ -18,9 +18,9 @@ export default async function SettingsPage() {
     <OtwPageShell>
       <OtwSectionHeader title="Settings" subtitle="Profile and addresses." />
       {!user ? (
-        <OtwCard className="mt-3"><div className="text-sm">Please sign in.</div></OtwCard>
+        <Card className="mt-3 p-5 sm:p-6"><div className="text-sm">Please sign in.</div></Card>
       ) : (
-        <OtwCard className="mt-3 space-y-3">
+        <Card className="mt-3 space-y-3 p-5 sm:p-6">
           <form action={saveSettings} className="space-y-3">
             <div>
               <label htmlFor="settings-dob" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Date of Birth (Required)</label>
@@ -38,9 +38,9 @@ export default async function SettingsPage() {
               <label htmlFor="settings-default-dropoff" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Default Dropoff</label>
               <input id="settings-default-dropoff" name="defaultDropoff" defaultValue={profile?.defaultDropoff ?? ''} className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" />
             </div>
-            <OtwButton variant="gold" type="submit">Save</OtwButton>
+            <Button variant="gold" type="submit">Save</Button>
           </form>
-        </OtwCard>
+        </Card>
       )}
     </OtwPageShell>
   );

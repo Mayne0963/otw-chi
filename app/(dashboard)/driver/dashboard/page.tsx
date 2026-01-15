@@ -1,7 +1,7 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
-import OtwButton from '@/components/ui/otw/OtwButton';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import DriverLiveMap from '@/components/otw/DriverLiveMap';
 import { validateAddress } from '@/lib/geocoding';
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
@@ -12,6 +12,7 @@ import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import { haversineDistanceKm } from '@/lib/otw/otwGeo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,9 +36,9 @@ export default async function DriverDashboardPage() {
     return (
         <OtwPageShell>
             <OtwSectionHeader title="Driver Dashboard" subtitle="Access denied." />
-            <OtwCard className="mt-4">
+            <Card className="mt-4 p-5 sm:p-6">
                 <div className="p-8 text-center text-xl text-red-400">Driver profile not found. Please contact support.</div>
-            </OtwCard>
+            </Card>
         </OtwPageShell>
     );
   }
@@ -200,11 +201,50 @@ export default async function DriverDashboardPage() {
     const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
     
     if (!requestId || !newStatus) return;
-    
+
     const prisma = getPrisma();
+    const existing = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
+    if (!existing) return;
+
+    const hasCoords =
+      typeof existing.lastKnownLat === 'number' &&
+      typeof existing.lastKnownLng === 'number';
+
+    if (newStatus === 'PICKED_UP') {
+      if (existing.status !== 'ASSIGNED') return;
+
+      if (!hasCoords) return;
+
+      const pickupLocation = await validateAddress(existing.pickupAddress).catch(() => null);
+      if (!pickupLocation) return;
+
+      const distanceKm = haversineDistanceKm(
+        {
+          lat: existing.lastKnownLat as number,
+          lng: existing.lastKnownLng as number,
+          label: 'Driver',
+        },
+        {
+          lat: pickupLocation.latitude,
+          lng: pickupLocation.longitude,
+          label: 'Pickup',
+        }
+      );
+
+      if (distanceKm > 0.1524) return;
+    }
+
+    if (newStatus === 'EN_ROUTE') {
+      if (existing.status !== 'PICKED_UP') return;
+    }
+
+    if (newStatus === 'DELIVERED') {
+      if (existing.status !== 'EN_ROUTE' && existing.status !== 'PICKED_UP') return;
+    }
+
     await prisma.deliveryRequest.update({
-        where: { id: requestId },
-        data: { status: newStatus } 
+      where: { id: requestId },
+      data: { status: newStatus },
     });
     
     revalidatePath('/driver/dashboard');
@@ -218,10 +258,48 @@ export default async function DriverDashboardPage() {
     if (!requestId || !newStatus) return;
 
     const prisma = getPrisma();
-    await prisma.request.update({
-      where: { id: requestId },
-      data: { status: newStatus },
-    });
+    const job = await prisma.request.findUnique({ where: { id: requestId } });
+    if (!job) return;
+
+    if (newStatus === 'PICKED_UP') {
+      if (job.status !== RequestStatus.ASSIGNED) return;
+
+      const hasCoords =
+        typeof job.lastKnownLat === 'number' && typeof job.lastKnownLng === 'number';
+      if (!hasCoords) return;
+
+      const pickupLocation = await validateAddress(job.pickup).catch(() => null);
+      if (!pickupLocation) return;
+
+      const distanceKm = haversineDistanceKm(
+        {
+          lat: job.lastKnownLat as number,
+          lng: job.lastKnownLng as number,
+          label: 'Driver',
+        },
+        {
+          lat: pickupLocation.latitude,
+          lng: pickupLocation.longitude,
+          label: 'Pickup',
+        }
+      );
+
+      if (distanceKm > 0.1524) return;
+
+      await prisma.request.update({
+        where: { id: requestId },
+        data: { status: RequestStatus.PICKED_UP },
+      });
+    }
+
+    if (newStatus === 'DELIVERED') {
+      if (job.status !== RequestStatus.PICKED_UP) return;
+
+      await prisma.request.update({
+        where: { id: requestId },
+        data: { status: RequestStatus.DELIVERED },
+      });
+    }
 
     revalidatePath('/driver/dashboard');
   }
@@ -232,7 +310,7 @@ export default async function DriverDashboardPage() {
 
         <section className="mt-6">
             <h2 className="text-xl font-semibold mb-4 text-white">Live Map</h2>
-            <OtwCard>
+            <Card className="p-5 sm:p-6">
                 <div className="p-4 border-b border-white/10">
                     <h3 className="text-lg font-medium text-white">
                       {activeRequest ? 'Active Route Overview' : 'No active route'}
@@ -257,7 +335,7 @@ export default async function DriverDashboardPage() {
                       </div>
                     )}
                 </div>
-            </OtwCard>
+            </Card>
         </section>
         
         {/* Active Jobs */}
@@ -265,7 +343,7 @@ export default async function DriverDashboardPage() {
             <h2 className="text-xl font-semibold mb-4 text-white">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...assignedRequests, ...assignedLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
-                    <OtwCard key={req.id} className="border-otwGold/30 bg-otwGold/10">
+                    <Card key={req.id} className="border-otwGold/30 bg-otwGold/10 p-5 sm:p-6">
                         <div className="p-4 border-b border-otwGold/20 flex justify-between items-center">
                             <span className="font-medium text-otwGold">{req.serviceType}</span>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${req.isLegacy ? "bg-white/10 text-white/70" : "bg-otwGold text-black"}`}>
@@ -305,9 +383,9 @@ export default async function DriverDashboardPage() {
                                     <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="PICKED_UP" />
-                                        <OtwButton type="submit" className="w-full" variant="gold">
+                                        <Button type="submit" className="w-full" variant="gold">
                                             Confirm Pickup
-                                        </OtwButton>
+                                        </Button>
                                     </form>
                                 )}
                                 
@@ -315,9 +393,9 @@ export default async function DriverDashboardPage() {
                                     <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />
-                                        <OtwButton type="submit" className="w-full" variant="gold">
+                                        <Button type="submit" className="w-full" variant="gold">
                                             Complete Delivery
-                                        </OtwButton>
+                                        </Button>
                                     </form>
                                 )}
                                 
@@ -325,14 +403,14 @@ export default async function DriverDashboardPage() {
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />
-                                        <OtwButton type="submit" className="w-full" variant="gold">
+                                        <Button type="submit" className="w-full" variant="gold">
                                             Complete Delivery
-                                        </OtwButton>
+                                        </Button>
                                     </form>
                                 )}
                             </div>
                         </div>
-                    </OtwCard>
+                    </Card>
                 ))}
                 
                 {[...assignedRequests, ...assignedLegacyRequests].length === 0 && (
@@ -351,7 +429,7 @@ export default async function DriverDashboardPage() {
             <h2 className="text-xl font-semibold mb-4 text-white">Available Requests</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...availableRequests, ...availableLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
-                    <OtwCard key={req.id}>
+                    <Card key={req.id} className="p-5 sm:p-6">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
                             <span className="font-medium text-white">{req.serviceType}</span>
                             <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-medium uppercase">New</span>
@@ -381,12 +459,12 @@ export default async function DriverDashboardPage() {
                             <form action={req.isLegacy ? acceptLegacyRequest : acceptRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />
                                 <input type="hidden" name="driverId" value={driverProfile.id} />
-                                <OtwButton type="submit" className="w-full" variant="outline">
+                                <Button type="submit" className="w-full" variant="outline">
                                     Accept Job
-                                </OtwButton>
+                                </Button>
                             </form>
                         </div>
-                    </OtwCard>
+                    </Card>
                 ))}
 
                 {[...availableRequests, ...availableLegacyRequests].length === 0 && (

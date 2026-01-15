@@ -4,7 +4,7 @@ import { getPrisma } from '@/lib/db';
 import { ServiceType } from '@prisma/client';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
+import { Card } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
 import { ArrowUpRight, CheckCircle2, MapPin, ShieldAlert, User } from 'lucide-react';
 
@@ -72,7 +72,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
       />
 
       <div className="mt-6 space-y-6">
-        <OtwCard>
+        <Card>
           <div className="p-4 border-b border-white/10 mb-4 flex items-center justify-between">
             <h3 className="text-lg font-medium text-white">Status</h3>
             <span className="bg-white/10 text-white px-2 py-0.5 rounded text-xs font-medium uppercase border border-white/10">
@@ -101,10 +101,10 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
               )}
             </div>
           </div>
-        </OtwCard>
+        </Card>
 
         {order.serviceType === ServiceType.FOOD && (
-          <OtwCard>
+          <Card>
             <div className="p-4 border-b border-white/10 mb-4">
               <h3 className="text-lg font-medium text-white">Food Pickup &amp; Receipt</h3>
             </div>
@@ -210,10 +210,10 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
                 </div>
               )}
             </div>
-          </OtwCard>
+          </Card>
         )}
 
-        <OtwCard>
+        <Card>
           <div className="p-4 border-b border-white/10 mb-4">
             <h3 className="text-lg font-medium text-white">Driver</h3>
           </div>
@@ -223,9 +223,9 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
               <span>{order.assignedDriver ? driverName : 'Awaiting assignment'}</span>
             </div>
           </div>
-        </OtwCard>
+        </Card>
 
-        <OtwCard>
+        <Card>
           <div className="p-4 border-b border-white/10 mb-4">
             <h3 className="text-lg font-medium text-white">Live Tracking</h3>
           </div>
@@ -246,7 +246,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
               <div className="text-sm text-white/50">Waiting for driver location updates.</div>
             )}
           </div>
-        </OtwCard>
+        </Card>
       </div>
     </OtwPageShell>
   );

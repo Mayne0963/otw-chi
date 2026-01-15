@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,9 @@ import { ArrowRight, CheckCircle2, CreditCard, ExternalLink, MapPin, Package, Up
 import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
 import { parseReceiptText, type ReceiptItem } from "@/lib/receipts/parse";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
-import OtwCard from "@/components/ui/otw/OtwCard";
-import OtwButton from "@/components/ui/otw/OtwButton";
-import OtwStatPill from "@/components/ui/otw/OtwStatPill";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 const SERVICE_LABELS: Record<string, string> = {
   FOOD: "Food Pickup",
@@ -105,18 +105,7 @@ async function runOcr(file: File) {
 export default function OrderPage() {
   const { isSignedIn } = useUser();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const initialCheckoutStatus = useRef<string | null>(null);
-  const initialCheckoutSessionId = useRef<string | null>(null);
-
-  if (initialCheckoutStatus.current === null) {
-    initialCheckoutStatus.current = searchParams.get("checkout");
-    initialCheckoutSessionId.current = searchParams.get("session_id");
-  }
-
-  const isCheckoutReturn =
-    initialCheckoutStatus.current === "success" && Boolean(initialCheckoutSessionId.current);
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>("details");
@@ -149,6 +138,10 @@ export default function OrderPage() {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
   const receiptObjectUrl = useRef<string | null>(null);
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -281,12 +274,10 @@ export default function OrderPage() {
         if (typeof draft.deliveryFeeCents === "number") {
           setDeliveryFeeCents(draft.deliveryFeeCents);
         }
-        if (!isCheckoutReturn) {
-          setFeePaid(Boolean(draft.deliveryFeePaid));
-          setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
-          setCouponCode(draft.couponCode || "");
-          setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
-        }
+        setFeePaid(Boolean(draft.deliveryFeePaid));
+        setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
+        setCouponCode(draft.couponCode || "");
+        setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
         if (draft.receiptImageData) {
           setReceiptPreview(draft.receiptImageData);
           setReceiptImageData(draft.receiptImageData);
@@ -345,7 +336,7 @@ export default function OrderPage() {
     return () => {
       cancelled = true;
     };
-  }, [draftLoaded, isSignedIn, isCheckoutReturn]);
+  }, [draftLoaded, isSignedIn]);
 
   function buildDraftPayload(overrides?: {
     receiptImageData?: string | null;
@@ -471,96 +462,6 @@ export default function OrderPage() {
     : deliveryEstimateError
       ? "Unavailable"
       : formatCurrency(deliveryFeeCents);
-
-  useEffect(() => {
-    const checkout = searchParams.get("checkout");
-    const sessionId = searchParams.get("session_id");
-    if (!checkout) return;
-
-    if (checkout === "cancel") {
-      toast({
-        title: "Payment canceled",
-        description: "You can try again when you're ready.",
-      });
-      setPaymentProcessing(false);
-      setStep("review");
-      if (typeof window !== "undefined") {
-        window.history.replaceState(null, "", "/order");
-      }
-      return;
-    }
-
-    if (checkout === "success" && sessionId) {
-      setPaymentProcessing(true);
-      setStep("review");
-      fetch("/api/stripe/delivery-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.paid) {
-            const metaDelivery = Number(data.metadata?.deliveryFeeCents);
-            const metaSubtotal = Number(data.metadata?.subtotalCents);
-            const resolvedDeliveryFeeCents = Number.isFinite(metaDelivery)
-              ? metaDelivery
-              : deliveryFeeCents;
-            const resolvedSubtotalCents = Number.isFinite(metaSubtotal)
-              ? metaSubtotal
-              : receiptSubtotalCents;
-            const baseTotal = resolvedDeliveryFeeCents + resolvedSubtotalCents;
-            const discount =
-              typeof data.amountTotal === "number" ? Math.max(0, baseTotal - data.amountTotal) : 0;
-            const resolvedCouponCode = data.metadata?.couponCode
-              ? String(data.metadata.couponCode).toUpperCase()
-              : couponCode.trim().toUpperCase();
-
-            setFeePaid(true);
-            setDeliveryCheckoutSessionId(sessionId);
-            setDiscountCents(discount);
-            if (Number.isFinite(metaDelivery)) {
-              setDeliveryFeeCents(metaDelivery);
-            }
-            if (resolvedCouponCode) {
-              setCouponCode(resolvedCouponCode);
-            }
-            persistDraft(
-              buildDraftPayload({
-                deliveryCheckoutSessionId: sessionId,
-                feePaid: true,
-                discountCents: discount,
-                couponCode: resolvedCouponCode || undefined,
-                deliveryFeeCents: resolvedDeliveryFeeCents,
-              })
-            ).catch(() => null);
-            toast({
-              title: "Payment authorized",
-              description: "Payment confirmed. You can place your order now.",
-            });
-          } else {
-            toast({
-              title: "Payment not completed",
-              description: "We couldn't confirm the payment. Please try again.",
-              variant: "destructive",
-            });
-          }
-        })
-        .catch(() => {
-          toast({
-            title: "Payment verification failed",
-            description: "Please try again.",
-            variant: "destructive",
-          });
-        })
-        .finally(() => {
-          setPaymentProcessing(false);
-          if (typeof window !== "undefined") {
-            window.history.replaceState(null, "", "/order");
-          }
-        });
-    }
-  }, [orderTotalCents, router, searchParams, toast]);
 
   function goToNextStep() {
     if (!pickupAddress || !dropoffAddress) {
@@ -793,38 +694,63 @@ export default function OrderPage() {
       }
     }
 
+    if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim() || !cardCvc.trim()) {
+      toast({
+        title: "Payment details required",
+        description: "Enter your card details before paying.",
+        variant: "destructive",
+      });
+      setStep("review");
+      return;
+    }
+
     setPaymentProcessing(true);
     try {
       const cachedImageData = await ensureReceiptImageData();
       await persistDraft(buildDraftPayload({ receiptImageData: cachedImageData })).catch(() => null);
-      const response = await fetch("/api/stripe/delivery-checkout", {
+      const totalToChargeCents = Math.max(0, orderTotalCents - discountCents);
+      const response = await fetch("/api/payments/native-charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          deliveryFeeCents,
-          subtotalCents: receiptSubtotalCents,
-          couponCode: couponCode.trim() || undefined,
+          amountCents: totalToChargeCents,
+          cardBrand: "Card",
+          cardLast4: cardNumber.replace(/\s+/g, "").slice(-4),
+          cardholderName: cardName.trim(),
         }),
       });
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error?.error || "Unable to start checkout");
+        throw new Error(error?.error || "Unable to authorize payment");
       }
 
       const data = await response.json();
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("Missing checkout URL");
+      if (!data?.paymentId) {
+        throw new Error("Missing payment confirmation");
       }
+
+      setFeePaid(true);
+      setDeliveryCheckoutSessionId(data.paymentId);
+      persistDraft(
+        buildDraftPayload({
+          deliveryCheckoutSessionId: data.paymentId,
+          feePaid: true,
+        })
+      ).catch(() => null);
+
+      toast({
+        title: "Payment authorized",
+        description: "Your delivery payment is ready. You can place your order.",
+      });
     } catch (error) {
       console.error(error);
       toast({
-        title: "Payment setup failed",
-        description: "Please try again in a moment.",
+        title: "Payment failed",
+        description: "Please check your details and try again.",
         variant: "destructive",
       });
+    } finally {
       setPaymentProcessing(false);
     }
   }
@@ -865,7 +791,7 @@ export default function OrderPage() {
         notes: notes.trim() || undefined,
         deliveryFeeCents: deliveryFeeCents,
         deliveryFeePaid: feePaid,
-        deliveryCheckoutSessionId: deliveryCheckoutSessionId || undefined,
+        paymentId: deliveryCheckoutSessionId || undefined,
         couponCode: couponCode.trim() || undefined,
       };
 
@@ -938,7 +864,7 @@ export default function OrderPage() {
     <OtwPageShell className="flex flex-col items-center justify-center min-h-[75vh]">
       <div className="w-full max-w-4xl space-y-8">
         <div className="text-center space-y-3">
-          <OtwStatPill tone="gold">Customer Request</OtwStatPill>
+          <Badge variant="secondary">Customer Request</Badge>
           <h1 className="text-4xl font-semibold tracking-tight">
             Request a <span className="text-secondary">Delivery</span>
           </h1>
@@ -946,14 +872,14 @@ export default function OrderPage() {
         </div>
 
         <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-          <OtwStatPill tone="neutral">
+          <Badge variant="outline">
             {SERVICE_LABELS[serviceType] || serviceType}
-          </OtwStatPill>
+          </Badge>
           <span>•</span>
           <span className="text-muted-foreground">{stepLabel}</span>
         </div>
 
-        <OtwCard className="p-6 sm:p-8 space-y-6">
+        <Card className="p-6 sm:p-8 space-y-6">
           {step === "details" && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1041,14 +967,14 @@ export default function OrderPage() {
               </div>
 
               <div className="pt-2">
-                <OtwButton
+                <Button
                   onClick={goToNextStep}
                   className="w-full"
                   disabled={loading || !pickupAddress || !dropoffAddress}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Continue <ArrowRight className="ml-2 h-4 w-4" />
-                </OtwButton>
+                </Button>
               </div>
             </div>
           )}
@@ -1078,7 +1004,7 @@ export default function OrderPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
-                <OtwButton
+                <Button
                   type="button"
                   variant="outline"
                   className="gap-2"
@@ -1088,21 +1014,21 @@ export default function OrderPage() {
                   }}
                 >
                   Open restaurant site <ExternalLink className="h-4 w-4" />
-                </OtwButton>
-                <OtwButton
+                </Button>
+                <Button
                   onClick={() => setStep("receipt")}
                   className="gap-2"
                   disabled={!pickupAddress || !dropoffAddress}
                 >
                   Upload receipt <ArrowRight className="h-4 w-4" />
-                </OtwButton>
-                <OtwButton
+                </Button>
+                <Button
                   onClick={() => setStep("details")}
                   variant="ghost"
                   className="text-muted-foreground hover:text-foreground"
                 >
                   Back to details
-                </OtwButton>
+                </Button>
               </div>
             </div>
           )}
@@ -1126,18 +1052,18 @@ export default function OrderPage() {
                   />
                 </label>
                 {receiptFile && (
-                  <OtwButton variant="ghost" size="sm" className="text-muted-foreground" onClick={resetReceipt}>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={resetReceipt}>
                     <X className="mr-1 h-4 w-4" />Clear
-                  </OtwButton>
+                  </Button>
                 )}
-                <OtwButton
+                <Button
                   onClick={analyzeReceipt}
                   disabled={!receiptFile || analysisLoading}
                   className="gap-2"
                 >
                   {analysisLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Run AI receipt check
-                </OtwButton>
+                </Button>
               </div>
 
               {analysisError && <p className="text-sm text-red-400">{analysisError}</p>}
@@ -1188,9 +1114,9 @@ export default function OrderPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-muted-foreground">Items</div>
-                      <OtwButton variant="outline" size="sm" onClick={addReceiptItem}>
+                      <Button variant="outline" size="sm" onClick={addReceiptItem}>
                         Add item
-                      </OtwButton>
+                      </Button>
                     </div>
                     <div className="space-y-3">
                       {receiptAnalysis.items.map((item, idx) => (
@@ -1230,20 +1156,20 @@ export default function OrderPage() {
               )}
 
               <div className="flex flex-wrap gap-3 pt-2">
-                <OtwButton
+                <Button
                   onClick={() => setStep("review")}
                   className="gap-2"
                   disabled={!receiptAnalysis}
                 >
                   Continue to review <ArrowRight className="ml-2 h-4 w-4" />
-                </OtwButton>
-                <OtwButton
+                </Button>
+                <Button
                   onClick={() => setStep("restaurant")}
                   variant="ghost"
                   className="text-muted-foreground hover:text-foreground"
                 >
                   Back to restaurant
-                </OtwButton>
+                </Button>
               </div>
             </div>
           )}
@@ -1278,9 +1204,9 @@ export default function OrderPage() {
                         </a>
                       )}
                     </div>
-                    <OtwStatPill tone="neutral">
+                    <Badge variant="outline">
                       Checkout total {deliveryFeeReady ? formatCurrency(orderTotalCents) : "Pending estimate"}
-                    </OtwStatPill>
+                    </Badge>
                   </div>
                 )}
 
@@ -1335,14 +1261,14 @@ export default function OrderPage() {
                       className="flex-1 min-w-[200px]"
                       disabled={feePaid}
                     />
-                    <OtwButton
+                    <Button
                       type="button"
                       variant="outline"
                       onClick={handleApplyCoupon}
                       disabled={feePaid || couponApplying || !couponCode.trim()}
                     >
                       Apply
-                    </OtwButton>
+                    </Button>
                   </div>
                   <div className="text-xs text-muted-foreground">Applies to delivery {requiresReceipt ? "+ receipt total" : "fee"}.</div>
                 </div>
@@ -1362,8 +1288,41 @@ export default function OrderPage() {
                   </div>
                 )}
 
+                <div className="rounded-lg border border-border/70 bg-card/80 p-3 space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    <span>Pay securely with your card</span>
+                  </div>
+                  <div className="space-y-3">
+                    <Input
+                      value={cardName}
+                      onChange={(e) => setCardName(e.target.value)}
+                      placeholder="Name on card"
+                    />
+                    <Input
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                      placeholder="Card number"
+                      inputMode="numeric"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(e.target.value)}
+                        placeholder="MM/YY"
+                      />
+                      <Input
+                        value={cardCvc}
+                        onChange={(e) => setCardCvc(e.target.value)}
+                        placeholder="CVC"
+                        inputMode="numeric"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap gap-3">
-                  <OtwButton
+                  <Button
                     onClick={handlePayDeliveryFee}
                     disabled={paymentProcessing || feePaid || !deliveryFeeReady}
                     className="gap-2"
@@ -1381,39 +1340,39 @@ export default function OrderPage() {
                         <CreditCard className="h-4 w-4" />
                       </>
                     )}
-                  </OtwButton>
+                  </Button>
                   {requiresReceipt && (
-                    <OtwButton
+                    <Button
                       variant="outline"
                       onClick={() => setStep("receipt")}
                     >
                       Edit receipt
-                    </OtwButton>
+                    </Button>
                   )}
                 </div>
               </div>
 
               <div className="space-y-3 pt-2">
-                <OtwButton
+                <Button
                   onClick={handleSubmit}
                   className="w-full"
                   disabled={loading || (requiresReceipt && (!receiptAnalysis || !feePaid))}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Place Order
-                </OtwButton>
-                <OtwButton
+                </Button>
+                <Button
                   onClick={() => setStep(requiresReceipt ? "receipt" : "details")}
                   variant="ghost"
                   className="w-full text-muted-foreground hover:text-foreground"
                   disabled={loading}
                 >
                   Edit Details
-                </OtwButton>
+                </Button>
               </div>
             </div>
           )}
-        </OtwCard>
+        </Card>
 
         <p className="text-center text-xs text-muted-foreground">
           By proceeding, you agree to our Terms of Service and Privacy Policy.

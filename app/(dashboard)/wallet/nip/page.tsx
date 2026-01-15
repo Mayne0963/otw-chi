@@ -1,8 +1,8 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
-import OtwCard from '@/components/ui/otw/OtwCard';
+import { Card } from '@/components/ui/card';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
-import OtwStatPill from '@/components/ui/otw/OtwStatPill';
+import { Badge } from '@/components/ui/badge';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { ensureWeeklyActiveMemberGrant } from '@/app/actions/nip';
@@ -16,9 +16,9 @@ export default async function NipWalletPage() {
     return (
       <OtwPageShell>
         <OtwSectionHeader title="NIP Wallet" subtitle="Rewards and transactions." />
-        <OtwCard className="mt-3">
-          <OtwEmptyState title="Sign in to view NIP" subtitle="Access your wallet and transactions." actionHref="/sign-in" actionLabel="Sign In" />
-        </OtwCard>
+        <Card className="mt-3 p-5 sm:p-6">
+        <OtwEmptyState title="Sign in to view NIP" subtitle="Access your wallet and transactions." actionHref="/sign-in" actionLabel="Sign In" />
+      </Card>
       </OtwPageShell>
     );
   }
@@ -43,15 +43,21 @@ export default async function NipWalletPage() {
     <OtwPageShell>
       <OtwSectionHeader title="NIP Wallet" subtitle="Rewards and transactions." />
       <div className="mt-3 grid md:grid-cols-3 gap-4">
-        <OtwCard>
+        <Card className="p-5 sm:p-6">
           <div className="text-sm font-medium">Balance</div>
-          <div className="mt-2"><OtwStatPill label="NIP" value={String(balance)} tone="success" /></div>
-        </OtwCard>
-        <OtwCard>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs">
+            <Badge variant="outline" className="h-5 px-2 text-[10px] uppercase tracking-wide">NIP</Badge>
+            <span className="text-sm font-semibold text-emerald-400">{String(balance)}</span>
+          </div>
+        </Card>
+        <Card className="p-5 sm:p-6">
           <div className="text-sm font-medium">Total Earned</div>
-          <div className="mt-2"><OtwStatPill label="NIP" value={String(totalEarned)} tone="gold" /></div>
-        </OtwCard>
-        <OtwCard>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs">
+            <Badge variant="outline" className="h-5 px-2 text-[10px] uppercase tracking-wide">NIP</Badge>
+            <span className="text-sm font-semibold text-amber-300">{String(totalEarned)}</span>
+          </div>
+        </Card>
+        <Card className="p-5 sm:p-6">
           <div className="text-sm font-medium">Ways to earn NIP</div>
           <ul className="mt-2 text-sm opacity-80 space-y-1">
             <li>• First completed order: +50</li>
@@ -59,18 +65,18 @@ export default async function NipWalletPage() {
             <li>• On-time payment: +10</li>
             <li>• Referral bonus: +100</li>
           </ul>
-        </OtwCard>
+        </Card>
       </div>
       <div className="mt-3 grid md:grid-cols-2 gap-4">
-        <OtwCard>
+        <Card className="p-5 sm:p-6">
           <div className="text-sm font-medium">Ways to spend NIP</div>
           <ul className="mt-2 text-sm opacity-80 space-y-1">
             <li>• Order discounts</li>
             <li>• Priority dispatch</li>
             <li>• Fee waivers</li>
           </ul>
-        </OtwCard>
-        <OtwCard>
+        </Card>
+        <Card className="p-5 sm:p-6">
           <div className="text-sm font-medium">Recent Transactions</div>
           {entries.length === 0 ? (
             <OtwEmptyState title="No NIP data yet" subtitle="Complete an OTW run to start earning." actionHref="/requests" actionLabel="View Requests" />
@@ -86,7 +92,7 @@ export default async function NipWalletPage() {
               ))}
             </ul>
           )}
-        </OtwCard>
+        </Card>
       </div>
     </OtwPageShell>
   );

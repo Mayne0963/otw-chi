@@ -390,10 +390,10 @@ const DriverLiveMap = ({
     );
   }, []);
 
-  const unlockVoiceQueue = () => {
+  const unlockVoiceQueue = useCallback(() => {
     voiceQueueRef.current?.unlock();
     setVoiceGestureHint(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -429,6 +429,24 @@ const DriverLiveMap = ({
       setVoiceGestureHint(true);
     }
   }, [settings.voiceEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!settings.voiceEnabled) return;
+    const queue = voiceQueueRef.current;
+    if (!queue || !queue.isBlocked()) return;
+
+    const handleUnlock = () => unlockVoiceQueue();
+    window.addEventListener("pointerdown", handleUnlock, { once: true, passive: true });
+    window.addEventListener("touchstart", handleUnlock, { once: true, passive: true });
+    window.addEventListener("keydown", handleUnlock, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", handleUnlock);
+      window.removeEventListener("touchstart", handleUnlock);
+      window.removeEventListener("keydown", handleUnlock);
+    };
+  }, [settings.voiceEnabled, unlockVoiceQueue]);
 
   const speakNavigation = useCallback((text: string, options: { flush?: boolean } = {}) => {
     const queue = voiceQueueRef.current;
