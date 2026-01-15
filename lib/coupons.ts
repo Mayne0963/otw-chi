@@ -7,7 +7,6 @@ type CouponTotals = {
 
 type CouponResult = {
   coupon: PromoCode;
-  discountCents: number;
 };
 
 export function normalizeCouponCode(code: string) {
@@ -46,7 +45,6 @@ export async function findActiveCoupon(
 
   return {
     coupon,
-    discountCents: 0,
   };
 }
 

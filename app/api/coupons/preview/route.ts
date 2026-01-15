@@ -33,13 +33,20 @@ export async function POST(req: Request) {
     }
 
     const normalized = normalizeCouponCode(data.couponCode);
+    console.warn(`[COUPON_PREVIEW] Checking coupon: ${normalized} for user: ${userId}`);
+
     const internalCoupon = await findActiveCoupon(prisma, normalized, user.id);
     if (internalCoupon) {
+      console.warn(`[COUPON_PREVIEW] Found internal coupon: ${internalCoupon.coupon.code}`);
       const discount = calculateDiscount(
         { subtotalCents: data.subtotalCents, deliveryFeeCents: data.deliveryFeeCents },
         internalCoupon.coupon
       );
+      
+      console.warn(`[COUPON_PREVIEW] Calculated discount: ${discount}`);
+
       if (discount <= 0 || baseTotal - discount < 50) {
+        console.warn(`[COUPON_PREVIEW] Invalid discount amount or total too low`);
         return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
       }
       return NextResponse.json(
@@ -48,6 +55,7 @@ export async function POST(req: Request) {
       );
     }
 
+    console.warn(`[COUPON_PREVIEW] Internal coupon not found, checking Stripe...`);
     const stripe = getStripe();
     const promos = await stripe.promotionCodes.list({
       code: normalized,
@@ -56,8 +64,14 @@ export async function POST(req: Request) {
     });
 
     const promo = promos.data[0];
+    if (!promo) {
+       console.warn(`[COUPON_PREVIEW] Stripe promo code not found`);
+       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+    }
+
     const promoCoupon = (promo as unknown as { coupon?: Stripe.Coupon | string })?.coupon;
-    if (!promo || !promoCoupon) {
+    if (!promoCoupon) {
+      console.warn(`[COUPON_PREVIEW] Stripe promo missing coupon data`);
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 
