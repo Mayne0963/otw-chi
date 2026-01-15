@@ -85,6 +85,9 @@ export function AddressSearch({
   const errorId = useId();
   const platformHint = getPlatformHint();
 
+  const [locationQuality, setLocationQuality] = useState<"high" | "medium" | "low" | null>(null);
+  const [locationSource, setLocationSource] = useState<"gps" | "ip" | "manual">("manual");
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
