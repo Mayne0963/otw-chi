@@ -1,26 +1,39 @@
-"use client";
+const handlePayDeliveryFee = async () => {
+    if (feePaid) {
+      toast({
+        title: "Already paid",
+        description: "You've already authorized payment for this delivery.",
+      });
+      return;
+    }
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
-import { AddressSearch } from "@/components/ui/address-search";
-import { ArrowRight, CheckCircle2, CreditCard, ExternalLink, MapPin, Package, Upload, X, Loader2 } from "lucide-react";
-import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
-import { parseReceiptText, type ReceiptItem } from "@/lib/receipts/parse";
-import OtwPageShell from "@/components/ui/otw/OtwPageShell";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+    if (requiresReceipt && !receiptImageData) {
+      if (step !== "receipt") {
+        toast({
+          title: "Receipt required",
+          description: "Please upload a receipt before paying.",
+          variant: "destructive",
+        });
+        setStep("receipt");
+        return;
+      }
+    }
 
-const SERVICE_LABELS: Record<string, string> = {
-  FOOD: "Food Pickup",
-  STORE: "Grocery / Store",
-  FRAGILE: "Fragile / Important",
-  CONCIERGE: "Custom Concierge",
-};
+    if (requiresReceipt && receiptAnalysis) {
+      if (!receiptAnalysis.items.length) {
+        toast({
+          title: "Receipt items missing",
+          description: "Add at least one receipt item before paying.",
+          variant: "destructive",
+        });
+        setStep("receipt");
+        return;
+      }
+    }
+
+    // Show Stripe payment form
+    setShowStripePayment(true);
+  };
 
 const formatCurrency = (value: number | null | undefined) =>
   typeof value === "number" ? `$${(value / 100).toFixed(2)}` : "—";
@@ -138,10 +151,7 @@ export default function OrderPage() {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
   const receiptObjectUrl = useRef<string | null>(null);
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
+  const [showStripePayment, setShowStripePayment] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -754,6 +764,46 @@ export default function OrderPage() {
       setPaymentProcessing(false);
     }
   }
+
+  
+  const handleStripePaymentSuccess = async (paymentIntentId: string) => {
+    try {
+      const cachedImageData = await ensureReceiptImageData();
+      
+      setFeePaid(true);
+      setDeliveryCheckoutSessionId(paymentIntentId);
+      setShowStripePayment(false);
+      
+      await persistDraft(
+        buildDraftPayload({
+          deliveryCheckoutSessionId: paymentIntentId,
+          feePaid: true,
+          receiptImageData: cachedImageData,
+        })
+      ).catch(() => null);
+
+      toast({
+        title: "Payment successful",
+        description: "Your delivery payment is ready. You can place your order.",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Payment succeeded but failed to update order. Please contact support.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStripePaymentError = (error: string) => {
+    toast({
+      title: "Payment failed",
+      description: error || "Please try again.",
+      variant: "destructive",
+    });
+    setShowStripePayment(false);
+  };
 
   async function handleSubmit() {
     if (!pickupAddress || !dropoffAddress) return;
