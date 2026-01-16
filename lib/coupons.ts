@@ -10,7 +10,10 @@ type CouponResult = {
 };
 
 export function normalizeCouponCode(code: string) {
-  return code.trim().toUpperCase();
+  const trimmed = code.trim();
+  if (!trimmed) return "";
+  const alnumOnly = trimmed.replace(/[^0-9a-zA-Z]/g, "");
+  return alnumOnly.toUpperCase();
 }
 
 export async function findActiveCoupon(
