@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     const promoCoupon = (promo as unknown as { coupon?: Stripe.Coupon | string })?.coupon;
     if (!promoCoupon) {
       console.warn(`[COUPON_PREVIEW] Stripe promo missing coupon data`);
-      return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing Coupon Data' }, { status: 400 });
     }
 
     const coupon =
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     }
 
     if (coupon.amount_off && coupon.currency && coupon.currency !== 'usd') {
-      return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid Discount' }, { status: 400 });
     }
 
     let discount = 0;
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       discount = Math.round((baseTotal * coupon.percent_off) / 100);
     }
 
-    if (discount <= 0 || baseTotal - discount < 50) {
+    if (discount <= 0 || baseTotal - discount) {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 
