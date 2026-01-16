@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
 import { AddressSearch } from "@/components/ui/address-search";
+import StripePaymentForm from "@/components/stripe/StripePaymentForm";
 import { GeocodedAddress, formatAddressLines, validateAddress } from "@/lib/geocoding";
 import { ReceiptItem, parseReceiptText } from "@/lib/receipts/parse";
 
@@ -130,7 +131,6 @@ export default function OrderPage() {
   const [deliveryEstimateLoading, setDeliveryEstimateLoading] = useState(false);
   const [deliveryEstimateError, setDeliveryEstimateError] = useState<string | null>(null);
   const [feePaid, setFeePaid] = useState(false);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [discountCents, setDiscountCents] = useState(0);
@@ -139,11 +139,6 @@ export default function OrderPage() {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
   const receiptObjectUrl = useRef<string | null>(null);
-  const [showStripePayment, setShowStripePayment] = useState(false);
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -459,6 +454,7 @@ export default function OrderPage() {
   const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
   const deliveryFeeReady =
     deliveryFeeCents > 0 && !deliveryEstimateLoading && !deliveryEstimateError;
+  const totalAfterDiscountCents = Math.max(0, orderTotalCents - discountCents);
   const deliveryFeeLabel = deliveryEstimateLoading
     ? "Calculating..."
     : deliveryEstimateError
@@ -661,118 +657,12 @@ export default function OrderPage() {
     return null;
   }
 
-  async function handlePayDeliveryFee() {
-    if (feePaid) {
-      toast({
-        title: "Already paid",
-        description: "You've already authorized payment for this delivery.",
-      });
-      return;
-    }
-
-    if (!deliveryFeeReady) {
-      toast({
-        title: "Delivery fee unavailable",
-        description: deliveryEstimateError || "Please wait for the delivery fee to finish calculating.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!isSignedIn) {
-      const returnUrl = encodeURIComponent("/order");
-      router.push(`/sign-in?redirect_url=${returnUrl}`);
-      return;
-    }
-    if (requiresReceipt) {
-      if (!receiptAnalysis) {
-        toast({
-          title: "Add your receipt",
-          description: "Upload and review your receipt before paying.",
-          variant: "destructive",
-        });
-        setStep("receipt");
-        return;
-      }
-      if (!receiptAnalysis.items.length) {
-        toast({
-          title: "Receipt items missing",
-          description: "Add at least one receipt item before paying.",
-          variant: "destructive",
-        });
-        setStep("receipt");
-        return;
-      }
-    }
-
-    if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim() || !cardCvc.trim()) {
-      toast({
-        title: "Payment details required",
-        description: "Enter your card details before paying.",
-        variant: "destructive",
-      });
-      setStep("review");
-      return;
-    }
-
-    setPaymentProcessing(true);
-    try {
-      const cachedImageData = await ensureReceiptImageData();
-      await persistDraft(buildDraftPayload({ receiptImageData: cachedImageData })).catch(() => null);
-      const totalToChargeCents = Math.max(0, orderTotalCents - discountCents);
-      const response = await fetch("/api/payments/native-charge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amountCents: totalToChargeCents,
-          cardBrand: "Card",
-          cardLast4: cardNumber.replace(/\s+/g, "").slice(-4),
-          cardholderName: cardName.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error?.error || "Unable to authorize payment");
-      }
-
-      const data = await response.json();
-      if (!data?.paymentId) {
-        throw new Error("Missing payment confirmation");
-      }
-
-      setFeePaid(true);
-      setDeliveryCheckoutSessionId(data.paymentId);
-      persistDraft(
-        buildDraftPayload({
-          deliveryCheckoutSessionId: data.paymentId,
-          feePaid: true,
-        })
-      ).catch(() => null);
-
-      toast({
-        title: "Payment authorized",
-        description: "Your delivery payment is ready. You can place your order.",
-      });
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Payment failed",
-        description: "Please check your details and try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setPaymentProcessing(false);
-    }
-  }
-
-  
   const handleStripePaymentSuccess = async (paymentIntentId: string) => {
     try {
       const cachedImageData = await ensureReceiptImageData();
       
       setFeePaid(true);
       setDeliveryCheckoutSessionId(paymentIntentId);
-      setShowStripePayment(false);
       
       await persistDraft(
         buildDraftPayload({
@@ -802,7 +692,6 @@ export default function OrderPage() {
       description: error || "Please try again.",
       variant: "destructive",
     });
-    setShowStripePayment(false);
   };
 
   async function handleSubmit() {
@@ -1338,63 +1227,44 @@ export default function OrderPage() {
                   </div>
                 )}
 
-                <div className="rounded-lg border border-border/70 bg-card/80 p-3 space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CreditCard className="h-4 w-4" />
-                    <span>Pay securely with your card</span>
-                  </div>
-                  <div className="space-y-3">
-                    <Input
-                      value={cardName}
-                      onChange={(e) => setCardName(e.target.value)}
-                      placeholder="Name on card"
-                    />
-                    <Input
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      placeholder="Card number"
-                      inputMode="numeric"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        placeholder="MM/YY"
-                      />
-                      <Input
-                        value={cardCvc}
-                        onChange={(e) => setCardCvc(e.target.value)}
-                        placeholder="CVC"
-                        inputMode="numeric"
-                      />
+                {feePaid ? (
+                  <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-center text-green-600">
+                    <div className="flex items-center justify-center gap-2 font-semibold">
+                      <CheckCircle2 className="h-5 w-5" /> Payment Completed
                     </div>
+                    <p className="text-xs opacity-80 mt-1">Your payment method has been verified.</p>
                   </div>
-                </div>
+                ) : deliveryFeeReady ? (
+                  <div className="rounded-lg border border-border/70 bg-card/80 p-4 space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Pay securely with Stripe</span>
+                    </div>
+                    <StripePaymentForm
+                      amountCents={Math.max(0, orderTotalCents - discountCents)}
+                      couponCode={couponCode}
+                      onSuccess={handleStripePaymentSuccess}
+                      onError={handleStripePaymentError}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-center p-4 text-muted-foreground text-sm border rounded-lg border-dashed">
+                    {deliveryEstimateLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Calculating delivery fee...
+                      </span>
+                    ) : (
+                      "Pending delivery fee estimate..."
+                    )}
+                  </div>
+                )}
 
                 <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={handlePayDeliveryFee}
-                    disabled={paymentProcessing || feePaid || !deliveryFeeReady}
-                    className="gap-2"
-                  >
-                    {paymentProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {feePaid ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" /> Payment ready
-                      </>
-                    ) : (
-                      <>
-                        {deliveryFeeReady
-                          ? `Pay ${formatCurrency(Math.max(0, orderTotalCents - discountCents))}`
-                          : "Payment pending estimate"}{" "}
-                        <CreditCard className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
                   {requiresReceipt && (
                     <Button
                       variant="outline"
                       onClick={() => setStep("receipt")}
+                      className="w-full"
                     >
                       Edit receipt
                     </Button>
