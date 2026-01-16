@@ -1,39 +1,19 @@
-const handlePayDeliveryFee = async () => {
-    if (feePaid) {
-      toast({
-        title: "Already paid",
-        description: "You've already authorized payment for this delivery.",
-      });
-      return;
-    }
+"use client";
 
-    if (requiresReceipt && !receiptImageData) {
-      if (step !== "receipt") {
-        toast({
-          title: "Receipt required",
-          description: "Please upload a receipt before paying.",
-          variant: "destructive",
-        });
-        setStep("receipt");
-        return;
-      }
-    }
-
-    if (requiresReceipt && receiptAnalysis) {
-      if (!receiptAnalysis.items.length) {
-        toast({
-          title: "Receipt items missing",
-          description: "Add at least one receipt item before paying.",
-          variant: "destructive",
-        });
-        setStep("receipt");
-        return;
-      }
-    }
-
-    // Show Stripe payment form
-    setShowStripePayment(true);
-  };
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import { Loader2, Upload, X, CreditCard, MapPin, ArrowRight, Package, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import OtwPageShell from "@/components/ui/otw/OtwPageShell";
+import { AddressSearch } from "@/components/ui/address-search";
+import { GeocodedAddress, formatAddressLines, validateAddress } from "@/lib/geocoding";
+import { ReceiptItem, parseReceiptText } from "@/lib/receipts/parse";
 
 const formatCurrency = (value: number | null | undefined) =>
   typeof value === "number" ? `$${(value / 100).toFixed(2)}` : "—";
@@ -47,6 +27,14 @@ type ReceiptAnalysis = {
   authenticityScore: number;
   authenticityReason: string;
   imageData?: string;
+};
+
+const SERVICE_LABELS: Record<string, string> = {
+  FOOD: "Food Delivery",
+  STORE: "Store Pickup",
+  FRAGILE: "Fragile Item",
+  CONCIERGE: "Concierge",
+  RIDE: "Ride",
 };
 
 const AUTHENTICITY_THRESHOLD = 0.85;
@@ -152,6 +140,10 @@ export default function OrderPage() {
   const draftSaveTimeout = useRef<number | null>(null);
   const receiptObjectUrl = useRef<string | null>(null);
   const [showStripePayment, setShowStripePayment] = useState(false);
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -670,6 +662,14 @@ export default function OrderPage() {
   }
 
   async function handlePayDeliveryFee() {
+    if (feePaid) {
+      toast({
+        title: "Already paid",
+        description: "You've already authorized payment for this delivery.",
+      });
+      return;
+    }
+
     if (!deliveryFeeReady) {
       toast({
         title: "Delivery fee unavailable",

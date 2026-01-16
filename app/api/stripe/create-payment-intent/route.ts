@@ -45,7 +45,10 @@ export async function POST(req: Request) {
     }
 
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const user = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      include: { membership: true },
+    });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
