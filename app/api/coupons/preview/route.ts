@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       discount = Math.round((baseTotal * coupon.percent_off) / 100);
     }
 
-    if (discount <= 0 || baseTotal - discount) {
+    if (discount <= 0 || baseTotal - discount < 50) {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 
