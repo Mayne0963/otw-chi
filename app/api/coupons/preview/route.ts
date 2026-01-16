@@ -45,8 +45,23 @@ export async function POST(req: Request) {
       
       console.warn(`[COUPON_PREVIEW] Calculated discount: ${discount}`);
 
-      if (discount <= 0 || baseTotal - discount < 50) {
-        console.warn(`[COUPON_PREVIEW] Invalid discount amount or total too low`);
+      if (discount <= 0) {
+        console.warn(`[COUPON_PREVIEW] Invalid discount amount`);
+        return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+      }
+      
+      // Allow 100% discount (free orders)
+      if (baseTotal - discount === 0) {
+        console.warn(`[COUPON_PREVIEW] 100% discount applied - free order`);
+        return NextResponse.json(
+          { discountCents: discount, source: 'internal', code: internalCoupon.coupon.code, free: true },
+          { status: 200 }
+        );
+      }
+      
+      // For partial discounts, ensure minimum $0.50 remains
+      if (baseTotal - discount < 50) {
+        console.warn(`[COUPON_PREVIEW] Discount would result in total below $0.50`);
         return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
       }
       return NextResponse.json(
@@ -95,7 +110,21 @@ export async function POST(req: Request) {
       discount = Math.round((baseTotal * coupon.percent_off) / 100);
     }
 
-    if (discount <= 0 || baseTotal - discount < 50) {
+    if (discount <= 0) {
+      return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+    }
+    
+    // Allow 100% discount (free orders)
+    if (baseTotal - discount === 0) {
+      console.warn(`[COUPON_PREVIEW] 100% discount applied - free order`);
+      return NextResponse.json(
+        { discountCents: discount, source: 'stripe', code: normalized, free: true },
+        { status: 200 }
+      );
+    }
+    
+    // For partial discounts, ensure minimum $0.50 remains
+    if (baseTotal - discount < 50) {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 

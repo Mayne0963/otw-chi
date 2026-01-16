@@ -77,6 +77,30 @@ export async function POST(req: Request) {
     }
 
     const finalTotal = Math.max(0, baseTotal - discountCents);
+    
+    // Handle 100% discount - no payment needed, bypass Stripe
+    if (finalTotal === 0) {
+      console.log("[STRIPE_DELIVERY_CHECKOUT] 100% discount applied, bypassing Stripe");
+      return NextResponse.json({ 
+        url: `${appUrl}${successPath || "/order?checkout=success&free=true"}`,
+        free: true,
+        couponCode: resolvedCouponCode,
+        discountCents,
+        metadata: {
+          clerkUserId: userId,
+          userId: dbUser.id,
+          purpose: "order_payment",
+          deliveryFeeCents: String(deliveryFeeCents),
+          subtotalCents: String(subtotalCents),
+          couponCode: resolvedCouponCode ?? "",
+          discountCents: String(discountCents),
+          couponSource,
+          free: "true"
+        }
+      });
+    }
+    
+    // Stripe requires minimum $0.50 for payment sessions
     if (finalTotal < 50) {
       return NextResponse.json({ error: "Total must be at least $0.50" }, { status: 400 });
     }
