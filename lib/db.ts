@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaNeon } from '@prisma/adapter-neon'
+import { neonConfig } from "@neondatabase/serverless";
+import { getDatabaseUrlSource } from "./dbUrl";
 
 type GlobalWithPrisma = typeof globalThis & {
   __OTW_PRISMA__?: PrismaClient
@@ -9,10 +11,8 @@ export function getPrisma(): PrismaClient {
   const g = globalThis as GlobalWithPrisma
   if (g.__OTW_PRISMA__) return g.__OTW_PRISMA__
 
-  const connectionString = process.env.DATABASE_URL
-  if (!connectionString) {
-    throw new Error('DATABASE_URL is missing. Configure the database before using Prisma.')
-  }
+  neonConfig.fetchConnectionCache = true;
+  const { url: connectionString } = getDatabaseUrlSource();
 
   // Create Neon adapter for Prisma 7
   const adapter = new PrismaNeon({ connectionString })

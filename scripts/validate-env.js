@@ -1,6 +1,18 @@
 // Script to validate environment variables
-const requiredEnvVars = [
+const requiredDbEnvVars = [
   'DATABASE_URL',
+  'DIRECT_URL',
+  'NEON_DATABASE_URL',
+  'NEON_DATABASE_URL_NON_POOLING',
+  'NEON_DATABASE_URL_UNPOOLED',
+  'POSTGRES_PRISMA_URL',
+  'POSTGRES_URL',
+  'POSTGRES_URL_NON_POOLING',
+  'DATABASE_URL_NON_POOLING',
+  'DATABASE_URL_UNPOOLED',
+];
+
+const requiredEnvVars = [
   'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
   'CLERK_SECRET_KEY',
   'NEXT_PUBLIC_APP_URL',
@@ -14,6 +26,12 @@ const requiredEnvVars = [
 
 export function validateEnv() {
   const missing = requiredEnvVars.filter((key) => !process.env[key]);
+  const hasDbUrl = requiredDbEnvVars.some((key) => Boolean(process.env[key]));
+  if (!hasDbUrl) {
+    missing.unshift(
+      `DATABASE_URL (or one of: ${requiredDbEnvVars.filter((k) => k !== 'DATABASE_URL').join(', ')})`
+    );
+  }
 
   if (missing.length > 0) {
     console.error(

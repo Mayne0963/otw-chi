@@ -6,7 +6,7 @@ type EnvRequirement = {
 };
 
 const SERVER_ENV: EnvRequirement[] = [
-  { key: "DATABASE_URL", public: false, description: "Postgres connection string (Neon)" },
+  { key: "DATABASE_URL", public: false, description: "Postgres connection string (Neon/Vercel Postgres)" },
   { key: "CLERK_SECRET_KEY", public: false, description: "Clerk backend key" },
   { key: "CLERK_WEBHOOK_SECRET", public: false, optional: true, description: "Clerk webhook verification" },
   { key: "HERE_API_KEY", public: false, description: "HERE REST API key for routing/traffic" },
@@ -33,9 +33,26 @@ export type EnvDiagnosticsResult = {
 };
 
 export const getEnvDiagnostics = (): EnvDiagnosticsResult => {
-  const missingServer = SERVER_ENV.filter((item) => !item.optional && !process.env[item.key]).map(
-    (item) => item.key
-  );
+  const dbUrlKeys = [
+    "DATABASE_URL",
+    "DIRECT_URL",
+    "NEON_DATABASE_URL",
+    "NEON_DATABASE_URL_NON_POOLING",
+    "NEON_DATABASE_URL_UNPOOLED",
+    "POSTGRES_PRISMA_URL",
+    "POSTGRES_URL",
+    "POSTGRES_URL_NON_POOLING",
+    "DATABASE_URL_NON_POOLING",
+    "DATABASE_URL_UNPOOLED",
+  ];
+
+  const hasDbUrl = dbUrlKeys.some((key) => Boolean(process.env[key]));
+
+  const missingServer = SERVER_ENV.filter((item) => {
+    if (item.optional) return false;
+    if (item.key === "DATABASE_URL") return !hasDbUrl;
+    return !process.env[item.key];
+  }).map((item) => item.key);
   const missingClient = CLIENT_ENV.filter((item) => !item.optional && !process.env[item.key]).map(
     (item) => item.key
   );
