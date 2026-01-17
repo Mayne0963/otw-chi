@@ -123,6 +123,22 @@ export const createVoiceQueue = (): VoiceQueue => {
 
   const unlock = () => {
     gestureUnlocked = true;
+    if (!synth) return;
+    if (!speaking && queue.length === 0) {
+      const utterance = new SpeechSynthesisUtterance(" ");
+      utterance.lang = defaults.lang;
+      utterance.volume = 0;
+
+      speaking = true;
+      const handleDone = () => {
+        resetState();
+        speakNext();
+      };
+      utterance.onend = handleDone;
+      utterance.onerror = handleDone;
+      synth.speak(utterance);
+      return;
+    }
     speakNext();
   };
 

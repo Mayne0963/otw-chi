@@ -85,6 +85,8 @@ const OFF_ROUTE_GRACE_MS = 2_000;
 
 const GUIDANCE_DISTANCE_THRESHOLDS = [500, 200, 60];
 const ARRIVAL_RADIUS_METERS = 90;
+const VOICE_MIN_INTERVAL_MS = 900;
+const VOICE_DEDUPLICATE_WINDOW_MS = 15_000;
 
 const toRadians = (deg: number) => (deg * Math.PI) / 180;
 
@@ -218,6 +220,22 @@ const buildSpokenInstruction = (maneuver?: GuidanceState["nextManeuver"]) => {
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 };
 
+const buildManeuverKey = (maneuver?: GuidanceState["nextManeuver"]) => {
+  if (!maneuver) return "unknown";
+  const lat = maneuver.location?.lat;
+  const lng = maneuver.location?.lng;
+  const roundedLat = Number.isFinite(lat) ? lat.toFixed(4) : "";
+  const roundedLng = Number.isFinite(lng) ? lng.toFixed(4) : "";
+
+  return [
+    maneuver.action ?? "",
+    maneuver.direction ?? "",
+    maneuver.roadName ?? "",
+    roundedLat,
+    roundedLng,
+  ].join("|");
+};
+
 const DriverLiveMap = ({
   driverId,
   requestId,
@@ -301,8 +319,9 @@ const DriverLiveMap = ({
   const rerouteInFlightRef = useRef(false);
   const offRouteSinceRef = useRef<number | null>(null);
   const lastDistanceRef = useRef<number | null>(null);
-  const lastManeuverIdRef = useRef<string | null>(null);
+  const lastManeuverKeyRef = useRef<string | null>(null);
   const spokenRef = useRef<Set<string>>(new Set());
+  const lastSpokenNavigationRef = useRef<{ text: string; at: number } | null>(null);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const voiceQueueRef = useRef<ReturnType<typeof createVoiceQueue> | null>(null);
   const settingsSaveTimeout = useRef<number | null>(null);
@@ -451,13 +470,27 @@ const DriverLiveMap = ({
   const speakNavigation = useCallback((text: string, options: { flush?: boolean } = {}) => {
     const queue = voiceQueueRef.current;
     if (!queue || !settings.voiceEnabled) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const now = Date.now();
+    const isBlocked = queue.isBlocked();
+    const last = lastSpokenNavigationRef.current;
+    if (!isBlocked && !options.flush && last) {
+      if (trimmed === last.text && now - last.at < VOICE_DEDUPLICATE_WINDOW_MS) return;
+      if (now - last.at < VOICE_MIN_INTERVAL_MS) return;
+    }
+
     const result = queue.enqueue({
-      text,
+      text: trimmed,
       lang: settings.voiceLocale,
       volume: settings.voiceVolume,
       voice: getPreferredVoice(settings.voiceLocale),
-      flush: options.flush,
+      flush: isBlocked ? true : options.flush,
     });
+    if (result.reason !== "unavailable" && result.reason !== "disabled") {
+      lastSpokenNavigationRef.current = { text: trimmed, at: now };
+    }
     if (!result.accepted && result.reason === "blocked") {
       setVoiceGestureHint(true);
     }
@@ -873,13 +906,13 @@ const DriverLiveMap = ({
     setEtaSeconds(computeRouteDurationSeconds(activeRoute));
   }, [activeRoute]);
 
-  useEffect(() => {
-    if (!activeRoute) {
-      spokenRef.current.clear();
-      lastManeuverIdRef.current = null;
-      lastDistanceRef.current = null;
-    }
-  }, [activeRoute]);
+	  useEffect(() => {
+	    if (!activeRoute) {
+	      spokenRef.current.clear();
+	      lastManeuverKeyRef.current = null;
+	      lastDistanceRef.current = null;
+	    }
+	  }, [activeRoute]);
 
   useEffect(() => {
     etaRef.current = etaSeconds;
@@ -923,44 +956,55 @@ const DriverLiveMap = ({
     if (!settings.voiceEnabled) return;
 
     const maneuver = guidance.nextManeuver;
-    const maneuverId = maneuver.id;
+    const maneuverKey = buildManeuverKey(maneuver);
     const currentDistance = guidance.distanceToNextMeters;
     const previousDistance =
-      lastManeuverIdRef.current === maneuverId ? lastDistanceRef.current : null;
+      lastManeuverKeyRef.current === maneuverKey ? lastDistanceRef.current : null;
 
-    if (maneuverId !== lastManeuverIdRef.current) {
+    const instruction = buildSpokenInstruction(maneuver).replace(/\.+$/, "");
+
+    if (maneuverKey !== lastManeuverKeyRef.current) {
       spokenRef.current.clear();
-      lastManeuverIdRef.current = maneuverId;
+      lastManeuverKeyRef.current = maneuverKey;
       lastDistanceRef.current = currentDistance;
       if (currentDistance > GUIDANCE_DISTANCE_THRESHOLDS[0]) {
-        const introKey = `${maneuverId}:change`;
+        const introKey = `${maneuverKey}:change`;
         if (!spokenRef.current.has(introKey)) {
           spokenRef.current.add(introKey);
-          speakNavigation(`Next, ${buildSpokenInstruction(maneuver)}`, { flush: true });
+          speakNavigation(`Next, ${instruction}`, { flush: true });
+        }
+      } else {
+        const introKey = `${maneuverKey}:change`;
+        if (!spokenRef.current.has(introKey)) {
+          spokenRef.current.add(introKey);
+          const distanceText = formatDistanceSpeech(currentDistance, settings.voiceLocale);
+          speakNavigation(`In ${distanceText}, ${instruction}.`, { flush: true });
         }
       }
     }
 
-    const instruction = buildSpokenInstruction(maneuver).replace(/\.+$/, "");
-    GUIDANCE_DISTANCE_THRESHOLDS.forEach((threshold) => {
-      const crossed =
-        previousDistance == null
-          ? currentDistance <= threshold
-          : previousDistance > threshold && currentDistance <= threshold;
-      if (crossed) {
-        const key = `${maneuverId}:${threshold}`;
-        if (spokenRef.current.has(key)) return;
-        spokenRef.current.add(key);
-        const distanceText = formatDistanceSpeech(threshold, settings.voiceLocale);
-        speakNavigation(`In ${distanceText}, ${instruction}.`, { flush: true });
-      }
-    });
+    if (previousDistance != null) {
+      const crossedThresholds = GUIDANCE_DISTANCE_THRESHOLDS.filter(
+        (threshold) => previousDistance > threshold && currentDistance <= threshold
+      );
+      const unsaid = crossedThresholds.filter(
+        (threshold) => !spokenRef.current.has(`${maneuverKey}:${threshold}`)
+      );
 
-    const finalManeuverId = activeRoute?.maneuvers?.[activeRoute.maneuvers.length - 1]?.id;
-    const arrivalKey = `${maneuverId}:arrival`;
+      if (unsaid.length) {
+        crossedThresholds.forEach((threshold) => spokenRef.current.add(`${maneuverKey}:${threshold}`));
+        const thresholdToSpeak = Math.min(...unsaid);
+        const distanceText = formatDistanceSpeech(thresholdToSpeak, settings.voiceLocale);
+        speakNavigation(`In ${distanceText}, ${instruction}.`);
+      }
+    }
+
+    const finalManeuver = activeRoute?.maneuvers?.[activeRoute.maneuvers.length - 1];
+    const finalManeuverKey = finalManeuver ? buildManeuverKey(finalManeuver) : null;
+    const arrivalKey = `${maneuverKey}:arrival`;
     if (
-      finalManeuverId &&
-      maneuverId === finalManeuverId &&
+      finalManeuverKey &&
+      maneuverKey === finalManeuverKey &&
       currentDistance <= ARRIVAL_RADIUS_METERS &&
       !spokenRef.current.has(arrivalKey)
     ) {
@@ -1076,14 +1120,10 @@ const DriverLiveMap = ({
     const refreshPois = async () => {
       try {
         const at = `${origin.lat},${origin.lng}`;
-        const [fuelRes, restRes] = await Promise.all([
-          fetch(`/api/navigation/pois?at=${encodeURIComponent(at)}&query=fuel station`, {
-            cache: "no-store",
-          }),
-          fetch(`/api/navigation/pois?at=${encodeURIComponent(at)}&query=rest area`, {
-            cache: "no-store",
-          }),
-        ]);
+        const restRes = await fetch(
+          `/api/navigation/pois?at=${encodeURIComponent(at)}&query=rest area`,
+          { cache: "no-store" }
+        );
         const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
         const addItems = (items: Array<PoiItem>) => {
           items.forEach((item) => {
@@ -1102,10 +1142,6 @@ const DriverLiveMap = ({
             });
           });
         };
-        if (fuelRes.ok) {
-          const data = await fuelRes.json();
-          addItems(data?.items || []);
-        }
         if (restRes.ok) {
           const data = await restRes.json();
           addItems(data?.items || []);
