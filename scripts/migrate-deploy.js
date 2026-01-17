@@ -9,6 +9,8 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const readEnv = (key) => {
   const value = process.env[key];
   if (typeof value !== 'string') return null;
@@ -29,63 +31,117 @@ const pickFirstEnv = (keys) => {
   return null;
 };
 
+const parsePositiveInt = (raw, fallback) => {
+  if (typeof raw !== 'string') return fallback;
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isFinite(value) || value <= 0) return fallback;
+  return value;
+};
+
+const parseBoolean = (raw) => {
+  if (typeof raw !== 'string') return null;
+  const normalized = raw.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false;
+  return null;
+};
+
+const isRetryableMigrationError = (text) => {
+  if (typeof text !== 'string' || !text) return false;
+  const haystack = text.toLowerCase();
+  return (
+    haystack.includes('pg_advisory_lock') ||
+    haystack.includes('advisory lock') ||
+    haystack.includes('migrate-advisory-locking') ||
+    haystack.includes('p1001') ||
+    haystack.includes('p1002') ||
+    haystack.includes('the database server was reached but timed out') ||
+    haystack.includes('econnreset') ||
+    haystack.includes('etimedout') ||
+    haystack.includes('connection terminated unexpectedly')
+  );
+};
+
 async function runMigrations() {
   console.log('[migrate-deploy] Starting database migrations...');
   
-  try {
-    const pooled = pickFirstEnv(['DATABASE_URL', 'NEON_DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL']);
-    const direct = pickFirstEnv([
-      'DIRECT_URL',
-      'POSTGRES_URL_NON_POOLING',
-      'DATABASE_URL_NON_POOLING',
-      'DATABASE_URL_UNPOOLED',
-      'NEON_DATABASE_URL_NON_POOLING',
-      'NEON_DATABASE_URL_UNPOOLED',
-    ]);
+  const pooled = pickFirstEnv(['DATABASE_URL', 'NEON_DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL']);
+  const direct = pickFirstEnv([
+    'DIRECT_URL',
+    'POSTGRES_URL_NON_POOLING',
+    'DATABASE_URL_NON_POOLING',
+    'DATABASE_URL_UNPOOLED',
+    'NEON_DATABASE_URL_NON_POOLING',
+    'NEON_DATABASE_URL_UNPOOLED',
+  ]);
 
-    // Check if any database URL is set
-    if (!pooled && !direct) {
-      console.log(
-        '[migrate-deploy] DATABASE_URL/DIRECT_URL (or POSTGRES_*/NEON_* equivalents) not set, skipping migrations'
-      );
+  // Check if any database URL is set
+  if (!pooled && !direct) {
+    console.log(
+      '[migrate-deploy] DATABASE_URL/DIRECT_URL (or POSTGRES_*/NEON_* equivalents) not set, skipping migrations'
+    );
+    process.exit(0);
+  }
+
+  const migrationUrl = direct?.value ?? pooled?.value;
+  const migrationUrlKey = direct?.key ?? pooled?.key ?? 'DATABASE_URL';
+  console.log(`[migrate-deploy] Using ${migrationUrlKey} for migrations`);
+
+  const maxAttempts = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_MAX_ATTEMPTS, 7);
+  const initialBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_INITIAL_BACKOFF_MS, 5_000);
+  const maxBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_MAX_BACKOFF_MS, 60_000);
+  const allowFailure = parseBoolean(process.env.PRISMA_MIGRATE_DEPLOY_ALLOW_FAILURE) ?? false;
+
+  let backoffMs = initialBackoffMs;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    console.log(`[migrate-deploy] Running: prisma migrate deploy (attempt ${attempt}/${maxAttempts})`);
+
+    try {
+      const { stdout, stderr } = await execAsync('npx prisma migrate deploy', {
+        env: {
+          ...process.env,
+          DATABASE_URL: migrationUrl,
+        },
+        maxBuffer: 10 * 1024 * 1024,
+      });
+
+      console.log('[migrate-deploy] stdout:', stdout);
+
+      if (stderr) {
+        console.error('[migrate-deploy] stderr:', stderr);
+      }
+
+      console.log('[migrate-deploy] ✓ Migrations completed successfully');
       process.exit(0);
-    }
+    } catch (error) {
+      const message = error?.message ? String(error.message) : 'Unknown error';
+      const stdout = error?.stdout ? String(error.stdout) : '';
+      const stderr = error?.stderr ? String(error.stderr) : '';
 
-    const migrationUrl = direct?.value ?? pooled?.value;
-    const migrationUrlKey = direct?.key ?? pooled?.key ?? 'DATABASE_URL';
-    console.log(`[migrate-deploy] Using ${migrationUrlKey} for migrations`);
-    console.log('[migrate-deploy] Running: prisma migrate deploy');
-    
-    const { stdout, stderr } = await execAsync('npx prisma migrate deploy', {
-      env: {
-        ...process.env,
-        DATABASE_URL: migrationUrl,
-      },
-    });
+      console.error('[migrate-deploy] ✗ Migration failed:', message);
+      if (stdout) console.log('[migrate-deploy] stdout:', stdout);
+      if (stderr) console.error('[migrate-deploy] stderr:', stderr);
 
-    console.log('[migrate-deploy] stdout:', stdout);
-    
-    if (stderr) {
-      console.error('[migrate-deploy] stderr:', stderr);
-    }
+      const combined = [message, stdout, stderr].filter(Boolean).join('\n');
+      const retryable = isRetryableMigrationError(combined);
+      const hasAttemptsRemaining = attempt < maxAttempts;
 
-    console.log('[migrate-deploy] ✓ Migrations completed successfully');
-    process.exit(0);
-  } catch (error) {
-    console.error('[migrate-deploy] ✗ Migration failed:', error.message);
-    
-    if (error.stdout) {
-      console.log('[migrate-deploy] stdout:', error.stdout);
+      if (retryable && hasAttemptsRemaining) {
+        const seconds = Math.max(1, Math.round(backoffMs / 1000));
+        console.log(`[migrate-deploy] Transient error detected; retrying in ${seconds}s...`);
+        await sleep(backoffMs);
+        backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
+        continue;
+      }
+
+      if (allowFailure) {
+        console.log('[migrate-deploy] Continuing deployment despite migration failure');
+        process.exit(0);
+      }
+
+      process.exit(1);
     }
-    
-    if (error.stderr) {
-      console.error('[migrate-deploy] stderr:', error.stderr);
-    }
-    
-    // Don't fail the build if migrations fail
-    // This allows the app to deploy even if migrations have issues
-    console.log('[migrate-deploy] Continuing deployment despite migration failure');
-    process.exit(0);
   }
 }
 
