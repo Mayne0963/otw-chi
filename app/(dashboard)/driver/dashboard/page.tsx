@@ -316,7 +316,7 @@ export default async function DriverDashboardPage() {
                       {activeRequest ? 'Active Route Overview' : 'No active route'}
                     </h3>
                 </div>
-                <div className="p-0 overflow-hidden h-[500px]">
+                <div className="p-0 min-h-[520px]">
                     {activeRequest ? (
                       <DriverLiveMap
                           key={activeRequest.id}
