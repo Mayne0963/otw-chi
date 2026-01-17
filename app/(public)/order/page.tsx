@@ -769,10 +769,14 @@ export default function OrderPage() {
         window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
       }
       router.push(`/order/${data.id}`);
-    } catch (_error) {
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Something went wrong. Please try again.";
       toast({
         title: "Submission Error",
-        description: "Something went wrong. Please try again.",
+        description: message,
         variant: "destructive",
       });
     } finally {
