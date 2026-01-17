@@ -21,6 +21,7 @@ interface OtwLiveMapProps {
   mainRouteSummaryOverride?: RouteSummary | null;
   driverRouteOverride?: RouteFeature | null;
   driverRouteSummaryOverride?: RouteSummary | null;
+  driverRoutes?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null;
   trafficFlow?: GeoJSON.FeatureCollection<GeoJSON.LineString> | null;
   incidents?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
   pois?: GeoJSON.FeatureCollection<GeoJSON.Point> | null;
@@ -37,6 +38,8 @@ const ROUTE_SOURCE_ID = "otw-route-source";
 const ROUTE_LAYER_ID = "otw-route-layer";
 const DRIVER_ROUTE_SOURCE_ID = "otw-driver-route-source";
 const DRIVER_ROUTE_LAYER_ID = "otw-driver-route-layer";
+const DRIVER_ROUTES_SOURCE_ID = "otw-driver-routes-source";
+const DRIVER_ROUTES_LAYER_ID = "otw-driver-routes-layer";
 const TRAFFIC_SOURCE_ID = "otw-traffic-source";
 const TRAFFIC_LAYER_ID = "otw-traffic-layer";
 const INCIDENT_SOURCE_ID = "otw-incident-source";
@@ -165,6 +168,7 @@ const OtwLiveMap = ({
   mainRouteSummaryOverride,
   driverRouteOverride,
   driverRouteSummaryOverride,
+  driverRoutes,
   trafficFlow,
   incidents,
   pois,
@@ -245,24 +249,26 @@ const OtwLiveMap = ({
         color: "#ff9f0a",
       });
     }
-    drivers.forEach((driver, index) => {
-      const isFocus = focusDriverId && driver.driverId === focusDriverId;
-      markers.push({
-        id: `driver-${driver.driverId}-${index}`,
-        label: isFocus ? "Driver (You)" : driver.driverId || "Driver",
-        lat: driver.location.lat,
-        lng: driver.location.lng,
-        color: "#32d74b",
-      });
-    });
+	    drivers.forEach((driver, index) => {
+	      const isFocus = focusDriverId && driver.driverId === focusDriverId;
+	      markers.push({
+	        id: `driver-${driver.driverId}-${index}`,
+	        label: isFocus ? "Driver (You)" : driver.label || driver.driverId || "Driver",
+	        lat: driver.location.lat,
+	        lng: driver.location.lng,
+	        color: "#32d74b",
+	      });
+	    });
     return markers;
   }, [customer, drivers, dropoff, focusDriverId, jobPickup]);
 
   const markerView: MarkerView = useMemo(() => {
+    const hasJobEndpoints = Boolean(jobPickup || jobDestination);
+    if (!hasJobEndpoints && drivers.length > 0) return "navigation";
     if (activeDriver && resolvedDriverRoute) return "navigation";
     if (jobPhase === "TO_PICKUP") return "pickup";
     return "overview";
-  }, [activeDriver, jobPhase, resolvedDriverRoute]);
+  }, [activeDriver, drivers.length, jobDestination, jobPhase, jobPickup, resolvedDriverRoute]);
 
   const visibleMarkers = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => {
     const hasCustomerLike = markerData.some(
@@ -358,7 +364,8 @@ const OtwLiveMap = ({
   const hasAny =
     visibleMarkers.features.length > 0 ||
     Boolean(resolvedMainRoute) ||
-    Boolean(resolvedDriverRoute);
+    Boolean(resolvedDriverRoute) ||
+    Boolean(driverRoutes?.features?.length);
 
   useEffect(() => {
     const protocol = new Protocol();
@@ -748,6 +755,18 @@ const OtwLiveMap = ({
       });
 
       updateGeoLayer({
+        sourceId: DRIVER_ROUTES_SOURCE_ID,
+        layerId: DRIVER_ROUTES_LAYER_ID,
+        data: driverRoutes ?? null,
+        type: "line",
+        paint: {
+          "line-color": ["coalesce", ["get", "color"], "#0a84ff"],
+          "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2.5, 14, 3.25, 18, 5],
+          "line-opacity": 0.55,
+        },
+      });
+
+      updateGeoLayer({
         sourceId: TRAFFIC_SOURCE_ID,
         layerId: TRAFFIC_LAYER_ID,
         data: trafficFlow ?? null,
@@ -842,6 +861,14 @@ const OtwLiveMap = ({
           boundsCoordinates.push([lng, lat]);
         });
       }
+      if (driverRoutes?.features?.length) {
+        driverRoutes.features.forEach((feature) => {
+          const coords = feature.geometry.coordinates as [number, number][];
+          coords.forEach(([lng, lat]) => {
+            boundsCoordinates.push([lng, lat]);
+          });
+        });
+      }
 
       const shouldFollowDriver = markerView === "navigation" && !!activeDriverCoords;
       if (shouldFollowDriver && activeDriverCoords) {
@@ -885,6 +912,7 @@ const OtwLiveMap = ({
     visibleMarkers,
     resolvedMainRoute,
     resolvedDriverRoute,
+    driverRoutes,
     trafficFlow,
     incidents,
     pois,
@@ -932,7 +960,11 @@ const OtwLiveMap = ({
         (driverUpdatedAgo ? ` (last seen ${driverUpdatedAgo})` : "")
     );
   } else if (drivers.length > 0) {
-    statusLines.push("Driver leg: add pickup and destination to anchor directions.");
+    if (!jobPickup && !jobDestination) {
+      statusLines.push(`Active drivers: ${drivers.length}`);
+    } else {
+      statusLines.push("Driver leg: add pickup and destination to anchor directions.");
+    }
   }
 
   return (
