@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import StripePaymentForm from "@/components/stripe/StripePaymentForm";
 
 const formatCurrency = (value: number | null | undefined) =>
   typeof value === "number" ? `$${(value / 100).toFixed(2)}` : "—";
@@ -42,7 +43,6 @@ export default function RidePage() {
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("locations");
-  const [loading, setLoading] = useState(false);
   const [pickupAddress, setPickupAddress] = useState<GeocodedAddress | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState<GeocodedAddress | null>(null);
   const [rideOption, setRideOption] = useState<RideOption>("STANDARD");
@@ -55,10 +55,6 @@ export default function RidePage() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
 
   // Load Draft
   useEffect(() => {
@@ -252,79 +248,21 @@ export default function RidePage() {
     };
   }, [draftLoaded, isSignedIn, pickupAddress, dropoffAddress, notes, rideFeeCents, rideOption]);
 
-  const handleRequestRide = async () => {
-    if (!isSignedIn) {
-      router.push("/sign-in?redirect_url=/ride");
-      return;
-    }
+  const handleStripePaymentSuccess = (_paymentIntentId: string) => {
+    toast({
+      title: "Payment authorized",
+      description: "Your ride request has been confirmed.",
+    });
 
-    if (!pickupAddress || !dropoffAddress) {
-      toast({
-        title: "Missing details",
-        description: "Please select pickup and dropoff locations.",
-        variant: "destructive",
-      });
-      return;
-    }
+    router.push("/requests");
+  };
 
-    if (!cardName.trim() || !cardNumber.trim() || !cardExpiry.trim() || !cardCvc.trim()) {
-      toast({
-        title: "Payment details required",
-        description: "Enter your card details to confirm the ride.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/payments/native-charge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amountCents: rideFeeCents,
-          cardBrand: "Card",
-          cardLast4: cardNumber.replace(/\s+/g, "").slice(-4),
-          cardholderName: cardName.trim(),
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast({
-          title: "Payment failed",
-          description: data?.error || "Unable to authorize payment.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const data = await res.json();
-      if (!data?.paymentId) {
-        toast({
-          title: "Payment error",
-          description: "Missing payment confirmation.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Payment authorized",
-        description: "Your ride request has been confirmed.",
-      });
-
-      router.push("/requests");
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleStripePaymentError = (error: string) => {
+    toast({
+      title: "Payment failed",
+      description: error || "Unable to authorize payment.",
+      variant: "destructive",
+    });
   };
 
   const pickupLines = pickupAddress ? formatAddressLines(pickupAddress) : null;
@@ -507,42 +445,17 @@ export default function RidePage() {
                   </div>
                   <div className="text-xl font-bold">{formatCurrency(rideFeeCents)}</div>
                 </div>
-                
+
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <CreditCard className="h-4 w-4" />
-                  <span>Pay securely with your card</span>
+                  <span>Pay securely with Stripe</span>
                 </div>
 
-                <div className="mt-4 space-y-3">
-                  <input
-                    value={cardName}
-                    onChange={(e) => setCardName(e.target.value)}
-                    placeholder="Name on card"
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-                  />
-                  <input
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    placeholder="Card number"
-                    inputMode="numeric"
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-                  />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      value={cardExpiry}
-                      onChange={(e) => setCardExpiry(e.target.value)}
-                      placeholder="MM/YY"
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-                    />
-                    <input
-                      value={cardCvc}
-                      onChange={(e) => setCardCvc(e.target.value)}
-                      placeholder="CVC"
-                      inputMode="numeric"
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-secondary"
-                    />
-                  </div>
-                </div>
+                <StripePaymentForm
+                  amountCents={rideFeeCents}
+                  onSuccess={handleStripePaymentSuccess}
+                  onError={handleStripePaymentError}
+                />
               </div>
 
               <div className="flex gap-3">
@@ -552,23 +465,6 @@ export default function RidePage() {
                   className="flex-1"
                 >
                   Back
-                </Button>
-                <Button
-                  onClick={handleRequestRide}
-                  disabled={loading}
-                  className="flex-[2] h-12 text-lg"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Pay & Request
-                      <CheckCircle2 className="ml-2 h-5 w-5" />
-                    </>
-                  )}
                 </Button>
               </div>
             </div>
