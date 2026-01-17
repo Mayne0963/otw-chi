@@ -40,6 +40,14 @@ async function getDriversData() {
           } 
         },
         zone: { select: { name: true } },
+        telemetry: {
+          orderBy: { recordedAt: 'desc' },
+          take: 1
+        },
+        locationPings: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        },
         locations: {
           orderBy: { timestamp: 'desc' },
           take: 1
@@ -182,7 +190,16 @@ function DriversTable({ drivers }: { drivers: any[] }) {
                 .reduce((sum: number, e: any) => sum + e.amount, 0) || 0;
               
               // Get last known location
-              const lastLocation = driver.locations[0];
+              const telemetry = driver.telemetry?.[0] ?? null;
+              const ping = driver.locationPings?.[0] ?? null;
+              const legacyLocation = driver.locations?.[0] ?? null;
+              const lastLocation = telemetry
+                ? { lat: telemetry.lat, lng: telemetry.lng, at: telemetry.recordedAt }
+                : ping
+                  ? { lat: ping.lat, lng: ping.lng, at: ping.createdAt }
+                  : legacyLocation
+                    ? { lat: legacyLocation.lat, lng: legacyLocation.lng, at: legacyLocation.timestamp }
+                    : null;
               
               return (
                 <tr key={driver.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
@@ -213,7 +230,7 @@ function DriversTable({ drivers }: { drivers: any[] }) {
                           {lastLocation.lat.toFixed(4)}, {lastLocation.lng.toFixed(4)}
                         </div>
                         <div className="text-white/40">
-                          {formatDistanceToNow(new Date(lastLocation.timestamp), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(lastLocation.at), { addSuffix: true })}
                         </div>
                       </div>
                     ) : (

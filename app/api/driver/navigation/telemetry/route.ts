@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { getPrisma } from "@/lib/db";
 import { z } from "zod";
 
@@ -18,18 +18,99 @@ const telemetrySchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
     if (!userId) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({
+    const normalizeRole = (raw: unknown) => {
+      const role = String(raw ?? "").toUpperCase();
+      if (role === "ADMIN" || role === "DRIVER" || role === "FRANCHISE" || role === "CUSTOMER") {
+        return role as "ADMIN" | "DRIVER" | "FRANCHISE" | "CUSTOMER";
+      }
+      return "CUSTOMER";
+    };
+
+    const sessionRoleRaw = (
+      sessionClaims as {
+        publicMetadata?: { role?: string };
+        metadata?: { role?: string };
+        otw?: { role?: string };
+      } | null
+    )?.publicMetadata?.role ??
+      (
+        sessionClaims as {
+          publicMetadata?: { role?: string };
+          metadata?: { role?: string };
+          otw?: { role?: string };
+        } | null
+      )?.metadata?.role ??
+      (
+        sessionClaims as {
+          publicMetadata?: { role?: string };
+          metadata?: { role?: string };
+          otw?: { role?: string };
+        } | null
+      )?.otw?.role ??
+      null;
+
+    const sessionRole = normalizeRole(sessionRoleRaw);
+
+    let user = await prisma.user.findUnique({
       where: { clerkId: userId },
       include: { driverProfile: true },
     });
 
-    if (!user?.driverProfile) {
+    if (!user) {
+      const clerkUser = await currentUser();
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? null;
+      if (!email) {
+        return NextResponse.json({ success: false, error: "Missing user email" }, { status: 400 });
+      }
+      const role =
+        sessionRole !== "CUSTOMER"
+          ? sessionRole
+          : normalizeRole(clerkUser?.publicMetadata?.role);
+      user = await prisma.user.create({
+        data: { clerkId: userId, email, role },
+        include: { driverProfile: true },
+      });
+    }
+
+    const resolvedRole =
+      user.role === "CUSTOMER" && sessionRole !== "CUSTOMER"
+        ? sessionRole
+        : (user.role as "ADMIN" | "DRIVER" | "FRANCHISE" | "CUSTOMER");
+
+    if (resolvedRole !== user.role) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: resolvedRole },
+        include: { driverProfile: true },
+      });
+    }
+
+    const isDriverish = resolvedRole === "DRIVER" || resolvedRole === "ADMIN";
+    if (!isDriverish && !user.driverProfile) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!user.driverProfile && isDriverish) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          driverProfile: {
+            create: {
+              status: "OFFLINE",
+            },
+          },
+        },
+        include: { driverProfile: true },
+      });
+    }
+
+    if (!user.driverProfile) {
       return NextResponse.json({ success: false, error: "Driver profile not found" }, { status: 404 });
     }
 
@@ -50,6 +131,18 @@ export async function POST(req: Request) {
         batteryCharging: payload.batteryCharging ?? undefined,
       },
     });
+
+    const desiredStatus = payload.requestId || payload.deliveryRequestId ? "BUSY" : "ONLINE";
+    try {
+      if (user.driverProfile.status !== desiredStatus) {
+        await prisma.driverProfile.update({
+          where: { id: user.driverProfile.id },
+          data: { status: desiredStatus },
+        });
+      }
+    } catch (statusError) {
+      console.error("Driver status update error:", statusError);
+    }
 
     return NextResponse.json({ success: true, telemetryId: telemetry.id });
   } catch (error) {

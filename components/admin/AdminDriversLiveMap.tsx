@@ -137,7 +137,10 @@ export default function AdminDriversLiveMap() {
       }
       pollInFlightRef.current = true;
       try {
-        const res = await fetch("/api/admin/drivers/live", { cache: "no-store" });
+        const res = await fetch("/api/admin/drivers/live", {
+          cache: "no-store",
+          credentials: "include",
+        });
         const data = (await res.json()) as LiveDriversResponse;
         if (!res.ok || !data.success) {
           throw new Error("error" in data ? data.error : `Request failed: ${res.status}`);

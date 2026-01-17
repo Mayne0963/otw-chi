@@ -27,8 +27,70 @@ const isPublicRoute = createRouteMatcher([
 const isDriverRoute = createRouteMatcher(['/driver(.*)']);
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
+const isApiRoute = createRouteMatcher(['/api(.*)']);
+
+const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
+  if (!origin) return null;
+
+  const allowedOrigins = new Set<string>();
+  const addOrigin = (value?: string) => {
+    if (!value) return;
+    try {
+      allowedOrigins.add(new URL(value).origin);
+    } catch {
+      // Ignore invalid URL env values.
+    }
+  };
+
+  addOrigin(process.env.NEXT_PUBLIC_APP_URL);
+
+  if (process.env.VERCEL_URL) {
+    addOrigin(`https://${process.env.VERCEL_URL}`);
+  }
+
+  // Local development convenience.
+  allowedOrigins.add('http://localhost:3000');
+  allowedOrigins.add('http://127.0.0.1:3000');
+
+  if (!allowedOrigins.has(origin)) return null;
+
+  const allowHeaders =
+    requestHeaders?.get('access-control-request-headers') ??
+    'Content-Type, Authorization';
+
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'access-control-allow-headers': allowHeaders,
+    'access-control-max-age': '86400',
+    vary: 'Origin',
+  } satisfies Record<string, string>;
+};
+
 export default clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return NextResponse.next();
+
+  if (isApiRoute(req)) {
+    const origin = req.headers.get('origin');
+    const corsHeaders = buildCorsHeaders(origin, req.headers);
+
+    // Let route handlers enforce auth; avoid Clerk protect redirects for API fetches.
+    if (req.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: corsHeaders ?? undefined,
+      });
+    }
+
+    const res = NextResponse.next();
+    if (corsHeaders) {
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        res.headers.set(key, value);
+      }
+    }
+    return res;
+  }
 
   const session = await auth.protect();
   const userId = session.userId;

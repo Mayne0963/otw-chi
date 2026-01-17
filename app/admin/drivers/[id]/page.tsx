@@ -15,6 +15,14 @@ async function getDriver(id: string) {
     include: {
       user: true,
       zone: { select: { name: true } },
+      telemetry: {
+        orderBy: { recordedAt: 'desc' },
+        take: 1
+      },
+      locationPings: {
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      },
       locations: {
         orderBy: { timestamp: 'desc' },
         take: 1
@@ -175,16 +183,31 @@ export default async function AdminDriverDetailPage({
               </div>
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Last Location</div>
-                {data.driver.locations[0] ? (
+                {(() => {
+                  const telemetry = data.driver.telemetry?.[0] ?? null;
+                  const ping = data.driver.locationPings?.[0] ?? null;
+                  const legacyLocation = data.driver.locations?.[0] ?? null;
+                  const lastLocation = telemetry
+                    ? { lat: telemetry.lat, lng: telemetry.lng, at: telemetry.recordedAt }
+                    : ping
+                      ? { lat: ping.lat, lng: ping.lng, at: ping.createdAt }
+                      : legacyLocation
+                        ? { lat: legacyLocation.lat, lng: legacyLocation.lng, at: legacyLocation.timestamp }
+                        : null;
+
+                  if (!lastLocation) {
+                    return <div className="mt-2 text-sm text-white/60">No location data</div>;
+                  }
+
+                  return (
                   <div className="mt-2 text-sm text-white">
-                    {data.driver.locations[0].lat.toFixed(4)}, {data.driver.locations[0].lng.toFixed(4)}
+                    {lastLocation.lat.toFixed(4)}, {lastLocation.lng.toFixed(4)}
                     <div className="text-xs text-white/50 mt-1">
-                      {formatDistanceToNow(new Date(data.driver.locations[0].timestamp), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(lastLocation.at), { addSuffix: true })}
                     </div>
                   </div>
-                ) : (
-                  <div className="mt-2 text-sm text-white/60">No location data</div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 

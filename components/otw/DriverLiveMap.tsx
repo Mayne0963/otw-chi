@@ -698,6 +698,7 @@ const DriverLiveMap = ({
           const pingRes = await fetch("/api/driver/location", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ lat, lng }),
           });
           if (!pingRes.ok) {
@@ -737,6 +738,7 @@ const DriverLiveMap = ({
           const telemetryRes = await fetch("/api/driver/navigation/telemetry", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify(telemetryPayload),
           });
           if (!telemetryRes.ok) {
