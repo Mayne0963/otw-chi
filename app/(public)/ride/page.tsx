@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { AddressSearch } from "@/components/ui/address-search";
@@ -248,22 +248,22 @@ export default function RidePage() {
     };
   }, [draftLoaded, isSignedIn, pickupAddress, dropoffAddress, notes, rideFeeCents, rideOption]);
 
-  const handleStripePaymentSuccess = (_paymentIntentId: string) => {
+  const handleStripePaymentSuccess = useCallback((_paymentIntentId: string) => {
     toast({
       title: "Payment authorized",
       description: "Your ride request has been confirmed.",
     });
 
     router.push("/requests");
-  };
+  }, [router, toast]);
 
-  const handleStripePaymentError = (error: string) => {
+  const handleStripePaymentError = useCallback((error: string) => {
     toast({
       title: "Payment failed",
       description: error || "Unable to authorize payment.",
       variant: "destructive",
     });
-  };
+  }, [toast]);
 
   const pickupLines = pickupAddress ? formatAddressLines(pickupAddress) : null;
   const dropoffLines = dropoffAddress ? formatAddressLines(dropoffAddress) : null;

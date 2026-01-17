@@ -27,21 +27,13 @@ export async function POST(req: Request) {
 
     const { amountCents, couponCode } = parsed.data;
 
-    // Handle free orders (100% discount)
-    if (amountCents === 0) {
+    // Handle free orders (100% discount) or amounts too small for Stripe
+    if (amountCents < 50) {
       return NextResponse.json({
         free: true,
         clientSecret: null,
-        message: "Order is free, no payment required",
+        message: "Order is free or below minimum payment amount",
       });
-    }
-
-    // Validate minimum amount for Stripe
-    if (amountCents < 50) {
-      return NextResponse.json(
-        { error: "Amount must be at least $0.50" },
-        { status: 400 }
-      );
     }
 
     const prisma = getPrisma();

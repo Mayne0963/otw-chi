@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Loader2, Upload, X, CreditCard, MapPin, ArrowRight, Package, ExternalLink, CheckCircle2 } from "lucide-react";
@@ -657,42 +657,51 @@ export default function OrderPage() {
     return null;
   }
 
-  const handleStripePaymentSuccess = async (paymentIntentId: string) => {
-    try {
-      const cachedImageData = await ensureReceiptImageData();
-      
-      setFeePaid(true);
-      setDeliveryCheckoutSessionId(paymentIntentId);
-      
-      await persistDraft(
-        buildDraftPayload({
-          deliveryCheckoutSessionId: paymentIntentId,
-          feePaid: true,
-          receiptImageData: cachedImageData,
-        })
-      ).catch(() => null);
+  // Stable handlers for StripePaymentForm to prevent infinite re-renders
+  const handleSuccessRef = useRef<(id: string) => Promise<void>>(async () => {});
+  const handleErrorRef = useRef<(err: string) => void>(() => {});
 
+  useEffect(() => {
+    handleSuccessRef.current = async (paymentIntentId: string) => {
+      try {
+        const cachedImageData = await ensureReceiptImageData();
+        
+        setFeePaid(true);
+        setDeliveryCheckoutSessionId(paymentIntentId);
+        
+        await persistDraft(
+          buildDraftPayload({
+            deliveryCheckoutSessionId: paymentIntentId,
+            feePaid: true,
+            receiptImageData: cachedImageData,
+          })
+        ).catch(() => null);
+
+        toast({
+          title: "Payment successful",
+          description: "Your delivery payment is ready. You can place your order.",
+        });
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Error",
+          description: "Payment succeeded but failed to update order. Please contact support.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    handleErrorRef.current = (error: string) => {
       toast({
-        title: "Payment successful",
-        description: "Your delivery payment is ready. You can place your order.",
-      });
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Error",
-        description: "Payment succeeded but failed to update order. Please contact support.",
+        title: "Payment failed",
+        description: error || "Please try again.",
         variant: "destructive",
       });
-    }
-  };
+    };
+  });
 
-  const handleStripePaymentError = (error: string) => {
-    toast({
-      title: "Payment failed",
-      description: error || "Please try again.",
-      variant: "destructive",
-    });
-  };
+  const handleStripePaymentSuccess = useCallback((id: string) => handleSuccessRef.current(id), []);
+  const handleStripePaymentError = useCallback((err: string) => handleErrorRef.current(err), []);
 
   async function handleSubmit() {
     if (!pickupAddress || !dropoffAddress) return;
