@@ -8,7 +8,8 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 interface PaymentFormProps {
   clientSecret: string;
@@ -106,8 +107,17 @@ export default function StripePaymentForm({
   const [loading, setLoading] = useState(true);
   const [isFree, setIsFree] = useState(false);
   const { toast } = useToast();
+  const stripeConfigured = Boolean(stripePublishableKey);
 
   useEffect(() => {
+    if (!stripeConfigured) {
+      setClientSecret(null);
+      setIsFree(false);
+      setLoading(false);
+      onError?.("Stripe is not configured.");
+      return;
+    }
+
     // Create Payment Intent
     const createPaymentIntent = async () => {
       try {
@@ -153,7 +163,17 @@ export default function StripePaymentForm({
     };
 
     createPaymentIntent();
-  }, [amountCents, couponCode, onSuccess, onError, toast]);
+  }, [amountCents, couponCode, onSuccess, onError, toast, stripeConfigured]);
+
+  if (!stripeConfigured) {
+    return (
+      <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-center">
+        <p className="text-red-600 dark:text-red-400">
+          Stripe is not configured. Please set <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>.
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
