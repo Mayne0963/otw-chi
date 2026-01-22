@@ -9,6 +9,72 @@ import { redirect } from 'next/navigation';
 
 import { DeliveryRequestStatus, ServiceType, RequestStatus } from '@prisma/client';
 
+export async function cancelOrderAction(orderId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const prisma = getPrisma();
+
+  // Try to find as DeliveryRequest first
+  const deliveryRequest = await prisma.deliveryRequest.findUnique({
+    where: { id: orderId },
+  });
+
+  if (deliveryRequest) {
+    if (deliveryRequest.userId !== user.id) {
+      throw new Error('Unauthorized');
+    }
+    const cancellableStatuses: DeliveryRequestStatus[] = [DeliveryRequestStatus.REQUESTED, DeliveryRequestStatus.ASSIGNED];
+    if (!cancellableStatuses.includes(deliveryRequest.status)) {
+      throw new Error('Order cannot be canceled in current status');
+    }
+
+    await prisma.deliveryRequest.update({
+      where: { id: orderId },
+      data: { status: DeliveryRequestStatus.CANCELED },
+    });
+    revalidatePath(`/order/${orderId}`);
+    revalidatePath(`/track/${orderId}`);
+    revalidatePath('/dashboard');
+    return { success: true };
+  }
+
+  // Try to find as Request
+  const request = await prisma.request.findUnique({
+    where: { id: orderId },
+  });
+
+  if (request) {
+    if (request.customerId !== user.id) {
+      throw new Error('Unauthorized');
+    }
+    const cancellableStatuses: RequestStatus[] = [RequestStatus.SUBMITTED, RequestStatus.ASSIGNED];
+    if (!cancellableStatuses.includes(request.status)) {
+      throw new Error('Request cannot be canceled in current status');
+    }
+
+    await prisma.request.update({
+      where: { id: orderId },
+      data: { status: RequestStatus.CANCELLED },
+    });
+    
+    await prisma.requestEvent.create({
+        data: {
+            requestId: request.id,
+            type: 'STATUS_CANCELLED',
+            message: 'Cancelled by customer',
+        }
+    })
+
+    revalidatePath(`/requests/${orderId}`);
+    revalidatePath(`/track/${orderId}`);
+    revalidatePath('/dashboard');
+    return { success: true };
+  }
+
+  throw new Error('Order not found');
+}
+
 export type UserRequestListItem = {
   id: string;
   kind: 'REQUEST' | 'ORDER';

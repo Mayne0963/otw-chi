@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
-import { ServiceType } from '@prisma/client';
+import { ServiceType, DeliveryRequestStatus } from '@prisma/client';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
 import { ArrowUpRight, CheckCircle2, MapPin, ShieldAlert, User } from 'lucide-react';
+import CancelOrderButton from '@/components/order/CancelOrderButton';
 
 type ReceiptItem = { name: string; quantity?: number; price?: number };
 
@@ -247,6 +248,17 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
             )}
           </div>
         </Card>
+
+        {isOwner && (order.status === DeliveryRequestStatus.REQUESTED || order.status === DeliveryRequestStatus.ASSIGNED) && (
+            <Card>
+                <div className="p-4 border-b border-white/10 mb-4">
+                    <h3 className="text-lg font-medium text-white">Actions</h3>
+                </div>
+                <div className="p-4">
+                    <CancelOrderButton orderId={order.id} />
+                </div>
+            </Card>
+        )}
       </div>
     </OtwPageShell>
   );
