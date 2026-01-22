@@ -21,9 +21,10 @@ import {
 
 interface DashboardSidebarProps {
   role: string
+  onLinkClick?: () => void
 }
 
-export function DashboardSidebar({ role }: DashboardSidebarProps) {
+export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   const pathname = usePathname()
 
   const commonRoutes = [
@@ -76,6 +77,7 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
             <Link
               key={route.href}
               href={route.href}
+              onClick={onLinkClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive

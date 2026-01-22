@@ -1,5 +1,6 @@
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { MobileDashboardNav } from "@/components/layout/MobileDashboardNav"
 import { getCurrentUser } from "@/lib/auth/roles"
 
 export const dynamic = 'force-dynamic';
@@ -19,11 +20,12 @@ export default async function DashboardLayout({
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <DashboardHeader />
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-6 pb-24 md:p-8 md:pb-8">
           <div className="otw-container">
             {children}
           </div>
         </main>
+        <MobileDashboardNav role={role} />
       </div>
     </div>
   )
