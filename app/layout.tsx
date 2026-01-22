@@ -3,6 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Fraunces, Manrope } from 'next/font/google';
 import '../styles/globals.css';
 import OtwCookieConsent from '@/components/ui/otw/OtwCookieConsent';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -40,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       signInFallbackRedirectUrl={signInFallbackRedirectUrl}
       signUpFallbackRedirectUrl={signUpFallbackRedirectUrl}
     >
-      <html lang="en" className={`${manrope.variable} ${fraunces.variable}`}>
+      <html lang="en" className={`${manrope.variable} ${fraunces.variable}`} suppressHydrationWarning>
         <head>
           <meta name="theme-color" content="#0c0c0c" />
           <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -49,8 +50,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <link rel="apple-touch-icon" href="/icons/otw-192.svg" />
         </head>
         <body className="min-h-screen bg-background text-foreground antialiased relative font-sans">
-          {children}
-          <OtwCookieConsent />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <OtwCookieConsent />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

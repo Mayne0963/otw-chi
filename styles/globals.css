@@ -37,9 +37,71 @@ body {
 */
 @layer base {
   :root {
-    /* Default to Dark/OTW Theme */
+    /* Light Theme */
+    --background: 43 33% 95%; /* OffWhite #F9F5EC */
+    --foreground: 0 0% 5%;    /* Black #0C0C0C */
+    
+    --surface-1: 43 33% 98%;
+    --surface-2: 43 33% 99%;
+    --surface-3: 0 0% 100%;
+
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 0 0% 5%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
+
+    --primary: 352 100% 35%; /* otwRed #B00017 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 43 74% 66%; /* otwGold #E6C36A */
+    --secondary-foreground: 0 0% 5%;
+
+    --muted: 43 15% 90%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 43 74% 66%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 43 15% 85%;
+    --input: 43 15% 85%;
+    --ring: 352 100% 35%; /* Red focus ring for light mode? Or Gold? Brand guide says Gold secondary. Let's stick to Gold or Red. Previous was Gold. */
+
+    --radius: 0.9rem; /* 14px default radius */
+    
+    /* Chart colors */
+    --chart-1: 352 100% 35%;
+    --chart-2: 43 74% 66%;
+    --chart-3: 0 0% 40%;
+    --chart-4: 352 90% 55%;
+    --chart-5: 43 70% 50%;
+
+    /* Spacing scale (4px base) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 32px;
+    --space-8: 40px;
+    --space-9: 48px;
+    --space-10: 64px;
+
+    /* Shadow tokens (Light mode shadows) */
+    --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.08);
+    --shadow-glow: 0 10px 30px rgba(230, 195, 106, 0.4), 0 6px 18px rgba(176, 0, 23, 0.15);
+    --shadow-elevated: 0 18px 45px rgba(0, 0, 0, 0.12);
+  }
+
+  .dark {
+    /* Dark/OTW Theme (moved from previous :root) */
     --background: 0 0% 5%; /* #0C0C0C */
     --foreground: 40 33% 96%; /* #FBF7EE */
+    
     --surface-1: 0 0% 7%;
     --surface-2: 0 0% 9%;
     --surface-3: 0 0% 12%;
@@ -69,8 +131,6 @@ body {
     --input: 0 0% 12%;
     --ring: 43 74% 66%; /* Gold focus ring */
 
-    --radius: 0.9rem; /* 14px default radius */
-    
     /* Chart colors tailored for dark theme */
     --chart-1: 352 100% 35%;
     --chart-2: 43 74% 66%;
@@ -78,30 +138,10 @@ body {
     --chart-4: 352 90% 55%;
     --chart-5: 43 70% 50%;
 
-    /* Spacing scale (4px base) */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-5: 20px;
-    --space-6: 24px;
-    --space-7: 32px;
-    --space-8: 40px;
-    --space-9: 48px;
-    --space-10: 64px;
-
     /* Shadow tokens */
     --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.35);
     --shadow-glow: 0 10px 30px rgba(230, 195, 106, 0.3), 0 6px 18px rgba(176, 0, 23, 0.12);
     --shadow-elevated: 0 18px 45px rgba(0, 0, 0, 0.55);
-  }
-
-  /* 
-     If we ever need a light mode, we can define it here, 
-     but for now we enforce the brand identity.
-  */
-  .dark {
-    /* Inherits from :root since :root is already the dark brand theme */
   }
 }
 
@@ -112,12 +152,18 @@ body {
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans), system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
+    /* Clean background for light mode */
+    background-image: none; 
+    background-attachment: fixed;
+  }
+  
+  .dark body {
+    /* Original dark mode background */
     background-image:
       radial-gradient(520px circle at 12% -10%, hsl(var(--secondary) / 0.2), transparent 60%),
       radial-gradient(620px circle at 88% 8%, hsl(var(--primary) / 0.16), transparent 55%),
       radial-gradient(420px circle at 10% 75%, hsl(var(--primary) / 0.08), transparent 60%),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
-    background-attachment: fixed;
   }
 
   ::selection {

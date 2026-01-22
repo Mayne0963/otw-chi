@@ -39,49 +39,6 @@
   inset: 0;
 }
 
-.mapCanvas :global(.maplibregl-ctrl-top-right),
-.mapCanvas :global(.maplibregl-ctrl-top-left),
-.mapCanvas :global(.maplibregl-ctrl-bottom-right),
-.mapCanvas :global(.maplibregl-ctrl-bottom-left) {
-  padding: 10px;
-}
-
-.mapCanvas :global(.maplibregl-ctrl-group) {
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  overflow: hidden;
-}
-
-.mapCanvas :global(.maplibregl-ctrl-group button) {
-  width: 36px;
-  height: 36px;
-}
-
-.mapCanvas :global(.maplibregl-ctrl-group button:not(:disabled):hover) {
-  background-color: rgba(0, 0, 0, 0.06);
-}
-
-.mapCanvas :global(.maplibregl-ctrl-attrib) {
-  background: rgba(245, 245, 247, 0.86);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
-  color: rgba(28, 28, 30, 0.65);
-  padding: 0.25rem 0.5rem;
-}
-
-.mapCanvas :global(.maplibregl-ctrl-attrib a) {
-  color: inherit;
-}
-
-.mapCanvas :global(.maplibregl-ctrl-attrib a:hover) {
-  color: rgba(28, 28, 30, 0.85);
-}
-
 .mapStatus {
   position: absolute;
   left: 12px;

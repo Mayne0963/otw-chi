@@ -2,6 +2,7 @@ import Link from "next/link"
 import OtwButton from "@/components/ui/otw/OtwButton"
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
 import { Menu } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle"
 import {
   Sheet,
   SheetContent,
@@ -59,6 +60,10 @@ export function MarketingNav() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <div className="hidden sm:block">
+             <ModeToggle />
+          </div>
+
           <SignedIn>
             <OtwButton as="a" href="/dashboard" variant="ghost" size="sm" className="hidden sm:flex">
               Dashboard
