@@ -38,8 +38,8 @@ body {
 @layer base {
   :root {
     /* Light Theme */
-    --background: 43 33% 95%; /* OffWhite #F9F5EC */
-    --foreground: 0 0% 5%;    /* Black #0C0C0C */
+    --background: 43 33% 98%; /* Slightly brighter Off-White */
+    --foreground: 0 0% 5%;    /* Keep Black */
     
     --surface-1: 43 33% 98%;
     --surface-2: 43 33% 99%;
@@ -51,14 +51,14 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 5%;
 
-    --primary: 352 100% 35%; /* otwRed #B00017 */
-    --primary-foreground: 0 0% 100%;
+    --primary: 352 100% 40%; /* Standard OTW Red */
+    --primary-foreground: 0 0% 98%; /* White */
 
-    --secondary: 43 74% 66%; /* otwGold #E6C36A */
-    --secondary-foreground: 0 0% 5%;
+    --secondary: 43 96% 38%; /* Darker "Antique Gold" */
+    --secondary-foreground: 0 0% 98%; /* White */
 
-    --muted: 43 15% 90%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 43 20% 94%; /* Warm gray */
+    --muted-foreground: 0 0% 30%; /* Darker gray */
 
     --accent: 43 74% 66%;
     --accent-foreground: 0 0% 5%;
@@ -66,9 +66,9 @@ body {
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 43 15% 85%;
-    --input: 43 15% 85%;
-    --ring: 352 100% 35%; /* Red focus ring for light mode? Or Gold? Brand guide says Gold secondary. Let's stick to Gold or Red. Previous was Gold. */
+    --border: 43 15% 88%;
+    --input: 43 15% 88%;
+    --ring: 43 96% 38%; /* Match Secondary */
 
     --radius: 0.9rem; /* 14px default radius */
     
