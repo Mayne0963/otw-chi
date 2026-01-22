@@ -155,6 +155,7 @@ body {
     /* Clean background for light mode */
     background-image: none; 
     background-attachment: fixed;
+    overflow-x: hidden;
   }
   
   .dark body {

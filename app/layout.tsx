@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Fraunces, Manrope } from 'next/font/google';
 import '../styles/globals.css';
@@ -16,6 +16,14 @@ const fraunces = Fraunces({
   display: 'swap',
   variable: '--font-display',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#0c0c0c',
+};
 
 export const metadata: Metadata = {
   title: 'OTW Delivery System',
@@ -43,7 +51,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <html lang="en" className={`${manrope.variable} ${fraunces.variable}`} suppressHydrationWarning>
         <head>
-          <meta name="theme-color" content="#0c0c0c" />
           <meta name="apple-mobile-web-app-capable" content="yes" />
           <link rel="manifest" href="/manifest.webmanifest" />
           <link rel="icon" href="/icons/otw-192.svg" />

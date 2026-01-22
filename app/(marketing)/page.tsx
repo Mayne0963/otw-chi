@@ -1,13 +1,12 @@
 import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock, Coins, Car } from 'lucide-react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
-import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="otw-container space-y-24 py-12">
+    <div className="otw-container space-y-12 sm:space-y-24 py-6 sm:py-12">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-border/40 bg-card/40 px-6 py-12 shadow-2xl backdrop-blur-xl sm:px-12 sm:py-20">
+      <section className="relative overflow-hidden rounded-[2rem] border border-border/40 bg-card/40 px-4 py-8 shadow-2xl backdrop-blur-xl sm:px-12 sm:py-20">
         <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-otwGold/10 blur-[100px]" aria-hidden="true" />
         <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-blue-500/10 blur-[100px]" aria-hidden="true" />
         
