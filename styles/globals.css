@@ -27,6 +27,14 @@ body {
   scroll-behavior: smooth;
 }
 
+/*
+  MapLibre's pseudo-fullscreen mode uses `z-index: 99999`, which can end up
+  covering dashboard navigation on some pages. Keep it below app navigation.
+*/
+.maplibregl-pseudo-fullscreen {
+  z-index: 20 !important;
+}
+
 /* 
   Design System Tokens 
   Based on OTW Brand:

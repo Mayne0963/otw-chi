@@ -64,7 +64,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-white/10 bg-otwBlack">
+    <div className="relative z-40 flex h-full w-64 flex-col border-r border-white/10 bg-otwBlack">
       <div className="flex h-16 items-center px-6">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl text-otwGold">
           OTW <span className="text-xs text-white/50 font-normal">App</span>
