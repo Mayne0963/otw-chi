@@ -64,15 +64,23 @@ const isRetryableMigrationError = (text) => {
 
 const extractFailedMigrationName = (text) => {
   if (typeof text !== 'string') return null;
-  const match = text.match(/Migration name:\s*([0-9]{14}_[a-zA-Z0-9_\\-]+)/);
-  return match?.[1] ?? null;
+  const byLabel = text.match(/Migration name:\s*([0-9]{14}_[a-zA-Z0-9_\\-]+)/);
+  if (byLabel?.[1]) return byLabel[1];
+
+  const byBackticks = text.match(/The\s+`([0-9]{14}_[a-zA-Z0-9_\\-]+)`\s+migration/i);
+  if (byBackticks?.[1]) return byBackticks[1];
+
+  const byQuotes = text.match(/The\s+['"]([0-9]{14}_[a-zA-Z0-9_\\-]+)['"]\s+migration/i);
+  if (byQuotes?.[1]) return byQuotes[1];
+
+  return null;
 };
 
 const shouldAutoRollbackFailedMigration = (migrationName, combinedOutput) => {
   if (!migrationName) return false;
   if (migrationName !== '20260124190000_add_service_miles_economy') return false;
   const haystack = String(combinedOutput || '').toLowerCase();
-  return haystack.includes('p3018');
+  return haystack.includes('p3018') || haystack.includes('p3009');
 };
 
 async function runMigrations() {
