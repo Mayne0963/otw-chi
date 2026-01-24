@@ -173,7 +173,11 @@ export async function POST(req: Request) {
       }
     } else if (event.type === 'invoice.paid') {
       const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const subscriptionField = (invoice as any).subscription;
+      const subscriptionId = typeof subscriptionField === 'string' 
+        ? subscriptionField 
+        : subscriptionField?.id;
 
       if (!subscriptionId) {
         return new NextResponse(null, { status: 200 }); // One-time invoice? Ignore for now
