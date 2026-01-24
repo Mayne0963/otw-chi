@@ -5,6 +5,8 @@ import { ServiceMilesTransactionType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
 
+export const runtime = 'nodejs';
+
 type MembershipStatus = 
   | 'ACTIVE'
   | 'PAST_DUE'
@@ -201,11 +203,6 @@ export async function POST(req: Request) {
       }
 
       const { user, plan } = membership;
-      
-      // Idempotency: In a real world, we'd check if this invoice ID was already processed in a ledger.
-      // For now, we assume Stripe retries are handled or we check ledger descriptions?
-      // A robust way is to store `stripeInvoiceId` in the ledger transaction meta or description.
-      // Let's rely on atomic transaction.
 
       await prisma.$transaction(async (tx) => {
         // Refresh wallet in transaction to lock
@@ -214,6 +211,16 @@ export async function POST(req: Request) {
         if (!wallet) {
             wallet = await tx.serviceMilesWallet.create({ data: { userId: user.id } });
         }
+
+        const invoiceId = invoice.id;
+        const idempotencyKey = `stripe_invoice:${invoiceId}`;
+        const alreadyProcessed = await tx.serviceMilesLedger.findFirst({
+          where: {
+            walletId: wallet.id,
+            description: `${idempotencyKey}:ADD_MONTHLY`,
+          },
+        });
+        if (alreadyProcessed) return;
 
         const currentBalance = wallet.balanceMiles;
         const rolloverCap = plan.rolloverCapMiles;
@@ -239,15 +246,19 @@ export async function POST(req: Request) {
                     walletId: wallet.id,
                     amount: -expiredMiles,
                     transactionType: ServiceMilesTransactionType.EXPIRE,
-                    description: `Monthly Expiry: Cap ${rolloverCap} exceeded`,
+                    description: `${idempotencyKey}:EXPIRE cap=${rolloverCap}`,
                 }
             });
         }
 
-        // B. Roll-in (Administrative log, effectively re-granting the retained miles? No, they just stay.)
-        // Actually, "rolloverBank" is just what remains. 
-        // If we "expire" the excess, the balance becomes `rolloverBank`.
-        // Then we "add" the monthly grant.
+        await tx.serviceMilesLedger.create({
+          data: {
+            walletId: wallet.id,
+            amount: 0,
+            transactionType: ServiceMilesTransactionType.ROLL_IN,
+            description: `${idempotencyKey}:ROLL_IN rolled=${rolloverBank}`,
+          },
+        });
         
         // C. Add Monthly Grant
         if (monthlyGrant > 0) {
@@ -256,7 +267,7 @@ export async function POST(req: Request) {
                     walletId: wallet.id,
                     amount: monthlyGrant,
                     transactionType: ServiceMilesTransactionType.ADD_MONTHLY,
-                    description: `Monthly Allowance: ${plan.name}`,
+                    description: `${idempotencyKey}:ADD_MONTHLY plan=${plan.name}`,
                 }
             });
         }

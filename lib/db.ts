@@ -11,7 +11,6 @@ export function getPrisma(): PrismaClient {
   const g = globalThis as GlobalWithPrisma
   if (g.__OTW_PRISMA__) return g.__OTW_PRISMA__
 
-  neonConfig.fetchConnectionCache = true;
   const { url: connectionString } = getDatabaseUrlSource();
 
   // Create Neon adapter for Prisma 7
