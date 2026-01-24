@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { ServiceMilesTransactionType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
 

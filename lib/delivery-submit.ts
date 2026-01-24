@@ -1,6 +1,6 @@
 import { prisma } from './db';
 import { calculateServiceMiles } from './service-miles';
-import { ServiceType } from './otw/otwTypes';
+import type { ServiceType } from '@prisma/client';
 import { DeliveryRequestStatus, ServiceMilesTransactionType } from '@prisma/client';
 
 export interface SubmitDeliveryRequestInput {
@@ -162,8 +162,12 @@ export async function cancelDeliveryRequest(requestId: string, userId: string) {
     // Let's rely on status + arrivedAt if available.
     
     const isAssigned = request.assignedDriverId !== null || request.status === DeliveryRequestStatus.ASSIGNED;
-    const isArrived = request.arrivedAt !== null || 
-                      [DeliveryRequestStatus.PICKED_UP, DeliveryRequestStatus.EN_ROUTE, DeliveryRequestStatus.DELIVERED].includes(request.status);
+    const arrivedStatuses: DeliveryRequestStatus[] = [
+      DeliveryRequestStatus.PICKED_UP,
+      DeliveryRequestStatus.EN_ROUTE,
+      DeliveryRequestStatus.DELIVERED,
+    ];
+    const isArrived = request.arrivedAt !== null || arrivedStatuses.includes(request.status);
 
     if (isArrived) {
         // Late cancellation fee: 15 miles

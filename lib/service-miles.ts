@@ -1,4 +1,4 @@
-import { ServiceType } from './otw/otwTypes';
+import type { ServiceType } from '@prisma/client';
 
 export interface ServiceMilesQuoteInput {
   estimatedMinutes: number;
