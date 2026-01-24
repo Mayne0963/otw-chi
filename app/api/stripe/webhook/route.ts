@@ -171,6 +171,104 @@ export async function POST(req: Request) {
           },
         });
       }
+    } else if (event.type === 'invoice.paid') {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+
+      if (!subscriptionId) {
+        return new NextResponse(null, { status: 200 }); // One-time invoice? Ignore for now
+      }
+
+      // 1. Identify User & Plan
+      const membership = await prisma.membershipSubscription.findFirst({
+        where: { stripeSubId: subscriptionId },
+        include: {
+          user: {
+            include: { serviceMilesWallet: true }
+          },
+          plan: true
+        }
+      });
+
+      if (!membership || !membership.user || !membership.plan) {
+         console.log(`[Stripe Webhook] Invoice paid but no linked membership found for sub ${subscriptionId}`);
+         return new NextResponse(null, { status: 200 });
+      }
+
+      const { user, plan } = membership;
+      
+      // Idempotency: In a real world, we'd check if this invoice ID was already processed in a ledger.
+      // For now, we assume Stripe retries are handled or we check ledger descriptions?
+      // A robust way is to store `stripeInvoiceId` in the ledger transaction meta or description.
+      // Let's rely on atomic transaction.
+
+      await prisma.$transaction(async (tx) => {
+        // Refresh wallet in transaction to lock
+        let wallet = await tx.serviceMilesWallet.findUnique({ where: { userId: user.id } });
+        
+        if (!wallet) {
+            wallet = await tx.serviceMilesWallet.create({ data: { userId: user.id } });
+        }
+
+        const currentBalance = wallet.balanceMiles;
+        const rolloverCap = plan.rolloverCapMiles;
+        const monthlyGrant = plan.monthlyServiceMiles;
+
+        // 2. Calculate Rollover & Expiry
+        // rolloverBank = min(wallet.balance, rolloverCap)
+        const rolloverBank = Math.min(currentBalance, rolloverCap);
+        const expiredMiles = Math.max(0, currentBalance - rolloverBank);
+
+        // 3. New Balance
+        // newBalance = monthlyServiceMiles + rolloverBank
+        // Actually, we are just adjusting the wallet.
+        // We set the balance to (rolloverBank + monthlyGrant).
+        // OR we can do it via increments/decrements to match ledger.
+        
+        // Let's do it via explicit adjustments for clarity in ledger.
+        
+        // A. Expire old miles (if any)
+        if (expiredMiles > 0) {
+            await tx.serviceMilesLedger.create({
+                data: {
+                    walletId: wallet.id,
+                    amount: -expiredMiles,
+                    transactionType: ServiceMilesTransactionType.EXPIRE,
+                    description: `Monthly Expiry: Cap ${rolloverCap} exceeded`,
+                }
+            });
+        }
+
+        // B. Roll-in (Administrative log, effectively re-granting the retained miles? No, they just stay.)
+        // Actually, "rolloverBank" is just what remains. 
+        // If we "expire" the excess, the balance becomes `rolloverBank`.
+        // Then we "add" the monthly grant.
+        
+        // C. Add Monthly Grant
+        if (monthlyGrant > 0) {
+            await tx.serviceMilesLedger.create({
+                data: {
+                    walletId: wallet.id,
+                    amount: monthlyGrant,
+                    transactionType: ServiceMilesTransactionType.ADD_MONTHLY,
+                    description: `Monthly Allowance: ${plan.name}`,
+                }
+            });
+        }
+
+        // D. Update Wallet Balance
+        // Final Balance = rolloverBank + monthlyGrant
+        const finalBalance = rolloverBank + monthlyGrant;
+
+        await tx.serviceMilesWallet.update({
+            where: { id: wallet.id },
+            data: {
+                balanceMiles: finalBalance,
+                rolloverBankMiles: rolloverBank // Update bank tracker
+            }
+        });
+      });
+
     } else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription;
       const stripeCustomerId = subscription.customer as string;

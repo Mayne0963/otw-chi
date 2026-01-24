@@ -84,6 +84,21 @@ enum FranchiseApplicationStatus {
   DENIED
 }
 
+enum ServiceMilesTransactionType {
+  ADD_MONTHLY
+  DEDUCT_REQUEST
+  ADJUST
+  EXPIRE
+  ROLL_IN
+}
+
+enum DriverTier {
+  PROBATION
+  STANDARD
+  ELITE
+  CONCIERGE
+}
+
 // Models
 model User {
   id                String    @id @default(cuid())
@@ -113,6 +128,7 @@ model User {
   promoRedemptions   PromoRedemption[]
   franchiseApplications FranchiseApplication[]
   contactMessages    ContactMessage[]
+  serviceMilesWallet ServiceMilesWallet?
 }
 
 model DriverApplication {
@@ -179,6 +195,14 @@ model DriverProfile {
   locationPings     DriverLocationPing[]
   navigationSettings DriverNavigationSettings?
   telemetry         DriverTelemetry[]
+
+  // New Extensions
+  tierLevel       DriverTier      @default(PROBATION)
+  hourlyRateCents Int             @default(0)
+  bonusEnabled    Boolean         @default(false)
+  bonus5StarCents Int             @default(0)
+  performanceMetrics Json?
+  timeLogs        DriverTimeLog[]
 }
 
 model CustomerProfile {
@@ -271,6 +295,23 @@ model DeliveryRequest {
   assignments    DriverAssignment[]
   locationPings  DriverLocationPing[]
 
+  // Service Miles & Logistics
+  scheduledStart       DateTime?
+  assignedAt           DateTime?
+  arrivedAt            DateTime?
+  completedAt          DateTime?
+  estimatedMinutes     Int?
+  serviceMilesBase     Int?
+  serviceMilesAdders   Int?
+  serviceMilesDiscount Int?
+  serviceMilesFinal    Int?
+  quoteBreakdown       Json?
+  customerRating       Int?
+  complaintFlag        Boolean             @default(false)
+  
+  serviceMilesLedger   ServiceMilesLedger[]
+  timeLogs             DriverTimeLog[]
+
   @@index([userId])
   @@index([status])
 }
@@ -330,6 +371,16 @@ model MembershipPlan {
   name          String                   @unique
   description   String?
   stripePriceId String?                  @unique
+
+  monthlyServiceMiles Int      @default(0)
+  rolloverCapMiles    Int      @default(0)
+  advanceDiscountMax  Int      @default(0)
+  priorityLevel       Int      @default(0)
+  markupFree          Boolean  @default(false)
+  cashAllowed         Boolean  @default(false)
+  peerToPeerAllowed   Boolean  @default(false)
+  allowedServiceTypes Json?
+
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
   subscriptions MembershipSubscription[]
@@ -501,5 +552,50 @@ model DriverTelemetry {
 
   @@index([driverId, recordedAt])
   @@index([requestId])
+  @@index([deliveryRequestId])
+}
+
+model ServiceMilesWallet {
+  id                String               @id @default(cuid())
+  userId            String               @unique
+  balanceMiles      Int                  @default(0)
+  rolloverBankMiles Int                  @default(0)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  user              User                 @relation(fields: [userId], references: [id])
+  ledgerEntries     ServiceMilesLedger[]
+}
+
+model ServiceMilesLedger {
+  id                String                      @id @default(cuid())
+  walletId          String
+  amount            Int
+  transactionType   ServiceMilesTransactionType
+  deliveryRequestId String?
+  description       String?
+  createdAt         DateTime                    @default(now())
+
+  wallet          ServiceMilesWallet @relation(fields: [walletId], references: [id])
+  deliveryRequest DeliveryRequest?   @relation(fields: [deliveryRequestId], references: [id])
+
+  @@index([walletId])
+  @@index([deliveryRequestId])
+}
+
+model DriverTimeLog {
+  id                String    @id @default(cuid())
+  driverId          String
+  deliveryRequestId String?
+  startTime         DateTime // ARRIVED
+  endTime           DateTime? // COMPLETE
+  activeMinutes     Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  driver          DriverProfile    @relation(fields: [driverId], references: [id])
+  deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
+
+  @@index([driverId])
   @@index([deliveryRequestId])
 }
