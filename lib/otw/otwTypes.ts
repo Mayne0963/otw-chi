@@ -2,8 +2,9 @@
 
 import type { OtwTierId, OtwCustomerId, OtwDriverId, OtwCityId, OtwZoneId } from './otwIds';
 export type { OtwTierId, OtwCustomerId, OtwDriverId, OtwCityId, OtwZoneId } from './otwIds';
-import type { ServiceType, OtwRequestStatus } from './otwEnums';
-export type { ServiceType } from './otwEnums';
+import type { ServiceType } from '@prisma/client';
+export type { ServiceType } from '@prisma/client';
+import type { OtwRequestStatus } from './otwEnums';
 
 // Request status type is imported from otwEnums
 

@@ -3,6 +3,8 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import { Check } from 'lucide-react';
 import { getPrisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PricingPage() {
   const prisma = getPrisma();
   const planRecords = await prisma.membershipPlan.findMany();
