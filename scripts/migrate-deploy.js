@@ -62,6 +62,19 @@ const isRetryableMigrationError = (text) => {
   );
 };
 
+const extractFailedMigrationName = (text) => {
+  if (typeof text !== 'string') return null;
+  const match = text.match(/Migration name:\s*([0-9]{14}_[a-zA-Z0-9_\\-]+)/);
+  return match?.[1] ?? null;
+};
+
+const shouldAutoRollbackFailedMigration = (migrationName, combinedOutput) => {
+  if (!migrationName) return false;
+  if (migrationName !== '20260124190000_add_service_miles_economy') return false;
+  const haystack = String(combinedOutput || '').toLowerCase();
+  return haystack.includes('p3018');
+};
+
 async function runMigrations() {
   console.log('[migrate-deploy] Starting database migrations...');
   
@@ -124,6 +137,36 @@ async function runMigrations() {
       if (stderr) console.error('[migrate-deploy] stderr:', stderr);
 
       const combined = [message, stdout, stderr].filter(Boolean).join('\n');
+      const failedMigrationName = extractFailedMigrationName(combined);
+
+      if (shouldAutoRollbackFailedMigration(failedMigrationName, combined)) {
+        console.log(`[migrate-deploy] Auto-recovering failed migration ${failedMigrationName} with migrate resolve...`);
+        try {
+          const { stdout: resolveStdout, stderr: resolveStderr } = await execAsync(
+            `npx prisma migrate resolve --rolled-back "${failedMigrationName}"`,
+            {
+              env: {
+                ...process.env,
+                DATABASE_URL: migrationUrl,
+              },
+              maxBuffer: 10 * 1024 * 1024,
+            }
+          );
+          if (resolveStdout) console.log('[migrate-deploy] resolve stdout:', resolveStdout);
+          if (resolveStderr) console.error('[migrate-deploy] resolve stderr:', resolveStderr);
+          console.log('[migrate-deploy] ✓ Marked failed migration as rolled back; retrying deploy...');
+          await sleep(Math.min(backoffMs, 5_000));
+          continue;
+        } catch (resolveError) {
+          const resolveMessage = resolveError?.message ? String(resolveError.message) : 'Unknown resolve error';
+          const resolveOut = resolveError?.stdout ? String(resolveError.stdout) : '';
+          const resolveErr = resolveError?.stderr ? String(resolveError.stderr) : '';
+          console.error('[migrate-deploy] ✗ Auto-rollback failed:', resolveMessage);
+          if (resolveOut) console.log('[migrate-deploy] resolve stdout:', resolveOut);
+          if (resolveErr) console.error('[migrate-deploy] resolve stderr:', resolveErr);
+        }
+      }
+
       const retryable = isRetryableMigrationError(combined);
       const hasAttemptsRemaining = attempt < maxAttempts;
 

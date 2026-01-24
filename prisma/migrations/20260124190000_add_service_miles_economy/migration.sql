@@ -61,7 +61,17 @@ CREATE TABLE IF NOT EXISTS "ServiceMilesWallet" (
 CREATE UNIQUE INDEX IF NOT EXISTS "ServiceMilesWallet_userId_key" ON "ServiceMilesWallet"("userId");
 
 ALTER TABLE "ServiceMilesWallet"
-ADD CONSTRAINT IF NOT EXISTS "ServiceMilesWallet_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'ServiceMilesWallet_userId_fkey'
+  ) THEN
+    ALTER TABLE "ServiceMilesWallet"
+    ADD CONSTRAINT "ServiceMilesWallet_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- ServiceMilesLedger
 CREATE TABLE IF NOT EXISTS "ServiceMilesLedger" (
@@ -80,10 +90,30 @@ CREATE INDEX IF NOT EXISTS "ServiceMilesLedger_walletId_idx" ON "ServiceMilesLed
 CREATE INDEX IF NOT EXISTS "ServiceMilesLedger_deliveryRequestId_idx" ON "ServiceMilesLedger"("deliveryRequestId");
 
 ALTER TABLE "ServiceMilesLedger"
-ADD CONSTRAINT IF NOT EXISTS "ServiceMilesLedger_walletId_fkey" FOREIGN KEY ("walletId") REFERENCES "ServiceMilesWallet"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'ServiceMilesLedger_walletId_fkey'
+  ) THEN
+    ALTER TABLE "ServiceMilesLedger"
+    ADD CONSTRAINT "ServiceMilesLedger_walletId_fkey"
+    FOREIGN KEY ("walletId") REFERENCES "ServiceMilesWallet"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 ALTER TABLE "ServiceMilesLedger"
-ADD CONSTRAINT IF NOT EXISTS "ServiceMilesLedger_deliveryRequestId_fkey" FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'ServiceMilesLedger_deliveryRequestId_fkey'
+  ) THEN
+    ALTER TABLE "ServiceMilesLedger"
+    ADD CONSTRAINT "ServiceMilesLedger_deliveryRequestId_fkey"
+    FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- DriverTimeLog
 CREATE TABLE IF NOT EXISTS "DriverTimeLog" (
@@ -103,8 +133,27 @@ CREATE INDEX IF NOT EXISTS "DriverTimeLog_driverId_idx" ON "DriverTimeLog"("driv
 CREATE INDEX IF NOT EXISTS "DriverTimeLog_deliveryRequestId_idx" ON "DriverTimeLog"("deliveryRequestId");
 
 ALTER TABLE "DriverTimeLog"
-ADD CONSTRAINT IF NOT EXISTS "DriverTimeLog_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'DriverTimeLog_driverId_fkey'
+  ) THEN
+    ALTER TABLE "DriverTimeLog"
+    ADD CONSTRAINT "DriverTimeLog_driverId_fkey"
+    FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 ALTER TABLE "DriverTimeLog"
-ADD CONSTRAINT IF NOT EXISTS "DriverTimeLog_deliveryRequestId_fkey" FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'DriverTimeLog_deliveryRequestId_fkey'
+  ) THEN
+    ALTER TABLE "DriverTimeLog"
+    ADD CONSTRAINT "DriverTimeLog_deliveryRequestId_fkey"
+    FOREIGN KEY ("deliveryRequestId") REFERENCES "DeliveryRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
