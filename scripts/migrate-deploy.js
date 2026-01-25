@@ -63,6 +63,16 @@ const isRetryableMigrationError = (text) => {
   );
 };
 
+const isAdvisoryLockTimeout = (text) => {
+  if (typeof text !== 'string' || !text) return false;
+  const haystack = text.toLowerCase();
+  return (
+    haystack.includes('pg_advisory_lock') ||
+    haystack.includes('advisory lock') ||
+    haystack.includes('migrate-advisory-locking')
+  );
+};
+
 const extractFailedMigrationName = (text) => {
   if (typeof text !== 'string') return null;
   const byLabel = text.match(/Migration name:\s*([0-9]{14}_[a-zA-Z0-9_\\-]+)/);
@@ -86,6 +96,11 @@ const shouldAutoRollbackFailedMigration = (migrationName, combinedOutput) => {
 
 async function runMigrations() {
   console.log('[migrate-deploy] Starting database migrations...');
+
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
+    console.log('[migrate-deploy] Non-production Vercel build detected, skipping migrations');
+    process.exit(0);
+  }
   
   const pooled = pickFirstEnv(['DATABASE_URL', 'NEON_DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL']);
   const direct = pickFirstEnv([
@@ -115,6 +130,7 @@ async function runMigrations() {
   const allowFailure = parseBoolean(process.env.PRISMA_MIGRATE_DEPLOY_ALLOW_FAILURE) ?? false;
 
   let backoffMs = initialBackoffMs;
+  let disableAdvisoryLock = false;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     console.log(`[migrate-deploy] Running: prisma migrate deploy (attempt ${attempt}/${maxAttempts})`);
@@ -124,6 +140,7 @@ async function runMigrations() {
         env: {
           ...process.env,
           DATABASE_URL: migrationUrl,
+          ...(disableAdvisoryLock ? { PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: '1' } : {}),
         },
         maxBuffer: 10 * 1024 * 1024,
       });
@@ -180,6 +197,10 @@ async function runMigrations() {
       const hasAttemptsRemaining = attempt < maxAttempts;
 
       if (retryable && hasAttemptsRemaining) {
+        if (!disableAdvisoryLock && isAdvisoryLockTimeout(combined)) {
+          disableAdvisoryLock = true;
+          console.log('[migrate-deploy] Advisory lock timeout detected; retrying with advisory locking disabled');
+        }
         const seconds = Math.max(1, Math.round(backoffMs / 1000));
         console.log(`[migrate-deploy] Transient error detected; retrying in ${seconds}s...`);
         await sleep(backoffMs);
