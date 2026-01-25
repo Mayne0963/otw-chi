@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 // Script to validate environment variables
 const requiredDbEnvVars = [
   'DATABASE_URL',
