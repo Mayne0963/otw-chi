@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS "ServiceMilesWallet" (
 CREATE UNIQUE INDEX IF NOT EXISTS "ServiceMilesWallet_userId_key" ON "ServiceMilesWallet"("userId");
 
 ALTER TABLE "ServiceMilesWallet"
+DROP CONSTRAINT IF EXISTS "ServiceMilesWallet_userId_fkey";
+
+ALTER TABLE "ServiceMilesWallet"
 ADD CONSTRAINT "ServiceMilesWallet_userId_fkey"
 FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -81,8 +84,14 @@ CREATE INDEX IF NOT EXISTS "ServiceMilesLedger_walletId_idx" ON "ServiceMilesLed
 CREATE INDEX IF NOT EXISTS "ServiceMilesLedger_deliveryRequestId_idx" ON "ServiceMilesLedger"("deliveryRequestId");
 
 ALTER TABLE "ServiceMilesLedger"
+DROP CONSTRAINT IF EXISTS "ServiceMilesLedger_walletId_fkey";
+
+ALTER TABLE "ServiceMilesLedger"
 ADD CONSTRAINT "ServiceMilesLedger_walletId_fkey"
 FOREIGN KEY ("walletId") REFERENCES "ServiceMilesWallet"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "ServiceMilesLedger"
+DROP CONSTRAINT IF EXISTS "ServiceMilesLedger_deliveryRequestId_fkey";
 
 ALTER TABLE "ServiceMilesLedger"
 ADD CONSTRAINT "ServiceMilesLedger_deliveryRequestId_fkey"
@@ -106,8 +115,14 @@ CREATE INDEX IF NOT EXISTS "DriverTimeLog_driverId_idx" ON "DriverTimeLog"("driv
 CREATE INDEX IF NOT EXISTS "DriverTimeLog_deliveryRequestId_idx" ON "DriverTimeLog"("deliveryRequestId");
 
 ALTER TABLE "DriverTimeLog"
+DROP CONSTRAINT IF EXISTS "DriverTimeLog_driverId_fkey";
+
+ALTER TABLE "DriverTimeLog"
 ADD CONSTRAINT "DriverTimeLog_driverId_fkey"
 FOREIGN KEY ("driverId") REFERENCES "DriverProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "DriverTimeLog"
+DROP CONSTRAINT IF EXISTS "DriverTimeLog_deliveryRequestId_fkey";
 
 ALTER TABLE "DriverTimeLog"
 ADD CONSTRAINT "DriverTimeLog_deliveryRequestId_fkey"
