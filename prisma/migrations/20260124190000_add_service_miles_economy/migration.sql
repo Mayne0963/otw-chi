@@ -60,7 +60,6 @@ CREATE TABLE IF NOT EXISTS "ServiceMilesWallet" (
 
 CREATE UNIQUE INDEX IF NOT EXISTS "ServiceMilesWallet_userId_key" ON "ServiceMilesWallet"("userId");
 
-ALTER TABLE "ServiceMilesWallet"
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -89,7 +88,6 @@ CREATE TABLE IF NOT EXISTS "ServiceMilesLedger" (
 CREATE INDEX IF NOT EXISTS "ServiceMilesLedger_walletId_idx" ON "ServiceMilesLedger"("walletId");
 CREATE INDEX IF NOT EXISTS "ServiceMilesLedger_deliveryRequestId_idx" ON "ServiceMilesLedger"("deliveryRequestId");
 
-ALTER TABLE "ServiceMilesLedger"
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -102,7 +100,6 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER TABLE "ServiceMilesLedger"
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -132,7 +129,6 @@ CREATE TABLE IF NOT EXISTS "DriverTimeLog" (
 CREATE INDEX IF NOT EXISTS "DriverTimeLog_driverId_idx" ON "DriverTimeLog"("driverId");
 CREATE INDEX IF NOT EXISTS "DriverTimeLog_deliveryRequestId_idx" ON "DriverTimeLog"("deliveryRequestId");
 
-ALTER TABLE "DriverTimeLog"
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -145,7 +141,6 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER TABLE "DriverTimeLog"
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1
