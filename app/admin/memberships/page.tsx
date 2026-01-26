@@ -8,6 +8,19 @@ import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 
+function formatDistanceSafe(value: unknown) {
+  const date =
+    value instanceof Date
+      ? value
+      : typeof value === 'string' || typeof value === 'number'
+        ? new Date(value)
+        : null;
+
+  if (!date || Number.isNaN(date.getTime())) return 'N/A';
+
+  return formatDistanceToNow(date, { addSuffix: true });
+}
+
 // Loading component for better UX
 function AdminMembershipsLoading() {
   return (
@@ -164,15 +177,17 @@ function MembershipsContent({ memberships, totalActive, totalCancelled, totalPas
                   </td>
                   <td className="px-4 py-3">
                     <div>
-                      <div className="font-medium text-sm">{membership.plan.name}</div>
-                      <div className="text-xs text-white/50">{membership.plan.description}</div>
+                      <div className="font-medium text-sm">{membership.plan?.name ?? 'No plan'}</div>
+                      {membership.plan?.description ? (
+                        <div className="text-xs text-white/50">{membership.plan.description}</div>
+                      ) : null}
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                       membership.status === 'ACTIVE' 
                         ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                        : membership.status === 'CANCELLED'
+                        : membership.status === 'CANCELED'
                         ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                         : membership.status === 'PAST_DUE'
                         ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
@@ -182,13 +197,10 @@ function MembershipsContent({ memberships, totalActive, totalCancelled, totalPas
                     </span>
                   </td>
                   <td className="px-4 py-3 text-white/60 text-xs">
-                    {membership.currentPeriodEnd 
-                      ? formatDistanceToNow(new Date(membership.currentPeriodEnd), { addSuffix: true })
-                      : 'N/A'
-                    }
+                    {formatDistanceSafe(membership.currentPeriodEnd)}
                   </td>
                   <td className="px-4 py-3 text-white/60 text-xs">
-                    {formatDistanceToNow(new Date(membership.createdAt), { addSuffix: true })}
+                    {formatDistanceSafe(membership.createdAt)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">

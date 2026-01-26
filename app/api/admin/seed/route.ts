@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
+import { requireRole } from '@/lib/auth';
+
+export const runtime = 'nodejs';
 
 export async function POST(_request: Request) {
   try {
@@ -8,6 +11,12 @@ export async function POST(_request: Request) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+      await requireRole(['ADMIN']);
+    } catch {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // console.log('[Seed] Starting database seed...');
@@ -114,7 +123,9 @@ export async function POST(_request: Request) {
     
     const basicPlan = await prisma.membershipPlan.upsert({
       where: { name: 'Basic' },
-      update: {},
+      update: {
+        ...(process.env.STRIPE_PRICE_BASIC ? { stripePriceId: process.env.STRIPE_PRICE_BASIC } : {}),
+      },
       create: {
         name: 'Basic',
         description: 'Perfect for occasional users - Standard delivery rates, TIREM rewards, Email support',
@@ -124,7 +135,9 @@ export async function POST(_request: Request) {
 
     const plusPlan = await prisma.membershipPlan.upsert({
       where: { name: 'Plus' },
-      update: {},
+      update: {
+        ...(process.env.STRIPE_PRICE_PLUS ? { stripePriceId: process.env.STRIPE_PRICE_PLUS } : {}),
+      },
       create: {
         name: 'Plus',
         description: 'For regular users - Lower delivery fees, Priority drivers, TIREM multiplier',
@@ -134,7 +147,9 @@ export async function POST(_request: Request) {
 
     const executivePlan = await prisma.membershipPlan.upsert({
       where: { name: 'Executive' },
-      update: {},
+      update: {
+        ...(process.env.STRIPE_PRICE_EXEC ? { stripePriceId: process.env.STRIPE_PRICE_EXEC } : {}),
+      },
       create: {
         name: 'Executive',
         description: 'Premium tier - Concierge scheduling, VIP queue, Free miles buffer, Tripled TIREM',
