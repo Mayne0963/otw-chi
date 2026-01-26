@@ -1,5 +1,6 @@
 import { prisma } from './db';
 import { calculateServiceMiles } from './service-miles';
+import { isServiceTypeAllowedForPlan } from './service-miles-access';
 import {
   Prisma,
   DeliveryRequestStatus,
@@ -50,11 +51,8 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
     if (!plan) throw new Error('Membership plan not found');
 
     // 2. Ensure Service Type Allowed
-    if (plan.allowedServiceTypes) {
-      const allowedTypes = plan.allowedServiceTypes as string[];
-      if (!allowedTypes.includes(serviceType)) {
-        throw new Error(`Service type ${serviceType} not allowed for this plan`);
-      }
+    if (!isServiceTypeAllowedForPlan(plan.allowedServiceTypes, serviceType)) {
+      throw new Error(`Service type ${serviceType} not allowed for this plan`);
     }
 
     if (input.idempotencyKey) {
@@ -151,6 +149,9 @@ export async function cancelDeliveryRequest(requestId: string, userId: string) {
     });
 
     if (!request) throw new Error('Request not found');
+    if (request.completedAt || request.status === DeliveryRequestStatus.DELIVERED) {
+      throw new Error('Completed requests cannot be canceled');
+    }
     const paidMiles = request.serviceMilesFinal || 0;
     if (request.status === DeliveryRequestStatus.CANCELED) {
       return { request, refundAmount: 0, feeAmount: 0, alreadyCanceled: true };
