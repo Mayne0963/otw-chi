@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { haversineDistanceKm } from '@/lib/otw/otwGeo';
+import { acceptDeliveryRequest, completeDeliveryRequest, markDriverArrived } from '@/lib/driver-lifecycle';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,9 +44,11 @@ export default async function DriverDashboardPage() {
     );
   }
 
+  const driverId = driverProfile.id;
+
   const assignedRequests = await prisma.deliveryRequest.findMany({
     where: { 
-        assignedDriverId: driverProfile.id,
+        assignedDriverId: driverId,
         status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] }
     },
     orderBy: { createdAt: 'desc' }
@@ -136,32 +139,11 @@ export default async function DriverDashboardPage() {
   async function acceptRequest(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const driverId = formData.get('driverId') as string;
-    
-    if (!requestId || !driverId) return;
-    
-    const prisma = getPrisma();
-    
-    // Optimistic check
-    const req = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
-    if (req?.status !== 'REQUESTED') return;
-    
-    await prisma.$transaction([
-        prisma.deliveryRequest.update({
-            where: { id: requestId },
-            data: { 
-                status: 'ASSIGNED',
-                assignedDriverId: driverId 
-            }
-        }),
-        prisma.driverAssignment.create({
-            data: {
-                deliveryRequestId: requestId,
-                driverId
-            }
-        })
-    ]);
-    
+
+    if (!requestId) return;
+
+    await acceptDeliveryRequest(requestId, driverId);
+
     revalidatePath('/driver/dashboard');
   }
 
@@ -232,6 +214,10 @@ export default async function DriverDashboardPage() {
       );
 
       if (distanceKm > 0.1524) return;
+
+      await markDriverArrived(requestId, driverId);
+      revalidatePath('/driver/dashboard');
+      return;
     }
 
     if (newStatus === 'EN_ROUTE') {
@@ -240,6 +226,10 @@ export default async function DriverDashboardPage() {
 
     if (newStatus === 'DELIVERED') {
       if (existing.status !== 'EN_ROUTE' && existing.status !== 'PICKED_UP') return;
+
+      await completeDeliveryRequest(requestId, driverId);
+      revalidatePath('/driver/dashboard');
+      return;
     }
 
     await prisma.deliveryRequest.update({

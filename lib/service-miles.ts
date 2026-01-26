@@ -1,11 +1,12 @@
 import type { ServiceType } from '@prisma/client';
 
 export interface ServiceMilesQuoteInput {
-  estimatedMinutes: number;
+  travelMinutes: number;
   serviceType: ServiceType; // Included for completeness/logging, though not explicitly used in current math rules
   scheduledStart: Date;
+  quotedAt: Date;
   waitMinutes?: number;
-  numberOfStops?: number; // Number of EXTRA stops
+  numberOfStops?: number;
   returnOrExchange?: boolean;
   cashHandling?: boolean;
   peakHours?: boolean;
@@ -56,44 +57,38 @@ export interface ServiceMilesQuote {
  */
 export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMilesQuote {
   const {
-    estimatedMinutes,
+    travelMinutes,
     waitMinutes = 0,
-    numberOfStops = 0,
+    numberOfStops,
     returnOrExchange = false,
     cashHandling = false,
     peakHours = false,
     scheduledStart,
+    quotedAt,
     advanceDiscountMax = 0,
   } = input;
 
-  // 1. Base Miles
-  // baseMiles = ceil(estimatedMinutes / 5)
-  const baseMiles = Math.ceil(Math.max(0, estimatedMinutes) / 5);
+  const estimatedMinutes = travelMinutes;
 
-  // 2. Fixed Adders
-  // Wait time: +1 mile per 5 min
+  const baseMiles = Math.max(1, Math.ceil(Math.max(0, estimatedMinutes) / 5));
+
   const waitAdder = Math.ceil(Math.max(0, waitMinutes) / 5);
 
-  // Multi-stop: +4 miles per extra stop
-  const stopsAdder = Math.max(0, numberOfStops) * 4;
+  const totalStops = Math.max(1, numberOfStops ?? 1);
+  const extraStops = Math.max(0, totalStops - 1);
+  const stopsAdder = extraStops * 4;
 
-  // Cash handling: +12 miles
   const cashAdder = cashHandling ? 12 : 0;
 
   const fixedSubtotal = baseMiles + waitAdder + stopsAdder + cashAdder;
 
-  // 3. Percentage Adders (Return/Exchange, Peak Hours)
-  // Applied to the fixed subtotal to capture the full scope of the job's complexity
   const returnAdder = returnOrExchange ? Math.ceil(fixedSubtotal * 0.25) : 0;
   const peakAdder = peakHours ? Math.ceil(fixedSubtotal * 0.10) : 0;
 
   const totalAdders = waitAdder + stopsAdder + cashAdder + returnAdder + peakAdder;
   const subtotal = baseMiles + totalAdders;
 
-  // 4. Advance Booking Discount
-  // ≥24h → 10%, ≥48h → 15%, ≥72h → 20%
-  const now = new Date();
-  const diffMs = scheduledStart.getTime() - now.getTime();
+  const diffMs = scheduledStart.getTime() - quotedAt.getTime();
   const hoursInAdvance = diffMs / (1000 * 60 * 60);
 
   let discountPercent = 0;
@@ -105,22 +100,14 @@ export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMil
     discountPercent = 0.10;
   }
 
-  // Calculate discount amount
   let discountAmount = Math.floor(subtotal * discountPercent);
 
-  // Cap discount by advanceDiscountMax
   if (advanceDiscountMax > 0 && discountAmount > advanceDiscountMax) {
     discountAmount = advanceDiscountMax;
   }
 
-  // 5. Final Calculation
   let finalMiles = subtotal - discountAmount;
 
-  // Constraint: Never return 0 miles (unless input was 0 and no adders, but "Minimum 1" is safer)
-  // Assuming a valid job always costs at least 1 mile if there's any duration.
-  // If estimatedMinutes is 0, base is 0.
-  // Let's enforce min 1 mile if base + adders > 0, or just always min 1 for a valid quote?
-  // "Never return 0 miles"
   if (finalMiles < 1) {
     finalMiles = 1;
   }

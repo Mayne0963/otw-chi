@@ -11,6 +11,7 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint --ext .ts,.tsx .",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -69,6 +70,7 @@
     "prettier": "^3.3.3",
     "prisma": "^7.3.0",
     "tailwindcss": "^3.4.14",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
   }
 }
