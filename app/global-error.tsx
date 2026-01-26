@@ -1,4 +1,5 @@
 'use client'
+import { useEffect } from 'react'
  
 export default function GlobalError({
   error: _error,
@@ -7,6 +8,32 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  useEffect(() => {
+    const error = _error
+    const digest = error?.digest
+    const href = typeof window !== 'undefined' ? window.location.href : null
+
+    try {
+      const key = digest ? `otw:global-error:${digest}` : `otw:global-error:${href ?? ''}:${error?.name ?? ''}:${error?.message ?? ''}`
+      if (typeof window !== 'undefined' && window.sessionStorage.getItem(key)) return
+      if (typeof window !== 'undefined') window.sessionStorage.setItem(key, '1')
+    } catch {
+      // ignore
+    }
+
+    fetch('/api/client-error', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        digest: digest ?? null,
+        name: error?.name ?? null,
+        message: error?.message ?? null,
+        stack: error?.stack ?? null,
+        href,
+      }),
+    }).catch(() => {})
+  }, [_error])
+
   return (
     <html>
       <body className="bg-otwBlack text-otwOffWhite">
