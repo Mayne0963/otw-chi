@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { ServiceMilesTransactionType } from '@prisma/client';
+import { Prisma, ServiceMilesTransactionType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
 import { calculateMonthlyMilesRollover } from '../../../../lib/membership-miles';
@@ -237,12 +237,14 @@ export async function POST(req: Request) {
         }
 
         const invoiceId = invoice.id;
-        const idempotencyKey = `stripe_invoice:${invoiceId}`;
+        const idempotencyKeyBase = `stripe_invoice:${invoiceId}`;
+        const rollInKey = `${idempotencyKeyBase}:ROLL_IN`;
         const alreadyProcessed = await tx.serviceMilesLedger.findFirst({
           where: {
             walletId: wallet.id,
-            description: `${idempotencyKey}:ADD_MONTHLY`,
+            idempotencyKey: rollInKey,
           },
+          select: { id: true },
         });
         if (alreadyProcessed) return;
 
@@ -255,6 +257,23 @@ export async function POST(req: Request) {
           rolloverCap,
           monthlyGrant,
         });
+
+        try {
+          await tx.serviceMilesLedger.create({
+            data: {
+              walletId: wallet.id,
+              amount: 0,
+              transactionType: ServiceMilesTransactionType.ROLL_IN,
+              idempotencyKey: rollInKey,
+              description: `${rollInKey} rolled=${rolloverBank}`,
+            },
+          });
+        } catch (error) {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return;
+          }
+          throw error;
+        }
         
         // A. Expire old miles (if any)
         if (expiredMiles > 0) {
@@ -263,20 +282,12 @@ export async function POST(req: Request) {
                     walletId: wallet.id,
                     amount: -expiredMiles,
                     transactionType: ServiceMilesTransactionType.EXPIRE,
-                    description: `${idempotencyKey}:EXPIRE cap=${rolloverCap}`,
+                    idempotencyKey: `${idempotencyKeyBase}:EXPIRE`,
+                    description: `${idempotencyKeyBase}:EXPIRE cap=${rolloverCap}`,
                 }
             });
         }
 
-        await tx.serviceMilesLedger.create({
-          data: {
-            walletId: wallet.id,
-            amount: 0,
-            transactionType: ServiceMilesTransactionType.ROLL_IN,
-            description: `${idempotencyKey}:ROLL_IN rolled=${rolloverBank}`,
-          },
-        });
-        
         // C. Add Monthly Grant
         if (monthlyGrant > 0) {
             await tx.serviceMilesLedger.create({
@@ -284,7 +295,8 @@ export async function POST(req: Request) {
                     walletId: wallet.id,
                     amount: monthlyGrant,
                     transactionType: ServiceMilesTransactionType.ADD_MONTHLY,
-                    description: `${idempotencyKey}:ADD_MONTHLY plan=${plan.name}`,
+                    idempotencyKey: `${idempotencyKeyBase}:ADD_MONTHLY`,
+                    description: `${idempotencyKeyBase}:ADD_MONTHLY plan=${plan.name}`,
                 }
             });
         }
@@ -297,7 +309,7 @@ export async function POST(req: Request) {
                 rolloverBankMiles: rolloverBank // Update bank tracker
             }
         });
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     } else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription;

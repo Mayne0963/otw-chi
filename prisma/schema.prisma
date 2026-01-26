@@ -577,12 +577,14 @@ model ServiceMilesLedger {
   amount            Int
   transactionType   ServiceMilesTransactionType
   deliveryRequestId String?
+  idempotencyKey    String?
   description       String?
   createdAt         DateTime                    @default(now())
 
   wallet          ServiceMilesWallet @relation(fields: [walletId], references: [id])
   deliveryRequest DeliveryRequest?   @relation(fields: [deliveryRequestId], references: [id])
 
+  @@unique([walletId, idempotencyKey])
   @@index([walletId])
   @@index([deliveryRequestId])
 }
