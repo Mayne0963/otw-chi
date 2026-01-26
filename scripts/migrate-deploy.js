@@ -125,7 +125,7 @@ async function runMigrations() {
   console.log(`[migrate-deploy] Using ${migrationUrlKey} for migrations`);
 
   const maxAttempts = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_MAX_ATTEMPTS, 7);
-  const initialBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_INITIAL_BACKOFF_MS, 5_000);
+  const initialBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_INITIAL_BACKOFF_MS, 2000);
   const maxBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_MAX_BACKOFF_MS, 60_000);
   const allowFailure = parseBoolean(process.env.PRISMA_MIGRATE_DEPLOY_ALLOW_FAILURE) ?? false;
 
@@ -134,6 +134,9 @@ async function runMigrations() {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     console.log(`[migrate-deploy] Running: prisma migrate deploy (attempt ${attempt}/${maxAttempts})`);
+    if (disableAdvisoryLock) {
+      console.log('[migrate-deploy] Note: Advisory locking is DISABLED for this attempt');
+    }
 
     try {
       const { stdout, stderr } = await execAsync('npx prisma migrate deploy', {
@@ -164,6 +167,8 @@ async function runMigrations() {
 
       const combined = [message, stdout, stderr].filter(Boolean).join('\n');
       const failedMigrationName = extractFailedMigrationName(combined);
+      
+      console.log('[migrate-deploy] Checking if error is retryable...');
 
       if (shouldAutoRollbackFailedMigration(failedMigrationName, combined)) {
         console.log(`[migrate-deploy] Auto-recovering failed migration ${failedMigrationName} with migrate resolve...`);
