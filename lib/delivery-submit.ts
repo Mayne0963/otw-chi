@@ -1,7 +1,11 @@
 import { prisma } from './db';
 import { calculateServiceMiles } from './service-miles';
-import type { ServiceType } from '@prisma/client';
-import { DeliveryRequestStatus, ServiceMilesTransactionType } from '@prisma/client';
+import {
+  Prisma,
+  DeliveryRequestStatus,
+  ServiceMilesTransactionType,
+  type ServiceType,
+} from '@prisma/client';
 
 export interface SubmitDeliveryRequestInput {
   userId: string;
@@ -10,18 +14,20 @@ export interface SubmitDeliveryRequestInput {
   dropoffAddress: string;
   notes?: string;
   scheduledStart: Date;
-  estimatedMinutes: number;
+  travelMinutes: number;
   waitMinutes?: number;
   numberOfStops?: number;
   returnOrExchange?: boolean;
   cashHandling?: boolean;
   peakHours?: boolean;
+  idempotencyKey?: string;
 }
 
 export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
-  const { userId, serviceType, estimatedMinutes, scheduledStart } = input;
+  const { userId, serviceType, travelMinutes, scheduledStart } = input;
 
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(
+    async (tx) => {
     // 1. Validate User & Membership
     const user = await tx.user.findUnique({
       where: { id: userId },
@@ -51,11 +57,19 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
       }
     }
 
+    if (input.idempotencyKey) {
+      const existing = await tx.deliveryRequest.findFirst({
+        where: { userId, idempotencyKey: input.idempotencyKey },
+      });
+      if (existing) return existing;
+    }
+
     // 3. Calculate Quote
     const quote = calculateServiceMiles({
-      estimatedMinutes,
+      travelMinutes,
       serviceType,
       scheduledStart,
+      quotedAt: new Date(),
       waitMinutes: input.waitMinutes,
       numberOfStops: input.numberOfStops,
       returnOrExchange: input.returnOrExchange,
@@ -64,18 +78,22 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
       advanceDiscountMax: plan.advanceDiscountMax,
     });
 
-    // 4. Check Wallet Balance
-    let wallet = user.serviceMilesWallet;
-    
-    // Auto-create wallet if missing (safety net)
-    if (!wallet) {
-        wallet = await tx.serviceMilesWallet.create({
-            data: { userId: user.id }
-        });
-    }
+    const wallet = await tx.serviceMilesWallet.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id },
+    });
 
-    if (wallet.balanceMiles < quote.serviceMilesFinal) {
-      throw new Error(`Insufficient Service Miles. Required: ${quote.serviceMilesFinal}, Available: ${wallet.balanceMiles}`);
+    const deduction = await tx.serviceMilesWallet.updateMany({
+      where: { id: wallet.id, balanceMiles: { gte: quote.serviceMilesFinal } },
+      data: {
+        balanceMiles: {
+          decrement: quote.serviceMilesFinal,
+        },
+      },
+    });
+    if (deduction.count !== 1) {
+      throw new Error(`Insufficient Service Miles. Required: ${quote.serviceMilesFinal}`);
     }
 
     // 5. Create Delivery Request
@@ -85,27 +103,18 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
         serviceType,
         pickupAddress: input.pickupAddress,
         dropoffAddress: input.dropoffAddress,
-        notes: input.notes,
+        notes: input.notes ?? null,
         scheduledStart,
         status: DeliveryRequestStatus.REQUESTED,
+        idempotencyKey: input.idempotencyKey ?? null,
         
         // Mileage & Quote Data
-        estimatedMinutes,
+        estimatedMinutes: quote.estimatedMinutes,
         serviceMilesBase: quote.serviceMilesBase,
         serviceMilesAdders: quote.serviceMilesAdders,
         serviceMilesDiscount: quote.serviceMilesDiscount,
         serviceMilesFinal: quote.serviceMilesFinal,
         quoteBreakdown: quote.quoteBreakdown as any, // Storing JSON
-      },
-    });
-
-    // 6. Deduct Miles
-    await tx.serviceMilesWallet.update({
-      where: { id: wallet.id },
-      data: {
-        balanceMiles: {
-          decrement: quote.serviceMilesFinal,
-        },
       },
     });
 
@@ -121,11 +130,14 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
     });
 
     return request;
-  });
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
 }
 
 export async function cancelDeliveryRequest(requestId: string, userId: string) {
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(
+    async (tx) => {
     // 1. Fetch Request with Wallet
     const request = await tx.deliveryRequest.findFirst({
       where: { id: requestId, userId },
@@ -139,17 +151,14 @@ export async function cancelDeliveryRequest(requestId: string, userId: string) {
     });
 
     if (!request) throw new Error('Request not found');
-    if (!request.user.serviceMilesWallet) throw new Error('Wallet not found');
-    
-    // Idempotency Check: Already cancelled?
+    const paidMiles = request.serviceMilesFinal || 0;
     if (request.status === DeliveryRequestStatus.CANCELED) {
-        return request; // No-op
+      return { request, refundAmount: 0, feeAmount: 0, alreadyCanceled: true };
     }
 
     // 2. Determine Refund Amount
     let refundAmount = 0;
     let feeAmount = 0;
-    const paidMiles = request.serviceMilesFinal || 0;
 
     // Policy:
     // - Cancel before ASSIGNED → full refund
@@ -184,43 +193,54 @@ export async function cancelDeliveryRequest(requestId: string, userId: string) {
     }
 
     // 3. Update Request Status
-    const updatedRequest = await tx.deliveryRequest.update({
-      where: { id: requestId },
-      data: {
-        status: DeliveryRequestStatus.CANCELED,
+    const cancelled = await tx.deliveryRequest.updateMany({
+      where: {
+        id: requestId,
+        userId,
+        status: { not: DeliveryRequestStatus.CANCELED },
       },
+      data: { status: DeliveryRequestStatus.CANCELED },
     });
-
-    // 4. Process Refund if applicable
-    if (refundAmount > 0) {
-        const wallet = request.user.serviceMilesWallet;
-        
-        // Credit Wallet
-        await tx.serviceMilesWallet.update({
-            where: { id: wallet.id },
-            data: {
-                balanceMiles: {
-                    increment: refundAmount
-                }
-            }
-        });
-
-        // Write Ledger
-        await tx.serviceMilesLedger.create({
-            data: {
-                walletId: wallet.id,
-                amount: refundAmount,
-                transactionType: ServiceMilesTransactionType.ADJUST,
-                deliveryRequestId: request.id,
-                description: `Cancellation Refund (Fee: ${feeAmount} miles)`,
-            }
-        });
+    const updatedRequest = await tx.deliveryRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!updatedRequest) throw new Error('Request not found');
+    if (cancelled.count !== 1) {
+      return { request: updatedRequest, refundAmount: 0, feeAmount: 0, alreadyCanceled: true };
     }
 
-    return {
-        request: updatedRequest,
-        refundAmount,
-        feeAmount
-    };
-  });
+    // 4. Process Refund if applicable
+    if (paidMiles > 0) {
+      const wallet = await tx.serviceMilesWallet.upsert({
+        where: { userId },
+        update: {},
+        create: { userId },
+      });
+
+      if (refundAmount > 0) {
+        await tx.serviceMilesWallet.update({
+          where: { id: wallet.id },
+          data: {
+            balanceMiles: {
+              increment: refundAmount,
+            },
+          },
+        });
+
+        await tx.serviceMilesLedger.create({
+          data: {
+            walletId: wallet.id,
+            amount: refundAmount,
+            transactionType: ServiceMilesTransactionType.ADJUST,
+            deliveryRequestId: request.id,
+            description: `Cancellation Refund (Fee: ${feeAmount} miles)`,
+          },
+        });
+      }
+    }
+
+    return { request: updatedRequest, refundAmount, feeAmount, alreadyCanceled: false };
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
 }

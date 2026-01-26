@@ -4,6 +4,7 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
+import { cancelDeliveryRequest } from '@/lib/delivery-submit';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -24,15 +25,17 @@ export async function cancelOrderAction(orderId: string) {
     if (deliveryRequest.userId !== user.id) {
       throw new Error('Unauthorized');
     }
-    const cancellableStatuses: DeliveryRequestStatus[] = [DeliveryRequestStatus.REQUESTED, DeliveryRequestStatus.ASSIGNED];
+    const cancellableStatuses: DeliveryRequestStatus[] = [
+      DeliveryRequestStatus.REQUESTED,
+      DeliveryRequestStatus.ASSIGNED,
+      DeliveryRequestStatus.PICKED_UP,
+      DeliveryRequestStatus.EN_ROUTE,
+    ];
     if (!cancellableStatuses.includes(deliveryRequest.status)) {
       throw new Error('Order cannot be canceled in current status');
     }
 
-    await prisma.deliveryRequest.update({
-      where: { id: orderId },
-      data: { status: DeliveryRequestStatus.CANCELED },
-    });
+    await cancelDeliveryRequest(orderId, user.id);
     revalidatePath(`/order/${orderId}`);
     revalidatePath(`/track/${orderId}`);
     revalidatePath('/dashboard');

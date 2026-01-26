@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { DriverTier } from '@prisma/client';
 
-// Security: Verify Cron Secret
 const CRON_SECRET = process.env.CRON_SECRET;
 
 interface DriverPerformanceMetrics {
@@ -36,81 +35,84 @@ const TIER_CONFIG = {
   },
 };
 
+function toNumber(value: unknown, fallback: number) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
+  if (typeof value === 'string') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  return fallback;
+}
+
+function normalizeRate(value: unknown) {
+  const raw = toNumber(value, 0);
+  const asFraction = raw > 1 ? raw / 100 : raw;
+  return Math.max(0, Math.min(1, asFraction));
+}
+
+function getMetrics(rawMetrics: unknown): DriverPerformanceMetrics {
+  const m = (rawMetrics ?? {}) as Record<string, unknown>;
+  return {
+    avgRatingRolling: toNumber(m.avgRatingRolling, 0),
+    onTimeRateRolling: normalizeRate(m.onTimeRateRolling),
+    completedJobs: Math.max(0, Math.floor(toNumber(m.completedJobs, 0))),
+    cancelRateRolling: normalizeRate(m.cancelRateRolling),
+    flagsCount: Math.max(0, Math.floor(toNumber(m.flagsCount, 0))),
+  };
+}
+
 export async function GET(req: Request) {
-  // 1. Auth Check
+  if (!CRON_SECRET) {
+    return new NextResponse('Cron secret not configured', { status: 500 });
+  }
+
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
   try {
-    // 2. Fetch all drivers
-    const drivers = await prisma.driverProfile.findMany();
-    const updates = [];
+    const drivers = await prisma.driverProfile.findMany({
+      select: { id: true, tierLevel: true, performanceMetrics: true },
+    });
+    const batchSize = 200;
+    let updated = 0;
 
-    for (const driver of drivers) {
-      // 3. Parse Metrics
-      const metrics = (driver.performanceMetrics as unknown as DriverPerformanceMetrics) || {
-        avgRatingRolling: 0,
-        onTimeRateRolling: 0,
-        completedJobs: 0,
-        cancelRateRolling: 0,
-        flagsCount: 0,
-      };
+    for (let i = 0; i < drivers.length; i += batchSize) {
+      const batch = drivers.slice(i, i + batchSize);
+      const updates = [];
 
-      // 4. Calculate Score
-      // score = avgRatingRolling * 50 + onTimeRateRolling * 40 - cancelRateRolling * 30 - flagsCount * 10
-      // Note: onTimeRate and cancelRate are assumed 0-1 based on typical rolling metrics.
-      // If they are percentages (0-100), the weights might need adjustment. 
-      // Prompt says "90% on-time", usually implies 0.90 or 90.
-      // Let's assume 0.0 - 1.0 for rates to keep math standard, or if inputs are 0-100 we adjust.
-      // "onTimeRateRolling * 40" -> if 0.9, that's 36. If 90, that's 3600.
-      // "avgRatingRolling * 50" -> if 4.8, that's 240.
-      // It seems weights are balanced for small numbers. Let's assume:
-      // Rating: 0-5
-      // Rates: 0-1
-      // Flags: integer count
-      
-      const score = 
-        (metrics.avgRatingRolling || 0) * 50 + 
-        (metrics.onTimeRateRolling || 0) * 40 - 
-        (metrics.cancelRateRolling || 0) * 30 - 
-        (metrics.flagsCount || 0) * 10;
+      for (const driver of batch) {
+        const metrics = getMetrics(driver.performanceMetrics);
 
-      // 5. Determine Tier
-      // CONCIERGE is manual only. Skip if already CONCIERGE.
-      let newTier = driver.tierLevel;
+        const score =
+          (metrics.avgRatingRolling || 0) * 50 +
+          (metrics.onTimeRateRolling || 0) * 40 -
+          (metrics.cancelRateRolling || 0) * 30 -
+          (metrics.flagsCount || 0) * 10;
 
-      if (driver.tierLevel !== DriverTier.CONCIERGE) {
-        // Evaluate for ELITE
-        // 150 jobs, 4.9⭐, 95% on-time
-        if (
-          metrics.completedJobs >= 150 &&
-          metrics.avgRatingRolling >= 4.9 &&
-          metrics.onTimeRateRolling >= 0.95
-        ) {
-          newTier = DriverTier.ELITE;
+        let newTier = driver.tierLevel;
+
+        if (driver.tierLevel !== DriverTier.CONCIERGE) {
+          if (
+            metrics.completedJobs >= 150 &&
+            metrics.avgRatingRolling >= 4.9 &&
+            metrics.onTimeRateRolling >= 0.95
+          ) {
+            newTier = DriverTier.ELITE;
+          } else if (
+            metrics.completedJobs >= 50 &&
+            metrics.avgRatingRolling >= 4.8 &&
+            metrics.onTimeRateRolling >= 0.9
+          ) {
+            newTier = DriverTier.STANDARD;
+          } else {
+            newTier = DriverTier.PROBATION;
+          }
         }
-        // Evaluate for STANDARD
-        // 50 jobs, 4.8⭐, 90% on-time
-        else if (
-          metrics.completedJobs >= 50 &&
-          metrics.avgRatingRolling >= 4.8 &&
-          metrics.onTimeRateRolling >= 0.90
-        ) {
-          // Downgrade protection? Prompt doesn't specify. Assuming strict weekly re-eval.
-          newTier = DriverTier.STANDARD;
-        } else {
-          // Default to PROBATION if criteria not met
-          newTier = DriverTier.PROBATION;
-        }
-      }
 
-      // 6. Update Profile if Changed
-      // Also update score regardless
-      if (newTier !== driver.tierLevel || true) { // Always update to save score/rates
         const config = TIER_CONFIG[newTier];
-        
+
         updates.push(
           prisma.driverProfile.update({
             where: { id: driver.id },
@@ -119,8 +121,6 @@ export async function GET(req: Request) {
               hourlyRateCents: config.hourlyRateCents,
               bonusEnabled: config.bonusEnabled,
               bonus5StarCents: config.bonus5StarCents,
-              // Save score in metrics JSON? Prompt says "Save performanceScore".
-              // Let's append it to the metrics JSON.
               performanceMetrics: {
                 ...metrics,
                 performanceScore: score,
@@ -130,15 +130,17 @@ export async function GET(req: Request) {
           })
         );
       }
-    }
 
-    // 7. Execute Batch Updates
-    await prisma.$transaction(updates);
+      if (updates.length > 0) {
+        await prisma.$transaction(updates);
+        updated += updates.length;
+      }
+    }
 
     return NextResponse.json({
       success: true,
       processed: drivers.length,
-      updated: updates.length,
+      updated,
     });
 
   } catch (error) {

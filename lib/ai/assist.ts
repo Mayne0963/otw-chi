@@ -1,7 +1,4 @@
 
-// AI Assist Module (Safe Zone)
-// Provides non-financial helpers using heuristics (and prepared for LLM integration).
-
 export interface RequestAnalysis {
   flags: {
     isFragile: boolean;
@@ -9,7 +6,6 @@ export interface RequestAnalysis {
     hasStairs: boolean;
     requiresTwoPeople: boolean;
   };
-  suggestedServiceType?: string;
 }
 
 export interface ComplaintAnalysis {
@@ -22,13 +18,69 @@ export interface EtaEnhancement {
   originalEtaMinutes: number;
   adjustedEtaMinutes: number;
   factorsApplied: string[];
-  confidenceScore: number; // 0.0 - 1.0
+  confidenceScore: number;
 }
 
 export interface DriverCoaching {
   focusArea: string;
   tips: string[];
   praise?: string;
+}
+
+export const SAFE_ZONE_PROMPT_7 = `PROMPT 7 — AI ASSIST MODULE (SAFE ZONE)
+ROLE:
+You are implementing AI helpers that DO NOT directly affect money.
+ALLOWED AI USES
+Request text → structured flags
+Review text → complaint classification
+ETA enhancement (non-binding)
+Driver coaching suggestions
+DISALLOWED
+Charging miles
+Issuing refunds
+Changing payouts
+Overriding policies`;
+
+const DISALLOWED_KEY_FRAGMENTS = [
+  'charge',
+  'cents',
+  'fee',
+  'miles',
+  'payout',
+  'policy',
+  'price',
+  'refund',
+  'reimbursement',
+  'servicefee',
+  'stripe',
+  'total',
+];
+
+function assertSafeZoneOutput<T>(value: T): T {
+  const visited = new WeakSet<object>();
+
+  const visit = (node: unknown, path: string) => {
+    if (!node || typeof node !== 'object') return;
+    if (visited.has(node as object)) return;
+    visited.add(node as object);
+
+    if (Array.isArray(node)) {
+      for (let i = 0; i < node.length; i++) visit(node[i], `${path}[${i}]`);
+      return;
+    }
+
+    for (const [rawKey, child] of Object.entries(node as Record<string, unknown>)) {
+      const key = String(rawKey);
+      const keyLower = key.toLowerCase().replaceAll('_', '').replaceAll('-', '');
+      if (DISALLOWED_KEY_FRAGMENTS.some((frag) => keyLower.includes(frag))) {
+        throw new Error(`Safe zone violation: disallowed key "${key}" at ${path}`);
+      }
+      visit(child, `${path}.${key}`);
+    }
+  };
+
+  visit(value, '$');
+  return value;
 }
 
 /**
@@ -42,17 +94,12 @@ export async function analyzeRequestText(text: string): Promise<RequestAnalysis>
     isFragile: /fragile|glass|break|handle with care|delicate/.test(lower),
     isHeavy: /heavy|weight|lift|big box|furniture/.test(lower),
     hasStairs: /stairs|floor|elevator|steps|walk up/.test(lower),
-    requiresTwoPeople: /two people|help|assist|heavy|couch|sofa/.test(lower),
+    requiresTwoPeople: /two people|2 people|two-person|team lift|help carry|need help|assist|couch|sofa|dresser/.test(
+      lower
+    ),
   };
 
-  let suggestedServiceType = undefined;
-  if (flags.isFragile) suggestedServiceType = 'FRAGILE';
-  if (flags.requiresTwoPeople) suggestedServiceType = 'HAUL'; // Assuming HAUL is a valid type mapping to available types
-
-  return {
-    flags,
-    suggestedServiceType,
-  };
+  return assertSafeZoneOutput({ flags });
 }
 
 /**
@@ -63,17 +110,41 @@ export async function classifyComplaint(text: string): Promise<ComplaintAnalysis
   const lower = text.toLowerCase();
 
   if (/late|delay|wait|slow|forever|time/.test(lower)) {
-    return { category: 'LATE', severity: 'MEDIUM', summary: 'Customer reported timing issues' };
+    return assertSafeZoneOutput({
+      category: 'LATE',
+      severity: 'MEDIUM',
+      summary: 'Customer reported timing issues',
+    });
   }
   if (/damage|broke|scratch|crushed|ruined/.test(lower)) {
-    return { category: 'DAMAGED', severity: 'HIGH', summary: 'Customer reported item damage' };
+    return assertSafeZoneOutput({
+      category: 'DAMAGED',
+      severity: 'HIGH',
+      summary: 'Customer reported item damage',
+    });
   }
   if (/rude|attitude|mean|unprofessional|yell/.test(lower)) {
-    return { category: 'RUDE', severity: 'HIGH', summary: 'Customer reported behavioral issues' };
+    return assertSafeZoneOutput({
+      category: 'RUDE',
+      severity: 'HIGH',
+      summary: 'Customer reported behavioral issues',
+    });
   }
   
   // Default non-complaint or generic
-  return { category: 'NONE', severity: 'LOW', summary: 'No specific complaint detected' };
+  if (/terrible|awful|horrible|bad|poor|unacceptable|worst/.test(lower)) {
+    return assertSafeZoneOutput({
+      category: 'OTHER',
+      severity: 'MEDIUM',
+      summary: 'Customer expressed dissatisfaction',
+    });
+  }
+
+  return assertSafeZoneOutput({
+    category: 'NONE',
+    severity: 'LOW',
+    summary: 'No specific complaint detected',
+  });
 }
 
 /**
@@ -102,12 +173,12 @@ export async function enhanceEta(
     factors.push('Rush hour buffer (+15%)');
   }
 
-  return {
+  return assertSafeZoneOutput({
     originalEtaMinutes,
     adjustedEtaMinutes: Math.ceil(adjusted),
     factorsApplied: factors,
-    confidenceScore: 0.85, // Heuristic confidence
-  };
+    confidenceScore: 0.85,
+  });
 }
 
 /**
@@ -142,9 +213,9 @@ export async function generateDriverCoaching(metrics: {
     tips.push('Consider mentoring new drivers.');
   }
 
-  return {
+  return assertSafeZoneOutput({
     focusArea,
     tips,
     praise,
-  };
+  });
 }

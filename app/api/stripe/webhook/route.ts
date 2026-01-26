@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { ServiceMilesTransactionType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
+import { calculateMonthlyMilesRollover } from '../../../../lib/membership-miles';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +34,17 @@ export async function POST(req: Request) {
   const prisma = getPrisma();
   const stripe = getStripe();
 
+  const statusMap: Record<string, MembershipStatus> = {
+    active: 'ACTIVE',
+    past_due: 'PAST_DUE',
+    canceled: 'CANCELED',
+    unpaid: 'PAST_DUE',
+    incomplete: 'TRIALING',
+    incomplete_expired: 'CANCELED',
+    trialing: 'TRIALING',
+    paused: 'INACTIVE',
+  };
+
   function resolveCurrentPeriodEndDate(
     subscription: Stripe.Subscription,
   ): Date | undefined {
@@ -56,6 +68,47 @@ export async function POST(req: Request) {
       if (user) return user.id;
     }
     return undefined;
+  }
+
+  async function upsertMembershipFromStripeSubscription(subscription: Stripe.Subscription) {
+    const stripeCustomerId = subscription.customer as string;
+
+    let userId: string | undefined = await findUserIdFromMetadata(subscription.metadata);
+    if (!userId) {
+      const membership = await prisma.membershipSubscription.findFirst({
+        where: { stripeCustomerId },
+      });
+      userId = membership?.userId ?? undefined;
+    }
+    if (!userId) return;
+
+    const status = statusMap[subscription.status] || 'ACTIVE';
+    const priceId = subscription.items.data[0]?.price?.id;
+    const planRecord = priceId
+      ? await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } })
+      : null;
+
+    const currentPeriodEnd = resolveCurrentPeriodEndDate(subscription);
+    await prisma.membershipSubscription.upsert({
+      where: { userId },
+      update: {
+        status,
+        currentPeriodEnd,
+        stripeCustomerId,
+        stripeSubId: subscription.id,
+        ...(priceId ? { stripePriceId: priceId } : {}),
+        ...(planRecord?.id ? { planId: planRecord.id } : {}),
+      },
+      create: {
+        userId,
+        status,
+        currentPeriodEnd,
+        stripeCustomerId,
+        stripeSubId: subscription.id,
+        ...(priceId ? { stripePriceId: priceId } : {}),
+        ...(planRecord?.id ? { planId: planRecord.id } : {}),
+      },
+    });
   }
 
   try {
@@ -121,59 +174,12 @@ export async function POST(req: Request) {
           ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
         },
       });
+    } else if (event.type === 'customer.subscription.created') {
+      const subscription = event.data.object as Stripe.Subscription;
+      await upsertMembershipFromStripeSubscription(subscription);
     } else if (event.type === 'customer.subscription.updated') {
       const subscription = event.data.object as Stripe.Subscription;
-      const stripeCustomerId = subscription.customer as string;
-
-      // Find user by stripeCustomerId if metadata is missing
-      let userId: string | undefined = await findUserIdFromMetadata(subscription.metadata);
-      if (!userId) {
-        const membership = await prisma.membershipSubscription.findFirst({
-          where: { stripeCustomerId },
-        });
-        userId = membership?.userId ?? undefined;
-      }
-
-      if (userId) {
-        const statusMap: Record<string, MembershipStatus> = {
-            'active': 'ACTIVE',
-            'past_due': 'PAST_DUE',
-            'canceled': 'CANCELED',
-            'unpaid': 'PAST_DUE',
-            'incomplete': 'TRIALING',
-            'incomplete_expired': 'CANCELED',
-            'trialing': 'TRIALING',
-            'paused': 'INACTIVE'
-        };
-
-        const status = statusMap[subscription.status] || 'ACTIVE';
-        const priceId = subscription.items.data[0]?.price?.id;
-        const planRecord = priceId
-          ? await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } })
-          : null;
-
-        const currentPeriodEnd = resolveCurrentPeriodEndDate(subscription);
-        await prisma.membershipSubscription.upsert({
-          where: { userId },
-          update: {
-            status,
-            currentPeriodEnd,
-            stripeCustomerId,
-            stripeSubId: subscription.id,
-            ...(priceId ? { stripePriceId: priceId } : {}),
-            ...(planRecord?.id ? { planId: planRecord.id } : {}),
-          },
-          create: {
-            userId,
-            status,
-            currentPeriodEnd,
-            stripeCustomerId,
-            stripeSubId: subscription.id,
-            ...(priceId ? { stripePriceId: priceId } : {}),
-            ...(planRecord?.id ? { planId: planRecord.id } : {}),
-          },
-        });
-      }
+      await upsertMembershipFromStripeSubscription(subscription);
     } else if (event.type === 'invoice.paid') {
       const invoice = event.data.object as Stripe.Invoice;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,12 +203,30 @@ export async function POST(req: Request) {
         }
       });
 
-      if (!membership || !membership.user || !membership.plan) {
-         console.log(`[Stripe Webhook] Invoice paid but no linked membership found for sub ${subscriptionId}`);
+      if (!membership || !membership.user) {
+         console.warn(`[Stripe Webhook] Invoice paid but no linked membership found for sub ${subscriptionId}`);
          return new NextResponse(null, { status: 200 });
       }
 
-      const { user, plan } = membership;
+      const user = membership.user;
+      let plan = membership.plan;
+      if (!plan && membership.stripePriceId) {
+        plan = await prisma.membershipPlan.findFirst({ where: { stripePriceId: membership.stripePriceId } });
+      }
+      if (!plan) {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const priceId = subscription.items.data[0]?.price?.id;
+        if (priceId) {
+          plan = await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } });
+          if (plan) {
+            await prisma.membershipSubscription.update({
+              where: { id: membership.id },
+              data: { planId: plan.id, stripePriceId: priceId },
+            });
+          }
+        }
+      }
+      if (!plan) return new NextResponse(null, { status: 200 });
 
       await prisma.$transaction(async (tx) => {
         // Refresh wallet in transaction to lock
@@ -226,18 +250,11 @@ export async function POST(req: Request) {
         const rolloverCap = plan.rolloverCapMiles;
         const monthlyGrant = plan.monthlyServiceMiles;
 
-        // 2. Calculate Rollover & Expiry
-        // rolloverBank = min(wallet.balance, rolloverCap)
-        const rolloverBank = Math.min(currentBalance, rolloverCap);
-        const expiredMiles = Math.max(0, currentBalance - rolloverBank);
-
-        // 3. New Balance
-        // newBalance = monthlyServiceMiles + rolloverBank
-        // Actually, we are just adjusting the wallet.
-        // We set the balance to (rolloverBank + monthlyGrant).
-        // OR we can do it via increments/decrements to match ledger.
-        
-        // Let's do it via explicit adjustments for clarity in ledger.
+        const { rolloverBank, expiredMiles, newBalance } = calculateMonthlyMilesRollover({
+          currentBalance,
+          rolloverCap,
+          monthlyGrant,
+        });
         
         // A. Expire old miles (if any)
         if (expiredMiles > 0) {
@@ -273,13 +290,10 @@ export async function POST(req: Request) {
         }
 
         // D. Update Wallet Balance
-        // Final Balance = rolloverBank + monthlyGrant
-        const finalBalance = rolloverBank + monthlyGrant;
-
         await tx.serviceMilesWallet.update({
             where: { id: wallet.id },
             data: {
-                balanceMiles: finalBalance,
+                balanceMiles: newBalance,
                 rolloverBankMiles: rolloverBank // Update bank tracker
             }
         });

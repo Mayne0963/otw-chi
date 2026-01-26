@@ -265,6 +265,7 @@ model DeliveryRequest {
   id               String                @id @default(cuid())
   userId           String
   assignedDriverId String?
+  idempotencyKey   String?
   serviceType      ServiceType
   pickupAddress    String
   dropoffAddress   String
@@ -314,6 +315,7 @@ model DeliveryRequest {
 
   @@index([userId])
   @@index([status])
+  @@unique([userId, idempotencyKey])
 }
 
 model PromoCode {
@@ -441,6 +443,8 @@ model DriverEarnings {
   requestId   String?
   createdAt   DateTime            @default(now())
   user        User                @relation(fields: [driverId], references: [id])
+
+  @@unique([driverId, requestId])
 }
 
 model DriverPayout {
