@@ -5,6 +5,8 @@ import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
 import { calculateDiscount, findActiveCoupon, normalizeCouponCode } from "@/lib/coupons";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();

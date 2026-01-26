@@ -4,6 +4,8 @@ import { z } from "zod";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
 
+export const runtime = "nodejs";
+
 const intentSchema = z.object({
   amountCents: z.number().int().nonnegative(),
   couponCode: z.string().optional(),

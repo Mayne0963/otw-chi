@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
+import { getCurrentUser } from '@/lib/auth/roles';
+
+export const runtime = 'nodejs';
 
 const PLAN_PRICE_IDS = {
   basic: process.env.STRIPE_PRICE_BASIC,
@@ -9,16 +12,38 @@ const PLAN_PRICE_IDS = {
   executive: process.env.STRIPE_PRICE_EXEC,
 };
 
+const checkoutSchema = z
+  .object({
+    planId: z.string().min(1).optional(),
+    priceId: z.string().min(1).optional(),
+    plan: z.enum(['basic', 'plus', 'executive']).optional(),
+  })
+  .strict();
+
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    const user = await currentUser();
-
-    if (!userId || !user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { planId, priceId, plan } = await req.json();
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json(
+        { error: 'Stripe is not configured' },
+        { status: 503 }
+      );
+    }
+
+    const body = await req.json().catch(() => null);
+    const parsed = checkoutSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { planId, priceId, plan } = parsed.data;
     const prisma = getPrisma();
 
     let resolvedPriceId: string | undefined = priceId;
@@ -33,7 +58,7 @@ export async function POST(req: Request) {
     }
 
     if (!resolvedPriceId && plan) {
-      resolvedPriceId = PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS];
+      resolvedPriceId = PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS] ?? undefined;
 
       if (!resolvedPriceId) {
         const planRecord = await prisma.membershipPlan.findFirst({
@@ -52,17 +77,17 @@ export async function POST(req: Request) {
     }
 
     if (!resolvedPriceId) {
-      return new NextResponse('Plan not found or configured', { status: 400 });
+      return NextResponse.json({ error: 'Plan not found or configured' }, { status: 400 });
     }
     
     // Check if user already has a stripe customer ID
     const dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: user.id },
       include: { membership: true },
     });
 
     if (!dbUser) {
-        return new NextResponse('User not found in DB', { status: 404 });
+        return NextResponse.json({ error: 'User not found in DB' }, { status: 404 });
     }
 
     let stripeCustomerId = dbUser.membership?.stripeCustomerId;
@@ -70,11 +95,14 @@ export async function POST(req: Request) {
     const stripe = getStripe();
 
     if (!stripeCustomerId) {
+      if (!dbUser.email) {
+        return NextResponse.json({ error: 'Missing user email' }, { status: 400 });
+      }
       const customer = await stripe.customers.create({
-        email: user.emailAddresses[0].emailAddress,
+        email: dbUser.email,
         metadata: {
-          clerkUserId: userId,
           userId: dbUser.id,
+          clerkUserId: dbUser.clerkId,
         },
       });
       stripeCustomerId = customer.id;
@@ -98,36 +126,59 @@ export async function POST(req: Request) {
       });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const session = await stripe.checkout.sessions.create({
-      customer: stripeCustomerId,
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: resolvedPriceId,
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        clerkUserId: userId,
-        userId: dbUser.id,
-        planId: resolvedPlanId ?? '',
-        priceId: resolvedPriceId,
-      },
-      subscription_data: {
+    const origin = req.headers.get('origin');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin || 'http://localhost:3000';
+
+    const clerkUserId = dbUser.clerkId;
+
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        customer: stripeCustomerId,
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: resolvedPriceId,
+            quantity: 1,
+          },
+        ],
         metadata: {
+          clerkUserId,
           userId: dbUser.id,
-          clerkUserId: userId,
+          planId: resolvedPlanId ?? '',
+          priceId: resolvedPriceId,
         },
-      },
-      success_url: `${appUrl}/billing?success=true`,
-      cancel_url: `${appUrl}/billing?canceled=true`,
-    });
+        subscription_data: {
+          metadata: {
+            userId: dbUser.id,
+            clerkUserId,
+          },
+        },
+        success_url: `${appUrl}/billing?success=true`,
+        cancel_url: `${appUrl}/billing?canceled=true`,
+      });
+    } catch (error) {
+      console.error('[STRIPE_CHECKOUT_CREATE_SESSION]', error);
+      const maybeStripeError = error as { type?: string; message?: string };
+      const isInvalidRequest = maybeStripeError?.type === 'StripeInvalidRequestError';
+      const message =
+        process.env.NODE_ENV === 'production'
+          ? 'Failed to create checkout session'
+          : maybeStripeError?.message || 'Failed to create checkout session';
+      return NextResponse.json(
+        { error: message },
+        { status: isInvalidRequest ? 400 : 500 }
+      );
+    }
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error('[STRIPE_CHECKOUT]', error);
-    return new NextResponse('Internal Error', { status: 500 });
+    const message = error instanceof Error ? error.message : 'Internal Error';
+    return NextResponse.json(
+      { error: process.env.NODE_ENV === 'production' ? 'Internal Error' : message },
+      { status: 500 }
+    );
   }
 }

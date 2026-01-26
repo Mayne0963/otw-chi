@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function PlanCheckoutButton({
   plan,
@@ -21,6 +22,7 @@ export default function PlanCheckoutButton({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const startCheckout = async () => {
     if (disabled || loading) return;
@@ -43,9 +45,23 @@ export default function PlanCheckoutButton({
         return;
       }
       const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({
+          title: 'Checkout failed',
+          description: data?.error || 'Unable to start checkout. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
       if (data?.url) {
         router.push(data.url);
+        return;
       }
+      toast({
+        title: 'Checkout failed',
+        description: 'Stripe did not return a checkout URL.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
