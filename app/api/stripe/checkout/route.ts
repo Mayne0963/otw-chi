@@ -149,6 +149,12 @@ export async function POST(req: Request) {
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
+        ...(user.role === 'ADMIN'
+          ? {
+              allow_promotion_codes: true,
+              payment_method_collection: 'if_required',
+            }
+          : {}),
         line_items: [
           {
             price: resolvedPriceId,

@@ -5,7 +5,7 @@ import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { redirect } from 'next/navigation';
 
-export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'EXEC') {
+export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' | 'ELITE' | 'BLACK') {
   const { userId } = await auth();
   if (!userId) {
     throw new Error('Unauthorized');
@@ -73,8 +73,14 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'EXEC')
     case 'PLUS':
       priceId = process.env.STRIPE_PRICE_PLUS!;
       break;
-    case 'EXEC':
-      priceId = process.env.STRIPE_PRICE_EXEC!;
+    case 'PRO':
+      priceId = process.env.STRIPE_PRICE_PRO!;
+      break;
+    case 'ELITE':
+      priceId = process.env.STRIPE_PRICE_ELITE!;
+      break;
+    case 'BLACK':
+      priceId = process.env.STRIPE_PRICE_BLACK!;
       break;
   }
 
@@ -95,6 +101,12 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'EXEC')
         quantity: 1,
       },
     ],
+    ...(user.role === 'ADMIN'
+      ? {
+          allow_promotion_codes: true,
+          payment_method_collection: 'if_required',
+        }
+      : {}),
     success_url: `${appUrl}/membership/manage?success=1`,
     cancel_url: `${appUrl}/membership?canceled=1`,
     client_reference_id: user.id,
