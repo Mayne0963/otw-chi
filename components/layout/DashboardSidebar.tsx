@@ -44,6 +44,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Jobs", href: "/driver/jobs", icon: MapPin },
     { label: "Earnings", href: "/driver/earnings", icon: DollarSign },
     { label: "Profile", href: "/driver/profile", icon: Settings },
+    { label: "Founder Log", href: "/driver/founder-log", icon: Settings },
   ]
 
   const adminRoutes = [

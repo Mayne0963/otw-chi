@@ -18,6 +18,12 @@ enum Role {
   FRANCHISE
 }
 
+enum FounderEnergyLevel {
+  EASY
+  ANNOYING
+  EXHAUSTING
+}
+
 enum RequestStatus {
   DRAFT
   SUBMITTED
@@ -129,6 +135,7 @@ model User {
   franchiseApplications FranchiseApplication[]
   contactMessages    ContactMessage[]
   serviceMilesWallet ServiceMilesWallet?
+  founderServiceLogs FounderServiceLog[]
 }
 
 model DriverApplication {
@@ -312,6 +319,7 @@ model DeliveryRequest {
   
   serviceMilesLedger   ServiceMilesLedger[]
   timeLogs             DriverTimeLog[]
+  founderServiceLogs   FounderServiceLog[]
 
   @@index([userId])
   @@index([status])
@@ -603,5 +611,26 @@ model DriverTimeLog {
   deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
 
   @@index([driverId])
+  @@index([deliveryRequestId])
+}
+
+model FounderServiceLog {
+  id                String             @id @default(cuid())
+  userId            String
+  deliveryRequestId String?
+  serviceType       ServiceType
+  milesCharged      Int
+  activeMinutes     Int
+  energy            FounderEnergyLevel
+  wouldDoAgain      Boolean
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id])
+  deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
   @@index([deliveryRequestId])
 }

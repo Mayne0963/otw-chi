@@ -1,6 +1,7 @@
 import { DeliveryRequestStatus, DriverEarningStatus } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { calculateDriverPayCents } from './driver-pay';
+import { isFounderDriverEmail } from './founders';
 
 type PrismaLikeClient = {
   $transaction: <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) => Promise<T>;
@@ -175,6 +176,9 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       waitMiles: waitTimeMiles + sitAndWaitPremiumMiles,
       cashHandling: cashHandlingMiles > 0,
       businessAccount,
+      rateCentsPerServiceMile: isFounderDriverEmail(driver.user.email)
+        ? { PROBATION: 200, STANDARD: 200, ELITE: 200, CONCIERGE: 200 }
+        : undefined,
     });
 
     const existingEarnings = await tx.driverEarnings.findFirst({

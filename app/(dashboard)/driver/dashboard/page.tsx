@@ -5,18 +5,43 @@ import { Button } from '@/components/ui/button';
 import DriverLiveMap from '@/components/otw/DriverLiveMap';
 import { validateAddress } from '@/lib/geocoding';
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
-import { RequestStatus } from '@prisma/client';
+import { RequestStatus, DeliveryRequestStatus } from '@prisma/client';
+import type { DeliveryRequest, Request as LegacyRequest } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import type { OtwLocation } from '@/lib/otw/otwTypes';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
+import { calculateDriverPayCents } from '@/lib/driver-pay';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { haversineDistanceKm } from '@/lib/otw/otwGeo';
 import { acceptDeliveryRequest, completeDeliveryRequest, markDriverArrived } from '@/lib/driver-lifecycle';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+type DispatchPreferences = {
+  prioritySlot?: boolean;
+  preferredDriverId?: string | null;
+  lockToPreferred?: boolean;
+  lockExpiresAtIso?: string | null;
+};
+
+function getDispatchPreferences(quoteBreakdown: unknown): DispatchPreferences {
+  if (!quoteBreakdown || typeof quoteBreakdown !== 'object') return {};
+  const obj = quoteBreakdown as Record<string, unknown>;
+  const prefs = obj.dispatchPreferences;
+  if (!prefs || typeof prefs !== 'object') return {};
+  return prefs as DispatchPreferences;
+}
+
+type ActiveItem =
+  | (DeliveryRequest & { isLegacy?: false })
+  | (LegacyRequest & { isLegacy: true });
+
+function isLegacyRequest(req: ActiveItem): req is LegacyRequest & { isLegacy: true } {
+  return Boolean((req as { isLegacy?: boolean }).isLegacy);
+}
 
 export default async function DriverDashboardPage() {
   noStore();
@@ -63,8 +88,8 @@ export default async function DriverDashboardPage() {
   });
 
   const prioritizedAvailableRequests = [...availableRequests].sort((a, b) => {
-    const aPref = (a.quoteBreakdown as any)?.dispatchPreferences ?? {};
-    const bPref = (b.quoteBreakdown as any)?.dispatchPreferences ?? {};
+    const aPref = getDispatchPreferences(a.quoteBreakdown);
+    const bPref = getDispatchPreferences(b.quoteBreakdown);
     const aPriority = Boolean(aPref.prioritySlot);
     const bPriority = Boolean(bPref.prioritySlot);
     if (aPriority !== bPriority) return aPriority ? -1 : 1;
@@ -344,12 +369,24 @@ export default async function DriverDashboardPage() {
         <section className="mt-8">
             <h2 className="text-xl font-semibold mb-4 text-white">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[...assignedRequests, ...assignedLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
+                {([
+                  ...assignedRequests,
+                  ...assignedLegacyRequests.map((r) => ({ ...r, isLegacy: true as const })),
+                ] as ActiveItem[]).map((req) => {
+                  const isAssigned = isLegacyRequest(req)
+                    ? req.status === RequestStatus.ASSIGNED
+                    : req.status === DeliveryRequestStatus.ASSIGNED;
+                  const isPickedUp = isLegacyRequest(req)
+                    ? req.status === RequestStatus.PICKED_UP
+                    : req.status === DeliveryRequestStatus.PICKED_UP;
+                  const isEnRoute = !isLegacyRequest(req) && req.status === DeliveryRequestStatus.EN_ROUTE;
+
+                  return (
                     <Card key={req.id} className="border-otwGold/30 bg-otwGold/10 p-5 sm:p-6">
                         <div className="p-4 border-b border-otwGold/20 flex justify-between items-center">
                             <span className="font-medium text-otwGold">{req.serviceType}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${req.isLegacy ? "bg-white/10 text-white/70" : "bg-otwGold text-black"}`}>
-                                {req.status.replace('_', ' ')}
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${(req as ActiveItem).isLegacy ? "bg-white/10 text-white/70" : "bg-otwGold text-black"}`}>
+                                {String(req.status).replace('_', ' ')}
                             </span>
                         </div>
                         <div className="p-4">
@@ -361,7 +398,7 @@ export default async function DriverDashboardPage() {
                                     </div>
                                     <div>
                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Pickup</span>
-                                        <p className="text-base leading-snug text-white">{req.pickupAddress || req.pickup}</p>
+                                        <p className="text-base leading-snug text-white">{("pickupAddress" in req ? req.pickupAddress : req.pickup) || ""}</p>
                                     </div>
                                     
                                     <div className="flex flex-col items-center pb-1">
@@ -369,7 +406,7 @@ export default async function DriverDashboardPage() {
                                     </div>
                                     <div>
                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Dropoff</span>
-                                        <p className="text-base leading-snug text-white">{req.dropoffAddress || req.dropoff}</p>
+                                        <p className="text-base leading-snug text-white">{("dropoffAddress" in req ? req.dropoffAddress : req.dropoff) || ""}</p>
                                     </div>
                                 </div>
 
@@ -381,8 +418,8 @@ export default async function DriverDashboardPage() {
                             </div>
 
                             <div className="flex gap-2">
-                                {(req.status === 'ASSIGNED' || req.status === RequestStatus.ASSIGNED) && (
-                                    <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
+                                {isAssigned && (
+                                    <form action={isLegacyRequest(req) ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="PICKED_UP" />
                                         <Button type="submit" className="w-full" variant="gold">
@@ -391,8 +428,8 @@ export default async function DriverDashboardPage() {
                                     </form>
                                 )}
                                 
-                                {(req.status === 'PICKED_UP' || req.status === RequestStatus.PICKED_UP) && (
-                                    <form action={req.isLegacy ? updateLegacyStatus : updateStatus} className="w-full">
+                                {isPickedUp && (
+                                    <form action={isLegacyRequest(req) ? updateLegacyStatus : updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />
                                         <Button type="submit" className="w-full" variant="gold">
@@ -401,7 +438,7 @@ export default async function DriverDashboardPage() {
                                     </form>
                                 )}
                                 
-                                {req.status === 'EN_ROUTE' && (
+                                {isEnRoute && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />
@@ -413,7 +450,8 @@ export default async function DriverDashboardPage() {
                             </div>
                         </div>
                     </Card>
-                ))}
+                  );
+                })}
                 
                 {[...assignedRequests, ...assignedLegacyRequests].length === 0 && (
                     <div className="col-span-full">
@@ -430,7 +468,23 @@ export default async function DriverDashboardPage() {
         <section className="mt-8">
             <h2 className="text-xl font-semibold mb-4 text-white">Available Requests</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[...prioritizedAvailableRequests, ...availableLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
+                {([
+                  ...prioritizedAvailableRequests,
+                  ...availableLegacyRequests.map((r) => ({ ...r, isLegacy: true as const })),
+                ] as ActiveItem[]).map((req) => {
+                  const miles = isLegacyRequest(req) ? (req.milesEstimate ?? 0) : (req.serviceMilesFinal ?? 0);
+                  const pay = calculateDriverPayCents({
+                    serviceMiles: miles,
+                    driverTier: driverProfile.tierLevel,
+                    tipsCents: 0,
+                    bonusEligible: driverProfile.bonusEnabled,
+                    bonus5StarCents: driverProfile.bonus5StarCents,
+                  });
+                  const pickupText = isLegacyRequest(req) ? req.pickup : req.pickupAddress;
+                  const dropoffText = isLegacyRequest(req) ? req.dropoff : req.dropoffAddress;
+                  const prefs = !isLegacyRequest(req) ? getDispatchPreferences(req.quoteBreakdown) : {};
+
+                  return (
                     <Card key={req.id} className="p-5 sm:p-6">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
                             <span className="font-medium text-white">{req.serviceType}</span>
@@ -440,36 +494,36 @@ export default async function DriverDashboardPage() {
                             <div className="space-y-4 text-sm mb-6">
                                 <div>
                                     <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Pickup</span>
-                                    <p className="text-base leading-snug text-white truncate">{req.pickupAddress || req.pickup}</p>
+                                    <p className="text-base leading-snug text-white truncate">{pickupText}</p>
                                 </div>
                                 <div>
                                     <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Dropoff</span>
-                                    <p className="text-base leading-snug text-white truncate">{req.dropoffAddress || req.dropoff}</p>
+                                    <p className="text-base leading-snug text-white truncate">{dropoffText}</p>
                                 </div>
                                 <div className="flex gap-4 pt-2">
                                      <div>
-                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Distance</span>
-                                         <p className="text-lg font-bold text-white">{req.distance || '0'} mi</p>
+                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Miles</span>
+                                         <p className="text-lg font-bold text-white">{miles.toLocaleString()}</p>
                                      </div>
                                      <div>
                                          <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Est. Payout</span>
-                                         <p className="text-lg font-bold text-otwGold">${req.price || '0.00'}</p>
+                                         <p className="text-lg font-bold text-otwGold">${(pay.totalPayCents / 100).toFixed(2)}</p>
                                      </div>
                                 </div>
-                                {!req.isLegacy && req.scheduledStart ? (
+                                {!isLegacyRequest(req) && req.scheduledStart ? (
                                   <div className="pt-2 text-xs text-white/60">
                                     Scheduled: {new Date(req.scheduledStart).toLocaleString()}
                                   </div>
                                 ) : null}
-                                {!req.isLegacy && Boolean((req.quoteBreakdown as any)?.dispatchPreferences?.prioritySlot) ? (
+                                {!isLegacyRequest(req) && Boolean(prefs.prioritySlot) ? (
                                   <div className="text-xs text-otwGold/80">Priority slot</div>
                                 ) : null}
-                                {!req.isLegacy && Boolean((req.quoteBreakdown as any)?.dispatchPreferences?.lockToPreferred) ? (
+                                {!isLegacyRequest(req) && Boolean(prefs.lockToPreferred) ? (
                                   <div className="text-xs text-otwGold/80">Preferred driver window</div>
                                 ) : null}
                             </div>
                             
-                            <form action={req.isLegacy ? acceptLegacyRequest : acceptRequest}>
+                            <form action={isLegacyRequest(req) ? acceptLegacyRequest : acceptRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />
                                 <input type="hidden" name="driverId" value={driverProfile.id} />
                                 <Button type="submit" className="w-full" variant="outline">
@@ -478,7 +532,8 @@ export default async function DriverDashboardPage() {
                             </form>
                         </div>
                     </Card>
-                ))}
+                  );
+                })}
 
                 {[...availableRequests, ...availableLegacyRequests].length === 0 && (
                      <div className="col-span-full">
