@@ -4,6 +4,11 @@ import { useEffect } from 'react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
 
+function isQuotaError(error: Error) {
+  const message = `${error?.name ?? ''} ${error?.message ?? ''}`.toLowerCase();
+  return message.includes('exceeded the data transfer quota') || (message.includes('quota') && message.includes('exceeded'));
+}
+
 export default function Error({
   error,
   reset,
@@ -37,14 +42,20 @@ export default function Error({
     }).catch(() => {});
   }, [error]);
 
+  const quota = isQuotaError(error);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] p-4 bg-otwBlack">
       <OtwCard className="max-w-md w-full text-center border-red-500/20 bg-red-950/10">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-red-500 mb-4">Something went wrong!</h2>
+          <h2 className="text-xl font-bold text-red-500 mb-4">
+            {quota ? 'Service temporarily unavailable' : 'Something went wrong!'}
+          </h2>
           <div className="space-y-4">
             <p className="text-sm text-white/80">
-              We encountered an unexpected error. Please try again later.
+              {quota
+                ? 'The database is temporarily unavailable. Please try again soon.'
+                : 'We encountered an unexpected error. Please try again later.'}
             </p>
             {error.digest && (
               <p className="text-xs font-mono bg-black/20 p-2 rounded text-red-200">

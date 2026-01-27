@@ -47,6 +47,16 @@ const parseBoolean = (raw) => {
   return null;
 };
 
+const isQuotaExceededError = (text) => {
+  if (typeof text !== 'string' || !text) return false;
+  const haystack = text.toLowerCase();
+  return (
+    haystack.includes('exceeded the data transfer quota') ||
+    haystack.includes('data transfer quota') ||
+    haystack.includes('quota') && haystack.includes('exceeded')
+  );
+};
+
 const isRetryableMigrationError = (text) => {
   if (typeof text !== 'string' || !text) return false;
   const haystack = text.toLowerCase();
@@ -97,6 +107,12 @@ const shouldAutoRollbackFailedMigration = (migrationName, combinedOutput) => {
 async function runMigrations() {
   console.log('[migrate-deploy] Starting database migrations...');
 
+  const skipMigrations = parseBoolean(process.env.SKIP_MIGRATIONS) ?? false;
+  if (skipMigrations) {
+    console.log('[migrate-deploy] SKIP_MIGRATIONS enabled, skipping migrations');
+    process.exit(0);
+  }
+
   if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
     console.log('[migrate-deploy] Non-production Vercel build detected, skipping migrations');
     process.exit(0);
@@ -128,6 +144,7 @@ async function runMigrations() {
   const initialBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_INITIAL_BACKOFF_MS, 2000);
   const maxBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_MAX_BACKOFF_MS, 60_000);
   const allowFailure = parseBoolean(process.env.PRISMA_MIGRATE_DEPLOY_ALLOW_FAILURE) ?? false;
+  const requireSuccess = parseBoolean(process.env.PRISMA_MIGRATE_DEPLOY_REQUIRE_SUCCESS) ?? false;
 
   let backoffMs = initialBackoffMs;
   let disableAdvisoryLock = false;
@@ -169,6 +186,13 @@ async function runMigrations() {
       const failedMigrationName = extractFailedMigrationName(combined);
       
       console.log('[migrate-deploy] Checking if error is retryable...');
+
+      if (isQuotaExceededError(combined) && !requireSuccess) {
+        console.log(
+          '[migrate-deploy] Database quota exceeded. Skipping migrations to allow build to continue.'
+        );
+        process.exit(0);
+      }
 
       if (shouldAutoRollbackFailedMigration(failedMigrationName, combined)) {
         console.log(`[migrate-deploy] Auto-recovering failed migration ${failedMigrationName} with migrate resolve...`);

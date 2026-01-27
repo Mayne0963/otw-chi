@@ -1,6 +1,11 @@
 'use client'
 import { useEffect } from 'react'
  
+function isQuotaError(error: Error) {
+  const message = `${error?.name ?? ''} ${error?.message ?? ''}`.toLowerCase()
+  return message.includes('exceeded the data transfer quota') || (message.includes('quota') && message.includes('exceeded'))
+}
+
 export default function GlobalError({
   error: _error,
   reset,
@@ -34,11 +39,15 @@ export default function GlobalError({
     }).catch(() => {})
   }, [_error])
 
+  const quota = isQuotaError(_error)
+
   return (
     <html>
       <body className="bg-otwBlack text-otwOffWhite">
         <div className="flex h-screen flex-col items-center justify-center">
-          <h2 className="text-2xl font-bold text-red-500">Something went wrong!</h2>
+          <h2 className="text-2xl font-bold text-red-500">
+            {quota ? 'Service temporarily unavailable' : 'Something went wrong!'}
+          </h2>
           <button 
             className="mt-4 rounded-lg bg-otwGold px-4 py-2 text-otwBlack font-bold hover:bg-otwGold/90"
             onClick={() => reset()}
