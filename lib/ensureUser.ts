@@ -26,8 +26,21 @@ export async function ensureUser({ clerkUserId, email }: EnsureUserInput) {
 
   if (!membership) {
     const plan =
-      (await prisma.membershipPlan.findUnique({ where: { name: 'Basic' } })) ??
-      (await prisma.membershipPlan.create({ data: { name: 'Basic' } }));
+      (await prisma.membershipPlan.findUnique({ where: { name: 'OTW BASIC' } })) ??
+      (await prisma.membershipPlan.create({
+        data: {
+          name: 'OTW BASIC',
+          description: 'Best for food, groceries, and quick errands.',
+          monthlyServiceMiles: 60,
+          rolloverCapMiles: 0,
+          advanceDiscountMax: 0,
+          priorityLevel: 0,
+          markupFree: false,
+          cashAllowed: false,
+          peerToPeerAllowed: false,
+          allowedServiceTypes: ['FOOD', 'STORE'],
+        },
+      }));
 
     await prisma.membershipSubscription.create({
       data: {

@@ -67,15 +67,17 @@ export async function POST(req: Request) {
       resolvedPlanId = planRecord?.id ?? undefined;
     }
 
-    if (!resolvedPriceId && plan) {
-      resolvedPriceId = PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS] ?? undefined;
+    if (plan) {
+      const planRecord = await prisma.membershipPlan.findFirst({
+        where: { name: { equals: PLAN_NAME_BY_CODE[plan], mode: 'insensitive' } },
+      });
+      resolvedPlanId = resolvedPlanId ?? (planRecord?.id ?? undefined);
 
       if (!resolvedPriceId) {
-        const planRecord = await prisma.membershipPlan.findFirst({
-          where: { name: { equals: PLAN_NAME_BY_CODE[plan], mode: 'insensitive' } },
-        });
+        resolvedPriceId = PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS] ?? undefined;
+      }
+      if (!resolvedPriceId) {
         resolvedPriceId = planRecord?.stripePriceId ?? undefined;
-        resolvedPlanId = planRecord?.id ?? undefined;
       }
     }
 
@@ -157,12 +159,16 @@ export async function POST(req: Request) {
           clerkUserId,
           userId: dbUser.id,
           planId: resolvedPlanId ?? '',
+          planCode: plan ?? '',
+          planName: plan ? PLAN_NAME_BY_CODE[plan] : '',
           priceId: resolvedPriceId,
         },
         subscription_data: {
           metadata: {
             userId: dbUser.id,
             clerkUserId,
+            planCode: plan ?? '',
+            planName: plan ? PLAN_NAME_BY_CODE[plan] : '',
           },
         },
         success_url: `${appUrl}/billing?success=true`,

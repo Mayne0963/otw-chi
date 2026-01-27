@@ -16,6 +16,15 @@ export default async function MembershipManagePage() {
   if (!user) return <div>Please sign in</div>;
 
   const sub = await getActiveSubscription(user.id);
+  const stripeReady =
+    Boolean(process.env.STRIPE_SECRET_KEY) && Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  const consumerPriceIds = {
+    basic: process.env.STRIPE_PRICE_BASIC,
+    plus: process.env.STRIPE_PRICE_PLUS,
+    pro: process.env.STRIPE_PRICE_PRO,
+    elite: process.env.STRIPE_PRICE_ELITE,
+    black: process.env.STRIPE_PRICE_BLACK,
+  } as const;
   const prisma = getPrisma();
   const planNames = ['OTW BASIC', 'OTW PLUS', 'OTW PRO', 'OTW ELITE', 'OTW BLACK'];
   const planRecords = await prisma.membershipPlan.findMany({
@@ -60,7 +69,7 @@ export default async function MembershipManagePage() {
           <div className="grid md:grid-cols-3 gap-4">
             {consumerPlans.map((plan) => {
               const record = planMap.get(plan.name);
-              const disabled = !record?.stripePriceId;
+              const disabled = !stripeReady || !consumerPriceIds[plan.code];
               return (
                 <Card key={plan.code} className="p-5 sm:p-6">
                   <div className="text-xl font-bold">{plan.name}</div>
@@ -69,7 +78,6 @@ export default async function MembershipManagePage() {
                     <PlanCheckoutButton
                       plan={plan.code}
                       planId={record?.id}
-                      priceId={record?.stripePriceId ?? undefined}
                       disabled={disabled}
                       className="w-full"
                     >

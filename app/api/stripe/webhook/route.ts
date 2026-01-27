@@ -15,6 +15,14 @@ type MembershipStatus =
   | 'TRIALING'
   | 'INACTIVE';
 
+const PLAN_NAME_BY_CODE = {
+  basic: 'OTW BASIC',
+  plus: 'OTW PLUS',
+  pro: 'OTW PRO',
+  elite: 'OTW ELITE',
+  black: 'OTW BLACK',
+} as const;
+
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 export async function POST(req: Request) {
@@ -84,9 +92,23 @@ export async function POST(req: Request) {
 
     const status = statusMap[subscription.status] || 'ACTIVE';
     const priceId = subscription.items.data[0]?.price?.id;
-    const planRecord = priceId
+    let planRecord = priceId
       ? await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } })
       : null;
+    if (!planRecord) {
+      const planCode = subscription.metadata?.planCode ? String(subscription.metadata.planCode) : undefined;
+      const planName =
+        planCode && planCode in PLAN_NAME_BY_CODE
+          ? PLAN_NAME_BY_CODE[planCode as keyof typeof PLAN_NAME_BY_CODE]
+          : subscription.metadata?.planName
+            ? String(subscription.metadata.planName)
+            : undefined;
+      if (planName) {
+        planRecord = await prisma.membershipPlan.findFirst({
+          where: { name: { equals: planName, mode: 'insensitive' } },
+        });
+      }
+    }
 
     const currentPeriodEnd = resolveCurrentPeriodEndDate(subscription);
     await prisma.membershipSubscription.upsert({
@@ -145,6 +167,8 @@ export async function POST(req: Request) {
       const stripeCustomerId = session.customer ? String(session.customer) : undefined;
       const sessionPriceId = session.metadata?.priceId ? String(session.metadata.priceId) : undefined;
       const sessionPlanId = session.metadata?.planId ? String(session.metadata.planId) : undefined;
+      const sessionPlanCode = session.metadata?.planCode ? String(session.metadata.planCode) : undefined;
+      const sessionPlanName = session.metadata?.planName ? String(session.metadata.planName) : undefined;
 
       let currentPeriodEnd: Date | undefined;
       let priceId = sessionPriceId;
@@ -154,6 +178,22 @@ export async function POST(req: Request) {
         priceId = subscription.items.data[0]?.price?.id ?? priceId;
       }
 
+      let effectivePlanId = sessionPlanId;
+      if (!effectivePlanId) {
+        const nameFromCode =
+          sessionPlanCode && sessionPlanCode in PLAN_NAME_BY_CODE
+            ? PLAN_NAME_BY_CODE[sessionPlanCode as keyof typeof PLAN_NAME_BY_CODE]
+            : undefined;
+        const lookupName = sessionPlanName || nameFromCode;
+        if (lookupName) {
+          const planRecord = await prisma.membershipPlan.findFirst({
+            where: { name: { equals: lookupName, mode: 'insensitive' } },
+            select: { id: true },
+          });
+          effectivePlanId = planRecord?.id ?? undefined;
+        }
+      }
+
       await prisma.membershipSubscription.upsert({
         where: { userId },
         update: {
@@ -161,7 +201,7 @@ export async function POST(req: Request) {
           stripeCustomerId,
           stripeSubId: subscriptionId,
           ...(priceId ? { stripePriceId: priceId } : {}),
-          ...(sessionPlanId ? { planId: sessionPlanId } : {}),
+          ...(effectivePlanId ? { planId: effectivePlanId } : {}),
           ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
         },
         create: {
@@ -170,7 +210,7 @@ export async function POST(req: Request) {
           stripeCustomerId,
           stripeSubId: subscriptionId,
           ...(priceId ? { stripePriceId: priceId } : {}),
-          ...(sessionPlanId ? { planId: sessionPlanId } : {}),
+          ...(effectivePlanId ? { planId: effectivePlanId } : {}),
           ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
         },
       });
@@ -225,6 +265,26 @@ export async function POST(req: Request) {
             });
           }
         }
+        if (!plan) {
+          const planCode = subscription.metadata?.planCode ? String(subscription.metadata.planCode) : undefined;
+          const planName =
+            subscription.metadata?.planName
+              ? String(subscription.metadata.planName)
+              : planCode && planCode in PLAN_NAME_BY_CODE
+                ? PLAN_NAME_BY_CODE[planCode as keyof typeof PLAN_NAME_BY_CODE]
+                : undefined;
+          if (planName) {
+            plan = await prisma.membershipPlan.findFirst({
+              where: { name: { equals: planName, mode: 'insensitive' } },
+            });
+            if (plan) {
+              await prisma.membershipSubscription.update({
+                where: { id: membership.id },
+                data: { planId: plan.id, ...(priceId ? { stripePriceId: priceId } : {}) },
+              });
+            }
+          }
+        }
       }
       if (!plan) return new NextResponse(null, { status: 200 });
 
@@ -240,10 +300,7 @@ export async function POST(req: Request) {
         const idempotencyKeyBase = `stripe_invoice:${invoiceId}`;
         const rollInKey = `${idempotencyKeyBase}:ROLL_IN`;
         const alreadyProcessed = await tx.serviceMilesLedger.findFirst({
-          where: {
-            walletId: wallet.id,
-            idempotencyKey: rollInKey,
-          },
+          where: { walletId: wallet.id, idempotencyKey: rollInKey } as any,
           select: { id: true },
         });
         if (alreadyProcessed) return;
@@ -266,7 +323,7 @@ export async function POST(req: Request) {
               transactionType: ServiceMilesTransactionType.ROLL_IN,
               idempotencyKey: rollInKey,
               description: `${rollInKey} rolled=${rolloverBank}`,
-            },
+            } as any,
           });
         } catch (error) {
           if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -286,7 +343,7 @@ export async function POST(req: Request) {
                     transactionType: ServiceMilesTransactionType.EXPIRE,
                     idempotencyKey: `${idempotencyKeyBase}:EXPIRE`,
                     description: `${idempotencyKeyBase}:EXPIRE cap=${rolloverCap}`,
-                }
+                } as any
             });
         }
 
@@ -299,7 +356,7 @@ export async function POST(req: Request) {
                     transactionType: ServiceMilesTransactionType.ADD_MONTHLY,
                     idempotencyKey: `${idempotencyKeyBase}:ADD_MONTHLY`,
                     description: `${idempotencyKeyBase}:ADD_MONTHLY plan=${plan.name}`,
-                }
+                } as any
             });
         }
 

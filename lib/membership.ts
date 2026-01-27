@@ -22,30 +22,40 @@ export const getActiveSubscription = cache(async (userId: string) => {
   return null;
 });
 
-export function getPlanCodeFromSubscription(sub: (MembershipSubscription & { plan: MembershipPlan | null }) | null): 'BASIC' | 'PLUS' | 'EXEC' | null {
+export type MembershipPlanCode =
+  | 'OTW_BASIC'
+  | 'OTW_PLUS'
+  | 'OTW_PRO'
+  | 'OTW_ELITE'
+  | 'OTW_BLACK'
+  | 'OTW_BUSINESS'
+  | null;
+
+export function getPlanCodeFromSubscription(
+  sub: (MembershipSubscription & { plan: MembershipPlan | null }) | null
+): MembershipPlanCode {
   if (!sub || !sub.plan) return null;
   
   const name = sub.plan.name.toUpperCase();
-  if (name.includes('CONSUMER STARTER')) return 'BASIC';
-  if (name.includes('CONSUMER PLUS')) return 'PLUS';
-  if (name.includes('CONSUMER UNLIMITED')) return 'EXEC';
-  if (name.includes('BUSINESS')) return 'EXEC';
-
-  if (name.includes('BASIC')) return 'BASIC';
-  if (name.includes('PLUS')) return 'PLUS';
-  if (name.includes('EXECUTIVE') || name.includes('EXEC')) return 'EXEC';
+  if (name === 'OTW BASIC') return 'OTW_BASIC';
+  if (name === 'OTW PLUS') return 'OTW_PLUS';
+  if (name === 'OTW PRO') return 'OTW_PRO';
+  if (name === 'OTW ELITE') return 'OTW_ELITE';
+  if (name === 'OTW BLACK') return 'OTW_BLACK';
+  if (name.startsWith('OTW BUSINESS') || name === 'OTW ENTERPRISE') return 'OTW_BUSINESS';
   
   return null;
 }
 
-export function getMembershipBenefits(planCode: 'BASIC' | 'PLUS' | 'EXEC' | null) {
+export function getMembershipBenefits(planCode: MembershipPlanCode) {
   switch (planCode) {
-    case 'BASIC':
-      return { discount: 0, nipMultiplier: 1.0, waiveServiceFee: false };
-    case 'PLUS':
-      return { discount: 0.10, nipMultiplier: 1.25, waiveServiceFee: false }; // 10% off
-    case 'EXEC':
-      return { discount: 0.20, nipMultiplier: 2.0, waiveServiceFee: true }; // 20% off + free service
+    case 'OTW_BLACK':
+    case 'OTW_BUSINESS':
+      return { discount: 0, nipMultiplier: 1.0, waiveServiceFee: true };
+    case 'OTW_BASIC':
+    case 'OTW_PLUS':
+    case 'OTW_PRO':
+    case 'OTW_ELITE':
     default:
       return { discount: 0, nipMultiplier: 1.0, waiveServiceFee: false };
   }

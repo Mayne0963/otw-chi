@@ -18,8 +18,21 @@ async function ensureBasicMembership(prisma: ReturnType<typeof getPrisma>, userI
   if (existing) return existing;
 
   const plan =
-    (await prisma.membershipPlan.findUnique({ where: { name: "Basic" } })) ??
-    (await prisma.membershipPlan.create({ data: { name: "Basic" } }));
+    (await prisma.membershipPlan.findUnique({ where: { name: "OTW BASIC" } })) ??
+    (await prisma.membershipPlan.create({
+      data: {
+        name: "OTW BASIC",
+        description: "Best for food, groceries, and quick errands.",
+        monthlyServiceMiles: 60,
+        rolloverCapMiles: 0,
+        advanceDiscountMax: 0,
+        priorityLevel: 0,
+        markupFree: false,
+        cashAllowed: false,
+        peerToPeerAllowed: false,
+        allowedServiceTypes: ["FOOD", "STORE"],
+      },
+    }));
 
   return prisma.membershipSubscription.create({
     data: {

@@ -23,7 +23,9 @@ const requiredEnvVars = [
   'STRIPE_WEBHOOK_SECRET',
   'STRIPE_PRICE_BASIC',
   'STRIPE_PRICE_PLUS',
-  'STRIPE_PRICE_EXEC',
+  'STRIPE_PRICE_PRO',
+  'STRIPE_PRICE_ELITE',
+  'STRIPE_PRICE_BLACK',
 ];
 
 export function validateEnv() {

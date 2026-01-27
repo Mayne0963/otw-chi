@@ -9,6 +9,13 @@ export default async function PricingPage() {
   const prisma = getPrisma();
   const stripeReady =
     Boolean(process.env.STRIPE_SECRET_KEY) && Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  const consumerPriceIds = {
+    basic: process.env.STRIPE_PRICE_BASIC,
+    plus: process.env.STRIPE_PRICE_PLUS,
+    pro: process.env.STRIPE_PRICE_PRO,
+    elite: process.env.STRIPE_PRICE_ELITE,
+    black: process.env.STRIPE_PRICE_BLACK,
+  } as const;
 
   const planNames = [
     'OTW BASIC',
@@ -113,7 +120,7 @@ export default async function PricingPage() {
       <div className="grid gap-6 md:grid-cols-3">
         {consumerPlans.map((plan) => {
           const record = planMap.get(plan.name);
-          const planDisabled = !stripeReady || !record?.stripePriceId;
+          const planDisabled = !stripeReady || !consumerPriceIds[plan.code];
           return (
             <OtwCard key={plan.code} className="relative flex flex-col">
               <div className="p-6 flex-1 flex flex-col">
@@ -154,7 +161,6 @@ export default async function PricingPage() {
                   <PlanCheckoutButton
                     plan={plan.code}
                     planId={record?.id}
-                    priceId={record?.stripePriceId ?? undefined}
                     disabled={planDisabled}
                     className="w-full"
                   >

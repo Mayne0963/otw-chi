@@ -17,8 +17,10 @@ export async function syncUserMetadataFromDb() {
   const sub = await getActiveSubscription(user.id);
   const planCode = getPlanCodeFromSubscription(sub);
   let tier = 'basic';
-  if (planCode === 'PLUS') tier = 'broski+';
-  if (planCode === 'EXEC') tier = 'executive';
+  if (planCode === 'OTW_PLUS') tier = 'broski+';
+  if (planCode === 'OTW_PRO' || planCode === 'OTW_ELITE' || planCode === 'OTW_BLACK' || planCode === 'OTW_BUSINESS') {
+    tier = 'executive';
+  }
   const zoneName = user.driverProfile?.zone?.name?.toLowerCase() ?? 'unassigned';
   const client = await clerkClient();
   const clerkUser = await client.users.getUser(userId);
@@ -34,4 +36,3 @@ export async function syncUserMetadataFromDb() {
   await client.users.updateUser(userId, { publicMetadata: { ...pm, ...payload } });
   return payload;
 }
-

@@ -12,6 +12,13 @@ export default async function MembershipPage() {
   const sub = user ? await getActiveSubscription(user.id) : null;
   const stripeReady =
     Boolean(process.env.STRIPE_SECRET_KEY) && Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  const consumerPriceIds = {
+    basic: process.env.STRIPE_PRICE_BASIC,
+    plus: process.env.STRIPE_PRICE_PLUS,
+    pro: process.env.STRIPE_PRICE_PRO,
+    elite: process.env.STRIPE_PRICE_ELITE,
+    black: process.env.STRIPE_PRICE_BLACK,
+  } as const;
 
   const prisma = getPrisma();
   const planNames = [
@@ -109,7 +116,7 @@ export default async function MembershipPage() {
             {consumerPlans.map((plan) => {
               const record = planMap.get(plan.name);
               const isCurrent = Boolean(currentPlanName && plan.name === currentPlanName);
-              const disabled = isCurrent || !stripeReady || !record?.stripePriceId;
+              const disabled = isCurrent || !stripeReady || !consumerPriceIds[plan.code];
 
               return (
                 <OtwCard
@@ -143,7 +150,6 @@ export default async function MembershipPage() {
                       <PlanCheckoutButton
                         plan={plan.code}
                         planId={record?.id}
-                        priceId={record?.stripePriceId ?? undefined}
                         className={`w-full ${isCurrent ? 'opacity-50 cursor-default' : ''}`}
                         disabled={disabled}
                       >
