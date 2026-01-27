@@ -3,6 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
+import { isAdminFreeCoupon } from "@/lib/admin-discount";
 
 export const runtime = "nodejs";
 
@@ -60,6 +61,20 @@ export async function POST(req: Request) {
     }
 
     const { amountCents, couponCode } = parsed.data;
+    const isAdmin =
+      String(clerkUser.publicMetadata?.role ?? "").toUpperCase() === "ADMIN";
+
+    if (couponCode && !isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (couponCode && isAdminFreeCoupon(couponCode)) {
+      return NextResponse.json({
+        free: true,
+        clientSecret: null,
+        message: "Admin discount applied",
+      });
+    }
 
     // Handle free orders (100% discount) or amounts too small for Stripe
     if (amountCents < 50) {

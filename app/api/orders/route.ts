@@ -1,15 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
-import {
-  calculateDiscount,
-  findActiveCoupon,
-  normalizeCouponCode,
-  recordCouponRedemption,
-} from '@/lib/coupons';
+import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from '@/lib/admin-discount';
 import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
-import type { PromoCode } from '@prisma/client';
 
 const receiptItemSchema = z.object({
   name: z.string().min(1),
@@ -58,7 +52,6 @@ export async function POST(req: Request) {
       : null;
     let appliedCouponCode: string | null = null;
     let discountCents: number | null = null;
-    let appliedCoupon: PromoCode | null = null;
 
     if (data.serviceType === ServiceType.FOOD) {
       if (!(data.restaurantName || data.receiptVendor)) {
@@ -114,21 +107,20 @@ export async function POST(req: Request) {
     appliedCouponCode = providedCoupon;
 
     if (appliedCouponCode) {
-      const normalized = normalizeCouponCode(appliedCouponCode);
-      const couponResult = await findActiveCoupon(prisma, normalized, user.id);
-      if (couponResult) {
-        const expectedDiscount = calculateDiscount(
-          { subtotalCents: computedSubtotal, deliveryFeeCents },
-          couponResult.coupon
-        );
-        discountCents = expectedDiscount;
-        appliedCoupon = couponResult.coupon;
-      } else {
-        return NextResponse.json(
-          { error: 'Coupon discount mismatch.' },
-          { status: 400 }
-        );
+      if (user.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
+
+      if (!isAdminFreeCoupon(appliedCouponCode)) {
+        return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+      }
+
+      appliedCouponCode = ADMIN_FREE_COUPON_CODE;
+      discountCents = baseTotal;
+    }
+
+    if (data.paymentId === 'free_order' && discountCents !== baseTotal) {
+      return NextResponse.json({ error: 'Payment verification is required.' }, { status: 400 });
     }
 
     const order = await prisma.deliveryRequest.create({
@@ -155,14 +147,6 @@ export async function POST(req: Request) {
         status: 'REQUESTED',
       },
     });
-
-    if (appliedCoupon && (discountCents ?? 0) > 0) {
-      try {
-        await recordCouponRedemption(prisma, appliedCoupon, user.id, order.id);
-      } catch (redemptionError) {
-        console.error('Coupon redemption failed:', redemptionError);
-      }
-    }
 
     try {
       await prisma.deliveryRequest.deleteMany({

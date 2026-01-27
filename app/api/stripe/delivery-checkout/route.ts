@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
-import { calculateDiscount, findActiveCoupon, normalizeCouponCode } from "@/lib/coupons";
+import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from "@/lib/admin-discount";
 
 export const runtime = "nodejs";
 
@@ -40,42 +40,22 @@ export async function POST(req: Request) {
 
     let discountCents = 0;
     let resolvedCouponCode: string | undefined;
-    let allowPromotionCodes = true;
+    const allowPromotionCodes = false;
     let stripeDiscounts:
       | Array<{ promotion_code: string }>
       | undefined;
     let couponSource: "internal" | "stripe" | "" = "";
 
     if (couponCode) {
-      const normalized = normalizeCouponCode(couponCode);
-      const couponResult = await findActiveCoupon(prisma, normalized, dbUser.id);
-      if (couponResult) {
-        discountCents = calculateDiscount(
-          { subtotalCents, deliveryFeeCents },
-          couponResult.coupon
-        );
-        if (discountCents <= 0) {
-          return NextResponse.json({ error: "Invalid coupon code" }, { status: 400 });
-        }
-        resolvedCouponCode = couponResult.coupon.code;
-        allowPromotionCodes = false;
-        couponSource = "internal";
-      } else {
-        const promoCodes = await stripe.promotionCodes.list({
-          code: normalized,
-          active: true,
-          limit: 1,
-        });
-        const promo = promoCodes.data[0];
-        if (promo) {
-          stripeDiscounts = [{ promotion_code: promo.id }];
-          resolvedCouponCode = normalized;
-          allowPromotionCodes = false;
-          couponSource = "stripe";
-        } else {
-          return NextResponse.json({ error: "Invalid coupon code" }, { status: 400 });
-        }
+      if (dbUser.role !== "ADMIN") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+      if (!isAdminFreeCoupon(couponCode)) {
+        return NextResponse.json({ error: "Invalid coupon code" }, { status: 400 });
+      }
+      discountCents = baseTotal;
+      resolvedCouponCode = ADMIN_FREE_COUPON_CODE;
+      couponSource = "internal";
     }
 
     const finalTotal = Math.max(0, baseTotal - discountCents);

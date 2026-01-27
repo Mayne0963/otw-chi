@@ -106,9 +106,13 @@ async function runOcr(file: File) {
 }
 
 export default function OrderPage() {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const isAdmin = useMemo(() => {
+    const role = String(user?.publicMetadata?.role ?? "").toUpperCase();
+    return role === "ADMIN";
+  }, [user?.publicMetadata]);
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>("details");
@@ -369,8 +373,8 @@ export default function OrderPage() {
       deliveryFeePaid: resolvedFeePaid,
       deliveryCheckoutSessionId:
         overrides?.deliveryCheckoutSessionId ?? deliveryCheckoutSessionId ?? undefined,
-      couponCode: resolvedCouponCode || undefined,
-      discountCents: overrides?.discountCents ?? discountCents,
+      couponCode: isAdmin ? (resolvedCouponCode || undefined) : undefined,
+      discountCents: isAdmin ? (overrides?.discountCents ?? discountCents) : 0,
     };
 
     return payload;
@@ -382,6 +386,7 @@ export default function OrderPage() {
     draftId,
     dropoffAddress,
     feePaid,
+    isAdmin,
     notes,
     pickupAddress,
     receiptAnalysis,
@@ -426,6 +431,14 @@ export default function OrderPage() {
       }
     };
   }, [draftLoaded, isSignedIn, persistDraft]);
+
+  useEffect(() => {
+    if (isAdmin) return;
+    if (couponCode || discountCents) {
+      setCouponCode("");
+      setDiscountCents(0);
+    }
+  }, [couponCode, discountCents, isAdmin]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -517,6 +530,7 @@ export default function OrderPage() {
   }
 
   async function handleApplyCoupon() {
+    if (!isAdmin) return;
     const code = couponCode.trim();
     if (!code || feePaid) return;
 
@@ -739,7 +753,7 @@ export default function OrderPage() {
         deliveryFeeCents: deliveryFeeCents,
         deliveryFeePaid: feePaid,
         paymentId: deliveryCheckoutSessionId || undefined,
-        couponCode: couponCode.trim() || undefined,
+        couponCode: isAdmin ? (couponCode.trim() || undefined) : undefined,
       };
 
       if (requiresReceipt && receiptAnalysis) {
@@ -1200,31 +1214,33 @@ export default function OrderPage() {
                   <div className="text-xs text-red-400">{deliveryEstimateError}</div>
                 )}
 
-                <div className="space-y-2">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Coupon code</div>
-                  <div className="flex flex-wrap gap-2">
-                    <Input
-                      value={couponCode}
-                      onChange={(e) => {
-                        setCouponCode(e.target.value.toUpperCase());
-                        setDiscountCents(0);
-                      }}
-                      className="flex-1 min-w-[200px]"
-                      disabled={feePaid}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleApplyCoupon}
-                      disabled={feePaid || couponApplying || !couponCode.trim()}
-                    >
-                      Apply
-                    </Button>
+                {isAdmin ? (
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Admin discount code</div>
+                    <div className="flex flex-wrap gap-2">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setDiscountCents(0);
+                        }}
+                        className="flex-1 min-w-[200px]"
+                        disabled={feePaid}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleApplyCoupon}
+                        disabled={feePaid || couponApplying || !couponCode.trim()}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground">Applies to delivery {requiresReceipt ? "+ receipt total" : "fee"}.</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">Applies to delivery {requiresReceipt ? "+ receipt total" : "fee"}.</div>
-                </div>
+                ) : null}
 
-                {discountCents > 0 && (
+                {isAdmin && discountCents > 0 && (
                   <div className="rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-secondary/90">Discount applied</span>
@@ -1254,7 +1270,7 @@ export default function OrderPage() {
                     </div>
                     <StripePaymentForm
                       amountCents={Math.max(0, orderTotalCents - discountCents)}
-                      couponCode={couponCode}
+                      couponCode={isAdmin ? couponCode : undefined}
                       onSuccess={handleStripePaymentSuccess}
                       onError={handleStripePaymentError}
                     />

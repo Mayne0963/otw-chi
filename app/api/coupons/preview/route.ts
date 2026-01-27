@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import type Stripe from 'stripe';
 import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
-import { getStripe } from '@/lib/stripe';
-import { calculateDiscount, findActiveCoupon, normalizeCouponCode } from '@/lib/coupons';
+import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from '@/lib/admin-discount';
 
 const previewSchema = z.object({
   subtotalCents: z.number().int().nonnegative(),
@@ -32,104 +30,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const normalized = normalizeCouponCode(data.couponCode);
-    console.warn(`[COUPON_PREVIEW] Checking coupon: ${normalized} for user: ${userId}`);
-
-    const internalCoupon = await findActiveCoupon(prisma, normalized, user.id);
-    if (internalCoupon) {
-      console.warn(`[COUPON_PREVIEW] Found internal coupon: ${internalCoupon.coupon.code}`);
-      const discount = calculateDiscount(
-        { subtotalCents: data.subtotalCents, deliveryFeeCents: data.deliveryFeeCents },
-        internalCoupon.coupon
-      );
-      
-      console.warn(`[COUPON_PREVIEW] Calculated discount: ${discount}`);
-
-      if (discount <= 0) {
-        console.warn(`[COUPON_PREVIEW] Invalid discount amount`);
-        return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
-      }
-      
-      // Allow 100% discount (free orders)
-      if (baseTotal - discount === 0) {
-        console.warn(`[COUPON_PREVIEW] 100% discount applied - free order`);
-        return NextResponse.json(
-          { discountCents: discount, source: 'internal', code: internalCoupon.coupon.code, free: true },
-          { status: 200 }
-        );
-      }
-      
-      // For partial discounts, ensure minimum $0.50 remains
-      if (baseTotal - discount < 50) {
-        console.warn(`[COUPON_PREVIEW] Discount would result in total below $0.50`);
-        return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
-      }
-      return NextResponse.json(
-        { discountCents: discount, source: 'internal', code: internalCoupon.coupon.code },
-        { status: 200 }
-      );
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    console.warn(`[COUPON_PREVIEW] Internal coupon not found, checking Stripe...`);
-    const stripe = getStripe();
-    const promos = await stripe.promotionCodes.list({
-      code: normalized,
-      active: true,
-      limit: 1,
-    });
-
-    const promo = promos.data[0];
-    if (!promo) {
-       console.warn(`[COUPON_PREVIEW] Stripe promo code not found`);
-       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
-    }
-
-    const promoCoupon = (promo as unknown as { coupon?: Stripe.Coupon | string })?.coupon;
-    if (!promoCoupon) {
-      console.warn(`[COUPON_PREVIEW] Stripe promo missing coupon data`);
-      return NextResponse.json({ error: 'Missing Coupon Data' }, { status: 400 });
-    }
-
-    const coupon =
-      typeof promoCoupon === 'string'
-        ? await stripe.coupons.retrieve(promoCoupon)
-        : promoCoupon;
-
-    if (!coupon.valid) {
-      return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
-    }
-
-    if (coupon.amount_off && coupon.currency && coupon.currency !== 'usd') {
-      return NextResponse.json({ error: 'Invalid Discount' }, { status: 400 });
-    }
-
-    let discount = 0;
-    if (coupon.amount_off) {
-      discount = Math.min(baseTotal, coupon.amount_off);
-    } else if (coupon.percent_off) {
-      discount = Math.round((baseTotal * coupon.percent_off) / 100);
-    }
-
-    if (discount <= 0) {
-      return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
-    }
-    
-    // Allow 100% discount (free orders)
-    if (baseTotal - discount === 0) {
-      console.warn(`[COUPON_PREVIEW] 100% discount applied - free order`);
-      return NextResponse.json(
-        { discountCents: discount, source: 'stripe', code: normalized, free: true },
-        { status: 200 }
-      );
-    }
-    
-    // For partial discounts, ensure minimum $0.50 remains
-    if (baseTotal - discount < 50) {
+    if (!isAdminFreeCoupon(data.couponCode)) {
       return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
     }
 
     return NextResponse.json(
-      { discountCents: discount, source: 'stripe', code: normalized },
+      { discountCents: baseTotal, source: 'admin', code: ADMIN_FREE_COUPON_CODE, free: true },
       { status: 200 }
     );
   } catch (error) {

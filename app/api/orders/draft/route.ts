@@ -104,8 +104,8 @@ export async function POST(req: Request) {
       deliveryFeeCents: data.deliveryFeeCents ?? undefined,
       deliveryFeePaid: data.deliveryFeePaid ?? undefined,
       deliveryCheckoutSessionId: data.deliveryCheckoutSessionId ?? undefined,
-      couponCode: data.couponCode ?? undefined,
-      discountCents: data.discountCents ?? undefined,
+      couponCode: user.role === 'ADMIN' ? (data.couponCode ?? undefined) : undefined,
+      discountCents: user.role === 'ADMIN' ? (data.discountCents ?? undefined) : undefined,
       status: DRAFT_STATUS,
     };
 
@@ -153,8 +153,8 @@ export async function POST(req: Request) {
         deliveryFeeCents: data.deliveryFeeCents ?? null,
         deliveryFeePaid: data.deliveryFeePaid ?? false,
         deliveryCheckoutSessionId: data.deliveryCheckoutSessionId ?? null,
-        couponCode: data.couponCode ?? null,
-        discountCents: data.discountCents ?? null,
+        couponCode: user.role === 'ADMIN' ? (data.couponCode ?? null) : null,
+        discountCents: user.role === 'ADMIN' ? (data.discountCents ?? null) : null,
         status: DRAFT_STATUS,
       },
     });
