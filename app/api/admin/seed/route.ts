@@ -49,7 +49,7 @@ export async function POST(_request: Request) {
     // console.log('[Seed] Seeding zones...');
     const southSide = await prisma.zone.upsert({
       where: { id: 'south-side' },
-      update: {},
+      update: { name: 'South Side', cityId: chicago.id },
       create: {
         id: 'south-side',
         name: 'South Side',
@@ -59,7 +59,7 @@ export async function POST(_request: Request) {
 
     const westSide = await prisma.zone.upsert({
       where: { id: 'west-side' },
-      update: {},
+      update: { name: 'West Side', cityId: chicago.id },
       create: {
         id: 'west-side',
         name: 'West Side',
@@ -69,7 +69,7 @@ export async function POST(_request: Request) {
 
     const downtown = await prisma.zone.upsert({
       where: { id: 'downtown' },
-      update: {},
+      update: { name: 'Downtown', cityId: chicago.id },
       create: {
         id: 'downtown',
         name: 'Downtown',
@@ -80,7 +80,7 @@ export async function POST(_request: Request) {
     // Seed Zones for Fort Wayne
     const northOTW = await prisma.zone.upsert({
       where: { id: 'north-otw' },
-      update: {},
+      update: { name: 'North OTW', cityId: fortWayne.id },
       create: {
         id: 'north-otw',
         name: 'North OTW',
@@ -90,7 +90,7 @@ export async function POST(_request: Request) {
 
     const southOTW = await prisma.zone.upsert({
       where: { id: 'south-otw' },
-      update: {},
+      update: { name: 'South OTW', cityId: fortWayne.id },
       create: {
         id: 'south-otw',
         name: 'South OTW',
@@ -100,7 +100,7 @@ export async function POST(_request: Request) {
 
     const eastOTW = await prisma.zone.upsert({
       where: { id: 'east-otw' },
-      update: {},
+      update: { name: 'East OTW', cityId: fortWayne.id },
       create: {
         id: 'east-otw',
         name: 'East OTW',
@@ -110,7 +110,7 @@ export async function POST(_request: Request) {
 
     const westOTW = await prisma.zone.upsert({
       where: { id: 'west-otw' },
-      update: {},
+      update: { name: 'West OTW', cityId: fortWayne.id },
       create: {
         id: 'west-otw',
         name: 'West OTW',

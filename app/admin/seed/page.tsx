@@ -53,7 +53,7 @@ export default function SeedPage() {
               <ul className="list-disc list-inside mb-4 text-white/60 space-y-1">
                 <li>Cities: Chicago, Fort Wayne</li>
                 <li>Zones: South Side, West Side, Downtown, North OTW, South OTW, East OTW, West OTW</li>
-                <li>Membership Plans: Basic, Plus, Executive</li>
+                <li>Membership Plans: OTW BASIC, OTW PLUS, OTW PRO, OTW ELITE, OTW BLACK, OTW BUSINESS CORE, OTW BUSINESS PRO, OTW ENTERPRISE</li>
               </ul>
               <p className="text-white/60">
                 <strong>Note:</strong> This uses upsert, so running it multiple times is safe.
