@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { ServiceType } from '@prisma/client';
 
-const payloadSchema = z
+const payloadV1Schema = z
   .object({
     v: z.literal(1),
     userId: z.string().min(1),
@@ -19,6 +19,18 @@ const payloadSchema = z
     quotedAt: z.string().datetime(),
   })
   .strict();
+
+const payloadV2Schema = payloadV1Schema
+  .omit({ v: true })
+  .extend({
+    v: z.literal(2),
+    prioritySlot: z.boolean(),
+    preferredDriverId: z.string().min(1).nullable(),
+    lockToPreferred: z.boolean(),
+  })
+  .strict();
+
+const payloadSchema = z.union([payloadV2Schema, payloadV1Schema]);
 
 export type ServiceMilesQuoteTokenPayload = z.infer<typeof payloadSchema>;
 

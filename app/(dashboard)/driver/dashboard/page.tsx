@@ -62,6 +62,18 @@ export default async function DriverDashboardPage() {
     orderBy: { createdAt: 'desc' }
   });
 
+  const prioritizedAvailableRequests = [...availableRequests].sort((a, b) => {
+    const aPref = (a.quoteBreakdown as any)?.dispatchPreferences ?? {};
+    const bPref = (b.quoteBreakdown as any)?.dispatchPreferences ?? {};
+    const aPriority = Boolean(aPref.prioritySlot);
+    const bPriority = Boolean(bPref.prioritySlot);
+    if (aPriority !== bPriority) return aPriority ? -1 : 1;
+    const aTime = a.scheduledStart ? new Date(a.scheduledStart).getTime() : 0;
+    const bTime = b.scheduledStart ? new Date(b.scheduledStart).getTime() : 0;
+    if (aTime && bTime && aTime !== bTime) return aTime - bTime;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
   const assignedLegacyRequests = await prisma.request.findMany({
     where: {
       assignedDriverId: driverProfile.id,
@@ -418,7 +430,7 @@ export default async function DriverDashboardPage() {
         <section className="mt-8">
             <h2 className="text-xl font-semibold mb-4 text-white">Available Requests</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[...availableRequests, ...availableLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
+                {[...prioritizedAvailableRequests, ...availableLegacyRequests.map(r => ({ ...r, isLegacy: true }))].map((req: any) => (
                     <Card key={req.id} className="p-5 sm:p-6">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
                             <span className="font-medium text-white">{req.serviceType}</span>
@@ -444,6 +456,17 @@ export default async function DriverDashboardPage() {
                                          <p className="text-lg font-bold text-otwGold">${req.price || '0.00'}</p>
                                      </div>
                                 </div>
+                                {!req.isLegacy && req.scheduledStart ? (
+                                  <div className="pt-2 text-xs text-white/60">
+                                    Scheduled: {new Date(req.scheduledStart).toLocaleString()}
+                                  </div>
+                                ) : null}
+                                {!req.isLegacy && Boolean((req.quoteBreakdown as any)?.dispatchPreferences?.prioritySlot) ? (
+                                  <div className="text-xs text-otwGold/80">Priority slot</div>
+                                ) : null}
+                                {!req.isLegacy && Boolean((req.quoteBreakdown as any)?.dispatchPreferences?.lockToPreferred) ? (
+                                  <div className="text-xs text-otwGold/80">Preferred driver window</div>
+                                ) : null}
                             </div>
                             
                             <form action={req.isLegacy ? acceptLegacyRequest : acceptRequest}>

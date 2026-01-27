@@ -17,6 +17,9 @@ const quoteSchema = z.object({
   returnOrExchange: z.boolean().optional(),
   cashHandling: z.boolean().optional(),
   peakHours: z.boolean().optional(),
+  prioritySlot: z.boolean().optional(),
+  preferredDriverId: z.string().min(1).optional(),
+  lockToPreferred: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -52,6 +55,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Membership plan not found' }, { status: 400 });
     }
 
+    const prioritySlot = parsed.data.prioritySlot ?? false;
+    const preferredDriverId = parsed.data.preferredDriverId ?? null;
+    const lockToPreferred = parsed.data.lockToPreferred ?? false;
+    const eligibleForPriority = plan.name.toUpperCase().includes('OTW ELITE') || plan.name.toUpperCase().includes('OTW BLACK');
+
+    if (!eligibleForPriority && (prioritySlot || preferredDriverId || lockToPreferred)) {
+      return NextResponse.json({ error: 'Priority scheduling is not enabled for this plan' }, { status: 403 });
+    }
+    if (lockToPreferred && !preferredDriverId) {
+      return NextResponse.json({ error: 'Preferred driver is required when locking' }, { status: 400 });
+    }
+    if (preferredDriverId) {
+      const exists = await prisma.driverProfile.findUnique({ where: { id: preferredDriverId }, select: { id: true } });
+      if (!exists) {
+        return NextResponse.json({ error: 'Preferred driver not found' }, { status: 400 });
+      }
+    }
+
     if (!isServiceTypeAllowedForPlan(plan.allowedServiceTypes, parsed.data.serviceType)) {
       return NextResponse.json(
         { error: `Service type ${parsed.data.serviceType} not allowed for this plan` },
@@ -79,7 +100,7 @@ export async function POST(req: Request) {
     });
 
     const quoteToken = signServiceMilesQuoteToken({
-      v: 1,
+      v: 2,
       userId: user.id,
       serviceType: parsed.data.serviceType,
       scheduledStart: scheduledStart.toISOString(),
@@ -91,6 +112,9 @@ export async function POST(req: Request) {
       cashHandling: parsed.data.cashHandling ?? false,
       peakHours: parsed.data.peakHours ?? false,
       advanceDiscountMax: plan.advanceDiscountMax,
+      prioritySlot,
+      preferredDriverId,
+      lockToPreferred,
       quotedAt: quotedAt.toISOString(),
     });
 

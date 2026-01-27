@@ -18,6 +18,9 @@ const submitSchema = z.object({
   returnOrExchange: z.boolean().optional(),
   cashHandling: z.boolean().optional(),
   peakHours: z.boolean().optional(),
+  prioritySlot: z.boolean().optional(),
+  preferredDriverId: z.string().min(1).optional(),
+  lockToPreferred: z.boolean().optional(),
   idempotencyKey: z.string().min(8).max(200).optional(),
   quoteToken: z.string().min(10).optional(),
 });
@@ -41,12 +44,19 @@ export async function POST(req: Request) {
     }
 
     let quotedAt: Date | undefined;
+    let prioritySlot = parsed.data.prioritySlot ?? false;
+    let preferredDriverId = parsed.data.preferredDriverId ?? null;
+    let lockToPreferred = parsed.data.lockToPreferred ?? false;
     if (parsed.data.quoteToken) {
       const payload = verifyServiceMilesQuoteToken(parsed.data.quoteToken);
 
       if (payload.userId !== user.id) {
         return NextResponse.json({ error: 'Quote token is not for this user' }, { status: 403 });
       }
+
+      const tokenPrioritySlot = payload.v === 2 ? payload.prioritySlot : false;
+      const tokenPreferredDriverId = payload.v === 2 ? payload.preferredDriverId : null;
+      const tokenLockToPreferred = payload.v === 2 ? payload.lockToPreferred : false;
 
       const expectedScheduledStart = new Date(payload.scheduledStart);
       if (
@@ -58,12 +68,18 @@ export async function POST(req: Request) {
         payload.numberOfStops !== (parsed.data.numberOfStops ?? 1) ||
         payload.returnOrExchange !== (parsed.data.returnOrExchange ?? false) ||
         payload.cashHandling !== (parsed.data.cashHandling ?? false) ||
-        payload.peakHours !== (parsed.data.peakHours ?? false)
+        payload.peakHours !== (parsed.data.peakHours ?? false) ||
+        tokenPrioritySlot !== (parsed.data.prioritySlot ?? false) ||
+        tokenPreferredDriverId !== (parsed.data.preferredDriverId ?? null) ||
+        tokenLockToPreferred !== (parsed.data.lockToPreferred ?? false)
       ) {
         return NextResponse.json({ error: 'Quote token does not match submission inputs' }, { status: 400 });
       }
 
       quotedAt = new Date(payload.quotedAt);
+      prioritySlot = tokenPrioritySlot;
+      preferredDriverId = tokenPreferredDriverId;
+      lockToPreferred = tokenLockToPreferred;
       const ageMs = Date.now() - quotedAt.getTime();
       if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 20 * 60 * 1000) {
         return NextResponse.json({ error: 'Quote expired. Please re-quote.' }, { status: 409 });
@@ -85,6 +101,9 @@ export async function POST(req: Request) {
       returnOrExchange: parsed.data.returnOrExchange,
       cashHandling: parsed.data.cashHandling,
       peakHours: parsed.data.peakHours,
+      prioritySlot,
+      preferredDriverId: preferredDriverId ?? undefined,
+      lockToPreferred,
       idempotencyKey: parsed.data.idempotencyKey,
     });
 

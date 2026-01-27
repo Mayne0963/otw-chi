@@ -18,6 +18,22 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
     }
 
     const now = new Date();
+    const breakdown = request.quoteBreakdown as unknown as {
+      dispatchPreferences?: {
+        preferredDriverId?: string | null;
+        lockToPreferred?: boolean;
+        lockExpiresAtIso?: string | null;
+      };
+    } | null;
+    const preferredDriverId = breakdown?.dispatchPreferences?.preferredDriverId ?? null;
+    const lockToPreferred = Boolean(breakdown?.dispatchPreferences?.lockToPreferred);
+    const lockExpiresAtIso = breakdown?.dispatchPreferences?.lockExpiresAtIso ?? null;
+    if (lockToPreferred && preferredDriverId && lockExpiresAtIso) {
+      const expires = new Date(lockExpiresAtIso);
+      if (!Number.isNaN(expires.getTime()) && now.getTime() < expires.getTime() && driverId !== preferredDriverId) {
+        throw new Error('Request is reserved for a preferred driver');
+      }
+    }
 
     const updatedRequest = await tx.deliveryRequest.update({
       where: { id: requestId },

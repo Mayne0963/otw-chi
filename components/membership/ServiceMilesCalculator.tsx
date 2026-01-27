@@ -41,6 +41,10 @@ type WalletResponse = {
   unlimited: boolean;
 };
 
+type PreferredDriversResponse = {
+  drivers: Array<{ id: string; name: string }>;
+};
+
 async function fetchRouteMinutes(origin: GeocodedAddress, destination: GeocodedAddress): Promise<number> {
   const originParam = `${origin.latitude},${origin.longitude}`;
   const destParam = `${destination.latitude},${destination.longitude}`;
@@ -74,6 +78,11 @@ export function ServiceMilesCalculator() {
     const d = new Date(Date.now() + 60 * 60 * 1000);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   });
+
+  const [prioritySlot, setPrioritySlot] = useState(false);
+  const [lockToPreferred, setLockToPreferred] = useState(false);
+  const [preferredDriverId, setPreferredDriverId] = useState<string>('');
+  const [preferredDrivers, setPreferredDrivers] = useState<PreferredDriversResponse | null>(null);
 
   const [waitMinutes, setWaitMinutes] = useState(0);
   const [sitAndWait, setSitAndWait] = useState(false);
@@ -119,6 +128,34 @@ export function ServiceMilesCalculator() {
     };
   }, [toast]);
 
+  const eligibleForPriority = useMemo(() => {
+    const name = wallet?.plan?.name?.toUpperCase() ?? '';
+    return name.includes('OTW ELITE') || name.includes('OTW BLACK');
+  }, [wallet?.plan?.name]);
+
+  useEffect(() => {
+    if (!eligibleForPriority) {
+      setPrioritySlot(false);
+      setLockToPreferred(false);
+      setPreferredDriverId('');
+      setPreferredDrivers(null);
+      return;
+    }
+
+    fetch('/api/drivers/preferred')
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return (await res.json().catch(() => null)) as PreferredDriversResponse | null;
+      })
+      .then((data) => {
+        if (data?.drivers?.length) {
+          setPreferredDrivers(data);
+          if (!preferredDriverId) setPreferredDriverId(data.drivers[0].id);
+        }
+      })
+      .catch(() => null);
+  }, [eligibleForPriority, preferredDriverId]);
+
   const refreshRouteEstimate = useCallback(async () => {
     if (!pickupAddress || !dropoffAddress) return;
     setRouteLoading(true);
@@ -154,7 +191,21 @@ export function ServiceMilesCalculator() {
     return d.toISOString();
   }, [scheduledStart]);
 
-  const canQuote = Boolean(pickupAddress && dropoffAddress && travelMinutes && scheduledStartIso);
+  const canQuote = Boolean(
+    pickupAddress &&
+      dropoffAddress &&
+      travelMinutes &&
+      scheduledStartIso &&
+      (!eligibleForPriority || !lockToPreferred || preferredDriverId)
+  );
+
+  const advanceLabel = useMemo(() => {
+    const pct = quote?.quote?.quoteBreakdown?.discount?.percentage ?? 0;
+    if (pct >= 0.2) return "72+ hrs";
+    if (pct >= 0.15) return "48 hrs";
+    if (pct >= 0.1) return "24 hrs";
+    return "Same-day";
+  }, [quote?.quote?.quoteBreakdown?.discount?.percentage]);
 
   async function getQuote() {
     if (!canQuote || !scheduledStartIso || !travelMinutes) return;
@@ -175,6 +226,9 @@ export function ServiceMilesCalculator() {
           returnOrExchange,
           cashHandling,
           peakHours,
+          prioritySlot: eligibleForPriority ? prioritySlot : undefined,
+          preferredDriverId: eligibleForPriority && lockToPreferred ? preferredDriverId : undefined,
+          lockToPreferred: eligibleForPriority ? lockToPreferred : undefined,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as Partial<QuoteResponse> & { error?: unknown };
@@ -221,6 +275,9 @@ export function ServiceMilesCalculator() {
           returnOrExchange,
           cashHandling,
           peakHours,
+          prioritySlot: eligibleForPriority ? prioritySlot : undefined,
+          preferredDriverId: eligibleForPriority && lockToPreferred ? preferredDriverId : undefined,
+          lockToPreferred: eligibleForPriority ? lockToPreferred : undefined,
           idempotencyKey,
           quoteToken: quote.quoteToken,
         }),
@@ -436,13 +493,78 @@ export function ServiceMilesCalculator() {
           </label>
         </div>
 
+        {eligibleForPriority ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Priority Slot</div>
+              <label className="inline-flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <input
+                  type="checkbox"
+                  checked={prioritySlot}
+                  onChange={(e) => {
+                    setPrioritySlot(e.target.checked);
+                    setQuote(null);
+                  }}
+                />
+                Priority time-slot booking
+              </label>
+            </div>
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Locked Driver</div>
+              <label className="inline-flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background text-sm">
+                <input
+                  type="checkbox"
+                  checked={lockToPreferred}
+                  onChange={(e) => {
+                    setLockToPreferred(e.target.checked);
+                    setQuote(null);
+                  }}
+                />
+                Locked driver when possible
+              </label>
+            </div>
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Preferred Driver</div>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={preferredDriverId}
+                onChange={(e) => {
+                  setPreferredDriverId(e.target.value);
+                  setQuote(null);
+                }}
+                disabled={!lockToPreferred || !preferredDrivers?.drivers?.length}
+              >
+                {preferredDrivers?.drivers?.length
+                  ? preferredDrivers.drivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))
+                  : null}
+              </select>
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap gap-3">
           <Button type="button" onClick={getQuote} disabled={!canQuote || quoteLoading}>
             {quoteLoading ? 'Quoting…' : 'Get Service Miles Quote'}
           </Button>
-          <Button type="button" variant="outline" onClick={submit} disabled={!quote || !hasEnoughMiles}>
-            Submit Request
-          </Button>
+          {quote ? (
+            <>
+              <Button type="button" variant="outline" onClick={submit} disabled={!hasEnoughMiles}>
+                Accept
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setQuote(null)}
+                disabled={quoteLoading}
+              >
+                Decline
+              </Button>
+            </>
+          ) : null}
           {!wallet?.unlimited && quote && !hasEnoughMiles ? (
             <div className="text-sm text-red-500 self-center">
               Not enough Service Miles.
@@ -454,11 +576,22 @@ export function ServiceMilesCalculator() {
       {quote ? (
         <Card className="p-5 sm:p-6 space-y-2">
           <div className="text-sm font-semibold">Quote</div>
-          <div className="text-sm text-muted-foreground">
-            Required: <span className="text-foreground font-medium">{quote.quote.serviceMilesFinal}</span> Service Miles
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Base {quote.quote.quoteBreakdown.baseMiles} • Wait {quote.quote.quoteBreakdown.adders.waitTime} • Sit-and-wait {quote.quote.quoteBreakdown.adders.sitAndWaitPremium} • Stops {quote.quote.quoteBreakdown.adders.multiStop} • Return {quote.quote.quoteBreakdown.adders.returnExchange} • Cash {quote.quote.quoteBreakdown.adders.cashHandling} • Peak {quote.quote.quoteBreakdown.adders.peakHours} • Discount {quote.quote.quoteBreakdown.discount.amount}
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Service Cost</span>
+              <span className="text-foreground font-medium">{quote.quote.quoteBreakdown.subtotal} Service Miles</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                Advance Booking Discount
+                {` (${advanceLabel})`}
+              </span>
+              <span className="text-foreground font-medium">-{quote.quote.quoteBreakdown.discount.amount} Miles</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-border/60 pt-2">
+              <span className="text-muted-foreground">Final Cost</span>
+              <span className="text-foreground font-semibold">{quote.quote.serviceMilesFinal} Service Miles</span>
+            </div>
           </div>
         </Card>
       ) : null}

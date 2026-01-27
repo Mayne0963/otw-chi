@@ -24,6 +24,9 @@ export interface SubmitDeliveryRequestInput {
   returnOrExchange?: boolean;
   cashHandling?: boolean;
   peakHours?: boolean;
+  prioritySlot?: boolean;
+  preferredDriverId?: string;
+  lockToPreferred?: boolean;
   idempotencyKey?: string;
 }
 
@@ -52,6 +55,17 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
 
     const plan = user.membership.plan;
     if (!plan) throw new Error('Membership plan not found');
+
+    const eligibleForPriority =
+      plan.name.toUpperCase().includes('OTW ELITE') || plan.name.toUpperCase().includes('OTW BLACK');
+    const wantsPriority =
+      Boolean(input.prioritySlot) || Boolean(input.preferredDriverId) || Boolean(input.lockToPreferred);
+    if (wantsPriority && !eligibleForPriority) {
+      throw new Error('Priority scheduling is not enabled for this plan');
+    }
+    if (input.lockToPreferred && !input.preferredDriverId) {
+      throw new Error('Preferred driver is required when locking');
+    }
 
     // 2. Ensure Service Type Allowed
     if (!isServiceTypeAllowedForPlan(plan.allowedServiceTypes, serviceType)) {
@@ -110,6 +124,20 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
     }
 
     // 5. Create Delivery Request
+    const lockExpiresAtIso =
+      input.lockToPreferred && input.preferredDriverId
+        ? new Date(quotedAt.getTime() + 30 * 60 * 1000).toISOString()
+        : null;
+    const quoteBreakdown = {
+      ...quote.quoteBreakdown,
+      dispatchPreferences: {
+        prioritySlot: Boolean(input.prioritySlot),
+        preferredDriverId: input.preferredDriverId ?? null,
+        lockToPreferred: Boolean(input.lockToPreferred),
+        lockExpiresAtIso,
+      },
+    };
+
     const request = await tx.deliveryRequest.create({
       data: {
         userId,
@@ -127,7 +155,7 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
         serviceMilesAdders: quote.serviceMilesAdders,
         serviceMilesDiscount: quote.serviceMilesDiscount,
         serviceMilesFinal: quote.serviceMilesFinal,
-        quoteBreakdown: quote.quoteBreakdown as Prisma.InputJsonValue,
+        quoteBreakdown: quoteBreakdown as Prisma.InputJsonValue,
       },
     });
 
