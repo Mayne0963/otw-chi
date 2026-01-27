@@ -1,4 +1,4 @@
-import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock, Coins, Car } from 'lucide-react';
+import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock } from 'lucide-react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
 
@@ -13,39 +13,40 @@ export default function HomePage() {
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center rounded-full border border-otwGold/30 bg-otwGold/10 px-3 py-1 text-xs font-medium text-otwGold backdrop-blur-md">
             <span className="mr-2 h-1.5 w-1.5 rounded-full bg-otwGold animate-pulse"></span>
-            Premium Concierge Delivery
+            Subscription-Based Concierge
           </div>
           
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Your city, <br className="hidden sm:block" />
+            Own Your Time.
+            <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-otwGold via-yellow-200 to-otwGold">
-              delivered better.
+              We’ll Handle the Rest.
             </span>
           </h1>
           
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl leading-relaxed">
-            Luxury delivery concierge for the block, the business, and the busy.
-            From gourmet food to fragile parcels, we move when you do.
+            OTW is a subscription-based concierge service powered by Service Miles — not distance.
+            You choose the service. We handle the inconvenience.
           </p>
           
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6 pt-4">
             <OtwButton 
               as="a" 
-              href="/order" 
+              href="/pricing"
               variant="gold" 
               className="h-14 px-8 text-base rounded-full shadow-[0_0_20px_rgba(255,215,0,0.2)] transition-all hover:scale-105"
             >
-              Request a Delivery
+              Pick a Plan
               <ArrowRight className="ml-2 h-4 w-4" />
             </OtwButton>
             <OtwButton 
               as="a" 
-              href="/ride" 
+              href="/how-it-works"
               variant="outline" 
               className="h-14 px-8 text-base rounded-full border-otwGold/50 bg-otwGold/10 hover:bg-otwGold/20 backdrop-blur-sm transition-all hover:scale-105 text-otwGold"
             >
-              Request a Ride
-              <Car className="ml-2 h-4 w-4" />
+              How It Works
+              <ArrowRight className="ml-2 h-4 w-4" />
             </OtwButton>
           </div>
           
@@ -66,11 +67,11 @@ export default function HomePage() {
       <section>
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Everything we carry</h2>
-            <p className="text-muted-foreground mt-2">Specialized handling for every request type.</p>
+            <h2 className="text-3xl font-bold tracking-tight">Use Service Miles for any request</h2>
+            <p className="text-muted-foreground mt-2">Time is universal. Distance varies. OTW charges by time.</p>
           </div>
-          <OtwButton as="a" href="/order" variant="ghost" className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80">
-            Start an order <ArrowRight className="ml-2 h-4 w-4" />
+          <OtwButton as="a" href="/pricing" variant="ghost" className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80">
+            View plans <ArrowRight className="ml-2 h-4 w-4" />
           </OtwButton>
         </div>
         
@@ -79,7 +80,7 @@ export default function HomePage() {
             { 
               title: 'Ride Service', 
               desc: 'Comfortable rides to your destination.',
-              icon: Car,
+              icon: Truck,
               color: 'text-otwGold',
               bg: 'bg-otwGold/10'
             },
@@ -127,19 +128,19 @@ export default function HomePage() {
       <section className="grid gap-8 lg:grid-cols-3">
         {[
           {
-            title: "Fair for Drivers",
-            desc: "We believe in fair pay. Our drivers keep a larger share, meaning better service for you.",
-            icon: Truck
-          },
-          {
-            title: "Membership Value",
-            desc: "Unlock lower fees and priority dispatch with our monthly membership plans.",
+            title: "Clear Pricing",
+            desc: "See the Service Miles cost before the work starts. Accept or decline — no disputes.",
             icon: ShieldCheck
           },
           {
-            title: "Future Rewards",
-            desc: "Earn TIREM coins with every delivery. The future of loyalty is on the blockchain.",
-            icon: Coins
+            title: "Time-Based Economy",
+            desc: "1 Service Mile = 5 minutes of human time + effort absorbed on your behalf.",
+            icon: Clock
+          },
+          {
+            title: "Retention-Safe Drivers",
+            desc: "Drivers are paid per Service Mile with clear bonuses for tough jobs and 5-star service.",
+            icon: Truck
           }
         ].map((feature, i) => (
           <OtwCard key={i} className="flex flex-row gap-4 bg-white/[0.02] border-white/5 items-start">
@@ -158,12 +159,12 @@ export default function HomePage() {
       
       {/* Footer CTA */}
       <section className="rounded-[2rem] bg-otwGold/10 border border-otwGold/20 px-6 py-16 text-center backdrop-blur-sm">
-        <h2 className="text-3xl font-bold mb-4">Ready to get moving?</h2>
+        <h2 className="text-3xl font-bold mb-4">Life doesn’t charge by the mile. Neither do we.</h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Join the community that values quality, speed, and fairness.
+          Pick a plan, approve the Service Miles cost, and let OTW handle it.
         </p>
-        <OtwButton as="a" href="/order" variant="gold" className="h-12 px-8 text-base rounded-full">
-          Start Your First Request
+        <OtwButton as="a" href="/pricing" variant="gold" className="h-12 px-8 text-base rounded-full">
+          View Plans
         </OtwButton>
       </section>
     </div>

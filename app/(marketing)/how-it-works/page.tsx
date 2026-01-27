@@ -14,14 +14,35 @@ export default function HowItWorksPage() {
     <OtwPageShell>
       <div className="space-y-8">
         <OtwCard variant="red">
-          <OtwSectionHeader title="How OTW Works" subtitle="Luxury concierge delivery with clear steps." />
+          <OtwSectionHeader title="How OTW Works" subtitle="Subscription-first concierge with Service Miles." />
           <div className="mt-3 grid sm:grid-cols-2 gap-4">
-            <OtwCard variant="ghost"><p className="text-sm">1. Request what you need.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">2. We match a driver in your zone.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">3. Picked up with care, delivered fast.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">4. Earn TIREM rewards along the way.</p></OtwCard>
+            <OtwCard variant="ghost"><p className="text-sm">1. Pick a monthly plan.</p></OtwCard>
+            <OtwCard variant="ghost"><p className="text-sm">2. Use Service Miles for any request.</p></OtwCard>
+            <OtwCard variant="ghost"><p className="text-sm">3. Approve the cost before service starts.</p></OtwCard>
+            <OtwCard variant="ghost"><p className="text-sm">4. Relax — it’s handled.</p></OtwCard>
           </div>
         </OtwCard>
+
+        <section>
+          <OtwSectionHeader title="Service Miles" subtitle="One definition, everywhere." />
+          <OtwCard variant="default" className="p-4">
+            <div className="text-sm opacity-80">1 Service Mile</div>
+            <div className="text-2xl font-bold mt-1">5 minutes of human time + effort absorbed on your behalf</div>
+          </OtwCard>
+        </section>
+
+        <section>
+          <OtwSectionHeader title="Avoid This" subtitle="The #1 mistake and how OTW dodges it." />
+          <OtwCard variant="default" className="p-4 space-y-3">
+            <div className="text-sm font-semibold">Mistake</div>
+            <div className="text-sm opacity-80">Letting customers treat OTW like Uber with better vibes.</div>
+            <div className="text-sm font-semibold mt-4">OTW Fix</div>
+            <div className="text-sm opacity-80">
+              Subscription-first, Service Miles rules up front, and business accounts prioritized.
+              OTW is infrastructure, not a convenience toy.
+            </div>
+          </OtwCard>
+        </section>
 
         <section>
           <OtwSectionHeader title="Our Services" subtitle="Premium runs for the city." />

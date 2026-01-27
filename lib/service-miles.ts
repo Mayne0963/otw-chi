@@ -1,16 +1,32 @@
 import type { ServiceType } from '@prisma/client';
 
+export const SERVICE_MILE_MINUTES = 5;
+
+export const SERVICE_MILES_RULES = {
+  multiStopMilesPerExtraStop: 4,
+  cashHandlingMiles: 12,
+  returnOrExchangePremiumRate: 0.3,
+  peakHoursSurgeRate: 0.1,
+  sitAndWaitWaitPremiumRate: 0.5,
+  discounts: [
+    { minHoursInAdvance: 72, percent: 0.2 },
+    { minHoursInAdvance: 48, percent: 0.15 },
+    { minHoursInAdvance: 24, percent: 0.1 },
+  ],
+} as const;
+
 export interface ServiceMilesQuoteInput {
   travelMinutes: number;
-  serviceType: ServiceType; // Included for completeness/logging, though not explicitly used in current math rules
+  serviceType: ServiceType;
   scheduledStart: Date;
   quotedAt: Date;
   waitMinutes?: number;
+  sitAndWait?: boolean;
   numberOfStops?: number;
   returnOrExchange?: boolean;
   cashHandling?: boolean;
   peakHours?: boolean;
-  advanceDiscountMax?: number; // From MembershipPlan
+  advanceDiscountMax?: number;
 }
 
 export interface ServiceMilesQuote {
@@ -23,6 +39,7 @@ export interface ServiceMilesQuote {
     baseMiles: number;
     adders: {
       waitTime: number;
+      sitAndWaitPremium: number;
       multiStop: number;
       returnExchange: number;
       cashHandling: number;
@@ -38,27 +55,11 @@ export interface ServiceMilesQuote {
   };
 }
 
-/**
- * Calculates the Service Miles quote based on OTW business rules.
- * 
- * Rules:
- * - Base Miles: ceil(estimatedMinutes / 5)
- * - Adders:
- *   - Wait time: +1 mile per 5 min (ceil)
- *   - Multi-stop: +4 miles per extra stop
- *   - Cash handling: +12 miles
- *   - Return/Exchange: +25% (of base + fixed adders)
- *   - Peak hours: +10% (of base + fixed adders)
- * - Discount:
- *   - >= 24h: 10%
- *   - >= 48h: 15%
- *   - >= 72h: 20%
- *   - Capped by MembershipPlan.advanceDiscountMax
- */
 export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMilesQuote {
   const {
     travelMinutes,
     waitMinutes = 0,
+    sitAndWait = false,
     numberOfStops,
     returnOrExchange = false,
     cashHandling = false,
@@ -70,34 +71,41 @@ export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMil
 
   const estimatedMinutes = travelMinutes;
 
-  const baseMiles = Math.max(1, Math.ceil(Math.max(0, estimatedMinutes) / 5));
+  const baseMiles = Math.max(
+    1,
+    Math.ceil(Math.max(0, estimatedMinutes) / SERVICE_MILE_MINUTES)
+  );
 
-  const waitAdder = Math.ceil(Math.max(0, waitMinutes) / 5);
+  const waitAdder = Math.ceil(Math.max(0, waitMinutes) / SERVICE_MILE_MINUTES);
+  const sitAndWaitPremiumAdder =
+    sitAndWait && waitAdder > 0 ? Math.ceil(waitAdder * SERVICE_MILES_RULES.sitAndWaitWaitPremiumRate) : 0;
 
   const totalStops = Math.max(1, numberOfStops ?? 1);
   const extraStops = Math.max(0, totalStops - 1);
-  const stopsAdder = extraStops * 4;
+  const stopsAdder = extraStops * SERVICE_MILES_RULES.multiStopMilesPerExtraStop;
 
-  const cashAdder = cashHandling ? 12 : 0;
+  const cashAdder = cashHandling ? SERVICE_MILES_RULES.cashHandlingMiles : 0;
 
-  const fixedSubtotal = baseMiles + waitAdder + stopsAdder + cashAdder;
+  const fixedSubtotal = baseMiles + waitAdder + sitAndWaitPremiumAdder + stopsAdder + cashAdder;
 
-  const returnAdder = returnOrExchange ? Math.ceil(fixedSubtotal * 0.25) : 0;
-  const peakAdder = peakHours ? Math.ceil(fixedSubtotal * 0.10) : 0;
+  const returnAdder = returnOrExchange
+    ? Math.ceil(fixedSubtotal * SERVICE_MILES_RULES.returnOrExchangePremiumRate)
+    : 0;
+  const peakAdder = peakHours ? Math.ceil(fixedSubtotal * SERVICE_MILES_RULES.peakHoursSurgeRate) : 0;
 
-  const totalAdders = waitAdder + stopsAdder + cashAdder + returnAdder + peakAdder;
+  const totalAdders =
+    waitAdder + sitAndWaitPremiumAdder + stopsAdder + cashAdder + returnAdder + peakAdder;
   const subtotal = baseMiles + totalAdders;
 
   const diffMs = scheduledStart.getTime() - quotedAt.getTime();
   const hoursInAdvance = diffMs / (1000 * 60 * 60);
 
   let discountPercent = 0;
-  if (hoursInAdvance >= 72) {
-    discountPercent = 0.20;
-  } else if (hoursInAdvance >= 48) {
-    discountPercent = 0.15;
-  } else if (hoursInAdvance >= 24) {
-    discountPercent = 0.10;
+  for (const rule of SERVICE_MILES_RULES.discounts) {
+    if (hoursInAdvance >= rule.minHoursInAdvance) {
+      discountPercent = rule.percent;
+      break;
+    }
   }
 
   let discountAmount = Math.floor(subtotal * discountPercent);
@@ -122,6 +130,7 @@ export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMil
       baseMiles,
       adders: {
         waitTime: waitAdder,
+        sitAndWaitPremium: sitAndWaitPremiumAdder,
         multiStop: stopsAdder,
         returnExchange: returnAdder,
         cashHandling: cashAdder,

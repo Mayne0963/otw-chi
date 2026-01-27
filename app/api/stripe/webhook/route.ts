@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { Prisma, ServiceMilesTransactionType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
-import { calculateMonthlyMilesRollover } from '../../../../lib/membership-miles';
+import { calculateMonthlyMilesRollover, UNLIMITED_SERVICE_MILES } from '../../../../lib/membership-miles';
 
 export const runtime = 'nodejs';
 
@@ -275,8 +275,10 @@ export async function POST(req: Request) {
           throw error;
         }
         
+        const isUnlimited = newBalance === UNLIMITED_SERVICE_MILES;
+
         // A. Expire old miles (if any)
-        if (expiredMiles > 0) {
+        if (!isUnlimited && expiredMiles > 0) {
             await tx.serviceMilesLedger.create({
                 data: {
                     walletId: wallet.id,
@@ -289,7 +291,7 @@ export async function POST(req: Request) {
         }
 
         // C. Add Monthly Grant
-        if (monthlyGrant > 0) {
+        if (!isUnlimited && monthlyGrant > 0) {
             await tx.serviceMilesLedger.create({
                 data: {
                     walletId: wallet.id,
@@ -306,7 +308,7 @@ export async function POST(req: Request) {
             where: { id: wallet.id },
             data: {
                 balanceMiles: newBalance,
-                rolloverBankMiles: rolloverBank // Update bank tracker
+                rolloverBankMiles: rolloverBank === UNLIMITED_SERVICE_MILES ? 0 : rolloverBank // Update bank tracker
             }
         });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });

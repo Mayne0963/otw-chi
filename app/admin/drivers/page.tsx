@@ -95,8 +95,11 @@ async function getDriversData() {
   }
 }
 
+type DriversData = Awaited<ReturnType<typeof getDriversData>>;
+type DriverRow = DriversData['drivers'][number];
+
 async function DriversList() {
-  let drivers: any[] = [];
+  let drivers: DriverRow[] = [];
   let totalDrivers = 0;
   let onlineDrivers = 0;
   let busyDrivers = 0;

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getDriverEarnings, requestPayoutAction } from '@/app/actions/driver';
-import { MembershipStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 

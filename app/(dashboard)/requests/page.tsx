@@ -6,7 +6,6 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 

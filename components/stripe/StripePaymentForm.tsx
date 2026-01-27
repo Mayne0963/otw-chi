@@ -18,7 +18,7 @@ interface PaymentFormProps {
   onError?: (error: string) => void;
 }
 
-function PaymentForm({ clientSecret, amount, onSuccess, onError }: PaymentFormProps) {
+function PaymentForm({ clientSecret: _clientSecret, amount, onSuccess, onError }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);

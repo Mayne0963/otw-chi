@@ -18,7 +18,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
   const { success, canceled } = await searchParams;
   const isActive = membership?.status === 'ACTIVE' || membership?.status === 'TRIALING';
-  const planName = membership?.plan?.name || (membership?.stripePriceId ? 'Custom Plan' : 'Basic');
+  const planName = membership?.plan?.name || (membership?.stripePriceId ? 'Custom Plan' : 'OTW BASIC');
   const statusLabel = membership?.status ? membership.status.replace('_', ' ') : 'Inactive';
 
   return (

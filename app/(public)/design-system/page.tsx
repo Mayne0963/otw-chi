@@ -4,7 +4,6 @@ import OtwPageShell from "@/components/ui/otw/OtwPageShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 export default function DesignSystemPage() {
@@ -158,4 +157,3 @@ function ColorSwatch({ name, color, text, hex, border }: { name: string; color: 
     </div>
   );
 }
-

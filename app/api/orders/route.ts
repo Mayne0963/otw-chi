@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
-import { getStripe } from '@/lib/stripe';
 import {
   calculateDiscount,
   findActiveCoupon,

@@ -26,6 +26,11 @@ export function getPlanCodeFromSubscription(sub: (MembershipSubscription & { pla
   if (!sub || !sub.plan) return null;
   
   const name = sub.plan.name.toUpperCase();
+  if (name.includes('CONSUMER STARTER')) return 'BASIC';
+  if (name.includes('CONSUMER PLUS')) return 'PLUS';
+  if (name.includes('CONSUMER UNLIMITED')) return 'EXEC';
+  if (name.includes('BUSINESS')) return 'EXEC';
+
   if (name.includes('BASIC')) return 'BASIC';
   if (name.includes('PLUS')) return 'PLUS';
   if (name.includes('EXECUTIVE') || name.includes('EXEC')) return 'EXEC';

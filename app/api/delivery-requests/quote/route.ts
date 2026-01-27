@@ -5,12 +5,14 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { calculateServiceMiles } from '@/lib/service-miles';
 import { isServiceTypeAllowedForPlan } from '@/lib/service-miles-access';
+import { signServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
 
 const quoteSchema = z.object({
   serviceType: z.nativeEnum(ServiceType),
   scheduledStart: z.string().datetime(),
   travelMinutes: z.number().int().nonnegative(),
   waitMinutes: z.number().int().nonnegative().optional(),
+  sitAndWait: z.boolean().optional(),
   numberOfStops: z.number().int().positive().optional(),
   returnOrExchange: z.boolean().optional(),
   cashHandling: z.boolean().optional(),
@@ -57,6 +59,10 @@ export async function POST(req: Request) {
       );
     }
 
+    if (parsed.data.cashHandling && !plan.cashAllowed) {
+      return NextResponse.json({ error: 'Cash handling is not allowed for this plan' }, { status: 403 });
+    }
+
     const quotedAt = new Date();
     const quote = calculateServiceMiles({
       travelMinutes: parsed.data.travelMinutes,
@@ -64,6 +70,7 @@ export async function POST(req: Request) {
       scheduledStart,
       quotedAt,
       waitMinutes: parsed.data.waitMinutes,
+      sitAndWait: parsed.data.sitAndWait,
       numberOfStops: parsed.data.numberOfStops,
       returnOrExchange: parsed.data.returnOrExchange,
       cashHandling: parsed.data.cashHandling,
@@ -71,10 +78,25 @@ export async function POST(req: Request) {
       advanceDiscountMax: plan.advanceDiscountMax,
     });
 
-    return NextResponse.json({ quote, quotedAt }, { status: 200 });
+    const quoteToken = signServiceMilesQuoteToken({
+      v: 1,
+      userId: user.id,
+      serviceType: parsed.data.serviceType,
+      scheduledStart: scheduledStart.toISOString(),
+      travelMinutes: parsed.data.travelMinutes,
+      waitMinutes: parsed.data.waitMinutes ?? 0,
+      sitAndWait: parsed.data.sitAndWait ?? false,
+      numberOfStops: parsed.data.numberOfStops ?? 1,
+      returnOrExchange: parsed.data.returnOrExchange ?? false,
+      cashHandling: parsed.data.cashHandling ?? false,
+      peakHours: parsed.data.peakHours ?? false,
+      advanceDiscountMax: plan.advanceDiscountMax,
+      quotedAt: quotedAt.toISOString(),
+    });
+
+    return NextResponse.json({ quote, quotedAt, quoteToken }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Server error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

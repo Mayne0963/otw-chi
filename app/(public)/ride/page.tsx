@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { AddressSearch } from "@/components/ui/address-search";
-import { MapPin, Car, Loader2, Users, ArrowRight, ArrowLeft, CheckCircle2, CreditCard } from "lucide-react";
+import { MapPin, Car, Loader2, Users, ArrowRight, CreditCard } from "lucide-react";
 import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
 import { Card } from "@/components/ui/card";
@@ -16,8 +16,6 @@ import StripePaymentForm from "@/components/stripe/StripePaymentForm";
 
 const formatCurrency = (value: number | null | undefined) =>
   typeof value === "number" ? `$${(value / 100).toFixed(2)}` : "—";
-
-const SESSION_RIDE_DRAFT_KEY = "otw-ride-draft-cache-v1";
 
 type Step = "locations" | "options" | "review";
 
@@ -39,7 +37,6 @@ function calculateMiles(a: GeocodedAddress, b: GeocodedAddress): number {
 export default function RidePage() {
   const { isSignedIn } = useUser();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("locations");
@@ -176,12 +173,12 @@ export default function RidePage() {
         
         if (!cancelled) {
           setRideFeeCents(Math.round(fee));
+          setEstimateError(null);
         }
       } catch (error) {
         if (!cancelled) {
-          setEstimateError(
-            error instanceof Error ? error.message : "Unable to calculate fare."
-          );
+          setRideFeeCents(0);
+          setEstimateError(error instanceof Error ? error.message : "Unable to calculate fare.");
         }
       } finally {
         if (!cancelled) {
@@ -199,7 +196,7 @@ export default function RidePage() {
   }, [pickupAddress, dropoffAddress, rideOption]);
 
   // Persist Draft
-  function buildDraftPayload() {
+  const buildDraftPayload = useCallback(() => {
     if (!pickupAddress || !dropoffAddress) return null;
 
     return {
@@ -210,9 +207,9 @@ export default function RidePage() {
       notes: `${rideOption} Ride. ${notes}`.trim(),
       deliveryFeeCents: rideFeeCents > 0 ? rideFeeCents : undefined,
     };
-  }
+  }, [draftId, dropoffAddress, notes, pickupAddress, rideFeeCents, rideOption]);
 
-  async function persistDraft() {
+  const persistDraft = useCallback(async () => {
     if (!isSignedIn) return;
     const draftPayload = buildDraftPayload();
     if (!draftPayload) return;
@@ -228,7 +225,7 @@ export default function RidePage() {
         setDraftId(data.draftId);
       }
     }
-  }
+  }, [buildDraftPayload, isSignedIn]);
 
   useEffect(() => {
     if (!draftLoaded || !isSignedIn) return;
@@ -246,7 +243,7 @@ export default function RidePage() {
         window.clearTimeout(draftSaveTimeout.current);
       }
     };
-  }, [draftLoaded, isSignedIn, pickupAddress, dropoffAddress, notes, rideFeeCents, rideOption]);
+  }, [draftLoaded, isSignedIn, persistDraft]);
 
   const handleStripePaymentSuccess = useCallback((_paymentIntentId: string) => {
     toast({
@@ -269,7 +266,6 @@ export default function RidePage() {
   const dropoffLines = dropoffAddress ? formatAddressLines(dropoffAddress) : null;
 
   const canProceedToOptions = !!pickupAddress && !!dropoffAddress;
-  const canProceedToReview = canProceedToOptions && rideFeeCents > 0;
 
   return (
     <OtwPageShell>
@@ -413,6 +409,10 @@ export default function RidePage() {
                     </div>
                   </div>
                </div>
+
+               {estimateError ? (
+                 <div className="text-sm text-red-500">{estimateError}</div>
+               ) : null}
 
                <div className="flex gap-3">
                 <Button

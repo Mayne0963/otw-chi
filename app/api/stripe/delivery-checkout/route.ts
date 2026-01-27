@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     
     // Handle 100% discount - no payment needed, bypass Stripe
     if (finalTotal === 0) {
-      console.log("[STRIPE_DELIVERY_CHECKOUT] 100% discount applied, bypassing Stripe");
+      console.warn("[STRIPE_DELIVERY_CHECKOUT] 100% discount applied, bypassing Stripe");
       return NextResponse.json({ 
         url: `${appUrl}${successPath || "/order?checkout=success&free=true"}`,
         free: true,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 import { Loader2, Upload, X, CreditCard, MapPin, ArrowRight, Package, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -335,14 +336,14 @@ export default function OrderPage() {
     };
   }, [draftLoaded, isSignedIn]);
 
-  function buildDraftPayload(overrides?: {
+  const buildDraftPayload = useCallback((overrides?: {
     receiptImageData?: string | null;
     deliveryCheckoutSessionId?: string | null;
     feePaid?: boolean;
     couponCode?: string;
     discountCents?: number;
     deliveryFeeCents?: number;
-  }) {
+  }) => {
     if (!pickupAddress || !dropoffAddress) return null;
     const receiptItems = receiptAnalysis ? receiptAnalysis.items : [];
     const resolvedReceiptImageData =
@@ -373,9 +374,24 @@ export default function OrderPage() {
     };
 
     return payload;
-  }
+  }, [
+    couponCode,
+    deliveryCheckoutSessionId,
+    deliveryFeeCents,
+    discountCents,
+    draftId,
+    dropoffAddress,
+    feePaid,
+    notes,
+    pickupAddress,
+    receiptAnalysis,
+    receiptImageData,
+    restaurantName,
+    restaurantWebsite,
+    serviceType,
+  ]);
 
-  async function persistDraft(payload?: Record<string, unknown> | null) {
+  const persistDraft = useCallback(async (payload?: Record<string, unknown> | null) => {
     if (!isSignedIn) return;
     const draftPayload = payload ?? buildDraftPayload();
     if (!draftPayload) return;
@@ -391,7 +407,7 @@ export default function OrderPage() {
         setDraftId(data.draftId);
       }
     }
-  }
+  }, [buildDraftPayload, isSignedIn]);
 
   useEffect(() => {
     if (!draftLoaded || !isSignedIn) return;
@@ -409,23 +425,7 @@ export default function OrderPage() {
         window.clearTimeout(draftSaveTimeout.current);
       }
     };
-  }, [
-    draftLoaded,
-    isSignedIn,
-    pickupAddress,
-    dropoffAddress,
-    serviceType,
-    notes,
-    restaurantName,
-    restaurantWebsite,
-    receiptAnalysis,
-    receiptPreview,
-    deliveryFeeCents,
-    feePaid,
-    deliveryCheckoutSessionId,
-    couponCode,
-    discountCents,
-  ]);
+  }, [draftLoaded, isSignedIn, persistDraft]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -454,7 +454,6 @@ export default function OrderPage() {
   const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
   const deliveryFeeReady =
     deliveryFeeCents > 0 && !deliveryEstimateLoading && !deliveryEstimateError;
-  const totalAfterDiscountCents = Math.max(0, orderTotalCents - discountCents);
   const deliveryFeeLabel = deliveryEstimateLoading
     ? "Calculating..."
     : deliveryEstimateError
@@ -1019,10 +1018,14 @@ export default function OrderPage() {
               {receiptPreview && (
                 <div className="space-y-2">
                   <div className="text-xs text-muted-foreground">Receipt preview</div>
-                  <img
+                  <Image
                     src={receiptPreview}
                     alt="Receipt preview"
+                    width={1200}
+                    height={900}
                     className="w-full max-w-2xl rounded-lg border border-border/70"
+                    unoptimized
+                    loader={({ src }) => src}
                   />
                 </div>
               )}

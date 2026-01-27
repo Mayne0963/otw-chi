@@ -9,14 +9,24 @@ export const runtime = 'nodejs';
 const PLAN_PRICE_IDS = {
   basic: process.env.STRIPE_PRICE_BASIC,
   plus: process.env.STRIPE_PRICE_PLUS,
-  executive: process.env.STRIPE_PRICE_EXEC,
+  pro: process.env.STRIPE_PRICE_PRO,
+  elite: process.env.STRIPE_PRICE_ELITE,
+  black: process.env.STRIPE_PRICE_BLACK,
 };
+
+const PLAN_NAME_BY_CODE = {
+  basic: 'OTW BASIC',
+  plus: 'OTW PLUS',
+  pro: 'OTW PRO',
+  elite: 'OTW ELITE',
+  black: 'OTW BLACK',
+} as const;
 
 const checkoutSchema = z
   .object({
     planId: z.string().min(1).optional(),
     priceId: z.string().min(1).optional(),
-    plan: z.enum(['basic', 'plus', 'executive']).optional(),
+    plan: z.enum(['basic', 'plus', 'pro', 'elite', 'black']).optional(),
   })
   .strict();
 
@@ -62,7 +72,7 @@ export async function POST(req: Request) {
 
       if (!resolvedPriceId) {
         const planRecord = await prisma.membershipPlan.findFirst({
-          where: { name: { equals: String(plan), mode: 'insensitive' } },
+          where: { name: { equals: PLAN_NAME_BY_CODE[plan], mode: 'insensitive' } },
         });
         resolvedPriceId = planRecord?.stripePriceId ?? undefined;
         resolvedPlanId = planRecord?.id ?? undefined;

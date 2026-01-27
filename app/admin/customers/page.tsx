@@ -71,8 +71,11 @@ async function getCustomersData() {
   }
 }
 
+type CustomersData = Awaited<ReturnType<typeof getCustomersData>>;
+type CustomerRow = CustomersData['customers'][number];
+
 async function CustomersList() {
-  let customers: any[] = [];
+  let customers: CustomerRow[] = [];
   let totalCustomers = 0;
   let customersWithMembership = 0;
   let totalRequests = 0;
@@ -129,7 +132,7 @@ async function CustomersList() {
   );
 }
 
-function CustomersTable({ customers }: { customers: any[] }) {
+function CustomersTable({ customers }: { customers: CustomerRow[] }) {
   return (
     <OtwCard className="mt-3">
       <div className="overflow-x-auto">

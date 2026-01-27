@@ -60,11 +60,15 @@ async function getNipLedgerData() {
   }
 }
 
+type NipLedgerData = Awaited<ReturnType<typeof getNipLedgerData>>;
+type NipLedgerEntry = NipLedgerData['ledgerEntries'][number];
+type NipLedgerByType = NipLedgerData['byType'][number];
+
 async function NipLedgerList() {
-  let ledgerEntries: any[] = [];
+  let ledgerEntries: NipLedgerEntry[] = [];
   let totalIssued = 0;
   let totalTransactions = 0;
-  let byType: any[] = [];
+  let byType: NipLedgerByType[] = [];
   let error: unknown = null;
 
   try {
@@ -88,7 +92,15 @@ async function NipLedgerList() {
   return <NipLedgerContent ledgerEntries={ledgerEntries} totalTransactions={totalTransactions} totalIssued={totalIssued} byType={byType} />;
 }
 
-function EmptyNipLedgerState({ totalTransactions, totalIssued, byType }: { totalTransactions: number; totalIssued: number; byType: any[] }) {
+function EmptyNipLedgerState({
+  totalTransactions,
+  totalIssued,
+  byType,
+}: {
+  totalTransactions: number;
+  totalIssued: number;
+  byType: NipLedgerByType[];
+}) {
   return (
     <>
       <OtwCard className="mt-3 p-6">
@@ -120,7 +132,17 @@ function EmptyNipLedgerState({ totalTransactions, totalIssued, byType }: { total
   );
 }
 
-function NipLedgerContent({ ledgerEntries, totalTransactions, totalIssued, byType }: { ledgerEntries: any[]; totalTransactions: number; totalIssued: number; byType: any[] }) {
+function NipLedgerContent({
+  ledgerEntries,
+  totalTransactions,
+  totalIssued,
+  byType,
+}: {
+  ledgerEntries: NipLedgerEntry[];
+  totalTransactions: number;
+  totalIssued: number;
+  byType: NipLedgerByType[];
+}) {
   return (
     <>
       <OtwCard className="mt-3 p-6">

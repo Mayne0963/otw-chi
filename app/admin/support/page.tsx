@@ -55,8 +55,11 @@ async function getSupportData() {
   }
 }
 
+type SupportData = Awaited<ReturnType<typeof getSupportData>>;
+type SupportTicketRow = SupportData['tickets'][number];
+
 async function SupportList() {
-  let tickets: any[] = [];
+  let tickets: SupportTicketRow[] = [];
   let openCount = 0;
   let resolvedCount = 0;
   let closedCount = 0;
@@ -115,7 +118,7 @@ async function SupportList() {
   );
 }
 
-function SupportTable({ tickets }: { tickets: any[] }) {
+function SupportTable({ tickets }: { tickets: SupportTicketRow[] }) {
   return (
     <OtwCard className="mt-3">
       <div className="overflow-x-auto">
@@ -229,7 +232,7 @@ export async function resolveTicketAction(formData: FormData) {
       where: { id },
       data: { status: 'RESOLVED' }
     });
-    console.log('[resolveTicketAction] Successfully resolved ticket:', id);
+    console.warn('[resolveTicketAction] Successfully resolved ticket:', id);
   } catch (error) {
     console.error('[resolveTicketAction] Failed to resolve ticket:', error);
     throw error;
@@ -251,7 +254,7 @@ export async function closeTicketAction(formData: FormData) {
       where: { id },
       data: { status: 'CLOSED' }
     });
-    console.log('[closeTicketAction] Successfully closed ticket:', id);
+    console.warn('[closeTicketAction] Successfully closed ticket:', id);
   } catch (error) {
     console.error('[closeTicketAction] Failed to close ticket:', error);
     throw error;

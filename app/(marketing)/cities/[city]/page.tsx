@@ -2,7 +2,6 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
-import Link from 'next/link';
 import { Metadata } from 'next';
 
 type Props = {

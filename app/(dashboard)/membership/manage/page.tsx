@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription } from '@/lib/membership';
-import { createCheckoutSession, createCustomerPortal } from '@/app/actions/billing';
+import { createCustomerPortal } from '@/app/actions/billing';
+import { getPrisma } from '@/lib/db';
+import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +16,20 @@ export default async function MembershipManagePage() {
   if (!user) return <div>Please sign in</div>;
 
   const sub = await getActiveSubscription(user.id);
-  // const planCode = getPlanCodeFromSubscription(sub);
+  const prisma = getPrisma();
+  const planNames = ['OTW BASIC', 'OTW PLUS', 'OTW PRO', 'OTW ELITE', 'OTW BLACK'];
+  const planRecords = await prisma.membershipPlan.findMany({
+    where: { name: { in: planNames } },
+  });
+  const planMap = new Map(planRecords.map((plan) => [plan.name, plan]));
+
+  const consumerPlans = [
+    { name: 'OTW BASIC', code: 'basic' as const, label: '$99 / month • 60 miles' },
+    { name: 'OTW PLUS', code: 'plus' as const, label: '$169 / month • 120 miles' },
+    { name: 'OTW PRO', code: 'pro' as const, label: '$269 / month • 200 miles' },
+    { name: 'OTW ELITE', code: 'elite' as const, label: '$429 / month • 350 miles' },
+    { name: 'OTW BLACK', code: 'black' as const, label: '$699 / month • 600 miles' },
+  ];
 
   return (
     <OtwPageShell>
@@ -41,46 +56,43 @@ export default async function MembershipManagePage() {
           </div>
         </Card>
       ) : (
-        <div className="mt-3 grid md:grid-cols-3 gap-4">
-            {/* Basic */}
-            <Card className="p-5 sm:p-6">
-                <div className="text-xl font-bold">Basic</div>
-                <div className="text-2xl mt-2">$9<span className="text-sm opacity-60">/mo</span></div>
-                <ul className="mt-4 text-sm space-y-2 opacity-80">
-                    <li>• Standard Delivery</li>
-                    <li>• 1.0x TIREM Rewards</li>
-                </ul>
-                <form action={async () => { 'use server'; await createCheckoutSession('BASIC'); }} className="mt-6">
-                    <Button variant="outline" className="w-full">Choose Basic</Button>
-                </form>
-            </Card>
+        <div className="mt-3 space-y-6">
+          <div className="grid md:grid-cols-3 gap-4">
+            {consumerPlans.map((plan) => {
+              const record = planMap.get(plan.name);
+              const disabled = !record?.stripePriceId;
+              return (
+                <Card key={plan.code} className="p-5 sm:p-6">
+                  <div className="text-xl font-bold">{plan.name}</div>
+                  <div className="text-sm opacity-70 mt-1">{plan.label}</div>
+                  <div className="mt-6">
+                    <PlanCheckoutButton
+                      plan={plan.code}
+                      planId={record?.id}
+                      priceId={record?.stripePriceId ?? undefined}
+                      disabled={disabled}
+                      className="w-full"
+                    >
+                      {disabled ? 'Coming soon' : 'Choose Plan'}
+                    </PlanCheckoutButton>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
 
-            {/* Plus */}
-            <Card className="border-otwGold/50 p-5 sm:p-6">
-                <div className="text-xl font-bold text-otwGold">Plus</div>
-                <div className="text-2xl mt-2">$19<span className="text-sm opacity-60">/mo</span></div>
-                <ul className="mt-4 text-sm space-y-2 opacity-80">
-                    <li>• 10% Discount</li>
-                    <li>• 1.25x TIREM Rewards</li>
-                </ul>
-                <form action={async () => { 'use server'; await createCheckoutSession('PLUS'); }} className="mt-6">
-                    <Button variant="gold" className="w-full">Choose Plus</Button>
-                </form>
-            </Card>
-
-            {/* Exec */}
-            <Card className="p-5 sm:p-6">
-                <div className="text-xl font-bold">Executive</div>
-                <div className="text-2xl mt-2">$39<span className="text-sm opacity-60">/mo</span></div>
-                <ul className="mt-4 text-sm space-y-2 opacity-80">
-                    <li>• 20% Discount</li>
-                    <li>• 2.0x TIREM Rewards</li>
-                    <li>• No Service Fees</li>
-                </ul>
-                <form action={async () => { 'use server'; await createCheckoutSession('EXEC'); }} className="mt-6">
-                    <Button variant="outline" className="w-full">Choose Exec</Button>
-                </form>
-            </Card>
+          <Card className="p-5 sm:p-6">
+            <div className="text-xl font-bold">Business plans</div>
+            <div className="text-sm opacity-70 mt-1">Invoice billing with reliability-first dispatch.</div>
+            <div className="mt-6">
+              <a
+                href="/contact"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md bg-otwGold px-4 text-sm font-medium text-otwBlack hover:bg-otwGold/90"
+              >
+                Request Invoice
+              </a>
+            </div>
+          </Card>
         </div>
       )}
     </OtwPageShell>

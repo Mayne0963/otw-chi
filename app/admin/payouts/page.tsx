@@ -92,9 +92,13 @@ async function getPayoutsData() {
   }
 }
 
+type PayoutsData = Awaited<ReturnType<typeof getPayoutsData>>;
+type PayoutRow = PayoutsData['payouts'][number];
+type PendingPayoutRow = PayoutsData['pendingPayouts'][number];
+
 async function PayoutsList() {
-  let payouts: any[] = [];
-  let pendingPayouts: any[] = [];
+  let payouts: PayoutRow[] = [];
+  let pendingPayouts: PendingPayoutRow[] = [];
   let totalPending = 0;
   let totalPendingCount = 0;
   let error: unknown = null;
@@ -150,7 +154,17 @@ function EmptyPayoutsState({ totalPending, totalPendingCount }: { totalPending: 
   );
 }
 
-function PayoutsContent({ payouts, pendingPayouts, totalPending, totalPendingCount }: { payouts: any[]; pendingPayouts: any[]; totalPending: number; totalPendingCount: number }) {
+function PayoutsContent({
+  payouts,
+  pendingPayouts,
+  totalPending,
+  totalPendingCount,
+}: {
+  payouts: PayoutRow[];
+  pendingPayouts: PendingPayoutRow[];
+  totalPending: number;
+  totalPendingCount: number;
+}) {
   return (
     <>
       <OtwCard className="mt-3 p-6">
@@ -323,7 +337,7 @@ export async function resolvePayoutAction(formData: FormData) {
       },
     });
     
-    console.log('[resolvePayoutAction] Successfully resolved payout:', id);
+    console.warn('[resolvePayoutAction] Successfully resolved payout:', id);
     
   } catch (error) {
     console.error('[resolvePayoutAction] Failed to resolve payout:', error);

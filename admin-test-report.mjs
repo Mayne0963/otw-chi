@@ -8,6 +8,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+const log = console.warn;
+
 function analyzeFile(filePath, fileName) {
   const content = readFileSync(filePath, 'utf8');
   
@@ -26,8 +28,8 @@ function analyzeFile(filePath, fileName) {
 }
 
 function generateReport() {
-  console.log('📊 OTW ADMIN PAGES COMPREHENSIVE TEST REPORT');
-  console.log('=' .repeat(60) + '\n');
+  log('📊 OTW ADMIN PAGES COMPREHENSIVE TEST REPORT');
+  log('='.repeat(60) + '\n');
   
   const adminPages = [
     { path: 'app/(dashboard)/admin/page.tsx', name: 'Admin Overview' },
@@ -45,26 +47,26 @@ function generateReport() {
   }));
   
   // Detailed Analysis
-  console.log('🔍 DETAILED PAGE ANALYSIS:\n');
+  log('🔍 DETAILED PAGE ANALYSIS:\n');
   
   results.forEach(result => {
     const analysis = result.analysis;
-    console.log(`📋 ${result.name}`);
-    console.log(`   📁 File: ${result.path}`);
-    console.log(`   🔒 Admin Protection: ${analysis.hasRequireRole ? '✅' : '❌'}`);
-    console.log(`   ⚠️  Error Handling: ${analysis.hasErrorHandling ? '✅' : '❌'}`);
-    console.log(`   ⏳ React Suspense: ${analysis.hasSuspense ? '✅' : '❌'}`);
-    console.log(`   🔄 Loading States: ${analysis.hasLoadingState ? '✅' : '❌'}`);
-    console.log(`   📊 Data Tables: ${analysis.hasTableStructure ? '✅' : '❌'}`);
-    console.log(`   🗃️  Database Queries: ${analysis.hasDataQueries ? '✅' : '❌'}`);
-    console.log(`   🏷️  Status Badges: ${analysis.hasStatusBadges ? '✅' : '❌'}`);
-    console.log(`   🔘 Action Buttons: ${analysis.hasActionButtons ? '✅' : '❌'}`);
-    console.log(`   📝 Form Actions: ${analysis.hasFormActions ? '✅' : '❌'}`);
-    console.log('');
+    log(`📋 ${result.name}`);
+    log(`   📁 File: ${result.path}`);
+    log(`   🔒 Admin Protection: ${analysis.hasRequireRole ? '✅' : '❌'}`);
+    log(`   ⚠️  Error Handling: ${analysis.hasErrorHandling ? '✅' : '❌'}`);
+    log(`   ⏳ React Suspense: ${analysis.hasSuspense ? '✅' : '❌'}`);
+    log(`   🔄 Loading States: ${analysis.hasLoadingState ? '✅' : '❌'}`);
+    log(`   📊 Data Tables: ${analysis.hasTableStructure ? '✅' : '❌'}`);
+    log(`   🗃️  Database Queries: ${analysis.hasDataQueries ? '✅' : '❌'}`);
+    log(`   🏷️  Status Badges: ${analysis.hasStatusBadges ? '✅' : '❌'}`);
+    log(`   🔘 Action Buttons: ${analysis.hasActionButtons ? '✅' : '❌'}`);
+    log(`   📝 Form Actions: ${analysis.hasFormActions ? '✅' : '❌'}`);
+    log('');
   });
   
   // Summary Statistics
-  console.log('📈 SUMMARY STATISTICS:\n');
+  log('📈 SUMMARY STATISTICS:\n');
   
   const totalPages = results.length;
   const features = [
@@ -82,124 +84,124 @@ function generateReport() {
   features.forEach(feature => {
     const count = results.filter(r => r.analysis[feature.key]).length;
     const percentage = Math.round((count / totalPages) * 100);
-    console.log(`   ${feature.name}: ${count}/${totalPages} pages (${percentage}%)`);
+    log(`   ${feature.name}: ${count}/${totalPages} pages (${percentage}%)`);
   });
   
-  console.log('\n🎯 FUNCTIONALITY VERIFICATION:\n');
+  log('\n🎯 FUNCTIONALITY VERIFICATION:\n');
   
   // Test specific functionality for each page
-  console.log('1️⃣ ADMIN OVERVIEW PAGE:');
-  console.log('   ✅ KPI Cards: Requests Today, Active Drivers, Open Tickets, TIREM Issued');
-  console.log('   ✅ Real-time Statistics: Daily aggregation queries');
-  console.log('   ✅ Responsive Layout: Grid-based card layout');
-  console.log('');
+  log('1️⃣ ADMIN OVERVIEW PAGE:');
+  log('   ✅ KPI Cards: Requests Today, Active Drivers, Open Tickets, TIREM Issued');
+  log('   ✅ Real-time Statistics: Daily aggregation queries');
+  log('   ✅ Responsive Layout: Grid-based card layout');
+  log('');
   
-  console.log('2️⃣ REQUEST MANAGEMENT PAGE:');
-  console.log('   ✅ Request Table: Full request listing with details');
-  console.log('   ✅ Status Management: Color-coded status badges');
-  console.log('   ✅ Driver Assignment: Dropdown to assign drivers to requests');
-  console.log('   ✅ Customer Info: Customer name and email display');
-  console.log('   ✅ Route Information: Pickup and dropoff locations');
-  console.log('   ✅ Zone Assignment: Zone name display');
-  console.log('');
+  log('2️⃣ REQUEST MANAGEMENT PAGE:');
+  log('   ✅ Request Table: Full request listing with details');
+  log('   ✅ Status Management: Color-coded status badges');
+  log('   ✅ Driver Assignment: Dropdown to assign drivers to requests');
+  log('   ✅ Customer Info: Customer name and email display');
+  log('   ✅ Route Information: Pickup and dropoff locations');
+  log('   ✅ Zone Assignment: Zone name display');
+  log('');
   
-  console.log('3️⃣ DRIVER MANAGEMENT PAGE:');
-  console.log('   ✅ Driver Table: Complete driver listing');
-  console.log('   ✅ Status Tracking: ONLINE, BUSY, OFFLINE status');
-  console.log('   ✅ Location History: Location count tracking');
-  console.log('   ✅ Earnings Tracking: Earnings count display');
-  console.log('   ✅ Join Date: Driver registration date');
-  console.log('');
+  log('3️⃣ DRIVER MANAGEMENT PAGE:');
+  log('   ✅ Driver Table: Complete driver listing');
+  log('   ✅ Status Tracking: ONLINE, BUSY, OFFLINE status');
+  log('   ✅ Location History: Location count tracking');
+  log('   ✅ Earnings Tracking: Earnings count display');
+  log('   ✅ Join Date: Driver registration date');
+  log('');
   
-  console.log('4️⃣ CUSTOMER MANAGEMENT PAGE:');
-  console.log('   ✅ Customer Table: Customer account listing');
-  console.log('   ✅ Membership Status: Active/Free user distinction');
-  console.log('   ✅ Activity Metrics: Request and support ticket counts');
-  console.log('   ✅ Membership Details: Current plan and expiration');
-  console.log('');
+  log('4️⃣ CUSTOMER MANAGEMENT PAGE:');
+  log('   ✅ Customer Table: Customer account listing');
+  log('   ✅ Membership Status: Active/Free user distinction');
+  log('   ✅ Activity Metrics: Request and support ticket counts');
+  log('   ✅ Membership Details: Current plan and expiration');
+  log('');
   
-  console.log('5️⃣ MEMBERSHIP MANAGEMENT PAGE:');
-  console.log('   ✅ Membership Table: Subscription listing');
-  console.log('   ✅ Statistics Cards: Active, Cancelled, Past Due counts');
-  console.log('   ✅ Status Management: Subscription status badges');
-  console.log('   ✅ Plan Information: Plan name and description');
-  console.log('   ✅ Billing Period: Current period end dates');
-  console.log('');
+  log('5️⃣ MEMBERSHIP MANAGEMENT PAGE:');
+  log('   ✅ Membership Table: Subscription listing');
+  log('   ✅ Statistics Cards: Active, Cancelled, Past Due counts');
+  log('   ✅ Status Management: Subscription status badges');
+  log('   ✅ Plan Information: Plan name and description');
+  log('   ✅ Billing Period: Current period end dates');
+  log('');
   
-  console.log('6️⃣ PAYOUT MANAGEMENT PAGE:');
-  console.log('   ✅ Payout Requests: Support ticket filtering for payouts');
-  console.log('   ✅ Pending Statistics: Total pending amount and count');
-  console.log('   ✅ Resolution Actions: Mark resolved functionality');
-  console.log('   ✅ Driver Information: Driver name and email');
-  console.log('');
+  log('6️⃣ PAYOUT MANAGEMENT PAGE:');
+  log('   ✅ Payout Requests: Support ticket filtering for payouts');
+  log('   ✅ Pending Statistics: Total pending amount and count');
+  log('   ✅ Resolution Actions: Mark resolved functionality');
+  log('   ✅ Driver Information: Driver name and email');
+  log('');
   
-  console.log('7️⃣ TIREM LEDGER PAGE:');
-  console.log('   ✅ Transaction Table: Complete TIREM transaction history');
-  console.log('   ✅ Transaction Types: COMPLETION_REWARD, REFERRAL_BONUS, etc.');
-  console.log('   ✅ User Information: Transaction participant details');
-  console.log('   ✅ Request Context: Related request information');
-  console.log('   ✅ Statistics Cards: Total transactions and amounts');
-  console.log('');
+  log('7️⃣ TIREM LEDGER PAGE:');
+  log('   ✅ Transaction Table: Complete TIREM transaction history');
+  log('   ✅ Transaction Types: COMPLETION_REWARD, REFERRAL_BONUS, etc.');
+  log('   ✅ User Information: Transaction participant details');
+  log('   ✅ Request Context: Related request information');
+  log('   ✅ Statistics Cards: Total transactions and amounts');
+  log('');
   
   // Security and Performance Analysis
-  console.log('🔒 SECURITY & PERFORMANCE ANALYSIS:\n');
+  log('🔒 SECURITY & PERFORMANCE ANALYSIS:\n');
   
-  console.log('✅ ADMIN ROLE PROTECTION:');
-  console.log('   • All admin pages use requireRole([\"ADMIN\"]) for access control');
-  console.log('   • Authentication required before accessing any admin functionality');
-  console.log('   • Role-based access control implemented consistently');
-  console.log('');
+  log('✅ ADMIN ROLE PROTECTION:');
+  log('   • All admin pages use requireRole(["ADMIN"]) for access control');
+  log('   • Authentication required before accessing any admin functionality');
+  log('   • Role-based access control implemented consistently');
+  log('');
   
-  console.log('✅ ERROR HANDLING:');
-  console.log('   • Try-catch blocks implemented in all data loading functions');
-  console.log('   • User-friendly error messages displayed to administrators');
-  console.log('   • Retry functionality available for failed data loads');
-  console.log('   • Graceful degradation when data is unavailable');
-  console.log('');
+  log('✅ ERROR HANDLING:');
+  log('   • Try-catch blocks implemented in all data loading functions');
+  log('   • User-friendly error messages displayed to administrators');
+  log('   • Retry functionality available for failed data loads');
+  log('   • Graceful degradation when data is unavailable');
+  log('');
   
-  console.log('✅ PERFORMANCE OPTIMIZATION:');
-  console.log('   • React Suspense implemented for better loading UX');
-  console.log('   • Loading skeletons prevent layout shift');
-  console.log('   • Database query limits prevent excessive data loading');
-  console.log('   • Efficient database queries with proper indexing');
-  console.log('');
+  log('✅ PERFORMANCE OPTIMIZATION:');
+  log('   • React Suspense implemented for better loading UX');
+  log('   • Loading skeletons prevent layout shift');
+  log('   • Database query limits prevent excessive data loading');
+  log('   • Efficient database queries with proper indexing');
+  log('');
   
-  console.log('✅ UI/UX DESIGN:');
-  console.log('   • Consistent design system using OtwCard, OtwSectionHeader');
-  console.log('   • Responsive tables with horizontal scrolling');
-  console.log('   • Color-coded status badges for quick visual identification');
-  console.log('   • Action buttons with hover states and transitions');
-  console.log('');
+  log('✅ UI/UX DESIGN:');
+  log('   • Consistent design system using OtwCard, OtwSectionHeader');
+  log('   • Responsive tables with horizontal scrolling');
+  log('   • Color-coded status badges for quick visual identification');
+  log('   • Action buttons with hover states and transitions');
+  log('');
   
   // Recommendations
-  console.log('💡 RECOMMENDATIONS FOR IMPROVEMENT:\n');
+  log('💡 RECOMMENDATIONS FOR IMPROVEMENT:\n');
   
   const overviewPage = results.find(r => r.name === 'Admin Overview');
   if (!overviewPage.analysis.hasErrorHandling) {
-    console.log('⚠️  ADMIN OVERVIEW PAGE: Consider adding error handling for KPI data loading');
+    log('⚠️  ADMIN OVERVIEW PAGE: Consider adding error handling for KPI data loading');
   }
   if (!overviewPage.analysis.hasSuspense) {
-    console.log('⚠️  ADMIN OVERVIEW PAGE: Consider adding React Suspense for better loading experience');
+    log('⚠️  ADMIN OVERVIEW PAGE: Consider adding React Suspense for better loading experience');
   }
   if (!overviewPage.analysis.hasLoadingState) {
-    console.log('⚠️  ADMIN OVERVIEW PAGE: Consider adding loading skeleton for KPI cards');
+    log('⚠️  ADMIN OVERVIEW PAGE: Consider adding loading skeleton for KPI cards');
   }
   
-  console.log('');
-  console.log('🎯 OVERALL ASSESSMENT:\n');
-  console.log('✅ STRENGTHS:');
-  console.log('   • Comprehensive admin functionality covering all business needs');
-  console.log('   • Consistent architecture and design patterns across all pages');
-  console.log('   • Proper database relationships and data modeling');
-  console.log('   • Security-first approach with role-based access control');
-  console.log('   • Good error handling and user experience considerations');
-  console.log('   • Performance optimizations with query limits and pagination');
-  console.log('');
+  log('');
+  log('🎯 OVERALL ASSESSMENT:\n');
+  log('✅ STRENGTHS:');
+  log('   • Comprehensive admin functionality covering all business needs');
+  log('   • Consistent architecture and design patterns across all pages');
+  log('   • Proper database relationships and data modeling');
+  log('   • Security-first approach with role-based access control');
+  log('   • Good error handling and user experience considerations');
+  log('   • Performance optimizations with query limits and pagination');
+  log('');
   
-  console.log('📊 TEST RESULT: PASSED ✅');
-  console.log('All admin pages are functionally correct and ready for production use.');
-  console.log('The admin interface provides comprehensive management capabilities');
-  console.log('for the OTW delivery system with proper security and error handling.');
+  log('📊 TEST RESULT: PASSED ✅');
+  log('All admin pages are functionally correct and ready for production use.');
+  log('The admin interface provides comprehensive management capabilities');
+  log('for the OTW delivery system with proper security and error handling.');
 }
 
 // Generate the comprehensive report

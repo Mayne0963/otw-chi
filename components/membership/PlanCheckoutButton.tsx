@@ -13,7 +13,7 @@ export default function PlanCheckoutButton({
   className,
   disabled,
 }: {
-  plan?: 'basic' | 'plus' | 'executive';
+  plan?: 'basic' | 'plus' | 'pro' | 'elite' | 'black';
   planId?: string;
   priceId?: string;
   children?: React.ReactNode;

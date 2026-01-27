@@ -5,7 +5,6 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { MapPin, User, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { redirect } from 'next/navigation';
 import OtwLiveMap from '@/components/otw/OtwLiveMap';

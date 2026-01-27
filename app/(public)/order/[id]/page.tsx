@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Image from 'next/image';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { ServiceType, DeliveryRequestStatus } from '@prisma/client';
@@ -203,10 +204,13 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
               {order.receiptImageData && (
                 <div className="space-y-2">
                   <div className="text-xs uppercase tracking-[0.18em] text-white/50">Receipt preview</div>
-                  <img
+                  <Image
                     src={order.receiptImageData}
                     alt="Uploaded receipt"
+                    width={1200}
+                    height={900}
                     className="w-full max-w-2xl rounded-lg border border-white/10 shadow-otwSoft"
+                    unoptimized
                   />
                 </div>
               )}

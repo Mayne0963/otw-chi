@@ -1,8 +1,9 @@
 import { DeliveryRequestStatus, DriverEarningStatus } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { calculateDriverPayCents } from './driver-pay';
 
 type PrismaLikeClient = {
-  $transaction: <T>(fn: (tx: any) => Promise<T>) => Promise<T>;
+  $transaction: <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) => Promise<T>;
 };
 
 export async function acceptDeliveryRequest(requestId: string, driverId: string, client: PrismaLikeClient) {
@@ -121,12 +122,43 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
     const tipsCents = 0;
     const bonusEligible = request.customerRating === 5 && !request.complaintFlag && driver.bonusEnabled;
 
-    const { hourlyPayCents, bonusPayCents, totalPayCents } = calculateDriverPayCents({
-      activeMinutes,
-      hourlyRateCents: driver.hourlyRateCents,
+    const serviceMiles = request.serviceMilesFinal;
+    if (typeof serviceMiles !== 'number' || !Number.isFinite(serviceMiles) || serviceMiles <= 0) {
+      throw new Error('Missing Service Miles for request payout calculation');
+    }
+
+    const breakdown = (request.quoteBreakdown ?? {}) as Record<string, unknown>;
+    const breakdownAdders = (breakdown as { adders?: unknown })?.adders as Record<string, unknown> | undefined;
+    const waitTimeMiles = typeof breakdownAdders?.waitTime === 'number' ? breakdownAdders.waitTime : 0;
+    const sitAndWaitPremiumMiles =
+      typeof breakdownAdders?.sitAndWaitPremium === 'number' ? breakdownAdders.sitAndWaitPremium : 0;
+    const cashHandlingMiles = typeof breakdownAdders?.cashHandling === 'number' ? breakdownAdders.cashHandling : 0;
+
+    const membership = await tx.membershipSubscription.findUnique({
+      where: { userId: request.userId },
+      include: { plan: true },
+    });
+    const planName = membership?.plan?.name ?? '';
+    const businessAccount = planName.startsWith('OTW BUSINESS') || planName === 'OTW ENTERPRISE';
+
+    const {
+      milePayCents,
+      waitBonusCents,
+      cashBonusCents,
+      businessBonusCents,
+      bonusPayCents,
+      tipsCents: normalizedTipsCents,
+      totalPayCents,
+      rateCentsPerServiceMile,
+    } = calculateDriverPayCents({
+      serviceMiles,
+      driverTier: driver.tierLevel,
       tipsCents,
       bonusEligible,
       bonus5StarCents: driver.bonus5StarCents,
+      waitMiles: waitTimeMiles + sitAndWaitPremiumMiles,
+      cashHandling: cashHandlingMiles > 0,
+      businessAccount,
     });
 
     const existingEarnings = await tx.driverEarnings.findFirst({
@@ -156,13 +188,17 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       },
     });
 
-    const metrics = (driver.performanceMetrics as any) || { completedJobs: 0 };
-    metrics.completedJobs = (metrics.completedJobs || 0) + 1;
+    const rawMetrics = (driver.performanceMetrics ?? {}) as Record<string, unknown>;
+    const completedJobs = typeof rawMetrics.completedJobs === 'number' ? rawMetrics.completedJobs : 0;
+    const nextMetrics: Record<string, unknown> = {
+      ...rawMetrics,
+      completedJobs: completedJobs + 1,
+    };
 
     await tx.driverProfile.update({
       where: { id: driverId },
       data: {
-        performanceMetrics: metrics,
+        performanceMetrics: nextMetrics as Prisma.InputJsonValue,
       },
     });
 
@@ -170,9 +206,14 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       request: updatedRequest,
       pay: {
         activeMinutes,
-        hourlyPayCents,
+        serviceMiles,
+        rateCentsPerServiceMile,
+        milePayCents,
+        waitBonusCents,
+        cashBonusCents,
+        businessBonusCents,
         bonusPayCents,
-        tipsCents,
+        tipsCents: normalizedTipsCents,
         totalPayCents,
       },
     };

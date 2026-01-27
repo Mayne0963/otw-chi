@@ -6,7 +6,7 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { syncUserOnDashboard } from '@/lib/user-sync';
 import { getPrisma } from '@/lib/db';
-import { getActiveSubscription, getPlanCodeFromSubscription, getMembershipBenefits } from '@/lib/membership';
+import { getActiveSubscription } from '@/lib/membership';
 import { LayoutDashboard, Wallet, CreditCard, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -18,15 +18,11 @@ export default async function DashboardPage() {
   let membershipTier = 'None';
   let nipBalance = 0;
   let activeRequest: { id: string; status: string; pickup: string; dropoff: string } | null = null;
-  let membershipBenefits = getMembershipBenefits(null);
 
   if (user) {
     const prisma = getPrisma();
     
-    // Get membership benefits
     const sub = await getActiveSubscription(user.id);
-    const planCode = getPlanCodeFromSubscription(sub);
-    membershipBenefits = getMembershipBenefits(planCode);
     membershipTier = sub?.plan?.name ?? 'None';
 
     const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } });

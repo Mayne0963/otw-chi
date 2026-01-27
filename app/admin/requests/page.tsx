@@ -109,9 +109,13 @@ async function getRequestsData() {
   }
 }
 
+type RequestsData = Awaited<ReturnType<typeof getRequestsData>>;
+type RequestRow = RequestsData['requests'][number];
+type DriverRow = RequestsData['drivers'][number];
+
 async function RequestsList() {
-  let requests: any[] = [];
-  let drivers: any[] = [];
+  let requests: RequestRow[] = [];
+  let drivers: DriverRow[] = [];
   let error: unknown = null;
 
   try {

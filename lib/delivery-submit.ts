@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import { calculateServiceMiles } from './service-miles';
 import { isServiceTypeAllowedForPlan } from './service-miles-access';
+import { UNLIMITED_SERVICE_MILES } from './membership-miles';
 import {
   Prisma,
   DeliveryRequestStatus,
@@ -16,7 +17,9 @@ export interface SubmitDeliveryRequestInput {
   notes?: string;
   scheduledStart: Date;
   travelMinutes: number;
+  quotedAt?: Date;
   waitMinutes?: number;
+  sitAndWait?: boolean;
   numberOfStops?: number;
   returnOrExchange?: boolean;
   cashHandling?: boolean;
@@ -55,6 +58,10 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
       throw new Error(`Service type ${serviceType} not allowed for this plan`);
     }
 
+    if (input.cashHandling && !plan.cashAllowed) {
+      throw new Error('Cash handling is not allowed for this plan');
+    }
+
     if (input.idempotencyKey) {
       const existing = await tx.deliveryRequest.findFirst({
         where: { userId, idempotencyKey: input.idempotencyKey },
@@ -63,12 +70,14 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
     }
 
     // 3. Calculate Quote
+    const quotedAt = input.quotedAt ?? new Date();
     const quote = calculateServiceMiles({
       travelMinutes,
       serviceType,
       scheduledStart,
-      quotedAt: new Date(),
+      quotedAt,
       waitMinutes: input.waitMinutes,
+      sitAndWait: input.sitAndWait,
       numberOfStops: input.numberOfStops,
       returnOrExchange: input.returnOrExchange,
       cashHandling: input.cashHandling,
@@ -82,16 +91,22 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
       create: { userId: user.id },
     });
 
-    const deduction = await tx.serviceMilesWallet.updateMany({
-      where: { id: wallet.id, balanceMiles: { gte: quote.serviceMilesFinal } },
-      data: {
-        balanceMiles: {
-          decrement: quote.serviceMilesFinal,
+    const isUnlimited =
+      wallet.balanceMiles === UNLIMITED_SERVICE_MILES ||
+      plan.monthlyServiceMiles === UNLIMITED_SERVICE_MILES;
+
+    if (!isUnlimited) {
+      const deduction = await tx.serviceMilesWallet.updateMany({
+        where: { id: wallet.id, balanceMiles: { gte: quote.serviceMilesFinal } },
+        data: {
+          balanceMiles: {
+            decrement: quote.serviceMilesFinal,
+          },
         },
-      },
-    });
-    if (deduction.count !== 1) {
-      throw new Error(`Insufficient Service Miles. Required: ${quote.serviceMilesFinal}`);
+      });
+      if (deduction.count !== 1) {
+        throw new Error(`Insufficient Service Miles. Required: ${quote.serviceMilesFinal}`);
+      }
     }
 
     // 5. Create Delivery Request
@@ -112,7 +127,7 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
         serviceMilesAdders: quote.serviceMilesAdders,
         serviceMilesDiscount: quote.serviceMilesDiscount,
         serviceMilesFinal: quote.serviceMilesFinal,
-        quoteBreakdown: quote.quoteBreakdown as any, // Storing JSON
+        quoteBreakdown: quote.quoteBreakdown as Prisma.InputJsonValue,
       },
     });
 
@@ -120,10 +135,12 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
     await tx.serviceMilesLedger.create({
       data: {
         walletId: wallet.id,
-        amount: -quote.serviceMilesFinal, // Negative for deduction
+        amount: isUnlimited ? 0 : -quote.serviceMilesFinal, // Unlimited plans don't decrement wallet balance
         transactionType: ServiceMilesTransactionType.DEDUCT_REQUEST,
         deliveryRequestId: request.id,
-        description: `Request deduction for ${serviceType} (${quote.serviceMilesFinal} miles)`,
+        description: isUnlimited
+          ? `Request recorded for ${serviceType} (${quote.serviceMilesFinal} miles; unlimited plan)`
+          : `Request deduction for ${serviceType} (${quote.serviceMilesFinal} miles)`,
       },
     });
 
@@ -217,6 +234,11 @@ export async function cancelDeliveryRequest(requestId: string, userId: string) {
         update: {},
         create: { userId },
       });
+
+      // Unlimited plans keep a sentinel balance; no refund accounting required.
+      if (wallet.balanceMiles === UNLIMITED_SERVICE_MILES) {
+        return { request: updatedRequest, refundAmount: 0, feeAmount, alreadyCanceled: false };
+      }
 
       if (refundAmount > 0) {
         await tx.serviceMilesWallet.update({

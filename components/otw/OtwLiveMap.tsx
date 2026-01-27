@@ -38,8 +38,6 @@ const ROUTE_SOURCE_ID = "otw-route-source";
 const ROUTE_LAYER_ID = "otw-route-layer";
 const DRIVER_ROUTE_SOURCE_ID = "otw-driver-route-source";
 const DRIVER_ROUTE_LAYER_ID = "otw-driver-route-layer";
-const ALL_DRIVER_ROUTES_SOURCE_ID = "otw-all-driver-routes-source";
-const ALL_DRIVER_ROUTES_LAYER_ID = "otw-all-driver-routes-layer";
 const TRAFFIC_SOURCE_ID = "otw-traffic-source";
 const TRAFFIC_LAYER_ID = "otw-traffic-layer";
 const INCIDENT_SOURCE_ID = "otw-incident-source";
@@ -900,15 +898,16 @@ const OtwLiveMap = ({
     visibleMarkers,
     resolvedMainRoute,
     resolvedDriverRoute,
+    driverRoutes,
     trafficFlow,
     incidents,
     pois,
     markerView,
     navigationZoom,
     activeDriverCoords,
-          routePulseAt,
-          viewChangeVersion,
-        ]);
+    routePulseAt,
+    viewChangeVersion,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;

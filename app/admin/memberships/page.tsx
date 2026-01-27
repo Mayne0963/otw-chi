@@ -67,8 +67,11 @@ async function getMembershipsData() {
   }
 }
 
+type MembershipsData = Awaited<ReturnType<typeof getMembershipsData>>;
+type MembershipRow = MembershipsData['memberships'][number];
+
 async function MembershipsList() {
-  let memberships: any[] = [];
+  let memberships: MembershipRow[] = [];
   let totalActive = 0;
   let totalCancelled = 0;
   let totalPastDue = 0;
@@ -129,7 +132,17 @@ function EmptyMembershipsState({ totalActive, totalCancelled, totalPastDue, tota
   );
 }
 
-function MembershipsContent({ memberships, totalActive, totalCancelled, totalPastDue }: { memberships: any[]; totalActive: number; totalCancelled: number; totalPastDue: number }) {
+function MembershipsContent({
+  memberships,
+  totalActive,
+  totalCancelled,
+  totalPastDue,
+}: {
+  memberships: MembershipRow[];
+  totalActive: number;
+  totalCancelled: number;
+  totalPastDue: number;
+}) {
   return (
     <>
       <OtwCard className="mt-3 p-6">
@@ -162,7 +175,7 @@ function MembershipsContent({ memberships, totalActive, totalCancelled, totalPas
                 <th className="text-left px-4 py-3">Plan</th>
                 <th className="text-left px-4 py-3">Status</th>
                 <th className="text-left px-4 py-3">Period End</th>
-                <th className="text-left px-4 py-3">Created</th>
+                <th className="text-left px-4 py-3">Renews</th>
                 <th className="text-left px-4 py-3">Actions</th>
               </tr>
             </thead>
@@ -200,7 +213,7 @@ function MembershipsContent({ memberships, totalActive, totalCancelled, totalPas
                     {formatDistanceSafe(membership.currentPeriodEnd)}
                   </td>
                   <td className="px-4 py-3 text-white/60 text-xs">
-                    {formatDistanceSafe(membership.createdAt)}
+                    {formatDistanceSafe(membership.renewsAt)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
