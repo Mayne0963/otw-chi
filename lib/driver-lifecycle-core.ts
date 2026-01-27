@@ -1,7 +1,6 @@
 import { DeliveryRequestStatus, DriverEarningStatus } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { calculateDriverPayCents } from './driver-pay';
-import { isFounderDriverEmail } from './founders';
 
 type PrismaLikeClient = {
   $transaction: <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) => Promise<T>;
@@ -45,6 +44,20 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
       },
     });
 
+    const existingOpenLog = await tx.driverTimeLog.findFirst({
+      where: { deliveryRequestId: requestId, driverId, endTime: null },
+      select: { id: true },
+    });
+    if (!existingOpenLog) {
+      await tx.driverTimeLog.create({
+        data: {
+          driverId,
+          deliveryRequestId: requestId,
+          startTime: now,
+        },
+      });
+    }
+
     await tx.driverAssignment.create({
       data: {
         deliveryRequestId: requestId,
@@ -68,12 +81,6 @@ export async function markDriverArrived(requestId: string, driverId: string, cli
     if (request.status !== DeliveryRequestStatus.ASSIGNED) throw new Error('Request is not in assigned state');
     if (request.arrivedAt) throw new Error('Driver already marked arrived');
 
-    const existingOpenLog = await tx.driverTimeLog.findFirst({
-      where: { deliveryRequestId: requestId, driverId, endTime: null },
-      select: { id: true },
-    });
-    if (existingOpenLog) throw new Error('Active time log already exists');
-
     const now = new Date();
 
     const updatedRequest = await tx.deliveryRequest.update({
@@ -84,13 +91,20 @@ export async function markDriverArrived(requestId: string, driverId: string, cli
       },
     });
 
-    await tx.driverTimeLog.create({
-      data: {
-        driverId,
-        deliveryRequestId: requestId,
-        startTime: now,
-      },
+    const existingOpenLog = await tx.driverTimeLog.findFirst({
+      where: { deliveryRequestId: requestId, driverId, endTime: null },
+      select: { id: true, startTime: true },
     });
+    if (!existingOpenLog) {
+      const startTime = request.assignedAt ?? now;
+      await tx.driverTimeLog.create({
+        data: {
+          driverId,
+          deliveryRequestId: requestId,
+          startTime,
+        },
+      });
+    }
 
     return updatedRequest;
   });
@@ -144,19 +158,14 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       throw new Error('Missing Service Miles for request payout calculation');
     }
 
-    const breakdown = (request.quoteBreakdown ?? {}) as Record<string, unknown>;
-    const breakdownAdders = (breakdown as { adders?: unknown })?.adders as Record<string, unknown> | undefined;
-    const waitTimeMiles = typeof breakdownAdders?.waitTime === 'number' ? breakdownAdders.waitTime : 0;
-    const sitAndWaitPremiumMiles =
-      typeof breakdownAdders?.sitAndWaitPremium === 'number' ? breakdownAdders.sitAndWaitPremium : 0;
-    const cashHandlingMiles = typeof breakdownAdders?.cashHandling === 'number' ? breakdownAdders.cashHandling : 0;
-
     const membership = await tx.membershipSubscription.findUnique({
       where: { userId: request.userId },
       include: { plan: true },
     });
     const planName = membership?.plan?.name ?? '';
-    const businessAccount = planName.startsWith('OTW BUSINESS') || planName === 'OTW ENTERPRISE';
+    const estimatedMinutes = typeof request.estimatedMinutes === 'number' ? request.estimatedMinutes : 0;
+    const onTimeEligible = estimatedMinutes > 0 ? activeMinutes <= estimatedMinutes + 10 : false;
+    const earlyEligible = estimatedMinutes > 0 ? activeMinutes <= Math.max(1, estimatedMinutes - 5) : false;
 
     const {
       milePayCents,
@@ -164,21 +173,23 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       cashBonusCents,
       businessBonusCents,
       bonusPayCents,
+      performanceBonusCents,
+      speedBonusCents,
+      hourlyPayCents,
       tipsCents: normalizedTipsCents,
       totalPayCents,
       rateCentsPerServiceMile,
+      hourlyRateCents,
     } = calculateDriverPayCents({
-      serviceMiles,
       driverTier: driver.tierLevel,
+      activeMinutes,
       tipsCents,
       bonusEligible,
-      bonus5StarCents: driver.bonus5StarCents,
-      waitMiles: waitTimeMiles + sitAndWaitPremiumMiles,
-      cashHandling: cashHandlingMiles > 0,
-      businessAccount,
-      rateCentsPerServiceMile: isFounderDriverEmail(driver.user.email)
-        ? { PROBATION: 200, STANDARD: 200, ELITE: 200, CONCIERGE: 200 }
-        : undefined,
+      planName,
+      hourlyRateCents: driver.hourlyRateCents > 0 ? driver.hourlyRateCents : undefined,
+      bonus5StarCents: driver.bonus5StarCents > 0 ? driver.bonus5StarCents : undefined,
+      onTimeEligible,
+      earlyEligible,
     });
 
     const existingEarnings = await tx.driverEarnings.findFirst({
@@ -210,11 +221,32 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
 
     const rawMetrics = (driver.performanceMetrics ?? {}) as Record<string, unknown>;
     const completedJobs = typeof rawMetrics.completedJobs === 'number' ? rawMetrics.completedJobs : 0;
+    const onTimeCount = typeof rawMetrics.onTimeCount === 'number' ? rawMetrics.onTimeCount : 0;
+    const fiveStarCount = typeof rawMetrics.fiveStarCount === 'number' ? rawMetrics.fiveStarCount : 0;
+    const complaintCount = typeof rawMetrics.complaintCount === 'number' ? rawMetrics.complaintCount : 0;
+    const earlyCount = typeof rawMetrics.earlyCount === 'number' ? rawMetrics.earlyCount : 0;
+    const ratingSum = typeof rawMetrics.ratingSum === 'number' ? rawMetrics.ratingSum : 0;
+    const ratingCount = typeof rawMetrics.ratingCount === 'number' ? rawMetrics.ratingCount : 0;
+    const cancelRateRolling = typeof rawMetrics.cancelRateRolling === 'number' ? rawMetrics.cancelRateRolling : 0;
+
+    const ratingValue =
+      typeof request.customerRating === 'number' && Number.isFinite(request.customerRating) ? request.customerRating : null;
+    const nextRatingSum = ratingSum + (ratingValue ?? 0);
+    const nextRatingCount = ratingCount + (ratingValue === null ? 0 : 1);
     const nextMetrics: Record<string, unknown> = {
       ...rawMetrics,
       completedJobs: completedJobs + 1,
+      onTimeCount: onTimeCount + (onTimeEligible ? 1 : 0),
+      fiveStarCount: fiveStarCount + (request.customerRating === 5 ? 1 : 0),
+      complaintCount: complaintCount + (request.complaintFlag ? 1 : 0),
+      earlyCount: earlyCount + (earlyEligible ? 1 : 0),
+      ratingSum: nextRatingSum,
+      ratingCount: nextRatingCount,
+      avgRatingRolling: nextRatingCount > 0 ? nextRatingSum / nextRatingCount : 0,
+      onTimeRateRolling: completedJobs + 1 > 0 ? (onTimeCount + (onTimeEligible ? 1 : 0)) / (completedJobs + 1) : 0,
+      cancelRateRolling,
+      flagsCount: complaintCount + (request.complaintFlag ? 1 : 0),
     };
-
     await tx.driverProfile.update({
       where: { id: driverId },
       data: {
@@ -227,12 +259,16 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       pay: {
         activeMinutes,
         serviceMiles,
+        hourlyRateCents,
         rateCentsPerServiceMile,
         milePayCents,
+        hourlyPayCents,
         waitBonusCents,
         cashBonusCents,
         businessBonusCents,
         bonusPayCents,
+        performanceBonusCents,
+        speedBonusCents,
         tipsCents: normalizedTipsCents,
         totalPayCents,
       },

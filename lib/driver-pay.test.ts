@@ -3,34 +3,42 @@ import { calculateDriverPayCents } from './driver-pay';
 import { DriverTier } from '@prisma/client';
 
 describe('calculateDriverPayCents', () => {
-  it('calculates per-service-mile + bonus + tips', () => {
+  it('calculates hourly pay + performance bonus + tips', () => {
     const result = calculateDriverPayCents({
-      serviceMiles: 12,
       driverTier: DriverTier.STANDARD,
+      activeMinutes: 60,
       tipsCents: 300,
+      planName: 'OTW BASIC',
       bonusEligible: true,
-      bonus5StarCents: 500,
+      onTimeEligible: true,
+      earlyEligible: false,
     });
 
     expect(result).toEqual({
-      milePayCents: 2100,
+      milePayCents: 0,
       waitBonusCents: 0,
       cashBonusCents: 0,
       businessBonusCents: 0,
       bonusPayCents: 500,
+      performanceBonusCents: 500,
+      speedBonusCents: 0,
+      hourlyPayCents: 1800,
       tipsCents: 300,
-      totalPayCents: 2900,
-      rateCentsPerServiceMile: 175,
+      totalPayCents: 2600,
+      rateCentsPerServiceMile: 0,
+      hourlyRateCents: 1800,
     });
   });
 
   it('never returns negative cents', () => {
     const result = calculateDriverPayCents({
-      serviceMiles: -1,
       driverTier: DriverTier.PROBATION,
+      activeMinutes: -10,
       tipsCents: -10,
+      planName: 'OTW BASIC',
       bonusEligible: true,
-      bonus5StarCents: -20,
+      onTimeEligible: true,
+      earlyEligible: true,
     });
 
     expect(result).toEqual({
@@ -39,33 +47,40 @@ describe('calculateDriverPayCents', () => {
       cashBonusCents: 0,
       businessBonusCents: 0,
       bonusPayCents: 0,
+      performanceBonusCents: 0,
+      speedBonusCents: 0,
+      hourlyPayCents: 0,
       tipsCents: 0,
       totalPayCents: 0,
-      rateCentsPerServiceMile: 150,
+      rateCentsPerServiceMile: 0,
+      hourlyRateCents: 1600,
     });
   });
 
-  it('adds wait, cash, and business bonuses', () => {
+  it('uses tier 5-star bonus when eligible', () => {
     const result = calculateDriverPayCents({
-      serviceMiles: 20,
       driverTier: DriverTier.ELITE,
+      activeMinutes: 30,
       tipsCents: 0,
-      bonusEligible: false,
-      bonus5StarCents: 0,
-      waitMiles: 6,
-      cashHandling: true,
-      businessAccount: true,
+      planName: 'OTW ELITE',
+      bonusEligible: true,
+      onTimeEligible: true,
+      earlyEligible: true,
     });
 
     expect(result).toEqual({
-      milePayCents: 4000,
-      waitBonusCents: 200,
-      cashBonusCents: 750,
-      businessBonusCents: 500,
-      bonusPayCents: 0,
+      milePayCents: 0,
+      waitBonusCents: 0,
+      cashBonusCents: 0,
+      businessBonusCents: 0,
+      bonusPayCents: 800,
+      performanceBonusCents: 800,
+      speedBonusCents: 0,
+      hourlyPayCents: 1050,
       tipsCents: 0,
-      totalPayCents: 5450,
-      rateCentsPerServiceMile: 200,
+      totalPayCents: 1850,
+      rateCentsPerServiceMile: 0,
+      hourlyRateCents: 2100,
     });
   });
 });

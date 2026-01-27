@@ -473,12 +473,17 @@ export default async function DriverDashboardPage() {
                   ...availableLegacyRequests.map((r) => ({ ...r, isLegacy: true as const })),
                 ] as ActiveItem[]).map((req) => {
                   const miles = isLegacyRequest(req) ? (req.milesEstimate ?? 0) : (req.serviceMilesFinal ?? 0);
+                  const activeMinutesEstimate = isLegacyRequest(req)
+                    ? Math.max(10, Math.trunc((req.milesEstimate ?? 0) * 5))
+                    : Math.max(10, Math.trunc((req.estimatedMinutes ?? 0) + 10));
                   const pay = calculateDriverPayCents({
-                    serviceMiles: miles,
                     driverTier: driverProfile.tierLevel,
+                    activeMinutes: activeMinutesEstimate,
                     tipsCents: 0,
-                    bonusEligible: driverProfile.bonusEnabled,
-                    bonus5StarCents: driverProfile.bonus5StarCents,
+                    hourlyRateCents: driverProfile.hourlyRateCents > 0 ? driverProfile.hourlyRateCents : undefined,
+                    bonusEligible: false,
+                    onTimeEligible: false,
+                    earlyEligible: false,
                   });
                   const pickupText = isLegacyRequest(req) ? req.pickup : req.pickupAddress;
                   const dropoffText = isLegacyRequest(req) ? req.dropoff : req.dropoffAddress;

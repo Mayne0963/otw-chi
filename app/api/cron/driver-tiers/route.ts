@@ -14,22 +14,22 @@ interface DriverPerformanceMetrics {
 
 const TIER_CONFIG = {
   [DriverTier.PROBATION]: {
-    hourlyRateCents: 1500, // $15.00
+    hourlyRateCents: 1600, // $16.00
     bonusEnabled: false,
     bonus5StarCents: 0,
   },
   [DriverTier.STANDARD]: {
-    hourlyRateCents: 2000, // $20.00
-    bonusEnabled: true,
-    bonus5StarCents: 200, // $2.00
-  },
-  [DriverTier.ELITE]: {
-    hourlyRateCents: 2500, // $25.00
+    hourlyRateCents: 1800, // $18.00
     bonusEnabled: true,
     bonus5StarCents: 500, // $5.00
   },
+  [DriverTier.ELITE]: {
+    hourlyRateCents: 2100, // $21.00
+    bonusEnabled: true,
+    bonus5StarCents: 800, // $8.00
+  },
   [DriverTier.CONCIERGE]: {
-    hourlyRateCents: 3500, // $35.00
+    hourlyRateCents: 2500, // $25.00
     bonusEnabled: true,
     bonus5StarCents: 1000, // $10.00
   },
@@ -85,11 +85,13 @@ export async function GET(req: Request) {
       for (const driver of batch) {
         const metrics = getMetrics(driver.performanceMetrics);
 
-        const score =
-          (metrics.avgRatingRolling || 0) * 50 +
-          (metrics.onTimeRateRolling || 0) * 40 -
-          (metrics.cancelRateRolling || 0) * 30 -
-          (metrics.flagsCount || 0) * 10;
+        const ratingScore = Math.max(0, Math.min(1, (metrics.avgRatingRolling || 0) / 5));
+        const onTimeScore = Math.max(0, Math.min(1, metrics.onTimeRateRolling || 0));
+        const completionQuality = Math.max(
+          0,
+          Math.min(1, 1 - (metrics.cancelRateRolling || 0) - Math.min(1, (metrics.flagsCount || 0) / 10))
+        );
+        const score = (ratingScore * 0.5 + onTimeScore * 0.3 + completionQuality * 0.2) * 100;
 
         let newTier = driver.tierLevel;
 
