@@ -88,26 +88,69 @@ export async function POST(req: Request) {
       });
       userId = membership?.userId ?? undefined;
     }
-    if (!userId) return;
+
+    // Prepare plan variables
+    let planCode = subscription.metadata?.planCode ? String(subscription.metadata.planCode) : undefined;
+    let planName = subscription.metadata?.planName ? String(subscription.metadata.planName) : undefined;
+
+    // FALLBACK: If userId or plan info is missing, fetch Checkout Session
+    if (!userId || (!planCode && !planName)) {
+      console.log(`[Stripe Webhook] Missing userId or plan metadata. Attempting to fetch Checkout Session for sub ${subscription.id}...`);
+      try {
+        const sessions = await stripe.checkout.sessions.list({ subscription: subscription.id, limit: 1 });
+        const session = sessions.data[0];
+        if (session?.metadata) {
+           console.log(`[Stripe Webhook] Found Checkout Session ${session.id}. Checking metadata...`, session.metadata);
+           
+           if (!userId) {
+             userId = await findUserIdFromMetadata(session.metadata);
+             if (userId) console.log(`[Stripe Webhook] Recovered userId ${userId} from session metadata.`);
+           }
+
+           if (!planCode) planCode = session.metadata.planCode ? String(session.metadata.planCode) : undefined;
+           if (!planName) planName = session.metadata.planName ? String(session.metadata.planName) : undefined;
+        }
+      } catch (err) {
+        console.error(`[Stripe Webhook] Failed to fetch checkout sessions:`, err);
+      }
+    }
+
+    if (!userId) {
+        console.warn(`[Stripe Webhook] CRITICAL: Could not resolve userId for subscription ${subscription.id}`);
+        return;
+    }
 
     const status = statusMap[subscription.status] || 'ACTIVE';
     const priceId = subscription.items.data[0]?.price?.id;
+    
+    console.log(`[Stripe Webhook] Upserting membership for sub ${subscription.id}. Status: ${status}, Price: ${priceId}`);
+
     let planRecord = priceId
       ? await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } })
       : null;
+    
     if (!planRecord) {
-      const planCode = subscription.metadata?.planCode ? String(subscription.metadata.planCode) : undefined;
-      const planName =
+      console.log(`[Stripe Webhook] Plan not found by priceId ${priceId}. Trying metadata...`);
+      
+      const nameFromCode =
         planCode && planCode in PLAN_NAME_BY_CODE
           ? PLAN_NAME_BY_CODE[planCode as keyof typeof PLAN_NAME_BY_CODE]
-          : subscription.metadata?.planName
-            ? String(subscription.metadata.planName)
-            : undefined;
-      if (planName) {
+          : undefined;
+      
+      const resolvedName = nameFromCode || planName;
+      
+      if (resolvedName) {
+        console.log(`[Stripe Webhook] Found plan name: ${resolvedName}`);
         planRecord = await prisma.membershipPlan.findFirst({
-          where: { name: { equals: planName, mode: 'insensitive' } },
+          where: { name: { equals: resolvedName, mode: 'insensitive' } },
         });
       }
+    }
+
+    if (!planRecord) {
+        console.warn(`[Stripe Webhook] CRITICAL: Could not resolve plan for subscription ${subscription.id}. Price: ${priceId}, Metadata:`, subscription.metadata);
+    } else {
+        console.log(`[Stripe Webhook] Resolved plan: ${planRecord.name} (ID: ${planRecord.id})`);
     }
 
     const currentPeriodEnd = resolveCurrentPeriodEndDate(subscription);
@@ -233,7 +276,7 @@ export async function POST(req: Request) {
       }
 
       // 1. Identify User & Plan
-      const membership = await prisma.membershipSubscription.findFirst({
+      let membership = await prisma.membershipSubscription.findFirst({
         where: { stripeSubId: subscriptionId },
         include: {
           user: {
@@ -244,7 +287,23 @@ export async function POST(req: Request) {
       });
 
       if (!membership || !membership.user) {
-         console.warn(`[Stripe Webhook] Invoice paid but no linked membership found for sub ${subscriptionId}`);
+         console.log(`[Stripe Webhook] Invoice paid but membership not found for sub ${subscriptionId}. Attempting recovery...`);
+         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+         await upsertMembershipFromStripeSubscription(subscription);
+         
+         membership = await prisma.membershipSubscription.findFirst({
+            where: { stripeSubId: subscriptionId },
+            include: {
+              user: {
+                include: { serviceMilesWallet: true }
+              },
+              plan: true
+            }
+         });
+      }
+
+      if (!membership || !membership.user) {
+         console.warn(`[Stripe Webhook] Invoice paid but no linked membership found for sub ${subscriptionId} after recovery attempt.`);
          return new NextResponse(null, { status: 200 });
       }
 
@@ -266,13 +325,33 @@ export async function POST(req: Request) {
           }
         }
         if (!plan) {
-          const planCode = subscription.metadata?.planCode ? String(subscription.metadata.planCode) : undefined;
-          const planName =
+          let planCode = subscription.metadata?.planCode ? String(subscription.metadata.planCode) : undefined;
+          let planName =
             subscription.metadata?.planName
               ? String(subscription.metadata.planName)
               : planCode && planCode in PLAN_NAME_BY_CODE
                 ? PLAN_NAME_BY_CODE[planCode as keyof typeof PLAN_NAME_BY_CODE]
                 : undefined;
+
+          // FALLBACK: If subscription metadata is missing, try to find the Checkout Session
+          if (!planName) {
+             console.log(`[Stripe Webhook] Subscription metadata missing in invoice handler. Attempting to fetch Checkout Session for sub ${subscription.id}...`);
+             try {
+               const sessions = await stripe.checkout.sessions.list({ subscription: subscription.id, limit: 1 });
+               const session = sessions.data[0];
+               if (session?.metadata) {
+                  console.log(`[Stripe Webhook] Found Checkout Session ${session.id}. Checking metadata...`, session.metadata);
+                  planCode = session.metadata.planCode ? String(session.metadata.planCode) : undefined;
+                  const nameFromCode = planCode && planCode in PLAN_NAME_BY_CODE
+                     ? PLAN_NAME_BY_CODE[planCode as keyof typeof PLAN_NAME_BY_CODE]
+                     : undefined;
+                  planName = nameFromCode || (session.metadata.planName ? String(session.metadata.planName) : undefined);
+               }
+             } catch (err) {
+               console.error(`[Stripe Webhook] Failed to fetch checkout sessions in invoice handler:`, err);
+             }
+          }
+
           if (planName) {
             plan = await prisma.membershipPlan.findFirst({
               where: { name: { equals: planName, mode: 'insensitive' } },
