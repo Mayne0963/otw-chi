@@ -93,6 +93,7 @@ function PaymentForm({ clientSecret: _clientSecret, amount, onSuccess, onError }
 interface StripePaymentFormProps {
   amountCents: number;
   couponCode?: string;
+  tipCents?: number;
   onSuccess: (paymentIntentId: string) => void;
   onError?: (error: string) => void;
 }
@@ -100,6 +101,7 @@ interface StripePaymentFormProps {
 export default function StripePaymentForm({
   amountCents,
   couponCode,
+  tipCents,
   onSuccess,
   onError,
 }: StripePaymentFormProps) {
@@ -128,6 +130,7 @@ export default function StripePaymentForm({
           body: JSON.stringify({
             amountCents,
             couponCode,
+            tipCents,
           }),
         });
 
@@ -163,7 +166,7 @@ export default function StripePaymentForm({
     };
 
     createPaymentIntent();
-  }, [amountCents, couponCode, onSuccess, onError, toast, stripeConfigured]);
+  }, [amountCents, couponCode, tipCents, onSuccess, onError, toast, stripeConfigured]);
 
   if (!stripeConfigured) {
     return (

@@ -27,6 +27,7 @@ const orderSchema = z.object({
   deliveryFeePaid: z.boolean().optional(),
   paymentId: z.string().optional(),
   couponCode: z.string().optional(),
+  tipCents: z.number().int().nonnegative().optional(),
 });
 
 export async function POST(req: Request) {
@@ -93,7 +94,8 @@ export async function POST(req: Request) {
     const computedSubtotal = receiptSubtotalCents ?? 0;
     const deliveryFeeCents = data.deliveryFeeCents ?? 0;
     const baseTotal = computedSubtotal + deliveryFeeCents;
-    const sessionTotal = baseTotal;
+    const tipCents = data.tipCents ?? 0;
+    const sessionTotal = baseTotal + tipCents;
 
     if (baseTotal <= 0 || sessionTotal <= 0) {
       return NextResponse.json(
@@ -119,7 +121,8 @@ export async function POST(req: Request) {
       discountCents = baseTotal;
     }
 
-    if (data.paymentId === 'free_order' && discountCents !== baseTotal) {
+    const finalTotal = Math.max(0, baseTotal - (discountCents ?? 0)) + tipCents;
+    if (data.paymentId === 'free_order' && finalTotal !== 0) {
       return NextResponse.json({ error: 'Payment verification is required.' }, { status: 400 });
     }
 
@@ -143,6 +146,7 @@ export async function POST(req: Request) {
         deliveryCheckoutSessionId: data.paymentId ?? null,
         couponCode: appliedCouponCode,
         discountCents,
+        tipCents,
         receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,
         status: 'REQUESTED',
       },

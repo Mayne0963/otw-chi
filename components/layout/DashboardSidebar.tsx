@@ -49,6 +49,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
 
   const adminRoutes = [
     { label: "Admin Overview", href: "/admin", icon: ShieldAlert },
+    { label: "OTW-OS", href: "/admin/otw-os", icon: Settings },
     { label: "Requests", href: "/admin/requests", icon: Package },
     { label: "Drivers", href: "/admin/drivers", icon: Truck },
     { label: "Customers", href: "/admin/customers", icon: LayoutDashboard },

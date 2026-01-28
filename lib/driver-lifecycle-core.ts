@@ -150,7 +150,7 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       },
     });
 
-    const tipsCents = 0;
+    const tipsCents = typeof request.tipCents === 'number' && Number.isFinite(request.tipCents) ? request.tipCents : 0;
     const bonusEligible = request.customerRating === 5 && !request.complaintFlag && driver.bonusEnabled;
 
     const serviceMiles = request.serviceMilesFinal;
@@ -206,6 +206,7 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
         driverId: driver.userId,
         amount: totalPayCents,
         amountCents: totalPayCents,
+        tipCents: tipsCents,
         status: DriverEarningStatus.pending,
         requestId: request.id,
       },

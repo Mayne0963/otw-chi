@@ -64,7 +64,7 @@ async function getPayoutsData() {
     const pendingByDriver = await prisma.driverEarnings.groupBy({
       by: ['driverId'],
       where: { status: 'pending' },
-      _sum: { amount: true },
+      _sum: { amount: true, tipCents: true },
       _count: true
     });
 
@@ -78,14 +78,16 @@ async function getPayoutsData() {
     const pendingPayouts = pendingByDriver.map(p => ({
       driverId: p.driverId,
       amount: p._sum.amount || 0,
+      tipCents: p._sum.tipCents || 0,
       count: p._count,
       driver: drivers.find(d => d.id === p.driverId)
     }));
 
     const totalPending = pendingPayouts.reduce((acc, p) => acc + p.amount, 0);
+    const totalPendingTips = pendingPayouts.reduce((acc, p) => acc + p.tipCents, 0);
     const totalPendingCount = pendingPayouts.reduce((acc, p) => acc + p.count, 0);
 
-    return { payouts, totalPending, totalPendingCount, pendingPayouts };
+    return { payouts, totalPending, totalPendingTips, totalPendingCount, pendingPayouts };
   } catch (error) {
     console.error('[AdminPayouts] Failed to fetch payouts:', error);
     throw error;
@@ -100,6 +102,7 @@ async function PayoutsList() {
   let payouts: PayoutRow[] = [];
   let pendingPayouts: PendingPayoutRow[] = [];
   let totalPending = 0;
+  let totalPendingTips = 0;
   let totalPendingCount = 0;
   let error: unknown = null;
 
@@ -108,6 +111,7 @@ async function PayoutsList() {
     payouts = data.payouts;
     pendingPayouts = data.pendingPayouts;
     totalPending = data.totalPending;
+    totalPendingTips = data.totalPendingTips;
     totalPendingCount = data.totalPendingCount;
   } catch (err) {
     error = err;
@@ -118,13 +122,13 @@ async function PayoutsList() {
   }
 
   if (payouts.length === 0 && totalPendingCount === 0) {
-    return <EmptyPayoutsState totalPending={totalPending} totalPendingCount={totalPendingCount} />;
+    return <EmptyPayoutsState totalPending={totalPending} totalPendingTips={totalPendingTips} totalPendingCount={totalPendingCount} />;
   }
 
-  return <PayoutsContent payouts={payouts} pendingPayouts={pendingPayouts} totalPending={totalPending} totalPendingCount={totalPendingCount} />;
+  return <PayoutsContent payouts={payouts} pendingPayouts={pendingPayouts} totalPending={totalPending} totalPendingTips={totalPendingTips} totalPendingCount={totalPendingCount} />;
 }
 
-function EmptyPayoutsState({ totalPending, totalPendingCount }: { totalPending: number; totalPendingCount: number }) {
+function EmptyPayoutsState({ totalPending, totalPendingTips, totalPendingCount }: { totalPending: number; totalPendingTips: number; totalPendingCount: number }) {
   return (
     <>
       <OtwCard className="mt-3 p-6">
@@ -134,12 +138,12 @@ function EmptyPayoutsState({ totalPending, totalPendingCount }: { totalPending: 
             <div className="text-xs text-white/60">Total Pending</div>
           </div>
           <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-white">{totalPendingCount}</div>
-            <div className="text-xs text-white/60">Pending Requests</div>
+            <div className="text-2xl font-bold text-otwGold">${(totalPendingTips / 100).toFixed(2)}</div>
+            <div className="text-xs text-white/60">Tips Pending</div>
           </div>
           <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-green-400">0</div>
-            <div className="text-xs text-white/60">Processed Today</div>
+            <div className="text-2xl font-bold text-white">{totalPendingCount}</div>
+            <div className="text-xs text-white/60">Pending Requests</div>
           </div>
         </div>
       </OtwCard>
@@ -158,11 +162,13 @@ function PayoutsContent({
   payouts,
   pendingPayouts,
   totalPending,
+  totalPendingTips,
   totalPendingCount,
 }: {
   payouts: PayoutRow[];
   pendingPayouts: PendingPayoutRow[];
   totalPending: number;
+  totalPendingTips: number;
   totalPendingCount: number;
 }) {
   return (
@@ -174,12 +180,12 @@ function PayoutsContent({
             <div className="text-xs text-white/60">Total Pending</div>
           </div>
           <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-white">{totalPendingCount}</div>
-            <div className="text-xs text-white/60">Pending Requests</div>
+            <div className="text-2xl font-bold text-otwGold">${(totalPendingTips / 100).toFixed(2)}</div>
+            <div className="text-xs text-white/60">Tips Pending</div>
           </div>
           <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-green-400">{payouts.filter(p => p.status === 'RESOLVED').length}</div>
-            <div className="text-xs text-white/60">Processed</div>
+            <div className="text-2xl font-bold text-white">{totalPendingCount}</div>
+            <div className="text-xs text-white/60">Pending Requests</div>
           </div>
         </div>
       </OtwCard>

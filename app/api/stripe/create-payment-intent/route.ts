@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 const intentSchema = z.object({
   amountCents: z.number().int().nonnegative(),
   couponCode: z.string().optional(),
+  tipCents: z.number().int().nonnegative().optional(),
 });
 
 async function ensureBasicMembership(prisma: ReturnType<typeof getPrisma>, userId: string) {
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { amountCents, couponCode } = parsed.data;
+    const { amountCents, couponCode, tipCents = 0 } = parsed.data;
     const isAdmin =
       String(clerkUser.publicMetadata?.role ?? "").toUpperCase() === "ADMIN";
 
@@ -141,6 +142,7 @@ export async function POST(req: Request) {
         clerkId: clerkUserId,
         orderType: "delivery",
         couponCode: couponCode || "",
+        tipCents: String(tipCents),
       },
     };
 

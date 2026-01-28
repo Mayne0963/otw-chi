@@ -16,12 +16,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { deliveryFeeCents, subtotalCents, couponCode, successPath, cancelPath } = await req.json();
+    const { deliveryFeeCents, subtotalCents, tipCents, couponCode, successPath, cancelPath } = await req.json();
     if (!Number.isInteger(deliveryFeeCents) || deliveryFeeCents <= 0) {
       return NextResponse.json({ error: "Invalid delivery fee" }, { status: 400 });
     }
     if (!Number.isInteger(subtotalCents) || subtotalCents < 0) {
       return NextResponse.json({ error: "Invalid subtotal" }, { status: 400 });
+    }
+    if (tipCents !== undefined && (!Number.isInteger(tipCents) || tipCents < 0)) {
+      return NextResponse.json({ error: "Invalid tip" }, { status: 400 });
     }
 
     const prisma = getPrisma();
@@ -33,7 +36,7 @@ export async function POST(req: Request) {
     const stripe = getStripe();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-    const baseTotal = deliveryFeeCents + subtotalCents;
+    const baseTotal = deliveryFeeCents + subtotalCents + (tipCents ?? 0);
     if (baseTotal <= 0) {
       return NextResponse.json({ error: "Invalid total" }, { status: 400 });
     }
@@ -74,6 +77,7 @@ export async function POST(req: Request) {
           purpose: "order_payment",
           deliveryFeeCents: String(deliveryFeeCents),
           subtotalCents: String(subtotalCents),
+          tipCents: String(tipCents ?? 0),
           couponCode: resolvedCouponCode ?? "",
           discountCents: String(discountCents),
           couponSource,
@@ -101,6 +105,7 @@ export async function POST(req: Request) {
           purpose: "order_payment",
           deliveryFeeCents: String(deliveryFeeCents),
           subtotalCents: String(subtotalCents),
+          tipCents: String(tipCents ?? 0),
           couponCode: resolvedCouponCode ?? "",
           discountCents: String(discountCents),
           couponSource,
@@ -124,6 +129,7 @@ export async function POST(req: Request) {
         purpose: "order_payment",
         deliveryFeeCents: String(deliveryFeeCents),
         subtotalCents: String(subtotalCents),
+        tipCents: String(tipCents ?? 0),
         couponCode: resolvedCouponCode ?? "",
         discountCents: String(discountCents),
         couponSource,

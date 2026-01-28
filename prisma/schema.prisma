@@ -315,6 +315,7 @@ model DeliveryRequest {
   deliveryCheckoutSessionId String?
   couponCode          String?
   discountCents       Int?
+  tipCents            Int                 @default(0)
   receiptVerifiedAt   DateTime?
   status           DeliveryRequestStatus @default(REQUESTED)
   lastKnownLat     Float?
@@ -472,6 +473,7 @@ model DriverEarnings {
   driverId    String
   amount      Int
   amountCents Int?
+  tipCents    Int                 @default(0)
   status      DriverEarningStatus @default(pending)
   requestId   String?
   createdAt   DateTime            @default(now())

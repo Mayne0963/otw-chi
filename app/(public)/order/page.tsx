@@ -137,6 +137,7 @@ export default function OrderPage() {
   const [deliveryEstimateError, setDeliveryEstimateError] = useState<string | null>(null);
   const [feePaid, setFeePaid] = useState(false);
   const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
+  const [tipCents, setTipCents] = useState(0);
   const [couponCode, setCouponCode] = useState("");
   const [discountCents, setDiscountCents] = useState(0);
   const [couponApplying, setCouponApplying] = useState(false);
@@ -278,6 +279,7 @@ export default function OrderPage() {
         }
         setFeePaid(Boolean(draft.deliveryFeePaid));
         setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
+        setTipCents(typeof draft.tipCents === "number" ? Math.max(0, Math.trunc(draft.tipCents)) : 0);
         setCouponCode(draft.couponCode || "");
         setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
         if (draft.receiptImageData) {
@@ -347,6 +349,7 @@ export default function OrderPage() {
     couponCode?: string;
     discountCents?: number;
     deliveryFeeCents?: number;
+    tipCents?: number;
   }) => {
     if (!pickupAddress || !dropoffAddress) return null;
     const receiptItems = receiptAnalysis ? receiptAnalysis.items : [];
@@ -355,6 +358,7 @@ export default function OrderPage() {
     const resolvedCouponCode = (overrides?.couponCode ?? couponCode).trim();
     const resolvedDeliveryFeeCents = overrides?.deliveryFeeCents ?? deliveryFeeCents;
     const resolvedFeePaid = overrides?.feePaid ?? feePaid;
+    const resolvedTipCents = overrides?.tipCents ?? tipCents;
 
     const payload: Record<string, unknown> = {
       draftId: draftId || undefined,
@@ -373,6 +377,7 @@ export default function OrderPage() {
       deliveryFeePaid: resolvedFeePaid,
       deliveryCheckoutSessionId:
         overrides?.deliveryCheckoutSessionId ?? deliveryCheckoutSessionId ?? undefined,
+      tipCents: resolvedTipCents,
       couponCode: isAdmin ? (resolvedCouponCode || undefined) : undefined,
       discountCents: isAdmin ? (overrides?.discountCents ?? discountCents) : 0,
     };
@@ -394,6 +399,7 @@ export default function OrderPage() {
     restaurantName,
     restaurantWebsite,
     serviceType,
+    tipCents,
   ]);
 
   const persistDraft = useCallback(async (payload?: Record<string, unknown> | null) => {
@@ -441,6 +447,13 @@ export default function OrderPage() {
   }, [couponCode, discountCents, isAdmin]);
 
   useEffect(() => {
+    if (!feePaid) return;
+    setFeePaid(false);
+    setDeliveryCheckoutSessionId(null);
+    persistDraft(buildDraftPayload({ feePaid: false, deliveryCheckoutSessionId: null })).catch(() => null);
+  }, [buildDraftPayload, feePaid, persistDraft, tipCents]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     if (!receiptImageData && !receiptAnalysis) {
       window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
@@ -465,6 +478,8 @@ export default function OrderPage() {
     [receiptAnalysis]
   );
   const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
+  const payableSubtotalCents = Math.max(0, orderTotalCents - discountCents);
+  const payableTotalCents = payableSubtotalCents + tipCents;
   const deliveryFeeReady =
     deliveryFeeCents > 0 && !deliveryEstimateLoading && !deliveryEstimateError;
   const deliveryFeeLabel = deliveryEstimateLoading
@@ -754,6 +769,7 @@ export default function OrderPage() {
         deliveryFeePaid: feePaid,
         paymentId: deliveryCheckoutSessionId || undefined,
         couponCode: isAdmin ? (couponCode.trim() || undefined) : undefined,
+        tipCents,
       };
 
       if (requiresReceipt && receiptAnalysis) {
@@ -1268,9 +1284,49 @@ export default function OrderPage() {
                       <CreditCard className="h-4 w-4" />
                       <span>Pay securely with Stripe</span>
                     </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium">Tip (100% to driver)</div>
+                        <div className="text-sm font-semibold">{formatCurrency(tipCents)}</div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {[0, 200, 500, 1000].map((v) => (
+                          <Button
+                            key={v}
+                            type="button"
+                            variant={tipCents === v ? "default" : "outline"}
+                            onClick={() => setTipCents(v)}
+                            className="h-8 text-xs"
+                            disabled={feePaid}
+                          >
+                            {v === 0 ? "No tip" : formatCurrency(v)}
+                          </Button>
+                        ))}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Custom</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={Math.round(tipCents / 100)}
+                            onChange={(e) => {
+                              const dollars = Number(e.target.value);
+                              const cents = Number.isFinite(dollars) ? Math.max(0, Math.trunc(dollars)) * 100 : 0;
+                              setTipCents(cents);
+                            }}
+                            className="h-8 w-24"
+                            disabled={feePaid}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Tips are logged separately and paid out to the driver.
+                      </div>
+                    </div>
                     <StripePaymentForm
-                      amountCents={Math.max(0, orderTotalCents - discountCents)}
+                      amountCents={payableTotalCents}
                       couponCode={isAdmin ? couponCode : undefined}
+                      tipCents={tipCents}
                       onSuccess={handleStripePaymentSuccess}
                       onError={handleStripePaymentError}
                     />
