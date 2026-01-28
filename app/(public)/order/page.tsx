@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
@@ -133,6 +135,11 @@ export default function OrderPage() {
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
   const [deliveryFeeCents, setDeliveryFeeCents] = useState(0);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [unlimitedMiles, setUnlimitedMiles] = useState<boolean>(false);
+  const [milesQuote, setMilesQuote] = useState<number | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"STRIPE" | "MILES">("STRIPE");
+  const [durationMinutes, setDurationMinutes] = useState<number>(0);
   const [deliveryEstimateLoading, setDeliveryEstimateLoading] = useState(false);
   const [deliveryEstimateError, setDeliveryEstimateError] = useState<string | null>(null);
   const [feePaid, setFeePaid] = useState(false);
@@ -191,6 +198,8 @@ export default function OrderPage() {
       const destination = `${dropoffAddress.latitude},${dropoffAddress.longitude}`;
 
       let miles = calculateMiles(pickupAddress, dropoffAddress);
+      let durationMins = Math.ceil(miles * 3);
+
       try {
         const routeRes = await fetch(
           `/api/navigation/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`,
@@ -199,17 +208,27 @@ export default function OrderPage() {
         if (routeRes.ok) {
           const routeData = await routeRes.json();
           const lengthMeters = routeData?.route?.summary?.length;
+          const durationSeconds = routeData?.route?.summary?.duration;
+
           if (typeof lengthMeters === "number" && Number.isFinite(lengthMeters)) {
             miles = Math.max(0.1, lengthMeters / 1609.34);
+          }
+          if (typeof durationSeconds === "number" && Number.isFinite(durationSeconds)) {
+            durationMins = Math.ceil(durationSeconds / 60);
           }
         }
       } catch (_error) {
         // fall back to coordinate distance
       }
 
+      if (!cancelled) {
+        setDurationMinutes(durationMins);
+      }
+
       try {
         const fd = new FormData();
         fd.set("miles", String(miles));
+        fd.set("durationMinutes", String(durationMins));
         fd.set("serviceType", serviceType);
         const estimateRes = await fetch("/api/otw/estimate", {
           method: "POST",
@@ -227,6 +246,9 @@ export default function OrderPage() {
         }
         if (!cancelled) {
           setDeliveryFeeCents(Math.round(fee));
+          if (typeof data.serviceMiles === "number") {
+            setMilesQuote(data.serviceMiles);
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -341,6 +363,23 @@ export default function OrderPage() {
       cancelled = true;
     };
   }, [draftLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    let active = true;
+    fetch("/api/service-miles/wallet")
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && data.wallet) {
+          setWalletBalance(data.wallet.balanceMiles);
+          setUnlimitedMiles(data.unlimited);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch wallet:", err));
+    return () => {
+      active = false;
+    };
+  }, [isSignedIn]);
 
   const buildDraftPayload = useCallback((overrides?: {
     receiptImageData?: string | null;
@@ -742,7 +781,7 @@ export default function OrderPage() {
       setStep("receipt");
       return;
     }
-    if (!feePaid) {
+    if (paymentMethod === "STRIPE" && !feePaid) {
       toast({
         title: "Payment needed",
         description: "Pay the order total so we can place your order.",
@@ -750,6 +789,17 @@ export default function OrderPage() {
       });
       setStep("review");
       return;
+    }
+
+    if (paymentMethod === "MILES") {
+      if (!unlimitedMiles && milesQuote && walletBalance < milesQuote) {
+        toast({
+          title: "Insufficient Miles",
+          description: "You do not have enough miles for this delivery.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     if (!isSignedIn) {
@@ -766,7 +816,8 @@ export default function OrderPage() {
         dropoffAddress: dropoffAddress.formattedAddress,
         notes: notes.trim() || undefined,
         deliveryFeeCents: deliveryFeeCents,
-        deliveryFeePaid: feePaid,
+        deliveryFeePaid: paymentMethod === "STRIPE" ? feePaid : false,
+        payWithMiles: paymentMethod === "MILES",
         paymentId: deliveryCheckoutSessionId || undefined,
         couponCode: isAdmin ? (couponCode.trim() || undefined) : undefined,
         tipCents,
@@ -1280,56 +1331,130 @@ export default function OrderPage() {
                   </div>
                 ) : deliveryFeeReady ? (
                   <div className="rounded-lg border border-border/70 bg-card/80 p-4 space-y-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span>Pay securely with Stripe</span>
-                    </div>
-                    <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Tip (100% to driver)</div>
-                        <div className="text-sm font-semibold">{formatCurrency(tipCents)}</div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {[0, 200, 500, 1000].map((v) => (
-                          <Button
-                            key={v}
-                            type="button"
-                            variant={tipCents === v ? "default" : "outline"}
-                            onClick={() => setTipCents(v)}
-                            className="h-8 text-xs"
-                            disabled={feePaid}
+                    {(milesQuote !== null || unlimitedMiles) && (
+                      <div className="space-y-3 pb-4 border-b border-border/50">
+                        <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                          Payment Method
+                        </Label>
+                        <RadioGroup
+                          value={paymentMethod}
+                          onValueChange={(val) => setPaymentMethod(val as "STRIPE" | "MILES")}
+                          className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        >
+                          <div
+                            className={`flex items-center space-x-2 rounded-lg border p-3 ${
+                              paymentMethod === "STRIPE" ? "border-primary bg-primary/5" : "border-border"
+                            }`}
                           >
-                            {v === 0 ? "No tip" : formatCurrency(v)}
-                          </Button>
-                        ))}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Custom</span>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={Math.round(tipCents / 100)}
-                            onChange={(e) => {
-                              const dollars = Number(e.target.value);
-                              const cents = Number.isFinite(dollars) ? Math.max(0, Math.trunc(dollars)) * 100 : 0;
-                              setTipCents(cents);
-                            }}
-                            className="h-8 w-24"
-                            disabled={feePaid}
-                          />
+                            <RadioGroupItem value="STRIPE" id="pm-stripe" />
+                            <Label htmlFor="pm-stripe" className="flex-1 cursor-pointer">
+                              <div className="font-medium">Credit Card</div>
+                              <div className="text-xs text-muted-foreground">Pay with Stripe</div>
+                            </Label>
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          </div>
+
+                          <div
+                            className={`flex items-center space-x-2 rounded-lg border p-3 ${
+                              paymentMethod === "MILES" ? "border-primary bg-primary/5" : "border-border"
+                            } ${
+                              !unlimitedMiles && (!milesQuote || walletBalance < milesQuote)
+                                ? "opacity-50 cursor-not-allowed"
+                                : ""
+                            }`}
+                          >
+                            <RadioGroupItem
+                              value="MILES"
+                              id="pm-miles"
+                              disabled={!unlimitedMiles && (!milesQuote || walletBalance < milesQuote)}
+                            />
+                            <Label htmlFor="pm-miles" className="flex-1 cursor-pointer">
+                              <div className="font-medium">Service Miles</div>
+                              <div className="text-xs text-muted-foreground">
+                                {unlimitedMiles ? "Unlimited" : `${milesQuote ?? "?"} miles`}
+                                {!unlimitedMiles && milesQuote && walletBalance < milesQuote && (
+                                  <span className="block text-red-400">
+                                    Insufficient balance ({walletBalance})
+                                  </span>
+                                )}
+                              </div>
+                            </Label>
+                            <Package className="h-4 w-4 text-otwGold" />
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
+
+                    {paymentMethod === "STRIPE" ? (
+                      <>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <CreditCard className="h-4 w-4" />
+                          <span>Pay securely with Stripe</span>
                         </div>
+                        <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-medium">Tip (100% to driver)</div>
+                            <div className="text-sm font-semibold">{formatCurrency(tipCents)}</div>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {[0, 200, 500, 1000].map((v) => (
+                              <Button
+                                key={v}
+                                type="button"
+                                variant={tipCents === v ? "default" : "outline"}
+                                onClick={() => setTipCents(v)}
+                                className="h-8 text-xs"
+                                disabled={feePaid}
+                              >
+                                {v === 0 ? "No tip" : formatCurrency(v)}
+                              </Button>
+                            ))}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Custom</span>
+                              <Input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={Math.round(tipCents / 100)}
+                                onChange={(e) => {
+                                  const dollars = Number(e.target.value);
+                                  const cents = Number.isFinite(dollars)
+                                    ? Math.max(0, Math.trunc(dollars)) * 100
+                                    : 0;
+                                  setTipCents(cents);
+                                }}
+                                className="h-8 w-24"
+                                disabled={feePaid}
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Tips are logged separately and paid out to the driver.
+                          </div>
+                        </div>
+                        <StripePaymentForm
+                          amountCents={payableTotalCents}
+                          couponCode={isAdmin ? couponCode : undefined}
+                          tipCents={tipCents}
+                          onSuccess={handleStripePaymentSuccess}
+                          onError={handleStripePaymentError}
+                        />
+                      </>
+                    ) : (
+                      <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4 text-center">
+                        <div className="flex items-center justify-center gap-2 font-semibold text-otwGold">
+                          <Package className="h-5 w-5" /> Pay with Service Miles
+                        </div>
+                        <p className="text-xs opacity-80 mt-1">
+                          {unlimitedMiles
+                            ? "Your membership covers this delivery."
+                            : `${milesQuote} miles will be deducted from your wallet.`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Tips can be paid in cash to the driver.
+                        </p>
                       </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        Tips are logged separately and paid out to the driver.
-                      </div>
-                    </div>
-                    <StripePaymentForm
-                      amountCents={payableTotalCents}
-                      couponCode={isAdmin ? couponCode : undefined}
-                      tipCents={tipCents}
-                      onSuccess={handleStripePaymentSuccess}
-                      onError={handleStripePaymentError}
-                    />
+                    )}
                   </div>
                 ) : (
                   <div className="text-center p-4 text-muted-foreground text-sm border rounded-lg border-dashed">
@@ -1360,7 +1485,7 @@ export default function OrderPage() {
                 <Button
                   onClick={handleSubmit}
                   className="w-full"
-                  disabled={loading || (requiresReceipt && (!receiptAnalysis || !feePaid))}
+                  disabled={loading || (requiresReceipt && !receiptAnalysis) || (paymentMethod === "STRIPE" && !feePaid)}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Place Order

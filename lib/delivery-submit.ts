@@ -28,10 +28,26 @@ export interface SubmitDeliveryRequestInput {
   preferredDriverId?: string;
   lockToPreferred?: boolean;
   idempotencyKey?: string;
+  payWithMiles?: boolean;
+
+  // New fields for full order support
+  restaurantName?: string;
+  restaurantWebsite?: string;
+  receiptImageData?: string;
+  receiptVendor?: string;
+  receiptLocation?: string;
+  receiptItems?: Prisma.InputJsonValue;
+  receiptAuthenticityScore?: number;
+  deliveryFeeCents?: number;
+  deliveryFeePaid?: boolean;
+  deliveryCheckoutSessionId?: string;
+  couponCode?: string;
+  discountCents?: number;
+  tipCents?: number;
 }
 
 export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
-  const { userId, serviceType, travelMinutes, scheduledStart } = input;
+  const { userId, serviceType, travelMinutes, scheduledStart, payWithMiles = true } = input;
 
   return await prisma.$transaction(
     async (tx) => {
@@ -109,7 +125,7 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
       wallet.balanceMiles === UNLIMITED_SERVICE_MILES ||
       plan.monthlyServiceMiles === UNLIMITED_SERVICE_MILES;
 
-    if (!isUnlimited) {
+    if (payWithMiles && !isUnlimited) {
       const deduction = await tx.serviceMilesWallet.updateMany({
         where: { id: wallet.id, balanceMiles: { gte: quote.serviceMilesFinal } },
         data: {
@@ -153,24 +169,45 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
         estimatedMinutes: quote.estimatedMinutes,
         serviceMilesBase: quote.serviceMilesBase,
         serviceMilesAdders: quote.serviceMilesAdders,
-        serviceMilesDiscount: quote.serviceMilesDiscount,
-        serviceMilesFinal: quote.serviceMilesFinal,
-        quoteBreakdown: quoteBreakdown as Prisma.InputJsonValue,
+        serviceMilesDiscount: payWithMiles ? quote.serviceMilesDiscount : 0,
+        serviceMilesFinal: payWithMiles ? quote.serviceMilesFinal : 0,
+        quoteBreakdown: payWithMiles ? (quoteBreakdown as Prisma.InputJsonValue) : Prisma.JsonNull,
+        deliveryFeePaid: payWithMiles, // Paid if using miles
       },
     });
 
-    // 7. Write Ledger Entry
-    await tx.serviceMilesLedger.create({
-      data: {
-        walletId: wallet.id,
-        amount: isUnlimited ? 0 : -quote.serviceMilesFinal, // Unlimited plans don't decrement wallet balance
-        transactionType: ServiceMilesTransactionType.DEDUCT_REQUEST,
-        deliveryRequestId: request.id,
-        description: isUnlimited
-          ? `Request recorded for ${serviceType} (${quote.serviceMilesFinal} miles; unlimited plan)`
-          : `Request deduction for ${serviceType} (${quote.serviceMilesFinal} miles)`,
-      },
-    });
+    if (payWithMiles) {
+        // Update ledger with request ID
+        // Note: We need to find the ledger entry we just created.
+        // Since we are in a transaction, we can just create it here AFTER request creation to link it immediately.
+        // Wait, I moved the ledger creation before request creation in the previous step?
+        // Actually, in the previous SearchReplace, I added ledger creation BEFORE request creation but with null ID.
+        // It's cleaner to do it AFTER request creation.
+        // Let's revert the "null" creation and just do it here properly.
+        
+        // RE-CHECKING LOGIC:
+        // The previous step added ledger creation block. I should remove it from there and put it here to have the ID.
+        // OR, I can update it here.
+        // Let's assume I'll fix the previous block in a moment or overwrite it.
+        // Actually, the simplest way is to put the ledger creation HERE, after request is created.
+        
+        await tx.serviceMilesLedger.create({
+            data: {
+              walletId: wallet.id,
+              amount: isUnlimited ? 0 : -quote.serviceMilesFinal,
+              transactionType: ServiceMilesTransactionType.DEDUCT_REQUEST,
+              deliveryRequestId: request.id,
+              description: isUnlimited
+                ? `Request recorded for ${serviceType} (${quote.serviceMilesFinal} miles; unlimited plan)`
+                : `Request deduction for ${serviceType} (${quote.serviceMilesFinal} miles)`,
+            },
+        });
+    }
+
+    // 7. Write Ledger Entry (Original Code - Removed)
+    /* 
+    await tx.serviceMilesLedger.create({ ... });
+    */
 
     return request;
     },

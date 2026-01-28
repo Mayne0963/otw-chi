@@ -63,7 +63,7 @@ export async function activateMembershipAtomically(params: ActivationParams) {
     
     // Idempotency Check: Have we already processed this invoice?
     const alreadyProcessed = await tx.serviceMilesLedger.findFirst({
-      where: { walletId: wallet.id, idempotencyKey: rollInKey } as any,
+      where: { walletId: wallet.id, idempotencyKey: rollInKey },
       select: { id: true },
     });
     
@@ -91,7 +91,7 @@ export async function activateMembershipAtomically(params: ActivationParams) {
           transactionType: ServiceMilesTransactionType.ROLL_IN,
           idempotencyKey: rollInKey,
           description: `${rollInKey} rolled=${rolloverBank}`,
-        } as any,
+        },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -112,7 +112,7 @@ export async function activateMembershipAtomically(params: ActivationParams) {
                 transactionType: ServiceMilesTransactionType.EXPIRE,
                 idempotencyKey: `${idempotencyKeyBase}:EXPIRE`,
                 description: `${idempotencyKeyBase}:EXPIRE cap=${rolloverCap}`,
-            } as any
+            }
         });
     }
 
@@ -125,7 +125,7 @@ export async function activateMembershipAtomically(params: ActivationParams) {
                 transactionType: ServiceMilesTransactionType.ADD_MONTHLY,
                 idempotencyKey: `${idempotencyKeyBase}:ADD_MONTHLY`,
                 description: `${idempotencyKeyBase}:ADD_MONTHLY plan=${planRecord.name}`,
-            } as any
+            }
         });
     }
 

@@ -23,6 +23,7 @@ const submitSchema = z.object({
   lockToPreferred: z.boolean().optional(),
   idempotencyKey: z.string().min(8).max(200).optional(),
   quoteToken: z.string().min(10).optional(),
+  payWithMiles: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -92,9 +93,8 @@ export async function POST(req: Request) {
       pickupAddress: parsed.data.pickupAddress,
       dropoffAddress: parsed.data.dropoffAddress,
       notes: parsed.data.notes,
-      scheduledStart,
+      scheduledStart: scheduledStart,
       travelMinutes: parsed.data.travelMinutes,
-      quotedAt,
       waitMinutes: parsed.data.waitMinutes,
       sitAndWait: parsed.data.sitAndWait,
       numberOfStops: parsed.data.numberOfStops,
@@ -105,6 +105,8 @@ export async function POST(req: Request) {
       preferredDriverId: preferredDriverId ?? undefined,
       lockToPreferred,
       idempotencyKey: parsed.data.idempotencyKey,
+      payWithMiles: parsed.data.payWithMiles,
+      quotedAt,
     });
 
     return NextResponse.json({ id: request.id }, { status: 201 });
