@@ -286,8 +286,14 @@ export async function POST(req: Request) {
         }
       });
 
-      if (!membership || !membership.user) {
-         console.log(`[Stripe Webhook] Invoice paid but membership not found for sub ${subscriptionId}. Attempting recovery...`);
+      // Check for price mismatch or missing data to ensure DB is in sync
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const invoicePriceId = (invoice.lines?.data?.[0] as any)?.price?.id;
+      const isPriceMismatch = invoicePriceId && membership?.stripePriceId && membership.stripePriceId !== invoicePriceId;
+      const isMissingData = !membership || !membership.user || !membership.plan;
+
+      if (isMissingData || isPriceMismatch) {
+         console.log(`[Stripe Webhook] Membership refresh needed. Reason: ${isMissingData ? 'Missing Data' : 'Price Mismatch'}. Sub: ${subscriptionId}`);
          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
          await upsertMembershipFromStripeSubscription(subscription);
          
