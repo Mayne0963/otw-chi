@@ -5,6 +5,7 @@ import { Prisma, ServiceMilesTransactionType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
 import { calculateMonthlyMilesRollover, UNLIMITED_SERVICE_MILES } from '../../../../lib/membership-miles';
+import { redeemPromoCode } from '@/lib/promo-code';
 
 export const runtime = 'nodejs';
 
@@ -192,10 +193,28 @@ export async function POST(req: Request) {
           });
           
           if (draft) {
+             const couponCode = session.metadata.couponCode || null;
+             const discountCents = session.metadata.discountCents ? parseInt(session.metadata.discountCents) : null;
+             const promoCodeId = session.metadata.promoCodeId || null;
+
              await prisma.deliveryRequest.update({
                where: { id: draft.id },
-               data: { deliveryFeePaid: true }
+               data: { 
+                 deliveryFeePaid: true,
+                 ...(couponCode ? { couponCode } : {}),
+                 ...(discountCents !== null ? { discountCents } : {})
+               }
              });
+
+             if (promoCodeId) {
+               try {
+                 await redeemPromoCode(promoCodeId, userId, draft.id, prisma);
+                 console.log(`[Stripe Webhook] Redeemed promo code ${promoCodeId} for user ${userId} order ${draft.id}`);
+               } catch (err) {
+                 // Ignore "already redeemed" errors for idempotency
+                 console.log(`[Stripe Webhook] Promo redemption note: ${err instanceof Error ? err.message : 'Unknown'}`);
+               }
+             }
           }
         }
         return new NextResponse(null, { status: 200 });

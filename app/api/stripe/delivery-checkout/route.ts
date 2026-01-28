@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
 import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from "@/lib/admin-discount";
+import { validatePromoCode, calculateDiscount, redeemPromoCode } from "@/lib/promo-code";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { deliveryFeeCents, subtotalCents, tipCents, couponCode, successPath, cancelPath } = await req.json();
+    const { 
+      deliveryFeeCents, 
+      subtotalCents, 
+      tipCents, 
+      couponCode, 
+      successPath, 
+      cancelPath,
+      deliveryRequestId // Optional, but recommended for linking redemptions
+    } = await req.json();
+
     if (!Number.isInteger(deliveryFeeCents) || deliveryFeeCents <= 0) {
       return NextResponse.json({ error: "Invalid delivery fee" }, { status: 400 });
     }
@@ -48,17 +58,29 @@ export async function POST(req: Request) {
       | Array<{ promotion_code: string }>
       | undefined;
     let couponSource: "internal" | "stripe" | "" = "";
+    let promoCodeId: string | undefined;
 
     if (couponCode) {
-      if (dbUser.role !== "ADMIN") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      // 1. Check Legacy Admin Coupon
+      if (isAdminFreeCoupon(couponCode)) {
+        if (dbUser.role !== "ADMIN") {
+           return NextResponse.json({ error: "Forbidden: Admin coupon used by non-admin" }, { status: 403 });
+        }
+        discountCents = baseTotal; // 100% off total
+        resolvedCouponCode = ADMIN_FREE_COUPON_CODE;
+        couponSource = "internal";
+      } else {
+        // 2. Check Database Promo Code
+        const validation = await validatePromoCode(couponCode, dbUser.id, prisma);
+        if (!validation.valid) {
+          return NextResponse.json({ error: validation.error }, { status: 400 });
+        }
+        
+        discountCents = calculateDiscount(subtotalCents, validation.promoCode);
+        resolvedCouponCode = validation.promoCode.code;
+        promoCodeId = validation.promoCode.id;
+        couponSource = "internal";
       }
-      if (!isAdminFreeCoupon(couponCode)) {
-        return NextResponse.json({ error: "Invalid coupon code" }, { status: 400 });
-      }
-      discountCents = baseTotal;
-      resolvedCouponCode = ADMIN_FREE_COUPON_CODE;
-      couponSource = "internal";
     }
 
     const finalTotal = Math.max(0, baseTotal - discountCents);
@@ -66,6 +88,17 @@ export async function POST(req: Request) {
     // Handle 100% discount - no payment needed, bypass Stripe
     if (finalTotal === 0) {
       console.warn("[STRIPE_DELIVERY_CHECKOUT] 100% discount applied, bypassing Stripe");
+      
+      // If it's a DB promo code, redeem it now
+      if (promoCodeId) {
+        try {
+          await redeemPromoCode(promoCodeId, dbUser.id, deliveryRequestId || null, prisma);
+        } catch (err) {
+          console.error("Failed to redeem promo code for free order:", err);
+          return NextResponse.json({ error: "Failed to process promo code redemption" }, { status: 500 });
+        }
+      }
+
       return NextResponse.json({ 
         url: `${appUrl}${successPath || "/order?checkout=success&free=true"}`,
         free: true,
@@ -81,7 +114,9 @@ export async function POST(req: Request) {
           couponCode: resolvedCouponCode ?? "",
           discountCents: String(discountCents),
           couponSource,
-          free: "true"
+          free: "true",
+          promoCodeId: promoCodeId ?? "",
+          deliveryRequestId: deliveryRequestId ?? ""
         }
       });
     }
@@ -109,6 +144,8 @@ export async function POST(req: Request) {
           couponCode: resolvedCouponCode ?? "",
           discountCents: String(discountCents),
           couponSource,
+          promoCodeId: promoCodeId ?? "",
+          deliveryRequestId: deliveryRequestId ?? ""
         },
       },
       line_items: [
@@ -133,6 +170,8 @@ export async function POST(req: Request) {
         couponCode: resolvedCouponCode ?? "",
         discountCents: String(discountCents),
         couponSource,
+        promoCodeId: promoCodeId ?? "",
+        deliveryRequestId: deliveryRequestId ?? ""
       },
       success_url: `${appUrl}${successPath || "/order?checkout=success&session_id={CHECKOUT_SESSION_ID}"}`,
       cancel_url: `${appUrl}${cancelPath || "/order?checkout=cancel"}`,
