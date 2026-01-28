@@ -81,7 +81,19 @@ enum PayoutMethod {
 enum DriverApplicationStatus {
   PENDING
   APPROVED
+  WAITLIST
   DENIED
+}
+
+enum DriverCandidateProfile {
+  RETIRED_PROFESSIONAL
+  VETERAN
+  EDUCATOR
+  HEALTHCARE
+  CHURCH_ADMIN
+  POSTAL_WORKER
+  GOVERNMENT_EMPLOYEE
+  OTHER
 }
 
 enum FranchiseApplicationStatus {
@@ -150,6 +162,19 @@ model DriverApplication {
   message      String?
   notes        String?
   status       DriverApplicationStatus   @default(PENDING)
+  candidateProfile DriverCandidateProfile?
+  patienceScore Int?
+  communicationScore Int?
+  reliabilityScore Int?
+  attitudeScore Int?
+  alignmentScore Int?
+  minScore Int?
+  interviewNotes String?
+  patienceAnswer String?
+  customerCareAnswer String?
+  instructionsAnswer String?
+  whyOtwAnswer String?
+  scoredAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
