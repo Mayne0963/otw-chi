@@ -169,9 +169,25 @@ export async function POST(req: Request) {
     const context = await resolveSubscriptionContext(subscription);
     if (!context) return;
 
+    let invoiceId = typeof subscription.latest_invoice === 'string' 
+      ? subscription.latest_invoice 
+      : subscription.latest_invoice?.id;
+
+    // If we have an invoice and a resolved plan, use atomic activation to ensure consistency
+    if (invoiceId && context.planRecord) {
+        console.log(`[Stripe Webhook] Delegating subscription update to atomic activation (Invoice: ${invoiceId})`);
+        await activateMembershipAtomically({
+            ...context,
+            planRecord: context.planRecord,
+            invoiceId,
+            subscriptionId: subscription.id
+        });
+        return;
+    }
+
     const { userId, status, priceId, planRecord, currentPeriodEnd, stripeCustomerId } = context;
 
-    console.log(`[Stripe Webhook] Upserting membership for sub ${subscription.id}. Status: ${status}, Price: ${priceId}`);
+    console.log(`[Stripe Webhook] Manual upsert for sub ${subscription.id} (No invoice or plan record). Status: ${status}`);
 
     await prisma.membershipSubscription.upsert({
       where: { userId },
