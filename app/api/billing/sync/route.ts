@@ -4,7 +4,7 @@ import { getPrisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 import { MembershipStatus } from "@prisma/client";
 
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
 
 const statusMap: Record<string, MembershipStatus> = {
   active: 'ACTIVE',
@@ -35,29 +35,93 @@ export async function GET(req: Request) {
     }
 
     // If session_id is provided, verify it belongs to the user
-    // This is optional but good for security if we want to rely on it
     if (sessionId) {
         const stripe = getStripe();
         try {
-            const session = await stripe.checkout.sessions.retrieve(sessionId);
-            // Verify session customer or metadata matches user
+            const session = await stripe.checkout.sessions.retrieve(sessionId, {
+                expand: ['subscription', 'subscription.latest_invoice']
+            });
+            
+            // Verify ownership
             const sessionUserId = session.metadata?.userId;
             const sessionClerkId = session.metadata?.clerkUserId;
-            
-            // Loose check: if metadata exists, it must match. If customer email matches, that's good too.
             const isMatch = (sessionUserId && sessionUserId === user.id) || 
                             (sessionClerkId && sessionClerkId === user.clerkId) ||
                             (session.customer_email && session.customer_email === user.email);
             
-            if (!isMatch && session.customer) {
-                 // Check if customer ID matches stored ID
-                 const membership = await prisma.membershipSubscription.findUnique({ where: { userId: user.id } });
-                 if (membership?.stripeCustomerId !== session.customer) {
-                     // Could be a new customer ID not yet synced?
-                 }
+            if (isMatch && session.payment_status === 'paid' && session.subscription) {
+                // Determine if we need to force activation
+                // This is the "Instant Grant" fallback if webhook is slow
+                
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                let subscription: any = session.subscription;
+                
+                // Safety check: if subscription wasn't expanded properly or is just an ID
+                if (typeof subscription === 'string') {
+                    // eslint-disable-next-line no-console
+                    console.log(`[Billing Sync] Fetching subscription ${subscription} manually`);
+                    subscription = await stripe.subscriptions.retrieve(subscription, {
+                        expand: ['latest_invoice']
+                    });
+                }
+
+                const invoiceId = subscription.latest_invoice?.id || (typeof subscription.latest_invoice === 'string' ? subscription.latest_invoice : null);
+                
+                if (invoiceId) {
+                    // Check if DB is already updated
+                    const isLedgerPresent = await prisma.serviceMilesLedger.findFirst({
+                        where: { externalRef: `stripe_invoice:${invoiceId}:ROLL_IN` }
+                    });
+
+                    if (!isLedgerPresent) {
+                        // eslint-disable-next-line no-console
+                        console.log(`[Billing Sync] Force-activating membership for user ${user.id} session ${sessionId}`);
+                        
+                        // Resolve plan details
+                        const priceId = subscription.items?.data[0]?.price?.id;
+                        let planRecord = await prisma.membershipPlan.findFirst({ where: { stripePriceId: priceId } });
+                        
+                        // Fallback plan resolution
+                        if (!planRecord && session.metadata?.planCode) {
+                             const planCode = session.metadata.planCode;
+                             const PLAN_NAME_BY_CODE = {
+                                basic: 'OTW BASIC',
+                                plus: 'OTW PLUS',
+                                pro: 'OTW PRO',
+                                elite: 'OTW ELITE',
+                                black: 'OTW BLACK',
+                              };
+                              // @ts-expect-error - dynamic lookup
+                              const name = PLAN_NAME_BY_CODE[planCode];
+                              if (name) {
+                                  planRecord = await prisma.membershipPlan.findFirst({
+                                      where: { name: { equals: name, mode: 'insensitive' } }
+                                  });
+                              }
+                        }
+
+                        if (planRecord) {
+                            // Import dynamically to avoid circular deps if any (though route.ts is safe)
+                            const { activateMembershipAtomically } = await import('@/lib/membership-activation');
+                            
+                            await activateMembershipAtomically({
+                                userId: user.id,
+                                subscriptionId: subscription.id,
+                                stripeCustomerId: session.customer as string,
+                                status: 'ACTIVE',
+                                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+                                priceId,
+                                planRecord,
+                                invoiceId,
+                            });
+                        } else {
+                            console.warn(`[Billing Sync] Could not resolve plan for price ${priceId} or code ${session.metadata?.planCode}`);
+                        }
+                    }
+                }
             }
         } catch (err) {
-            console.warn(`[Billing Sync] Failed to retrieve session ${sessionId}`, err);
+            console.warn(`[Billing Sync] Failed to retrieve/process session ${sessionId}`, err);
         }
     }
 

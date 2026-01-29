@@ -54,6 +54,9 @@ export function BillingSync({ success }: { success?: boolean }) {
 
     // Initial delay
     const timer = setTimeout(() => {
+        if (pollCount === 0) {
+             toast({ title: "Verifying Membership...", description: "Please wait while we activate your account." });
+        }
         runPoll();
     }, 1000);
 
