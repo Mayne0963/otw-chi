@@ -4,6 +4,7 @@ import { getPrisma } from '@/lib/db';
 import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from '@/lib/admin-discount';
 import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
+import { submitDeliveryRequest } from '@/lib/delivery-submit';
 
 const receiptItemSchema = z.object({
   name: z.string().min(1),
@@ -28,6 +29,8 @@ const orderSchema = z.object({
   paymentId: z.string().optional(),
   couponCode: z.string().optional(),
   tipCents: z.number().int().nonnegative().optional(),
+  payWithMiles: z.boolean().optional(),
+  travelMinutes: z.number().nonnegative().optional(),
 });
 
 export async function POST(req: Request) {
@@ -69,6 +72,61 @@ export async function POST(req: Request) {
         );
       }
     }
+
+    // --- "Pay with Miles" Flow ---
+    if (data.payWithMiles) {
+      if (typeof data.travelMinutes !== 'number') {
+        return NextResponse.json(
+          { error: 'Travel duration is required for miles payment.' },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const result = await submitDeliveryRequest({
+          userId: user.id,
+          serviceType: data.serviceType,
+          pickupAddress: data.pickupAddress,
+          dropoffAddress: data.dropoffAddress,
+          notes: data.notes,
+          travelMinutes: data.travelMinutes,
+          scheduledStart: new Date(), // Immediate
+          payWithMiles: true,
+          
+          // Pass optional fields
+          restaurantName: data.restaurantName,
+          restaurantWebsite: data.restaurantWebsite,
+          receiptImageData: data.receiptImageData,
+          receiptVendor: data.receiptVendor,
+          receiptLocation: data.receiptLocation,
+          receiptItems: data.receiptItems?.length ? (data.receiptItems as Prisma.InputJsonValue) : undefined,
+          receiptAuthenticityScore: data.receiptAuthenticityScore,
+          deliveryFeeCents: data.deliveryFeeCents,
+          tipCents: data.tipCents,
+          couponCode: data.couponCode,
+        });
+
+        // Cleanup draft
+        try {
+            await prisma.deliveryRequest.deleteMany({
+              where: { userId: user.id, status: 'DRAFT' },
+            });
+        } catch (cleanupError) {
+            console.error('Draft cleanup failed:', cleanupError);
+        }
+
+        return NextResponse.json({ id: result.id });
+
+      } catch (error) {
+        console.error('Submit delivery (miles) error:', error);
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : 'Failed to process miles payment' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // --- Standard Stripe Flow ---
 
     if (!data.deliveryFeePaid) {
       return NextResponse.json(
@@ -163,6 +221,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: order.id });
   } catch (error) {
     console.error('Create order error:', error);
+    if (error instanceof z.ZodError) {
+        return NextResponse.json({ error: 'Validation failed', details: error.flatten() }, { status: 400 });
+    }
     return new NextResponse('Invalid request', { status: 400 });
   }
 }
