@@ -136,9 +136,16 @@ async function runMigrations() {
     process.exit(0);
   }
 
-  const migrationUrl = direct?.value ?? pooled?.value;
+  let migrationUrl = direct?.value ?? pooled?.value;
   const migrationUrlKey = direct?.key ?? pooled?.key ?? 'DATABASE_URL';
   console.log(`[migrate-deploy] Using ${migrationUrlKey} for migrations`);
+
+  // ENHANCEMENT: Append timeout settings if missing to prevent P1002 (Connection Timeout)
+  if (migrationUrl && !migrationUrl.includes('connect_timeout')) {
+      const separator = migrationUrl.includes('?') ? '&' : '?';
+      migrationUrl = `${migrationUrl}${separator}connect_timeout=60&pool_timeout=60`;
+      console.log(`[migrate-deploy] Added connection timeouts to ${migrationUrlKey} to prevent P1002`);
+  }
 
   const maxAttempts = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_MAX_ATTEMPTS, 7);
   const initialBackoffMs = parsePositiveInt(process.env.PRISMA_MIGRATE_DEPLOY_INITIAL_BACKOFF_MS, 2000);
