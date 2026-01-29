@@ -62,8 +62,9 @@ export async function activateMembershipAtomically(params: ActivationParams) {
     const rollInKey = `${idempotencyKeyBase}:ROLL_IN`;
     
     // Idempotency Check: Have we already processed this invoice?
-    const alreadyProcessed = await tx.serviceMilesLedger.findFirst({
-      where: { walletId: wallet.id, idempotencyKey: rollInKey },
+    // We check against externalRef which is globally unique
+    const alreadyProcessed = await tx.serviceMilesLedger.findUnique({
+      where: { externalRef: rollInKey },
       select: { id: true },
     });
     
@@ -89,7 +90,8 @@ export async function activateMembershipAtomically(params: ActivationParams) {
           walletId: wallet.id,
           amount: 0,
           transactionType: ServiceMilesTransactionType.ROLL_IN,
-          idempotencyKey: rollInKey,
+          idempotencyKey: rollInKey, // Keep for legacy/internal consistency if needed
+          externalRef: rollInKey,    // New unique constraint
           description: `${rollInKey} rolled=${rolloverBank}`,
         },
       });
@@ -111,6 +113,7 @@ export async function activateMembershipAtomically(params: ActivationParams) {
                 amount: -expiredMiles,
                 transactionType: ServiceMilesTransactionType.EXPIRE,
                 idempotencyKey: `${idempotencyKeyBase}:EXPIRE`,
+                externalRef: `${idempotencyKeyBase}:EXPIRE`,
                 description: `${idempotencyKeyBase}:EXPIRE cap=${rolloverCap}`,
             }
         });
@@ -124,6 +127,7 @@ export async function activateMembershipAtomically(params: ActivationParams) {
                 amount: monthlyGrant,
                 transactionType: ServiceMilesTransactionType.ADD_MONTHLY,
                 idempotencyKey: `${idempotencyKeyBase}:ADD_MONTHLY`,
+                externalRef: `${idempotencyKeyBase}:ADD_MONTHLY`,
                 description: `${idempotencyKeyBase}:ADD_MONTHLY plan=${planRecord.name}`,
             }
         });

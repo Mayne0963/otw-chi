@@ -5,6 +5,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { BillingSync } from './BillingSync';
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ success?: string, canceled?: string }> }) {
   const user = await getCurrentUser();
@@ -23,6 +24,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
   return (
     <OtwPageShell>
+        <BillingSync success={success === 'true'} />
         <OtwSectionHeader title="Billing & Membership" subtitle="Manage your subscription." />
         
         {success && (

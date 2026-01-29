@@ -297,7 +297,7 @@ export async function POST(req: Request) {
     } else if (event.type === 'customer.subscription.updated') {
       const subscription = event.data.object as Stripe.Subscription;
       await upsertMembershipFromStripeSubscription(subscription);
-    } else if (event.type === 'invoice.paid') {
+    } else if (event.type === 'invoice.payment_succeeded') {
       const invoice = event.data.object as Stripe.Invoice;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subscriptionField = (invoice as any).subscription;
@@ -329,16 +329,21 @@ export async function POST(req: Request) {
       console.log(`[Stripe Webhook] Processing atomic activation for user ${userId}, plan ${planRecord.name}`);
 
       // 2. Atomic Transaction via Shared Helper
+      // This handles:
+      // - Upserting MembershipSubscription
+      // - Updating User (stripeCustomerId)
+      // - Granting Miles (idempotently via invoiceId)
+      // - Setting Status to ACTIVE (or whatever Stripe says, usually active if paid)
       try {
         await activateMembershipAtomically({
           userId,
           subscriptionId,
           stripeCustomerId,
-          status,
+          status, // Ideally 'ACTIVE' if payment succeeded
           currentPeriodEnd,
           priceId,
           planRecord,
-          invoiceId: invoice.id,
+          invoiceId: invoice.id, // CRITICAL: Used for ledger idempotency (externalRef)
         });
       } catch (err) {
         console.error(`[Stripe Webhook] Atomic activation failed for sub ${subscriptionId}:`, err);

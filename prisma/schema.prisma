@@ -613,6 +613,7 @@ model ServiceMilesLedger {
   transactionType   ServiceMilesTransactionType
   deliveryRequestId String?
   idempotencyKey    String?
+  externalRef       String?                     @unique
   description       String?
   createdAt         DateTime                    @default(now())
 
