@@ -263,7 +263,8 @@ export async function POST(req: Request) {
       const subscriptionId = session.subscription ? String(session.subscription) : undefined;
       
       if (subscriptionId) {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        // Expand latest_invoice to ensure we have the ID for idempotency
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['latest_invoice'] });
         const context = await resolveSubscriptionContext(subscription, session);
 
         if (context && context.planRecord) {
@@ -274,7 +275,8 @@ export async function POST(req: Request) {
                   : subscription.latest_invoice.id;
             }
 
-            if (invoiceId) {
+            // Only activate if paid
+            if (session.payment_status === 'paid' && invoiceId) {
                 console.log(`[Stripe Webhook] atomic activation via Checkout Session for sub ${subscriptionId}`);
                 await activateMembershipAtomically({
                     ...context,
@@ -283,7 +285,7 @@ export async function POST(req: Request) {
                     subscriptionId
                 });
             } else {
-                console.warn(`[Stripe Webhook] No invoice ID found for session ${session.id}. Cannot activate atomically.`);
+                console.warn(`[Stripe Webhook] Session ${session.id} not paid or no invoice. Status: ${session.payment_status}`);
             }
         } else {
             console.warn(`[Stripe Webhook] Context invalid or plan missing for session ${session.id}. Skipping activation.`);

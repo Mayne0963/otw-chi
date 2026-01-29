@@ -177,7 +177,7 @@ export async function POST(req: Request) {
             planName: plan ? PLAN_NAME_BY_CODE[plan] : '',
           },
         },
-        success_url: `${appUrl}/billing?success=true`,
+        success_url: `${appUrl}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/billing?canceled=true`,
       });
     } catch (error) {

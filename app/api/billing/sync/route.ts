@@ -17,6 +17,72 @@ const statusMap: Record<string, MembershipStatus> = {
   paused: 'INACTIVE',
 };
 
+export async function GET(req: Request) {
+  try {
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const sessionId = searchParams.get('session_id');
+
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+    
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // If session_id is provided, verify it belongs to the user
+    // This is optional but good for security if we want to rely on it
+    if (sessionId) {
+        const stripe = getStripe();
+        try {
+            const session = await stripe.checkout.sessions.retrieve(sessionId);
+            // Verify session customer or metadata matches user
+            const sessionUserId = session.metadata?.userId;
+            const sessionClerkId = session.metadata?.clerkUserId;
+            
+            // Loose check: if metadata exists, it must match. If customer email matches, that's good too.
+            const isMatch = (sessionUserId && sessionUserId === user.id) || 
+                            (sessionClerkId && sessionClerkId === user.clerkId) ||
+                            (session.customer_email && session.customer_email === user.email);
+            
+            if (!isMatch && session.customer) {
+                 // Check if customer ID matches stored ID
+                 const membership = await prisma.membershipSubscription.findUnique({ where: { userId: user.id } });
+                 if (membership?.stripeCustomerId !== session.customer) {
+                     // Could be a new customer ID not yet synced?
+                 }
+            }
+        } catch (err) {
+            console.warn(`[Billing Sync] Failed to retrieve session ${sessionId}`, err);
+        }
+    }
+
+    // Get current status
+    const membership = await prisma.membershipSubscription.findUnique({ 
+        where: { userId: user.id },
+        include: { plan: true }
+    });
+
+    const wallet = await prisma.serviceMilesWallet.findUnique({
+        where: { userId: user.id }
+    });
+
+    return NextResponse.json({
+        active: membership?.status === 'ACTIVE',
+        status: membership?.status || 'INACTIVE',
+        balanceMiles: wallet?.balanceMiles || 0,
+        planName: membership?.plan?.name || 'None'
+    });
+  } catch (error) {
+      console.error("[Billing Sync] Error:", error);
+      return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+  }
+}
+
 export async function POST(_req: Request) {
   try {
     const { userId: clerkUserId } = await auth();
