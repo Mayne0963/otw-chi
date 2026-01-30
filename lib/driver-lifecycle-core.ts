@@ -124,7 +124,11 @@ export async function markDriverDepartedPickup(requestId: string, driverId: stri
     const now = new Date();
     // Calculate wait time: difference between arrival and departure (now)
     const waitTimeMs = now.getTime() - request.arrivedAt.getTime();
-    const actualWaitMinutes = Math.ceil(waitTimeMs / (1000 * 60));
+    let actualWaitMinutes = Math.ceil(waitTimeMs / (1000 * 60));
+    
+    // Enforce 10-minute minimum wait time (floor)
+    const MIN_WAIT_MINUTES = 10;
+    actualWaitMinutes = Math.max(MIN_WAIT_MINUTES, actualWaitMinutes);
 
     const updatedRequest = await tx.deliveryRequest.update({
       where: { id: requestId },

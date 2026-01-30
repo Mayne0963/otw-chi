@@ -699,18 +699,25 @@ const DriverLiveMap = ({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ lat, lng }),
+            body: JSON.stringify({ 
+              lat, 
+              lng,
+              requestId,
+              requestType
+            }),
           });
           if (!pingRes.ok) {
             const message = await pingRes.text().catch(() => "");
             if (pingRes.status === 401 || pingRes.status === 403) {
-              syncDisabledRef.current = true;
-              setSyncError("Location sync requires a signed-in driver account.");
+              // Temporary backoff for auth errors instead of permanent disable
+              backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS;
+              setSyncError(`Auth error (${pingRes.status}). Retrying in 1m.`);
               return;
             }
             if (pingRes.status === 404) {
-              syncDisabledRef.current = true;
-              setSyncError("Driver profile not found. Complete driver setup to sync live location.");
+              // Temporary backoff for profile errors
+              backoffUntilRef.current = Date.now() + FAILURE_BACKOFF_MS;
+              setSyncError("Driver profile issue. Retrying in 1m.");
               return;
             }
             throw new Error(

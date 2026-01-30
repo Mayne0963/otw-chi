@@ -10,6 +10,8 @@ const pingSchema = z.object({
   lng: z.coerce
     .number()
     .refine((value) => Number.isFinite(value), { message: 'lng must be a finite number' }),
+  requestId: z.string().optional(),
+  requestType: z.enum(['delivery', 'legacy']).optional(),
 });
 
 export async function POST(req: Request) {
@@ -115,24 +117,47 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { lat, lng } = pingSchema.parse(body);
+    const { lat, lng, requestId, requestType } = pingSchema.parse(body);
 
-    // Find active delivery request first
-    const activeDelivery = await prisma.deliveryRequest.findFirst({
-      where: {
-        assignedDriverId: user.driverProfile.id,
-        status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
-      },
-    });
+    let activeDelivery = null;
+    let activeRequest = null;
 
-    const activeRequest = activeDelivery
-      ? null
-      : await prisma.request.findFirst({
-          where: {
-            assignedDriverId: user.driverProfile.id,
-            status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
-          },
-        });
+    // If specific request context is provided, try to find that specific job first
+    if (requestId && requestType === 'delivery') {
+      activeDelivery = await prisma.deliveryRequest.findFirst({
+        where: {
+          id: requestId,
+          assignedDriverId: user.driverProfile.id,
+        },
+      });
+    } else if (requestId && requestType === 'legacy') {
+      activeRequest = await prisma.request.findFirst({
+        where: {
+          id: requestId,
+          assignedDriverId: user.driverProfile.id,
+        },
+      });
+    }
+
+    // Fallback: Find any active delivery request if not found above
+    if (!activeDelivery && !activeRequest) {
+      activeDelivery = await prisma.deliveryRequest.findFirst({
+        where: {
+          assignedDriverId: user.driverProfile.id,
+          status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
+        },
+      });
+    }
+
+    // Fallback: Find any active legacy request if not found above
+    if (!activeDelivery && !activeRequest) {
+      activeRequest = await prisma.request.findFirst({
+        where: {
+          assignedDriverId: user.driverProfile.id,
+          status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
+        },
+      });
+    }
 
     let pingRecorded = false;
     let pingWarning: string | null = null;

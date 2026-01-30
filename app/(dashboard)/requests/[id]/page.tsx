@@ -171,7 +171,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
               )}
 
               {/* Driver Tracking Section */}
-              {['ASSIGNED', 'PICKED_UP', 'IN_PROGRESS'].includes(request.status) && (
+              {['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status) && (
                 <div className="space-y-4 pt-4 border-t border-white/10">
                   <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
                     <MapPin className="h-5 w-5 text-otwGold" />
