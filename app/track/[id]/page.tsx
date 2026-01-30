@@ -3,7 +3,7 @@ import { Route as RouteIcon, ArrowLeft, Clock, MapPin } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/roles";
 import { getPrisma } from "@/lib/db";
 import { validateAddress } from "@/lib/geocoding";
-import OtwLiveMap from "@/components/otw/OtwLiveMap";
+import TrackMapWrapper from "@/components/otw/TrackMapWrapper";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
 import OtwSectionHeader from "@/components/ui/otw/OtwSectionHeader";
 import OtwCard from "@/components/ui/otw/OtwCard";
@@ -153,12 +153,12 @@ export default async function TrackDetailPage({
               <div className="p-0 overflow-hidden">
                 {pickupLocation || dropoffLocation ? (
                   <div className="h-[500px] w-full relative">
-                      <OtwLiveMap
+                      <TrackMapWrapper
                         pickup={pickupLocation ?? undefined}
                         dropoff={dropoffLocation ?? undefined}
                         customer={dropoffLocation ?? undefined}
                         requestId={record.id}
-                        jobStatus={statusText}
+                        initialStatus={statusText}
                         drivers={driverLocations}
                         focusDriverId={driverLocations[0]?.driverId}
                         useExternalRoutes

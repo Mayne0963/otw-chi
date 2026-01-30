@@ -8,7 +8,7 @@ import styles from "./OtwLiveMap.module.css";
 import type { OtwLocation } from "@/lib/otw/otwTypes";
 import type { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
 
-interface OtwLiveMapProps {
+export interface OtwLiveMapProps {
   pickup?: OtwLocation;
   dropoff?: OtwLocation;
   customer?: OtwLocation;
@@ -210,7 +210,7 @@ const OtwLiveMap = ({
     return [activeDriver.location.lng, activeDriver.location.lat];
   }, [activeDriver]);
 
-  useEffect(() => {
+useEffect(() => {
     setMounted(true);
   }, []);
 
@@ -234,7 +234,7 @@ const OtwLiveMap = ({
         label: customer.label || (customerEqualsDropoff ? "Destination" : "Customer"),
         lat: customer.lat,
         lng: customer.lng,
-        color: "#5e5ce6",
+        color: "#30d158",
       });
     }
 
@@ -247,6 +247,7 @@ const OtwLiveMap = ({
         color: "#ff9f0a",
       });
     }
+
     drivers.forEach((driver, index) => {
       const isFocus = focusDriverId && driver.driverId === focusDriverId;
       markers.push({
@@ -364,12 +365,21 @@ const OtwLiveMap = ({
     Boolean(driverRoutes?.features.length);
 
   useEffect(() => {
-    const protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
-    protocolRef.current = protocol;
+    // Safely register PMTiles protocol
+    try {
+      // Check if protocol is already registered by attempting to add it
+      // Note: maplibre-gl doesn't expose a "hasProtocol" method, so we wrap in try/catch
+      const protocol = new Protocol();
+      maplibregl.addProtocol("pmtiles", protocol.tile);
+      protocolRef.current = protocol;
+    } catch (e) {
+      // Protocol likely already registered, which is fine
+      console.warn("PMTiles protocol already registered or skipped:", e);
+    }
 
     return () => {
-      maplibregl.removeProtocol("pmtiles");
+      // We do NOT remove the protocol on unmount to prevent affecting other map instances
+      // or re-mount issues. The protocol is global to maplibregl.
       protocolRef.current = null;
     };
   }, []);

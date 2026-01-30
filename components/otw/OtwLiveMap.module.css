@@ -5,6 +5,10 @@
   margin-top: 0.5rem;
   background: hsl(var(--surface-1) / 0.85);
   box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 400px;
 }
 
 .mapHeaderRow {
@@ -12,6 +16,7 @@
   justify-content: space-between;
   align-items: baseline;
   margin-bottom: 0.5rem;
+  flex-shrink: 0;
 }
 
 .mapTitle {
@@ -27,7 +32,8 @@
 
 .mapCanvas {
   position: relative;
-  height: 320px;
+  flex: 1;
+  min-height: 300px;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / 0.7);

@@ -7,7 +7,7 @@ import { formatDate, formatCurrency } from '@/lib/utils';
 import { MapPin, User, ArrowLeft } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { redirect } from 'next/navigation';
-import OtwLiveMap from '@/components/otw/OtwLiveMap';
+import TrackMapWrapper from '@/components/otw/TrackMapWrapper';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 
 export const dynamic = 'force-dynamic';
@@ -181,10 +181,10 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   {hasDriverSignal ? (
                     <div className="space-y-3">
                       <div className="h-[300px] w-full rounded-lg overflow-hidden border border-white/10">
-                          <OtwLiveMap
+                          <TrackMapWrapper
                             drivers={driverLocations}
                             requestId={request.id}
-                            jobStatus={request.status}
+                            initialStatus={request.status}
                           />
                       </div>
                       <div className="text-center space-y-2">
