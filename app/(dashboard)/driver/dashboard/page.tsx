@@ -115,16 +115,24 @@ export default async function DriverDashboardPage() {
     orderBy: { createdAt: 'desc' },
   });
 
-  const activeRequest = assignedRequests[0] ?? null;
+  const activeDeliveryRequest = assignedRequests[0] ?? null;
+  const activeLegacyRequest = !activeDeliveryRequest ? (assignedLegacyRequests[0] ?? null) : null;
+  
+  const activeRequest = activeDeliveryRequest ?? activeLegacyRequest;
+  const requestType = activeDeliveryRequest ? 'delivery' : (activeLegacyRequest ? 'legacy' : null);
+
   let customerLocation: OtwLocation | undefined;
   let pickupLocation: OtwLocation | undefined;
   let dropoffLocation: OtwLocation | undefined;
   let driverLocations: OtwDriverLocation[] = [];
 
   if (activeRequest) {
+    const pickupStr = activeDeliveryRequest ? activeDeliveryRequest.pickupAddress : (activeLegacyRequest ? activeLegacyRequest.pickup : '');
+    const dropoffStr = activeDeliveryRequest ? activeDeliveryRequest.dropoffAddress : (activeLegacyRequest ? activeLegacyRequest.dropoff : '');
+
     const [pickup, dropoff] = await Promise.all([
-      validateAddress(activeRequest.pickupAddress).catch(() => null),
-      validateAddress(activeRequest.dropoffAddress).catch(() => null),
+      validateAddress(pickupStr).catch(() => null),
+      validateAddress(dropoffStr).catch(() => null),
     ]);
 
     if (pickup) {
@@ -356,7 +364,7 @@ export default async function DriverDashboardPage() {
                           pickup={pickupLocation}
                           dropoff={dropoffLocation}
                           requestId={activeRequest.id}
-                          requestType="delivery"
+                          requestType={requestType === 'legacy' ? 'legacy' : 'delivery'}
                           jobStatus={activeRequest.status}
                           initialDriverLocation={driverLocations[0] ?? null}
                       />
