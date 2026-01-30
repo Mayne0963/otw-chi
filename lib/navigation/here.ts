@@ -103,6 +103,8 @@ const buildBounds = (coords: [number, number][]) => {
   return { minLat, minLng, maxLat, maxLng };
 };
 
+const INTERSECTION_DELAY_SECONDS = 45;
+
 const parseRoute = (route?: HereRoute | null): NavigationRoute | null => {
   const section = route?.sections?.find((entry) => Boolean(entry?.polyline));
   if (!section?.polyline || typeof section.polyline !== "string") return null;
@@ -122,7 +124,19 @@ const parseRoute = (route?: HereRoute | null): NavigationRoute | null => {
   if (!coords.length) return null;
 
   const summary = section.summary || {};
+  
+  // Heuristic: Add delay for intersections/turns
+  let intersectionDelay = 0;
   const maneuvers: NavigationManeuver[] = (section.actions || []).map((action, idx) => {
+    const isIntersection = 
+      action.action === "turn" || 
+      action.action === "uTurn" || 
+      action.action?.toLowerCase().includes("roundabout");
+      
+    if (isIntersection) {
+      intersectionDelay += INTERSECTION_DELAY_SECONDS;
+    }
+
     const offset = action.offset ?? 0;
     const coord = coords[Math.min(offset, coords.length - 1)];
     return {
@@ -140,6 +154,19 @@ const parseRoute = (route?: HereRoute | null): NavigationRoute | null => {
       location: { lat: coord[1], lng: coord[0] },
     };
   });
+
+  // Apply heuristic to summary
+  if (typeof summary.duration === 'number') {
+    summary.duration += intersectionDelay;
+  }
+  if (typeof summary.baseDuration === 'number') {
+    summary.baseDuration += intersectionDelay;
+  }
+  if (typeof summary.typicalDuration === 'number') {
+    summary.typicalDuration += intersectionDelay;
+  }
+  // Store the calculated traffic/intersection delay
+  summary.trafficDelay = (summary.trafficDelay || 0) + intersectionDelay;
 
   const spans: NavigationSpan[] = (section.spans || []).map((span) => ({
     offset: span.offset ?? 0,

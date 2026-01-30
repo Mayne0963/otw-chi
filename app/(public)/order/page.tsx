@@ -122,6 +122,7 @@ export default function OrderPage() {
   const [pickupAddress, setPickupAddress] = useState<GeocodedAddress | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState<GeocodedAddress | null>(null);
   const [serviceType, setServiceType] = useState("FOOD");
+  const [waitMinutes, setWaitMinutes] = useState(10);
   const [notes, setNotes] = useState("");
 
   const [restaurantName, setRestaurantName] = useState("");
@@ -230,6 +231,7 @@ export default function OrderPage() {
         fd.set("miles", String(miles));
         fd.set("durationMinutes", String(durationMins));
         fd.set("serviceType", serviceType);
+        fd.set("waitMinutes", String(waitMinutes));
         const estimateRes = await fetch("/api/otw/estimate", {
           method: "POST",
           body: fd,
@@ -269,7 +271,7 @@ export default function OrderPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [pickupAddress, dropoffAddress, serviceType]);
+  }, [pickupAddress, dropoffAddress, serviceType, waitMinutes]);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -293,6 +295,9 @@ export default function OrderPage() {
 
         setDraftId(draft.id);
         setServiceType(draft.serviceType || "FOOD");
+        if (typeof draft.waitMinutes === "number") {
+          setWaitMinutes(Math.max(10, draft.waitMinutes));
+        }
         setNotes(draft.notes || "");
         setRestaurantName(draft.restaurantName || "");
         setRestaurantWebsite(draft.restaurantWebsite || "");
@@ -402,6 +407,7 @@ export default function OrderPage() {
     const payload: Record<string, unknown> = {
       draftId: draftId || undefined,
       serviceType,
+      waitMinutes,
       pickupAddress: pickupAddress.formattedAddress,
       dropoffAddress: dropoffAddress.formattedAddress,
       notes: notes.trim() || undefined,
@@ -819,6 +825,7 @@ export default function OrderPage() {
         deliveryFeePaid: paymentMethod === "STRIPE" ? feePaid : false,
         payWithMiles: paymentMethod === "MILES",
         travelMinutes: durationMinutes,
+        waitMinutes: waitMinutes,
         paymentId: deliveryCheckoutSessionId || undefined,
         couponCode: isAdmin ? (couponCode.trim() || undefined) : undefined,
         tipCents,
@@ -983,6 +990,33 @@ export default function OrderPage() {
                     <option value="FRAGILE">Fragile / Important</option>
                     <option value="CONCIERGE">Custom Concierge</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">
+                  Wait Time (Min)
+                </label>
+                <div className="relative">
+                   <div className="flex items-center space-x-2">
+                    <Input
+                      type="number"
+                      min={10}
+                      step={1}
+                      value={waitMinutes}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) setWaitMinutes(Math.max(10, val));
+                      }}
+                      className="w-full"
+                    />
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      mins
+                    </span>
+                   </div>
+                   <p className="text-[10px] text-muted-foreground mt-1 ml-1">
+                     Minimum 10 minutes.
+                   </p>
                 </div>
               </div>
 

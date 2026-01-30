@@ -110,6 +110,34 @@ export async function markDriverArrived(requestId: string, driverId: string, cli
   });
 }
 
+export async function markDriverDepartedPickup(requestId: string, driverId: string, client: PrismaLikeClient) {
+  return await client.$transaction(async (tx) => {
+    const request = await tx.deliveryRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!request) throw new Error('Request not found');
+    if (request.assignedDriverId !== driverId) throw new Error('Not assigned to this driver');
+    if (request.status !== DeliveryRequestStatus.PICKED_UP) throw new Error('Request is not in picked up state');
+    if (!request.arrivedAt) throw new Error('Driver arrival time not recorded');
+
+    const now = new Date();
+    // Calculate wait time: difference between arrival and departure (now)
+    const waitTimeMs = now.getTime() - request.arrivedAt.getTime();
+    const actualWaitMinutes = Math.ceil(waitTimeMs / (1000 * 60));
+
+    const updatedRequest = await tx.deliveryRequest.update({
+      where: { id: requestId },
+      data: {
+        status: DeliveryRequestStatus.EN_ROUTE,
+        actualWaitMinutes,
+      },
+    });
+
+    return updatedRequest;
+  });
+}
+
 export async function completeDeliveryRequest(requestId: string, driverId: string, client: PrismaLikeClient) {
   return await client.$transaction(async (tx) => {
     const request = await tx.deliveryRequest.findUnique({

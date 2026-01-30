@@ -15,7 +15,7 @@ import { getPrisma } from '@/lib/db';
 import { calculateDriverPayCents } from '@/lib/driver-pay';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { haversineDistanceKm } from '@/lib/otw/otwGeo';
-import { acceptDeliveryRequest, completeDeliveryRequest, markDriverArrived } from '@/lib/driver-lifecycle';
+import { acceptDeliveryRequest, completeDeliveryRequest, markDriverArrived, markDriverDepartedPickup } from '@/lib/driver-lifecycle';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -259,6 +259,10 @@ export default async function DriverDashboardPage() {
 
     if (newStatus === 'EN_ROUTE') {
       if (existing.status !== 'PICKED_UP') return;
+
+      await markDriverDepartedPickup(requestId, driverId);
+      revalidatePath('/driver/dashboard');
+      return;
     }
 
     if (newStatus === 'DELIVERED') {
@@ -428,12 +432,22 @@ export default async function DriverDashboardPage() {
                                     </form>
                                 )}
                                 
-                                {isPickedUp && (
-                                    <form action={isLegacyRequest(req) ? updateLegacyStatus : updateStatus} className="w-full">
+                                {isPickedUp && isLegacyRequest(req) && (
+                                    <form action={updateLegacyStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="DELIVERED" />
                                         <Button type="submit" className="w-full" variant="gold">
                                             Complete Delivery
+                                        </Button>
+                                    </form>
+                                )}
+
+                                {isPickedUp && !isLegacyRequest(req) && (
+                                    <form action={updateStatus} className="w-full">
+                                        <input type="hidden" name="requestId" value={req.id} />
+                                        <input type="hidden" name="status" value="EN_ROUTE" />
+                                        <Button type="submit" className="w-full" variant="gold">
+                                            Start Delivery
                                         </Button>
                                     </form>
                                 )}

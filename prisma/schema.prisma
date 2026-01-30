@@ -335,6 +335,8 @@ model DeliveryRequest {
   arrivedAt            DateTime?
   completedAt          DateTime?
   estimatedMinutes     Int?
+  waitMinutes          Int                 @default(10)
+  actualWaitMinutes    Int?
   serviceMilesBase     Int?
   serviceMilesAdders   Int?
   serviceMilesDiscount Int?

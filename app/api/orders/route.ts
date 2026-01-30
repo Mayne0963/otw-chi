@@ -31,6 +31,7 @@ const orderSchema = z.object({
   tipCents: z.number().int().nonnegative().optional(),
   payWithMiles: z.boolean().optional(),
   travelMinutes: z.number().nonnegative().optional(),
+  waitMinutes: z.number().int().min(10).optional(),
 });
 
 export async function POST(req: Request) {
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
           dropoffAddress: data.dropoffAddress,
           notes: data.notes,
           travelMinutes: data.travelMinutes,
+          waitMinutes: data.waitMinutes,
           scheduledStart: new Date(), // Immediate
           payWithMiles: true,
           
@@ -207,6 +209,7 @@ export async function POST(req: Request) {
         tipCents,
         receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,
         status: 'REQUESTED',
+        waitMinutes: data.waitMinutes ?? 10,
       },
     });
 

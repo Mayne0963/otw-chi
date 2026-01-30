@@ -173,6 +173,9 @@ export async function submitDeliveryRequest(input: SubmitDeliveryRequestInput) {
         serviceMilesFinal: payWithMiles ? quote.serviceMilesFinal : 0,
         quoteBreakdown: payWithMiles ? (quoteBreakdown as Prisma.InputJsonValue) : Prisma.JsonNull,
         deliveryFeePaid: payWithMiles, // Paid if using miles
+        
+        // Wait Time
+        waitMinutes: input.waitMinutes ?? 10,
       },
     });
 
