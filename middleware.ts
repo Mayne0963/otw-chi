@@ -24,6 +24,7 @@ const isPublicRoute = (pathname: string) => {
   if (pathname.startsWith('/franchise')) return true;
   if (pathname.startsWith('/cities')) return true;
   if (pathname.startsWith('/api/webhooks')) return true;
+  if (pathname.startsWith('/api/auth')) return true;
   if (pathname.startsWith('/api/debug')) return true;
   // Public API routes
   if (pathname.startsWith('/api/stripe')) return true;
