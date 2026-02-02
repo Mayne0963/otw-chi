@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { validateAddress } from "@/lib/geocoding";
+import { rateLimit } from "@/lib/rateLimit";
 
 const ACTIVE_DRIVER_STATUSES = ["ONLINE", "BUSY"] as const;
 const ACTIVE_JOB_STATUSES = ["ASSIGNED", "PICKED_UP", "EN_ROUTE"] as const;
@@ -60,7 +61,17 @@ const geocodeAddress = async (address: string) => {
   return resolved;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const limit = rateLimit({ key: `live_drivers:${ip}`, intervalMs: 10000, max: 1 });
+
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Too many requests. Please wait.', retryAfter: Math.ceil(limit.retryAfterMs / 1000) },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)) } }
+    );
+  }
+
   try {
     await requireRole(["ADMIN"]);
   } catch (error) {

@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
+import { rateLimit } from '@/lib/rateLimit';
+
+export const revalidate = 300;
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const limit = rateLimit({ key: `tracking:${ip}`, intervalMs: 10000, max: 1 });
+  
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait.', retryAfter: Math.ceil(limit.retryAfterMs / 1000) },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)) } }
+    );
+  }
+
   const { id } = await params;
   const prisma = getPrisma();
 

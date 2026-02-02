@@ -5,6 +5,59 @@ import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from '@/lib/admin-discount'
 import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
 import { submitDeliveryRequest } from '@/lib/delivery-submit';
+import { rateLimit } from '@/lib/rateLimit';
+
+export const revalidate = 300;
+
+export async function GET(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const limit = rateLimit({ key: `orders_search:${ip}`, intervalMs: 10000, max: 1 });
+
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait.', retryAfter: Math.ceil(limit.retryAfterMs / 1000) },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)) } }
+    );
+  }
+
+  try {
+    const session = await getNeonSession();
+    // @ts-ignore
+    const clerkUserId = session?.userId || session?.user?.id;
+
+    if (!clerkUserId) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+
+    if (!user) {
+      return new NextResponse('User not found', { status: 404 });
+    }
+
+    const orders = await prisma.deliveryRequest.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        pickupAddress: true,
+        dropoffAddress: true,
+        serviceType: true,
+        deliveryFeeCents: true,
+        deliveryFeePaid: true,
+      }
+    });
+
+    return NextResponse.json({ orders });
+  } catch (error) {
+    console.error('Fetch orders error:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
 
 const receiptItemSchema = z.object({
   name: z.string().min(1),
