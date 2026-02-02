@@ -10,7 +10,9 @@ if (!neonAuthUrl) {
 if (!cookieSecret) {
   // In development, we can warn, but for now we'll throw to ensure it's set up correctly.
   // If you are in local dev and don't have one, run: openssl rand -base64 32
-  throw new Error('NEON_AUTH_COOKIE_SECRET is not set. Please add it to your environment variables.');
+  throw new Error(
+    'NEON_AUTH_COOKIE_SECRET is not set. Please add it to your environment variables (e.g. .env.local). Run "openssl rand -base64 32" to generate one.'
+  );
 }
 
 export const neonAuth = createNeonAuth({
