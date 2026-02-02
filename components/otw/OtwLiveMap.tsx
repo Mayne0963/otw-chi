@@ -28,6 +28,7 @@ export interface OtwLiveMapProps {
   driverSpeedKph?: number | null;
   driverHeading?: number | null;
   routePulseAt?: number | null;
+  showAllDrivers?: boolean;
 }
 
 const MAP_STYLE_URL =
@@ -173,6 +174,7 @@ const OtwLiveMap = ({
   driverSpeedKph,
   driverHeading,
   routePulseAt,
+  showAllDrivers = false,
 }: OtwLiveMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);

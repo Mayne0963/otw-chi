@@ -279,7 +279,7 @@ export default function AdminDriversLiveMap() {
       {loading && mapDrivers.length === 0 ? (
         <div className="h-[320px] w-full animate-pulse rounded-xl border border-border/70 bg-muted/40" />
       ) : (
-        <OtwLiveMap drivers={mapDrivers} driverRoutes={driverRoutes} useExternalRoutes />
+        <OtwLiveMap drivers={mapDrivers} driverRoutes={driverRoutes} useExternalRoutes showAllDrivers />
       )}
     </div>
   );
