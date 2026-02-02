@@ -1,10 +1,15 @@
 import { createNeonAuth } from '@neondatabase/auth/next/server';
 
 const neonAuthUrl = process.env.NEXT_PUBLIC_NEON_AUTH_URL;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET;
 
 if (!neonAuthUrl) {
   throw new Error('NEXT_PUBLIC_NEON_AUTH_URL is not set');
+}
+
+if (!appUrl) {
+  throw new Error('NEXT_PUBLIC_APP_URL is not set');
 }
 
 if (!cookieSecret) {
@@ -16,7 +21,7 @@ if (!cookieSecret) {
 }
 
 export const neonAuth = createNeonAuth({
-  baseUrl: neonAuthUrl,
+  baseUrl: appUrl,
   cookies: {
     secret: cookieSecret,
   },

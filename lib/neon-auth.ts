@@ -4,7 +4,7 @@ import { BetterAuthReactAdapter } from '@neondatabase/neon-js/auth/react/adapter
 export const authClient = createClient({
   auth: {
     adapter: BetterAuthReactAdapter(),
-    url: process.env.NEXT_PUBLIC_NEON_AUTH_URL!,
+    url: process.env.NEXT_PUBLIC_APP_URL!,
   },
   dataApi: {
     url: 'https://placeholder-until-provided.com', // Placeholder or optional if not using data API yet
