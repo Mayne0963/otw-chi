@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { neonAuth } from '@/lib/neon-server';
 
 const isPublicRoute = (pathname: string) => {
   const publicPaths = [
@@ -24,6 +25,11 @@ const isPublicRoute = (pathname: string) => {
   if (pathname.startsWith('/cities')) return true;
   if (pathname.startsWith('/api/webhooks')) return true;
   if (pathname.startsWith('/api/debug')) return true;
+  // Public API routes
+  if (pathname.startsWith('/api/stripe')) return true;
+  if (pathname.startsWith('/api/navigation')) return true;
+  if (pathname.startsWith('/api/orders/search')) return true;
+  if (pathname.startsWith('/api/requests') && pathname.includes('/tracking')) return true;
   return false;
 };
 
@@ -81,17 +87,53 @@ export async function middleware(req: NextRequest) {
       });
     }
 
-    const res = NextResponse.next();
-    if (corsHeaders) {
-      for (const [key, value] of Object.entries(corsHeaders)) {
-        res.headers.set(key, value);
-      }
-    }
-    return res;
+    // Continue to auth middleware for API routes, but we'll attach CORS headers later
+    // or let the auth middleware handle the response and we might miss CORS headers.
+    // Ideally, we wrap the response.
   }
   
-  // For now, we rely on page-level auth checks as Neon Auth middleware support is TBD
-  return NextResponse.next();
+  // Use Neon Auth Middleware
+  // It handles session refreshing and optional redirection
+  const authMiddleware = neonAuth.middleware({
+    loginUrl: '/sign-in',
+    // We can allow public routes to pass through without redirecting
+    // But neonAuth.middleware usually redirects if not authenticated?
+    // Let's check if we can conditionalize it.
+    // Actually, we should only run it if we want to enforce auth OR refresh session.
+    // For now, let's run it globally but be careful about public routes.
+    // If we want to allow public access, we might need to check isPublicRoute.
+  });
+
+  // If it's a public route, we might skip enforcement but still run it for session refresh?
+  // If neonAuth.middleware enforces auth, we must skip it for public routes.
+  // Documentation says: "Protects routes from unauthenticated requests"
+  
+  if (isPublicRoute(pathname) || pathname.startsWith('/_next') || pathname.startsWith('/static')) {
+     const res = NextResponse.next();
+     // Add CORS if needed
+     if (pathname.startsWith('/api')) {
+        const origin = req.headers.get('origin');
+        const corsHeaders = buildCorsHeaders(origin, req.headers);
+        if (corsHeaders) {
+            Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+        }
+     }
+     return res;
+  }
+
+  // For protected routes, run the auth middleware
+  const response = await authMiddleware(req);
+  
+  // Re-attach CORS headers if it was an API request
+  if (pathname.startsWith('/api')) {
+    const origin = req.headers.get('origin');
+    const corsHeaders = buildCorsHeaders(origin, req.headers);
+    if (corsHeaders) {
+        Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
+    }
+  }
+
+  return response;
 }
 
 export const config = {

@@ -5,35 +5,40 @@ import { getNeonSession } from '@/lib/neon-server';
 export async function getCurrentUser() {
   try {
     const sessionData = await getNeonSession();
-    // @ts-ignore
-    const userId = sessionData?.userId || sessionData?.user?.id;
+    // Neon Auth session structure typically contains userId directly or nested in user object
+    // We cast to any to handle potential type mismatches in the beta SDK
+    const session = sessionData as any;
+    const userId = session?.userId || session?.user?.id;
     
     if (!userId) return null;
     
     const prisma = getPrisma();
+    // We are currently using the 'clerkId' column to store the Neon Auth ID
+    // This allows us to migrate without changing the schema immediately
     let user = await prisma.user.findFirst({ where: { clerkId: userId } });
     
     if (!user) {
       try {
         // Sync user from Neon Auth Session
-        // @ts-ignore
-        const neonUser = sessionData?.user || {};
+        const neonUser = session?.user || {};
         const email = neonUser.email || '';
-        const name = neonUser.name || email;
+        const name = neonUser.name || email.split('@')[0] || 'User';
         const role: Role = 'CUSTOMER'; // Default role
 
-        // Try to create user
-        user = await prisma.user.create({
-          data: { 
-            clerkId: userId, 
-            email, 
-            name, 
-            role 
-          },
-        });
-        
-        // Create profile async
-        prisma.customerProfile.create({ data: { userId: user.id } }).catch(console.error);
+        if (email) {
+            // Try to create user
+            user = await prisma.user.create({
+            data: { 
+                clerkId: userId, 
+                email, 
+                name, 
+                role 
+            },
+            });
+            
+            // Create profile async
+            prisma.customerProfile.create({ data: { userId: user.id } }).catch(console.error);
+        }
       } catch (syncError) {
         console.error("Failed to sync user in getCurrentUser:", syncError);
       }

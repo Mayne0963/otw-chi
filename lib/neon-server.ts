@@ -1,33 +1,29 @@
-import { createClient } from '@neondatabase/neon-js';
-import { BetterAuthVanillaAdapter } from '@neondatabase/neon-js/auth/vanilla/adapters';
-import { headers } from 'next/headers';
+import { createNeonAuth } from '@neondatabase/auth/next/server';
 
-// Initialize a server-side client
-const serverClient = createClient({
-    auth: {
-        adapter: BetterAuthVanillaAdapter(),
-        url: process.env.NEXT_PUBLIC_NEON_AUTH_URL!,
-    },
-    dataApi: {
-        url: 'https://placeholder-until-provided.com',
-    }
+const neonAuthUrl = process.env.NEXT_PUBLIC_NEON_AUTH_URL;
+const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET;
+
+if (!neonAuthUrl) {
+  throw new Error('NEXT_PUBLIC_NEON_AUTH_URL is not set');
+}
+
+if (!cookieSecret) {
+  // In development, we can warn, but for now we'll throw to ensure it's set up correctly.
+  // If you are in local dev and don't have one, run: openssl rand -base64 32
+  throw new Error('NEON_AUTH_COOKIE_SECRET is not set. Please add it to your environment variables.');
+}
+
+export const neonAuth = createNeonAuth({
+  baseUrl: neonAuthUrl,
+  cookies: {
+    secret: cookieSecret,
+  },
 });
 
 export async function getNeonSession() {
   try {
-    const headersList = await headers();
-    // Pass headers to getSession if supported, or rely on automatic handling if library does it.
-    // However, the standard vanilla adapter usually requires passing headers manually in server environments if not implicitly handled.
-    // Since getSession signature in vanilla client usually expects headers or request object, let's see.
-    // The README says: const { data: session } = await client.auth.getSession();
-    
-    // In server components, we might need to pass headers.
-    // For now, let's try the standard call.
-    const { data: session } = await serverClient.auth.getSession({
-        // @ts-ignore - Headers might not be in type definition but required for server-side auth
-        headers: headersList
-    });
-    return session;
+    const { data } = await neonAuth.getSession();
+    return data;
   } catch (error) {
     console.error('Neon Auth Error:', error);
     return null;
