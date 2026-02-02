@@ -17,6 +17,12 @@ function NavLinks() {
   return (
     <>
       <Link 
+        href="https://ep-summer-brook-aextd9nk.neonauth.c-2.us-east-2.aws.neon.tech/neondb/auth" 
+        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
+      >
+        SignIn
+      </Link>
+      <Link 
         href="/pricing" 
         className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
