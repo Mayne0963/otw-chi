@@ -1,4 +1,5 @@
-import { UserButton } from "@clerk/nextjs"
+'use client';
+import { UserButton } from "@neondatabase/neon-js/auth/react";
 import OtwButton from "@/components/ui/otw/OtwButton"
 
 export function DashboardHeader() {
@@ -11,7 +12,7 @@ export function DashboardHeader() {
         <OtwButton as="a" href="/order" variant="gold" className="hidden sm:inline-flex shadow-md">
           Place Order
         </OtwButton>
-        <UserButton afterSignOutUrl="/" />
+        <UserButton />
       </div>
     </header>
   )

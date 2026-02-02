@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
+import { getNeonSession } from '@/lib/neon-server';
 
 const DRAFT_STATUS = 'DRAFT' as const;
 
@@ -37,7 +37,9 @@ const draftSchema = z
 
 export async function GET() {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const clerkUserId = session?.userId || session?.user?.id;
     if (!clerkUserId) {
       return NextResponse.json({ draft: null }, { status: 200 });
     }
@@ -62,7 +64,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const clerkUserId = session?.userId || session?.user?.id;
+
     if (!clerkUserId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
@@ -180,7 +185,10 @@ export async function POST(req: Request) {
 
 export async function DELETE() {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const clerkUserId = session?.userId || session?.user?.id;
+
     if (!clerkUserId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }

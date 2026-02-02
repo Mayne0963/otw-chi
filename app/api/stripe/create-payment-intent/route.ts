@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getNeonSession } from "@/lib/neon-server";
 import { z } from "zod";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
@@ -46,9 +46,13 @@ async function ensureBasicMembership(prisma: ReturnType<typeof getPrisma>, userI
 
 export async function POST(req: Request) {
   try {
-    const { userId: clerkUserId } = await auth();
-    const clerkUser = await currentUser();
-    if (!clerkUserId || !clerkUser) {
+    const session = await getNeonSession();
+    // @ts-ignore
+    const clerkUserId = session?.userId || session?.user?.id;
+    // @ts-ignore
+    const email = session?.user?.email;
+
+    if (!clerkUserId || !email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -61,9 +65,21 @@ export async function POST(req: Request) {
       );
     }
 
+    const prisma = getPrisma();
+    
+    // Fetch or create user
+    const user = await prisma.user.upsert({
+      where: { clerkId: clerkUserId },
+      create: {
+        clerkId: clerkUserId,
+        email,
+        role: "CUSTOMER",
+      },
+      update: {},
+    });
+
     const { amountCents, couponCode, tipCents = 0 } = parsed.data;
-    const isAdmin =
-      String(clerkUser.publicMetadata?.role ?? "").toUpperCase() === "ADMIN";
+    const isAdmin = user.role === "ADMIN";
 
     if (couponCode && !isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -85,24 +101,6 @@ export async function POST(req: Request) {
         message: "Order is free or below minimum payment amount",
       });
     }
-
-    const email = clerkUser.emailAddresses[0]?.emailAddress;
-    if (!email) {
-      return NextResponse.json({ error: "Missing user email" }, { status: 400 });
-    }
-
-    const prisma = getPrisma();
-    const user = await prisma.user.upsert({
-      where: { clerkId: clerkUserId },
-      create: {
-        clerkId: clerkUserId,
-        email,
-        role: "CUSTOMER",
-      },
-      update: {
-        email,
-      },
-    });
 
     const stripe = getStripe();
 

@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getNeonSession } from "@/lib/neon-server";
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
@@ -19,7 +19,10 @@ const statusMap: Record<string, MembershipStatus> = {
 
 export async function GET(req: Request) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const clerkUserId = session?.userId || session?.user?.id;
+    
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -149,7 +152,10 @@ export async function GET(req: Request) {
 
 export async function POST(_req: Request) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const clerkUserId = session?.userId || session?.user?.id;
+
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { authClient } from "@/lib/neon-auth";
 import { AddressSearch } from "@/components/ui/address-search";
 import { MapPin, Car, Loader2, Users, ArrowRight, CreditCard } from "lucide-react";
 import { formatAddressLines, type GeocodedAddress, validateAddress } from "@/lib/geocoding";
@@ -35,7 +35,8 @@ function calculateMiles(a: GeocodedAddress, b: GeocodedAddress): number {
 }
 
 export default function RidePage() {
-  const { isSignedIn } = useUser();
+  const session = authClient.auth.useSession();
+  const isSignedIn = !!session.data?.user;
   const router = useRouter();
   const { toast } = useToast();
 

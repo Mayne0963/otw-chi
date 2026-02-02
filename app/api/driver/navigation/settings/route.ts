@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getNeonSession } from "@/lib/neon-server";
 import { getPrisma } from "@/lib/db";
 import { z } from "zod";
 
@@ -18,7 +18,10 @@ const defaultSettings = {
 };
 
 async function getDriverProfile() {
-  const { userId } = await auth();
+  const session = await getNeonSession();
+  // @ts-ignore
+  const userId = session?.userId || session?.user?.id;
+  
   if (!userId) return null;
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({

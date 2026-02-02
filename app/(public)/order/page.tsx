@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useUser } from "@clerk/nextjs";
+import { authClient } from "@/lib/neon-auth";
+import { useCurrentUser } from "@/components/auth/use-current-user";
 import { Loader2, Upload, X, CreditCard, MapPin, ArrowRight, Package, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -108,13 +109,14 @@ async function runOcr(file: File) {
 }
 
 export default function OrderPage() {
-  const { isSignedIn, user } = useUser();
+  const session = authClient.auth.useSession();
+  const isSignedIn = !!session.data?.user;
+  const { user } = useCurrentUser();
   const router = useRouter();
   const { toast } = useToast();
   const isAdmin = useMemo(() => {
-    const role = String(user?.publicMetadata?.role ?? "").toUpperCase();
-    return role === "ADMIN";
-  }, [user?.publicMetadata]);
+    return user?.role === "ADMIN";
+  }, [user]);
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>("details");

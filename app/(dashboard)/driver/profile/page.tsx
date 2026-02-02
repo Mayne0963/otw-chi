@@ -39,8 +39,10 @@ export default async function DriverProfilePage() {
 
 export async function saveDriverProfile(formData: FormData) {
   'use server';
-  const { auth } = await import('@clerk/nextjs/server');
-  const { userId } = await auth();
+  const { getNeonSession } = await import('@/lib/neon-server');
+  const session = await getNeonSession();
+  // @ts-ignore
+  const userId = session?.userId || session?.user?.id;
   if (!userId) return;
 
   const displayName = String(formData.get('displayName') ?? '').trim();

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { getNeonSession } from "@/lib/neon-server";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
 import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from "@/lib/admin-discount";
@@ -10,10 +10,13 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    const user = await currentUser();
+    const neonSession = await getNeonSession();
+    // @ts-ignore
+    const userId = neonSession?.userId || neonSession?.user?.id;
+    // @ts-ignore
+    const userEmail = neonSession?.user?.email;
 
-    if (!userId || !user) {
+    if (!userId || !userEmail) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -126,7 +129,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Total must be at least $0.50" }, { status: 400 });
     }
 
-    const customerEmail = user.emailAddresses[0]?.emailAddress;
+    const customerEmail = userEmail;
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],

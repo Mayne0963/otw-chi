@@ -1,26 +1,10 @@
-import { SignIn } from "@clerk/nextjs";
-import { getCurrentUser } from "@/lib/auth/roles";
+'use client';
+import { AuthView, authViewPaths } from '@neondatabase/neon-js/auth/react';
 
-export default async function Page() {
-  const user = await getCurrentUser();
-  const baseFallback =
-    process.env.NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL ??
-    process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL ??
-    '/dashboard';
-
-  const fallbackRedirectUrl =
-    user?.role === "DRIVER"
-      ? "/driver"
-      : baseFallback;
-
+export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-black">
-      <SignIn
-        routing="path"
-        path="/sign-in"
-        fallbackRedirectUrl={fallbackRedirectUrl}
-        appearance={{ elements: { card: "shadow-xl" } }}
-      />
+       <AuthView view={"SIGN_IN"} />
     </div>
   );
 }

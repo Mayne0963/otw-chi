@@ -48,8 +48,10 @@ export default async function SettingsPage() {
 
 export async function saveSettings(formData: FormData) {
   'use server';
-  const { auth } = await import('@clerk/nextjs/server');
-  const { userId } = await auth();
+  const { getNeonSession } = await import('@/lib/neon-server');
+  const session = await getNeonSession();
+  // @ts-ignore
+  const userId = session?.userId || session?.user?.id;
   if (!userId) return;
   const prisma = getPrisma();
   const user = await prisma.user.findFirst({ where: { clerkId: userId } });

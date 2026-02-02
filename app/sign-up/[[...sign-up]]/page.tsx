@@ -1,19 +1,10 @@
-import { SignUp } from "@clerk/nextjs";
+'use client';
+import { AuthView, authViewPaths } from '@neondatabase/neon-js/auth/react';
 
-export default function Page() {
-  const fallbackRedirectUrl =
-    process.env.NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL ??
-    process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL ??
-    '/onboarding';
-
+export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-black">
-      <SignUp
-        routing="path"
-        path="/sign-up"
-        fallbackRedirectUrl={fallbackRedirectUrl}
-        appearance={{ elements: { card: "shadow-xl" } }}
-      />
+       <AuthView view={"SIGN_UP"} />
     </div>
   );
 }

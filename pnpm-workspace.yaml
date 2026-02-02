@@ -1,5 +1,4 @@
 onlyBuiltDependencies:
-  - '@clerk/shared'
   - '@prisma/engines'
   - '@sentry-internal/node-cpu-profiler'
   - core-js

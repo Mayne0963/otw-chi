@@ -1,12 +1,15 @@
 'use server';
 
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { getNeonSession } from '@/lib/neon-server';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { redirect } from 'next/navigation';
 
 export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' | 'ELITE' | 'BLACK') {
-  const { userId } = await auth();
+  const neonSession = await getNeonSession();
+  // @ts-ignore
+  const userId = neonSession?.userId || neonSession?.user?.id;
+  
   if (!userId) {
     throw new Error('Unauthorized');
   }
@@ -20,18 +23,18 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
   });
 
   if (!user) {
-    // Should be synced by webhook/middleware, but safe fallback
-    const client = await clerkClient();
-    const clerkUser = await client.users.getUser(userId);
-    const email = clerkUser.emailAddresses[0]?.emailAddress;
+    // Sync user from Neon Session (replaces Clerk sync)
+    // @ts-ignore
+    const neonUser = neonSession?.user || {};
+    const email = neonUser.email;
     
-    if (!email) throw new Error('No email found');
+    if (!email) throw new Error('No email found in session');
 
     user = await prisma.user.create({
       data: {
         clerkId: userId,
         email,
-        name: `${clerkUser.firstName} ${clerkUser.lastName}`.trim(),
+        name: neonUser.name || email,
         role: 'CUSTOMER',
       },
       include: { membership: true },
@@ -131,7 +134,10 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
 }
 
 export async function createCustomerPortal() {
-    const { userId } = await auth();
+    const neonSession = await getNeonSession();
+    // @ts-ignore
+    const userId = neonSession?.userId || neonSession?.user?.id;
+
     if (!userId) throw new Error('Unauthorized');
 
     const prisma = getPrisma();

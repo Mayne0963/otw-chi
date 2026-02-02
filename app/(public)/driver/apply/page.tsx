@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useState, useEffect } from 'react';
+import { useCurrentUser } from '@/components/auth/use-current-user';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
@@ -10,20 +10,30 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
 export default function DriverApplyPage() {
-  const { user } = useUser();
+  const { user } = useCurrentUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || '',
-    email: user?.primaryEmailAddress?.emailAddress || '',
+    fullName: '',
+    email: '',
     phone: '',
     city: '',
     vehicleType: '',
     availability: '',
     message: ''
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: user.name || prev.fullName,
+        email: user.email || prev.email
+      }));
+    }
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

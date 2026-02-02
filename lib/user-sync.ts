@@ -1,39 +1,44 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { getNeonSession } from '@/lib/neon-server';
 import { getPrisma } from '@/lib/db';
 import { Role } from '@prisma/client';
 
 export async function syncUserOnDashboard() {
-  const { userId } = await auth();
+  const session = await getNeonSession();
+  // @ts-ignore
+  const userId = session?.userId || session?.user?.id;
+  
   if (!userId) return null;
   
   try {
-    const client = await clerkClient();
-    const clerkUser = await client.users.getUser(userId);
-    const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
-    const name = clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || email;
-    const roleMeta = String(clerkUser.publicMetadata?.role || 'CUSTOMER').toUpperCase();
-    const role = (roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER') as Role;
+    // @ts-ignore
+    const neonUser = session?.user || {};
+    const email = neonUser.email || '';
+    const name = neonUser.name || email;
     
-    // Compliance fields from metadata (if available)
-    const dobMeta = clerkUser.publicMetadata?.dob as string | undefined;
-    const dob = dobMeta ? new Date(dobMeta) : null;
-    const termsAcceptedAtMeta = clerkUser.publicMetadata?.termsAcceptedAt as string | undefined;
-    const termsAcceptedAt = termsAcceptedAtMeta ? new Date(termsAcceptedAtMeta) : null;
-
     const prisma = getPrisma();
+    
+    // First check if user exists to preserve role
+    const existingUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const role = existingUser?.role || 'CUSTOMER';
+
     const user = await prisma.user.upsert({
       where: { clerkId: userId },
-      update: { email, name, role, dob, termsAcceptedAt },
-      create: { clerkId: userId, email, name, role, dob, termsAcceptedAt },
+      update: { email, name }, 
+      create: { 
+        clerkId: userId, 
+        email, 
+        name, 
+        role: 'CUSTOMER',
+      },
     });
+
     await prisma.customerProfile.upsert({
       where: { userId: user.id },
       update: {},
       create: { userId: user.id },
     });
     
-    // Create driver profile for DRIVER and ADMIN roles
-    if (role === 'DRIVER' || role === 'ADMIN') {
+    if (user.role === 'DRIVER' || user.role === 'ADMIN') {
       await prisma.driverProfile.upsert({
         where: { userId: user.id },
         update: {},
@@ -44,8 +49,6 @@ export async function syncUserOnDashboard() {
     return user;
   } catch (error) {
     console.error("User sync failed:", error);
-    // Return null or throw depending on how critical this sync is.
-    // Returning null allows the dashboard to potentially render in a degraded state or show a specific error.
     return null;
   }
 }

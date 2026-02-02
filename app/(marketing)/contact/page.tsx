@@ -45,8 +45,10 @@ export default async function ContactPage() {
 
 export async function submitContactMessage(formData: FormData) {
   'use server';
-  const { auth } = await import('@clerk/nextjs/server');
-  const { userId } = await auth();
+  const { getNeonSession } = await import('@/lib/neon-server');
+  const session = await getNeonSession();
+  // @ts-ignore
+  const userId = session?.userId || session?.user?.id;
 
   const payload = {
     email: String(formData.get('email') ?? '').trim(),

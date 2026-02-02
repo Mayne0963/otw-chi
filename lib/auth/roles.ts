@@ -1,51 +1,38 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getPrisma } from '@/lib/db';
 import { Role } from '@prisma/client';
+import { getNeonSession } from '@/lib/neon-server';
 
 export async function getCurrentUser() {
   try {
-    const { userId } = await auth();
+    const sessionData = await getNeonSession();
+    // @ts-ignore
+    const userId = sessionData?.userId || sessionData?.user?.id;
+    
     if (!userId) return null;
+    
     const prisma = getPrisma();
     let user = await prisma.user.findFirst({ where: { clerkId: userId } });
     
-    // If user is authenticated in Clerk but missing in DB, sync them now
     if (!user) {
       try {
-        const client = await clerkClient();
-        const clerkUser = await client.users.getUser(userId);
-        const email = clerkUser.emailAddresses?.[0]?.emailAddress || '';
-        const name = clerkUser.firstName && clerkUser.lastName ? `${clerkUser.firstName} ${clerkUser.lastName}` : clerkUser.username || email;
-        const roleMeta = String(clerkUser.publicMetadata?.role || 'CUSTOMER').toUpperCase();
-        const role = (roleMeta === 'DRIVER' || roleMeta === 'ADMIN' || roleMeta === 'FRANCHISE' ? roleMeta : 'CUSTOMER') as Role;
-        const pm = clerkUser.publicMetadata || {};
-        
-        interface UserMetadata {
-          otw_role?: string;
-          otw_tier?: string;
-          nip_wallet_id?: string;
-          franchise_level?: string;
-          otw_zone?: string;
-          role?: string;
-          [key: string]: unknown;
-        }
+        // Sync user from Neon Auth Session
+        // @ts-ignore
+        const neonUser = sessionData?.user || {};
+        const email = neonUser.email || '';
+        const name = neonUser.name || email;
+        const role: Role = 'CUSTOMER'; // Default role
 
-        const typedPm = pm as UserMetadata;
-
-        const defaults = {
-          otw_role: typedPm.otw_role ?? role.toLowerCase(),
-          otw_tier: typedPm.otw_tier ?? 'basic',
-          nip_wallet_id: typedPm.nip_wallet_id ?? 'pending',
-          franchise_level: typedPm.franchise_level ?? 'seed',
-          otw_zone: typedPm.otw_zone ?? 'unassigned',
-          role
-        };
-        await client.users.updateUser(userId, { publicMetadata: { ...pm, ...defaults } });
-        
+        // Try to create user
         user = await prisma.user.create({
-          data: { clerkId: userId, email, name, role },
+          data: { 
+            clerkId: userId, 
+            email, 
+            name, 
+            role 
+          },
         });
-        // Create profile async (don't block)
+        
+        // Create profile async
         prisma.customerProfile.create({ data: { userId: user.id } }).catch(console.error);
       } catch (syncError) {
         console.error("Failed to sync user in getCurrentUser:", syncError);
@@ -55,7 +42,6 @@ export async function getCurrentUser() {
     return user;
   } catch (error) {
     console.error("Error in getCurrentUser:", error);
-    // Return null to avoid crashing the page, let the page handle "no user" state
     return null;
   }
 }

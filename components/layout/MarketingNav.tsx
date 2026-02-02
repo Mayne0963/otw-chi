@@ -1,6 +1,7 @@
 import Link from "next/link"
 import OtwButton from "@/components/ui/otw/OtwButton"
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
+import { UserButton } from "@neondatabase/neon-js/auth/react"
+import { SignedIn, SignedOut } from "@/components/auth/auth-helpers"
 import { Menu } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 import {
@@ -71,7 +72,7 @@ export function MarketingNav() {
             <OtwButton as="a" href="/order" size="sm" className="hidden sm:flex">
               Order Now
             </OtwButton>
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
           </SignedIn>
           
           <SignedOut>

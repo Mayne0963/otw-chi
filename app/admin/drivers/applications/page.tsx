@@ -6,7 +6,6 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { revalidatePath } from 'next/cache';
-import { clerkClient } from '@clerk/nextjs/server';
 import { DriverApplicationStatus, DriverCandidateProfile } from '@prisma/client';
 
 export default async function AdminDriverApplicationsPage() {
@@ -66,22 +65,6 @@ export default async function AdminDriverApplicationsPage() {
             where: { id: app.userId },
             data: { role: 'DRIVER' },
         });
-        
-        // Sync to Clerk
-        const user = await prisma.user.findUnique({ where: { id: app.userId } });
-        if (user?.clerkId) {
-             try {
-                 const client = await clerkClient();
-                 await client.users.updateUserMetadata(user.clerkId, {
-                    publicMetadata: {
-                        role: 'DRIVER',
-                        otw_role: 'driver'
-                    }
-                 });
-             } catch (e) {
-                 console.error('Failed to sync Clerk metadata:', e);
-             }
-        }
     }
     
     revalidatePath('/admin/drivers/applications');
@@ -155,21 +138,6 @@ export default async function AdminDriverApplicationsPage() {
         where: { id: app.userId },
         data: { role: 'DRIVER' },
       });
-
-      const user = await prisma.user.findUnique({ where: { id: app.userId } });
-      if (user?.clerkId) {
-        try {
-          const client = await clerkClient();
-          await client.users.updateUserMetadata(user.clerkId, {
-            publicMetadata: {
-              role: 'DRIVER',
-              otw_role: 'driver',
-            },
-          });
-        } catch (e) {
-          console.error('Failed to sync Clerk metadata:', e);
-        }
-      }
     }
 
     revalidatePath('/admin/drivers/applications');

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getNeonSession } from '@/lib/neon-server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 
@@ -15,7 +15,10 @@ const applicationSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const userId = session?.userId || session?.user?.id;
+    
     const prisma = getPrisma();
     
     // Check if user already applied

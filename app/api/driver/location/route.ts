@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { getNeonSession } from '@/lib/neon-server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 
@@ -16,84 +16,43 @@ const pingSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { userId, sessionClaims } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const userId = session?.userId || session?.user?.id;
+    
     if (!userId) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const prisma = getPrisma();
-    const normalizeRole = (raw: unknown) => {
-      const role = String(raw ?? '').toUpperCase();
-      if (role === 'ADMIN' || role === 'DRIVER' || role === 'FRANCHISE' || role === 'CUSTOMER') {
-        return role as 'ADMIN' | 'DRIVER' | 'FRANCHISE' | 'CUSTOMER';
-      }
-      return 'CUSTOMER';
-    };
-
-    const sessionRoleRaw = (
-      sessionClaims as {
-        publicMetadata?: { role?: string };
-        metadata?: { role?: string };
-        otw?: { role?: string };
-      } | null
-    )?.publicMetadata?.role ??
-      (
-        sessionClaims as {
-          publicMetadata?: { role?: string };
-          metadata?: { role?: string };
-          otw?: { role?: string };
-        } | null
-      )?.metadata?.role ??
-      (
-        sessionClaims as {
-          publicMetadata?: { role?: string };
-          metadata?: { role?: string };
-          otw?: { role?: string };
-        } | null
-      )?.otw?.role ??
-      null;
-
-    const sessionRole = normalizeRole(sessionRoleRaw);
-
+    
     let user = await prisma.user.findUnique({
       where: { clerkId: userId },
       include: { driverProfile: true },
     });
 
     if (!user) {
-      const clerkUser = await currentUser();
-      const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? null;
+      // @ts-ignore
+      const email = session.user?.email;
       if (!email) {
         return NextResponse.json({ success: false, error: 'Missing user email' }, { status: 400 });
       }
 
-      const role =
-        sessionRole !== 'CUSTOMER'
-          ? sessionRole
-          : normalizeRole(clerkUser?.publicMetadata?.role);
+      // Default to CUSTOMER if creating new
       user = await prisma.user.create({
-        data: { clerkId: userId, email, role },
+        data: { clerkId: userId, email, role: 'CUSTOMER' },
         include: { driverProfile: true },
       });
     }
 
-    const resolvedRole =
-      user.role === 'CUSTOMER' && sessionRole !== 'CUSTOMER'
-        ? sessionRole
-        : (user.role as 'ADMIN' | 'DRIVER' | 'FRANCHISE' | 'CUSTOMER');
-
-    if (resolvedRole !== user.role) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { role: resolvedRole },
-        include: { driverProfile: true },
-      });
-    }
-
-    const isDriverish = resolvedRole === 'DRIVER' || resolvedRole === 'ADMIN';
+    // Role is now authoritative in DB, no need to sync from sessionClaims
+    const isDriverish = user.role === 'DRIVER' || user.role === 'ADMIN';
+    
     if (!isDriverish && !user.driverProfile) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
+    
+    // ... rest of the logic ...
 
     if (!user.driverProfile && isDriverish) {
       user = await prisma.user.update({

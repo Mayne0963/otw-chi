@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getNeonSession } from '@/lib/neon-server';
 import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from '@/lib/admin-discount';
@@ -12,7 +12,10 @@ const previewSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const session = await getNeonSession();
+    // @ts-ignore
+    const userId = session?.userId || session?.user?.id;
+    
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
