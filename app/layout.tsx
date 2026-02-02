@@ -32,15 +32,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppNeonAuthProvider>
-      <html lang="en" className={`${manrope.variable} ${fraunces.variable}`} suppressHydrationWarning>
-        <head>
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <link rel="manifest" href="/manifest.webmanifest" />
-          <link rel="icon" href="/icons/otw-192.svg" />
-          <link rel="apple-touch-icon" href="/icons/otw-192.svg" />
-        </head>
-        <body className="min-h-screen bg-background text-foreground antialiased relative font-sans">
+    <html lang="en" className={`${manrope.variable} ${fraunces.variable}`} suppressHydrationWarning>
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="icon" href="/icons/otw-192.svg" />
+        <link rel="apple-touch-icon" href="/icons/otw-192.svg" />
+      </head>
+      <body className="min-h-screen bg-background text-foreground antialiased relative font-sans">
+        <AppNeonAuthProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -50,8 +50,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             <OtwCookieConsent />
           </ThemeProvider>
-        </body>
-      </html>
-    </AppNeonAuthProvider>
+        </AppNeonAuthProvider>
+      </body>
+    </html>
   );
 }
