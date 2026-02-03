@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getNeonSession } from "@/lib/neon-server";
+import { getNeonSession } from "@/lib/auth/server";
 import { z } from "zod";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";

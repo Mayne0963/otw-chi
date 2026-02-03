@@ -1,6 +1,6 @@
 'use client';
 
-import { authClient } from '@/lib/neon-auth';
+import { authClient } from '@/lib/auth/client';
 // @ts-ignore
 // import { UserRole } from "@prisma/client";
 
@@ -24,7 +24,7 @@ export interface UseCurrentUserReturn {
 }
 
 export function useCurrentUser() {
-  const session = authClient.auth.useSession();
+  const session = authClient.useSession();
   
   const user = session.data?.user ? {
       id: session.data.user.id,

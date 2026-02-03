@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
-import { getNeonSession } from '@/lib/neon-server';
+import { getNeonSession } from '@/lib/auth/server';
 
 const DRAFT_STATUS = 'DRAFT' as const;
 

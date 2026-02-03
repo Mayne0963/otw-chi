@@ -48,7 +48,7 @@ export default async function SettingsPage() {
 
 export async function saveSettings(formData: FormData) {
   'use server';
-  const { getNeonSession } = await import('@/lib/neon-server');
+  const { getNeonSession } = await import('@/lib/auth/server');
   const session = await getNeonSession();
   // @ts-ignore
   const userId = session?.userId || session?.user?.id;

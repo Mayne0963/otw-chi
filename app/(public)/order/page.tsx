@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { authClient } from "@/lib/neon-auth";
+import { authClient } from "@/lib/auth/client";
 import { useCurrentUser } from "@/components/auth/use-current-user";
 import { Loader2, Upload, X, CreditCard, MapPin, ArrowRight, Package, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -109,7 +109,7 @@ async function runOcr(file: File) {
 }
 
 export default function OrderPage() {
-  const session = authClient.auth.useSession();
+  const session = authClient.useSession();
   const isSignedIn = !!session.data?.user;
   const { user } = useCurrentUser();
   const router = useRouter();

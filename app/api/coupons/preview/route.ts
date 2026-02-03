@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNeonSession } from '@/lib/neon-server';
+import { getNeonSession } from '@/lib/auth/server';
 import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from '@/lib/admin-discount';

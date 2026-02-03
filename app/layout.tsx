@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { AppNeonAuthProvider } from '@/components/neon-auth-provider';
+import { NeonAuthUIProvider } from '@neondatabase/auth/react';
+import { authClient } from '@/lib/auth/client';
 import { Fraunces, Manrope } from 'next/font/google';
 import '../styles/globals.css';
 import OtwCookieConsent from '@/components/ui/otw/OtwCookieConsent';
@@ -40,7 +41,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icons/otw-192.svg" />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased relative font-sans">
-        <AppNeonAuthProvider>
+        <NeonAuthUIProvider
+          authClient={authClient}
+          redirectTo="/account/settings"
+          emailOTP
+        >
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -50,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             <OtwCookieConsent />
           </ThemeProvider>
-        </AppNeonAuthProvider>
+        </NeonAuthUIProvider>
       </body>
     </html>
   );

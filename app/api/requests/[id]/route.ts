@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getNeonSession } from '@/lib/neon-server';
+import { getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 
 export async function GET(

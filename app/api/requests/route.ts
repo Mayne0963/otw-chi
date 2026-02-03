@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNeonSession } from '@/lib/neon-server';
+import { getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';

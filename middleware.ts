@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { neonAuth } from '@/lib/neon-server';
+import { auth } from '@/lib/auth/server';
 
 const isPublicRoute = (pathname: string) => {
   const publicPaths = [
@@ -95,7 +95,7 @@ export async function middleware(req: NextRequest) {
   
   // Use Neon Auth Middleware
   // It handles session refreshing and optional redirection
-  const authMiddleware = neonAuth.middleware({
+  const authMiddleware = auth.middleware({
     loginUrl: '/sign-in',
     // We can allow public routes to pass through without redirecting
     // But neonAuth.middleware usually redirects if not authenticated?

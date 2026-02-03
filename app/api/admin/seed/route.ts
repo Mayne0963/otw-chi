@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNeonSession } from '@/lib/neon-server';
+import { getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { UNLIMITED_SERVICE_MILES } from '@/lib/membership-miles';

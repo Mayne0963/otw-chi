@@ -1,3 +1,3 @@
-import { neonAuth } from '@/lib/neon-server';
+import { auth } from '@/lib/auth/server';
 
-export const { GET, POST } = neonAuth.handler();
+export const { GET, POST } = auth.handler();

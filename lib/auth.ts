@@ -1,5 +1,5 @@
 import { getPrisma } from '@/lib/db';
-import { getNeonSession } from '@/lib/neon-server';
+import { getNeonSession } from '@/lib/auth/server';
 
 export async function requireAuth() {
   const session = await getNeonSession();

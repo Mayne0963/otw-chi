@@ -1,6 +1,6 @@
 import { getPrisma } from '@/lib/db';
 import { Role } from '@prisma/client';
-import { getNeonSession } from '@/lib/neon-server';
+import { getNeonSession } from '@/lib/auth/server';
 
 export async function getCurrentUser() {
   try {

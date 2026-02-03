@@ -1,4 +1,4 @@
-import { getNeonSession } from "@/lib/neon-server";
+import { getNeonSession } from "@/lib/auth/server";
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";

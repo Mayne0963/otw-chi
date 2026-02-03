@@ -57,7 +57,7 @@ export default async function SupportPage() {
 
 export async function createTicketAction(formData: FormData) {
   'use server';
-  const { getNeonSession } = await import('@/lib/neon-server');
+  const { getNeonSession } = await import('@/lib/auth/server');
   const session = await getNeonSession();
   // @ts-ignore
   const userId = session?.userId || session?.user?.id;

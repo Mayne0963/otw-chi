@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getNeonSession } from "@/lib/neon-server";
+import { getNeonSession } from "@/lib/auth/server";
 import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
