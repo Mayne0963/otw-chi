@@ -104,7 +104,8 @@ export async function searchAddress(
       ? query
       : `${query}, Fort Wayne, IN`;
 
-    const url = new URL('https://nominatim.openstreetmap.org/search');
+    // Use internal API proxy to avoid CORS issues
+    const url = new URL('/api/geocoding/search', window.location.origin);
     url.searchParams.append('q', searchQuery);
     url.searchParams.append('format', 'json');
     url.searchParams.append('addressdetails', '1');
@@ -115,11 +116,7 @@ export async function searchAddress(
     url.searchParams.append('viewbox', '-85.5,41.3,-84.8,40.8');
     url.searchParams.append('bounded', '0');
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'User-Agent': 'OTW-Delivery-App',
-      },
-    });
+    const response = await fetch(url.toString());
 
     if (!response.ok) {
       throw new Error(`Geocoding API error: ${response.status}`);
@@ -207,7 +204,8 @@ export async function reverseGeocodeAddress(
   longitude: number
 ): Promise<GeocodedAddress | null> {
   try {
-    const url = new URL('https://nominatim.openstreetmap.org/reverse');
+    // Use internal API proxy to avoid CORS issues
+    const url = new URL('/api/geocoding/reverse', window.location.origin);
     url.searchParams.append('format', 'json');
     url.searchParams.append('lat', String(latitude));
     url.searchParams.append('lon', String(longitude));
@@ -215,11 +213,7 @@ export async function reverseGeocodeAddress(
     url.searchParams.append('namedetails', '1');
     url.searchParams.append('zoom', '18');
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'User-Agent': 'OTW-Delivery-App',
-      },
-    });
+    const response = await fetch(url.toString());
 
     if (!response.ok) {
       throw new Error(`Geocoding API error: ${response.status}`);
