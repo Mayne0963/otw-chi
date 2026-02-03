@@ -30,6 +30,7 @@ const isPublicRoute = (pathname: string) => {
   if (pathname.startsWith('/api/stripe')) return true;
   if (pathname.startsWith('/api/navigation')) return true;
   if (pathname.startsWith('/api/geocoding')) return true;
+  if (pathname.startsWith('/api/otw/estimate')) return true;
   if (pathname.startsWith('/api/orders/search')) return true;
   if (pathname.startsWith('/api/requests') && pathname.includes('/tracking')) return true;
   return false;
