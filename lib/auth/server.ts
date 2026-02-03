@@ -1,18 +1,17 @@
 import { createNeonAuth } from '@neondatabase/auth/next/server';
 
-const baseUrl =
-  process.env.NEON_AUTH_BASE_URL ||
-  process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+const baseUrl = process.env.NEON_AUTH_BASE_URL;
 
 if (!baseUrl) {
-  throw new Error(
-    'Missing NEON_AUTH_BASE_URL or NEXT_PUBLIC_APP_URL environment variable.'
-  );
+  throw new Error('Missing NEON_AUTH_BASE_URL environment variable.');
 }
 
 if (!process.env.NEON_AUTH_COOKIE_SECRET) {
   throw new Error('Missing NEON_AUTH_COOKIE_SECRET environment variable.');
+}
+
+if (process.env.NEON_AUTH_COOKIE_SECRET.length < 32) {
+  throw new Error('NEON_AUTH_COOKIE_SECRET must be at least 32 characters long.');
 }
 
 export const auth = createNeonAuth({
