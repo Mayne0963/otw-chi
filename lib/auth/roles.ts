@@ -5,6 +5,7 @@ import { getNeonSession } from '@/lib/auth/server';
 export async function getCurrentUser() {
   try {
     const sessionData = await getNeonSession();
+    // console.log('[getCurrentUser] sessionData:', JSON.stringify(sessionData, null, 2));
     if (!sessionData) return null;
 
     // Neon Auth session structure typically contains userId directly or nested in user object

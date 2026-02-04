@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../app/api/stripe/webhook/route';
-import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
 
 // Mock the modules first
@@ -90,7 +89,7 @@ describe('Stripe Webhook - Invoice Paid Recovery', () => {
     let findFirstCalls = 0;
     mockPrisma.membershipSubscription.findFirst.mockImplementation(async (args) => {
         findFirstCalls++;
-        console.log(`findFirst call #${findFirstCalls} args:`, JSON.stringify(args));
+        // console.log(`findFirst call #${findFirstCalls} args:`, JSON.stringify(args));
         if (findFirstCalls === 1) return null;
         return {
             id: 'mem_123',

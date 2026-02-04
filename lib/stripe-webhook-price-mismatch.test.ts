@@ -90,7 +90,7 @@ describe('Stripe Webhook - Price Mismatch Recovery', () => {
     // 1. First findFirst: Returns membership with OLD price
     // 2. Second findFirst (after recovery): Returns membership with NEW price (simulated)
     let findFirstCalls = 0;
-    mockPrisma.membershipSubscription.findFirst.mockImplementation(async (args) => {
+    mockPrisma.membershipSubscription.findFirst.mockImplementation(async (_args) => {
         findFirstCalls++;
         // Initial check
         if (findFirstCalls === 1) {

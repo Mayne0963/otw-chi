@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../app/api/stripe/webhook/route';
-import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 
