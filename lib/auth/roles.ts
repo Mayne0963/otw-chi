@@ -5,38 +5,58 @@ import { getNeonSession } from '@/lib/auth/server';
 export async function getCurrentUser() {
   try {
     const sessionData = await getNeonSession();
+    if (!sessionData) return null;
+
     // Neon Auth session structure typically contains userId directly or nested in user object
-    // We cast to any to handle potential type mismatches in the beta SDK
-    const session = sessionData as any;
+    interface NeonSession {
+      userId?: string;
+      user?: {
+        id?: string;
+        email?: string;
+        name?: string;
+      };
+    }
+    const session = sessionData as unknown as NeonSession;
     const userId = session?.userId || session?.user?.id;
+    const email = session?.user?.email;
     
     if (!userId) return null;
     
     const prisma = getPrisma();
     // We are using the 'neonAuthId' column to store the Neon Auth ID
-    let user = await prisma.user.findFirst({ where: { neonAuthId: userId } });
+    let user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
     
     if (!user) {
       try {
         // Sync user from Neon Auth Session
         const neonUser = session?.user || {};
-        const email = neonUser.email || '';
-        const name = neonUser.name || email.split('@')[0] || 'User';
+        const name = neonUser.name || email?.split('@')[0] || 'User';
         const role: Role = 'CUSTOMER'; // Default role
 
         if (email) {
-            // Try to create user
-            user = await prisma.user.create({
-            data: { 
-                neonAuthId: userId, 
-                email, 
-                name, 
-                role 
-            },
-            });
-            
-            // Create profile async
-            prisma.customerProfile.create({ data: { userId: user.id } }).catch(console.error);
+            // Check if user exists by email to handle migration or re-login
+            const existingUser = await prisma.user.findUnique({ where: { email } });
+
+            if (existingUser) {
+              // Update the existing user with the new Neon Auth ID
+              user = await prisma.user.update({
+                where: { id: existingUser.id },
+                data: { neonAuthId: userId },
+              });
+            } else {
+              // Try to create user
+              user = await prisma.user.create({
+                data: { 
+                    neonAuthId: userId, 
+                    email, 
+                    name, 
+                    role 
+                },
+              });
+              
+              // Create profile async
+              prisma.customerProfile.create({ data: { userId: user.id } }).catch(console.error);
+            }
         }
       } catch (syncError) {
         console.error("Failed to sync user in getCurrentUser:", syncError);

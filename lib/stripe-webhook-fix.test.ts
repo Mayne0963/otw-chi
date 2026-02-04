@@ -56,8 +56,11 @@ describe('Stripe Webhook - Invoice Paid Recovery', () => {
     serviceMilesLedger: {
       create: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
     },
-    $transaction: vi.fn(async (callback) => await callback(mockPrisma)),
+    $transaction: vi.fn(async (callback) => {
+      return await callback(mockPrisma);
+    }),
   };
 
   const mockStripeClient = {
@@ -74,7 +77,7 @@ describe('Stripe Webhook - Invoice Paid Recovery', () => {
 
   it('should recover and award miles when membership is missing initially', async () => {
     const event = {
-      type: 'invoice.paid',
+      type: 'invoice.payment_succeeded',
       data: {
         object: {
           subscription: 'sub_123',

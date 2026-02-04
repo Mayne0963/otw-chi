@@ -43,7 +43,8 @@ describe('Atomic Membership Activation', () => {
         update: vi.fn() 
       },
       serviceMilesLedger: { 
-        findFirst: vi.fn(), 
+        findFirst: vi.fn(),
+        findUnique: vi.fn(), 
         create: vi.fn() 
       },
       $transaction: vi.fn((callback) => callback(mockPrisma)),
@@ -135,7 +136,7 @@ describe('Atomic Membership Activation', () => {
 
     mockPrisma.serviceMilesWallet.findUnique.mockResolvedValue({ id: 'wallet_123', balanceMiles: 600 });
     // Mock Ledger check finding existing record
-    mockPrisma.serviceMilesLedger.findFirst.mockResolvedValue({ id: 'ledger_123' });
+    mockPrisma.serviceMilesLedger.findUnique.mockResolvedValue({ id: 'ledger_123' });
 
     const result = await activateMembershipAtomically(params);
 

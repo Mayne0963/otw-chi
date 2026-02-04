@@ -55,6 +55,7 @@ describe('Stripe Webhook - Plan Resolution Recovery', () => {
     serviceMilesLedger: {
       create: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
     },
     $transaction: vi.fn(async (callback) => await callback(mockPrisma)),
   };
@@ -78,7 +79,7 @@ describe('Stripe Webhook - Plan Resolution Recovery', () => {
 
   it('should resolve plan from checkout session when subscription metadata is missing', async () => {
     const event = {
-      type: 'invoice.paid',
+      type: 'invoice.payment_succeeded',
       data: {
         object: {
           id: 'in_123',

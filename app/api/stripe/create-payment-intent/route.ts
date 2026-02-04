@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { getNeonSession } from "@/lib/auth/server";
+import { getCurrentUser } from "@/lib/auth/roles";
 import { z } from "zod";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
 import { isAdminFreeCoupon } from "@/lib/admin-discount";
+import Stripe from "stripe";
 
 export const runtime = "nodejs";
 
@@ -46,13 +47,9 @@ async function ensureBasicMembership(prisma: ReturnType<typeof getPrisma>, userI
 
 export async function POST(req: Request) {
   try {
-    const session = await getNeonSession();
-    // @ts-ignore
-    const neonAuthUserId = session?.userId || session?.user?.id;
-    // @ts-ignore
-    const email = session?.user?.email;
+    const user = await getCurrentUser();
 
-    if (!neonAuthUserId || !email) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -67,17 +64,6 @@ export async function POST(req: Request) {
 
     const prisma = getPrisma();
     
-    // Fetch or create user
-    const user = await prisma.user.upsert({
-      where: { neonAuthId: neonAuthUserId },
-      create: {
-        neonAuthId: neonAuthUserId,
-        email,
-        role: "CUSTOMER",
-      },
-      update: {},
-    });
-
     const { amountCents, couponCode, tipCents = 0 } = parsed.data;
     const isAdmin = user.role === "ADMIN";
 
@@ -112,10 +98,10 @@ export async function POST(req: Request) {
 
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({
-        email,
+        email: user.email,
         metadata: {
           userId: user.id,
-          neonAuthId: neonAuthUserId,
+          neonAuthId: user.neonAuthId,
         },
       });
       stripeCustomerId = customer.id;
@@ -128,7 +114,7 @@ export async function POST(req: Request) {
     }
 
     // Create Payment Intent
-    const paymentIntentParams: any = {
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: amountCents,
       currency: "usd",
       customer: stripeCustomerId,
@@ -137,7 +123,7 @@ export async function POST(req: Request) {
       },
       metadata: {
         userId: user.id,
-        neonAuthId: neonAuthUserId,
+        neonAuthId: user.neonAuthId,
         orderType: "delivery",
         couponCode: couponCode || "",
         tipCents: String(tipCents),

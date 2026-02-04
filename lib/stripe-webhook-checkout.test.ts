@@ -47,7 +47,17 @@ describe('Stripe Webhook - Checkout Session Completed', () => {
     deliveryRequest: {
       findFirst: vi.fn(),
       update: vi.fn(),
-    }
+    },
+    serviceMilesLedger: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+    serviceMilesWallet: {
+      findUnique: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: 'wallet_123', balanceMiles: 0 }),
+      update: vi.fn(),
+    },
+    $transaction: vi.fn((callback) => callback(mockPrisma)),
   };
 
   const mockStripeClient = {
@@ -70,6 +80,8 @@ describe('Stripe Webhook - Checkout Session Completed', () => {
           id: 'cs_123',
           subscription: 'sub_123',
           customer: 'cus_123',
+          payment_status: 'paid',
+          invoice: 'in_123',
           metadata: {
             userId: 'user_123',
             planCode: 'plus',

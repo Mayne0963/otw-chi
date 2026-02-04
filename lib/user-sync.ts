@@ -1,37 +1,60 @@
 import { getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
-import { Role } from '@prisma/client';
 
 export async function syncUserOnDashboard() {
-  const session = await getNeonSession();
-  // @ts-ignore
+  const sessionData = await getNeonSession();
+  if (!sessionData) return null;
+
+  interface NeonSession {
+    userId?: string;
+    user?: {
+      id?: string;
+      email?: string;
+      name?: string;
+    };
+  }
+
+  const session = sessionData as unknown as NeonSession;
   const userId = session?.userId || session?.user?.id;
+  const email = session?.user?.email;
   
   if (!userId) return null;
   
   try {
-    // @ts-ignore
-    const neonUser = session?.user || {};
-    const email = neonUser.email || '';
-    const name = neonUser.name || email;
+    const name = session?.user?.name || email?.split('@')[0] || 'User';
     
     const prisma = getPrisma();
     
-    // First check if user exists to preserve role
-    const existingUser = await prisma.user.findUnique({ where: { neonAuthId: userId } });
-    const role = existingUser?.role || 'CUSTOMER';
+    // Check by ID
+    let user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
 
-    const user = await prisma.user.upsert({
-      where: { neonAuthId: userId },
-      update: { email, name }, 
-      create: { 
-        neonAuthId: userId, 
-        email, 
-        name, 
-        role: 'CUSTOMER',
-      },
-    });
+    if (!user) {
+        // Check by Email
+        if (email) {
+            const existingUser = await prisma.user.findUnique({ where: { email } });
+            if (existingUser) {
+                // Link existing user
+                user = await prisma.user.update({
+                    where: { id: existingUser.id },
+                    data: { neonAuthId: userId, name }
+                });
+            } else {
+                // Create new user
+                user = await prisma.user.create({
+                    data: { 
+                        neonAuthId: userId, 
+                        email, 
+                        name, 
+                        role: 'CUSTOMER',
+                    },
+                });
+            }
+        }
+    }
 
+    if (!user) return null;
+
+    // Ensure profiles
     await prisma.customerProfile.upsert({
       where: { userId: user.id },
       update: {},

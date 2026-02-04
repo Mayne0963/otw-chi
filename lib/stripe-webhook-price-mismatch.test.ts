@@ -47,12 +47,13 @@ describe('Stripe Webhook - Price Mismatch Recovery', () => {
     },
     serviceMilesWallet: {
       findUnique: vi.fn(),
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: 'wallet_123', balanceMiles: 0 }),
       update: vi.fn(),
     },
     serviceMilesLedger: {
       create: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
     },
     $transaction: vi.fn(async (callback) => await callback(mockPrisma)),
   };
@@ -71,7 +72,7 @@ describe('Stripe Webhook - Price Mismatch Recovery', () => {
 
   it('should refresh membership when invoice price does not match DB price', async () => {
     const event = {
-      type: 'invoice.paid',
+      type: 'invoice.payment_succeeded',
       data: {
         object: {
           id: 'in_123',

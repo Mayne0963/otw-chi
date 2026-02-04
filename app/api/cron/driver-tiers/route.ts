@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { DriverTier } from '@prisma/client';
+import { DriverTier, Prisma } from '@prisma/client';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -126,8 +126,8 @@ export async function GET(req: Request) {
               performanceMetrics: {
                 ...metrics,
                 performanceScore: score,
-                lastEvaluatedAt: new Date(),
-              } as any,
+                lastEvaluatedAt: new Date().toISOString(),
+              } as Prisma.JsonObject,
             },
           })
         );
