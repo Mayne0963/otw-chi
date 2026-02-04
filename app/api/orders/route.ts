@@ -23,14 +23,14 @@ export async function GET(req: Request) {
   try {
     const session = await getNeonSession();
     // @ts-ignore
-    const clerkUserId = session?.userId || session?.user?.id;
+    const neonAuthUserId = session?.userId || session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!neonAuthUserId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+    const user = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
 
     if (!user) {
       return new NextResponse('User not found', { status: 404 });
@@ -91,14 +91,14 @@ export async function POST(req: Request) {
   try {
     const session = await getNeonSession();
     // @ts-ignore
-    const clerkUserId = session?.userId || session?.user?.id;
+    const neonAuthUserId = session?.userId || session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!neonAuthUserId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+    const user = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
     if (!user) {
       return new NextResponse('User not found', { status: 404 });
     }

@@ -25,7 +25,7 @@ async function getDriverProfile() {
   if (!userId) return null;
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { neonAuthId: userId },
     include: { driverProfile: true },
   });
   if (!user?.driverProfile) return null;

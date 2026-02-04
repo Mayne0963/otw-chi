@@ -18,7 +18,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
   
   // 1. Get user from DB
   let user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { neonAuthId: userId },
     include: { membership: true },
   });
 
@@ -32,7 +32,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
 
     user = await prisma.user.create({
       data: {
-        clerkId: userId,
+        neonAuthId: userId,
         email,
         name: neonUser.name || email,
         role: 'CUSTOMER',
@@ -51,7 +51,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
       name: user.name ?? undefined,
       metadata: {
         userId: user.id,
-        clerkId: userId,
+        neonAuthId: userId,
       },
     });
     stripeCustomerId = customer.id;
@@ -115,13 +115,13 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
     client_reference_id: user.id,
     metadata: {
       userId: user.id,
-      clerkId: userId,
+      neonAuthId: userId,
       planCode,
     },
     subscription_data: {
       metadata: {
         userId: user.id,
-        clerkId: userId,
+        neonAuthId: userId,
       },
     },
   });
@@ -142,7 +142,7 @@ export async function createCustomerPortal() {
 
     const prisma = getPrisma();
     const user = await prisma.user.findUnique({
-        where: { clerkId: userId },
+        where: { neonAuthId: userId },
         include: { membership: true },
     });
 

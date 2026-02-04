@@ -60,14 +60,14 @@ export async function POST(req: Request) {
 
   async function findUserIdFromMetadata(metadata?: Stripe.Metadata | null) {
     const userId = metadata?.userId ? String(metadata.userId) : undefined;
-    const clerkUserId = metadata?.clerkUserId ? String(metadata.clerkUserId) : undefined;
+    const neonAuthUserId = metadata?.neonAuthUserId ? String(metadata.neonAuthUserId) : undefined;
 
     if (userId) {
       const user = await prisma.user.findUnique({ where: { id: userId } });
       if (user) return user.id;
     }
-    if (clerkUserId) {
-      const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+    if (neonAuthUserId) {
+      const user = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
       if (user) return user.id;
     }
     return undefined;

@@ -65,7 +65,7 @@ export async function submitContactMessage(formData: FormData) {
   const prisma = getPrisma();
   let dbUserId: string | null = null;
   if (userId) {
-    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
     dbUserId = user?.id ?? null;
   }
 

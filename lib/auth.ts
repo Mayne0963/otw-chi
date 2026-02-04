@@ -13,7 +13,7 @@ export async function getUserRole(): Promise<'CUSTOMER' | 'DRIVER' | 'ADMIN' | '
 
   const prisma = getPrisma();
   try {
-    const row = await prisma.user.findFirst({ where: { clerkId: session.user.id } });
+    const row = await prisma.user.findFirst({ where: { neonAuthId: session.user.id } });
     if (row && (row.role === 'DRIVER' || row.role === 'ADMIN' || row.role === 'FRANCHISE' || row.role === 'CUSTOMER')) {
       return row.role;
     }

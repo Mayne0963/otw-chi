@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const prisma = getPrisma();
     
     let user = await prisma.user.findUnique({
-      where: { clerkId: userId },
+      where: { neonAuthId: userId },
       include: { driverProfile: true },
     });
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
       // Default to CUSTOMER if creating new
       user = await prisma.user.create({
-        data: { clerkId: userId, email, role: 'CUSTOMER' },
+        data: { neonAuthId: userId, email, role: 'CUSTOMER' },
         include: { driverProfile: true },
       });
     }

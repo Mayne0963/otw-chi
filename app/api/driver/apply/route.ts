@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     
     // Check if user already applied
     if (userId) {
-        const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+        const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
         if (user) {
             const existing = await prisma.driverApplication.findFirst({
                 where: { userId: user.id, status: 'PENDING' }
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     
     let dbUserId = null;
     if (userId) {
-        const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+        const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
         dbUserId = user?.id;
     }
 

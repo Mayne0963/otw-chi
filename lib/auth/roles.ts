@@ -13,9 +13,8 @@ export async function getCurrentUser() {
     if (!userId) return null;
     
     const prisma = getPrisma();
-    // We are currently using the 'clerkId' column to store the Neon Auth ID
-    // This allows us to migrate without changing the schema immediately
-    let user = await prisma.user.findFirst({ where: { clerkId: userId } });
+    // We are using the 'neonAuthId' column to store the Neon Auth ID
+    let user = await prisma.user.findFirst({ where: { neonAuthId: userId } });
     
     if (!user) {
       try {
@@ -29,7 +28,7 @@ export async function getCurrentUser() {
             // Try to create user
             user = await prisma.user.create({
             data: { 
-                clerkId: userId, 
+                neonAuthId: userId, 
                 email, 
                 name, 
                 role 

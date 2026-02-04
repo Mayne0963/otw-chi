@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         email: dbUser.email,
         metadata: {
           userId: dbUser.id,
-          clerkUserId: dbUser.clerkId,
+          neonAuthUserId: dbUser.neonAuthId,
         },
       });
       stripeCustomerId = customer.id;
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
     const origin = req.headers.get('origin');
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin || 'http://localhost:3000';
 
-    const clerkUserId = dbUser.clerkId;
+    const neonAuthUserId = dbUser.neonAuthId;
 
     let session;
     try {
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
           },
         ],
         metadata: {
-          clerkUserId,
+          neonAuthUserId,
           userId: dbUser.id,
           planId: resolvedPlanId ?? '',
           planCode: plan ?? '',
@@ -172,7 +172,7 @@ export async function POST(req: Request) {
         subscription_data: {
           metadata: {
             userId: dbUser.id,
-            clerkUserId,
+            neonAuthUserId,
             planCode: plan ?? '',
             planName: plan ? PLAN_NAME_BY_CODE[plan] : '',
           },

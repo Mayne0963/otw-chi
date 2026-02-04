@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     if (
-      (session.metadata?.clerkUserId && session.metadata.clerkUserId !== userId) ||
+      (session.metadata?.neonAuthUserId && session.metadata.neonAuthUserId !== userId) ||
       session.metadata?.purpose !== "order_payment"
     ) {
       return NextResponse.json({ paid: false }, { status: 200 });

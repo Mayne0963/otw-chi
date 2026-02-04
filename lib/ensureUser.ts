@@ -1,17 +1,17 @@
 import { getPrisma } from '@/lib/db';
 
 type EnsureUserInput = {
-  clerkUserId: string;
+  neonAuthUserId: string;
   email?: string;
 };
 
-export async function ensureUser({ clerkUserId, email }: EnsureUserInput) {
+export async function ensureUser({ neonAuthUserId, email }: EnsureUserInput) {
   const prisma = getPrisma();
 
   const user = await prisma.user.upsert({
-    where: { clerkId: clerkUserId },
+    where: { neonAuthId: neonAuthUserId },
     create: {
-      clerkId: clerkUserId,
+      neonAuthId: neonAuthUserId,
       email: email ?? (() => {
         throw new Error('email is required to create a new user');
       })(),

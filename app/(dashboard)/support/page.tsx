@@ -63,7 +63,7 @@ export async function createTicketAction(formData: FormData) {
   const userId = session?.userId || session?.user?.id;
   if (!userId) return;
   const prisma = getPrisma();
-  const user = await prisma.user.findFirst({ where: { clerkId: userId } });
+  const user = await prisma.user.findFirst({ where: { neonAuthId: userId } });
   if (!user) return;
   const subject = String(formData.get('subject') ?? '');
   const message = String(formData.get('message') ?? '');

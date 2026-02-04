@@ -123,7 +123,7 @@ model User {
   email             String    @unique
   name              String?
   role              Role      @default(CUSTOMER)
-  clerkId           String    @unique
+  neonAuthId        String    @unique
   dob               DateTime?
   termsAcceptedAt   DateTime?
   privacyAcceptedAt DateTime?

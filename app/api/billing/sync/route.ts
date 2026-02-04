@@ -21,9 +21,9 @@ export async function GET(req: Request) {
   try {
     const session = await getNeonSession();
     // @ts-ignore
-    const clerkUserId = session?.userId || session?.user?.id;
+    const neonAuthUserId = session?.userId || session?.user?.id;
     
-    if (!clerkUserId) {
+    if (!neonAuthUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     const sessionId = searchParams.get('session_id');
 
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+    const user = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
     
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -47,9 +47,9 @@ export async function GET(req: Request) {
             
             // Verify ownership
             const sessionUserId = session.metadata?.userId;
-            const sessionClerkId = session.metadata?.clerkUserId;
+            const sessionNeonAuthId = session.metadata?.neonAuthUserId;
             const isMatch = (sessionUserId && sessionUserId === user.id) || 
-                            (sessionClerkId && sessionClerkId === user.clerkId) ||
+                            (sessionNeonAuthId && sessionNeonAuthId === user.neonAuthId) ||
                             (session.customer_email && session.customer_email === user.email);
             
             if (isMatch && session.payment_status === 'paid' && session.subscription) {
@@ -154,14 +154,14 @@ export async function POST(_req: Request) {
   try {
     const session = await getNeonSession();
     // @ts-ignore
-    const clerkUserId = session?.userId || session?.user?.id;
+    const neonAuthUserId = session?.userId || session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!neonAuthUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { clerkId: clerkUserId } });
+    const user = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
     
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

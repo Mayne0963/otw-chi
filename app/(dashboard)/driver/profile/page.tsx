@@ -49,7 +49,7 @@ export async function saveDriverProfile(formData: FormData) {
   if (!displayName) return;
 
   const prisma = getPrisma();
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
   if (!user) return;
 
   await prisma.user.update({

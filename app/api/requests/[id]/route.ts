@@ -19,7 +19,7 @@ export async function GET(
     const prisma = getPrisma();
     
     // Get user from DB to check permissions
-    const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

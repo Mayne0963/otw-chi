@@ -48,11 +48,11 @@ export async function POST(req: Request) {
   try {
     const session = await getNeonSession();
     // @ts-ignore
-    const clerkUserId = session?.userId || session?.user?.id;
+    const neonAuthUserId = session?.userId || session?.user?.id;
     // @ts-ignore
     const email = session?.user?.email;
 
-    if (!clerkUserId || !email) {
+    if (!neonAuthUserId || !email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -69,9 +69,9 @@ export async function POST(req: Request) {
     
     // Fetch or create user
     const user = await prisma.user.upsert({
-      where: { clerkId: clerkUserId },
+      where: { neonAuthId: neonAuthUserId },
       create: {
-        clerkId: clerkUserId,
+        neonAuthId: neonAuthUserId,
         email,
         role: "CUSTOMER",
       },
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
         email,
         metadata: {
           userId: user.id,
-          clerkId: clerkUserId,
+          neonAuthId: neonAuthUserId,
         },
       });
       stripeCustomerId = customer.id;
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
       },
       metadata: {
         userId: user.id,
-        clerkId: clerkUserId,
+        neonAuthId: neonAuthUserId,
         orderType: "delivery",
         couponCode: couponCode || "",
         tipCents: String(tipCents),

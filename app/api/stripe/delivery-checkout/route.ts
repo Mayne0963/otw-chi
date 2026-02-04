@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     }
 
     const prisma = getPrisma();
-    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const dbUser = await prisma.user.findUnique({ where: { neonAuthId: userId } });
     if (!dbUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
         couponCode: resolvedCouponCode,
         discountCents,
         metadata: {
-          clerkUserId: userId,
+          neonAuthUserId: userId,
           userId: dbUser.id,
           purpose: "order_payment",
           deliveryFeeCents: String(deliveryFeeCents),
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
       payment_intent_data: {
         setup_future_usage: "off_session",
         metadata: {
-          clerkUserId: userId,
+          neonAuthUserId: userId,
           userId: dbUser.id,
           purpose: "order_payment",
           deliveryFeeCents: String(deliveryFeeCents),
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
         },
       ],
       metadata: {
-        clerkUserId: userId,
+        neonAuthUserId: userId,
         userId: dbUser.id,
         purpose: "order_payment",
         deliveryFeeCents: String(deliveryFeeCents),

@@ -18,14 +18,14 @@ export async function syncUserOnDashboard() {
     const prisma = getPrisma();
     
     // First check if user exists to preserve role
-    const existingUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    const existingUser = await prisma.user.findUnique({ where: { neonAuthId: userId } });
     const role = existingUser?.role || 'CUSTOMER';
 
     const user = await prisma.user.upsert({
-      where: { clerkId: userId },
+      where: { neonAuthId: userId },
       update: { email, name }, 
       create: { 
-        clerkId: userId, 
+        neonAuthId: userId, 
         email, 
         name, 
         role: 'CUSTOMER',
