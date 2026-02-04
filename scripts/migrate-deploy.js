@@ -143,7 +143,7 @@ async function runMigrations() {
   // ENHANCEMENT: Append timeout settings if missing to prevent P1002 (Connection Timeout)
   if (migrationUrl && !migrationUrl.includes('connect_timeout')) {
       const separator = migrationUrl.includes('?') ? '&' : '?';
-      migrationUrl = `${migrationUrl}${separator}connect_timeout=60&pool_timeout=60`;
+      migrationUrl = `${migrationUrl}${separator}connect_timeout=300&pool_timeout=300`;
       console.log(`[migrate-deploy] Added connection timeouts to ${migrationUrlKey} to prevent P1002`);
   }
 
