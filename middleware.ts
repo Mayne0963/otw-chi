@@ -99,33 +99,20 @@ export async function middleware(req: NextRequest) {
   // It handles session refreshing and optional redirection
   const authMiddleware = auth.middleware({
     loginUrl: '/sign-in',
-    // We can allow public routes to pass through without redirecting
-    // But neonAuth.middleware usually redirects if not authenticated?
-    // Let's check if we can conditionalize it.
-    // Actually, we should only run it if we want to enforce auth OR refresh session.
-    // For now, let's run it globally but be careful about public routes.
-    // If we want to allow public access, we might need to check isPublicRoute.
   });
 
-  // If it's a public route, we might skip enforcement but still run it for session refresh?
-  // If neonAuth.middleware enforces auth, we must skip it for public routes.
-  // Documentation says: "Protects routes from unauthenticated requests"
-  
-  if (isPublicRoute(pathname) || pathname.startsWith('/_next') || pathname.startsWith('/static')) {
-     const res = NextResponse.next();
-     // Add CORS if needed
-     if (pathname.startsWith('/api')) {
-        const origin = req.headers.get('origin');
-        const corsHeaders = buildCorsHeaders(origin, req.headers);
-        if (corsHeaders) {
-            Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
-        }
-     }
-     return res;
+  // Execute auth middleware for all routes (except static/_next handled by matcher)
+  let response = await authMiddleware(req);
+
+  // Handle Public Routes:
+  // If the auth middleware tries to redirect (enforce auth) on a public route,
+  // we override it to allow access (returning the original request flow).
+  // This allows the page to render for unauthenticated users, while still
+  // allowing the middleware to set session headers for authenticated users.
+  if (isPublicRoute(pathname) && response.status >= 300 && response.status < 400) {
+     response = NextResponse.next();
   }
 
-  const response = await authMiddleware(req);
-  
   // Re-attach CORS headers if it was an API request
   if (pathname.startsWith('/api')) {
     const origin = req.headers.get('origin');
