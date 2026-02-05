@@ -52,77 +52,39 @@ export async function POST(_request: Request) {
 
     // Seed Zones for Chicago
     console.warn('[Seed] Seeding zones...');
-    const southSide = await prisma.zone.upsert({
-      where: { id: 'south-side' },
-      update: { name: 'South Side', cityId: chicago.id },
-      create: {
-        id: 'south-side',
-        name: 'South Side',
-        cityId: chicago.id,
-      },
-    });
+    
+    const seedZone = async (name: string, cityId: string) => {
+      const existing = await prisma.zone.findFirst({
+        where: { name, cityId }
+      });
+      
+      if (existing) {
+        return prisma.zone.update({
+          where: { id: existing.id },
+          data: { name, cityId }
+        });
+      } else {
+        return prisma.zone.create({
+          data: { name, cityId }
+        });
+      }
+    };
+
+    const southSide = await seedZone('South Side', chicago.id);
     console.warn('[Seed] Zone South Side seeded');
 
-    const westSide = await prisma.zone.upsert({
-      where: { id: 'west-side' },
-      update: { name: 'West Side', cityId: chicago.id },
-      create: {
-        id: 'west-side',
-        name: 'West Side',
-        cityId: chicago.id,
-      },
-    });
+    const westSide = await seedZone('West Side', chicago.id);
 
-    const downtown = await prisma.zone.upsert({
-      where: { id: 'downtown' },
-      update: { name: 'Downtown', cityId: chicago.id },
-      create: {
-        id: 'downtown',
-        name: 'Downtown',
-        cityId: chicago.id,
-      },
-    });
+    const downtown = await seedZone('Downtown', chicago.id);
 
     // Seed Zones for Fort Wayne
-    const northOTW = await prisma.zone.upsert({
-      where: { id: 'north-otw' },
-      update: { name: 'North OTW', cityId: fortWayne.id },
-      create: {
-        id: 'north-otw',
-        name: 'North OTW',
-        cityId: fortWayne.id,
-      },
-    });
+    const northOTW = await seedZone('North OTW', fortWayne.id);
 
-    const southOTW = await prisma.zone.upsert({
-      where: { id: 'south-otw' },
-      update: { name: 'South OTW', cityId: fortWayne.id },
-      create: {
-        id: 'south-otw',
-        name: 'South OTW',
-        cityId: fortWayne.id,
-      },
-    });
+    const southOTW = await seedZone('South OTW', fortWayne.id);
 
-    const eastOTW = await prisma.zone.upsert({
-      where: { id: 'east-otw' },
-      update: { name: 'East OTW', cityId: fortWayne.id },
-      create: {
-        id: 'east-otw',
-        name: 'East OTW',
-        cityId: fortWayne.id,
-      },
-    });
+    const eastOTW = await seedZone('East OTW', fortWayne.id);
 
-    const westOTW = await prisma.zone.upsert({
-      where: { id: 'west-otw' },
-      update: { name: 'West OTW', cityId: fortWayne.id },
-      create: {
-        id: 'west-otw',
-        name: 'West OTW',
-        cityId: fortWayne.id,
-      },
-    });
+    const westOTW = await seedZone('West OTW', fortWayne.id);
 
     // console.log(`[Seed] ✓ Created zones: ${southSide.name}, ${westSide.name}, ${downtown.name}, ${northOTW.name}, ${southOTW.name}, ${eastOTW.name}, ${westOTW.name}`);
 
