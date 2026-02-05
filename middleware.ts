@@ -110,7 +110,19 @@ export async function middleware(req: NextRequest) {
   // This allows the page to render for unauthenticated users, while still
   // allowing the middleware to set session headers for authenticated users.
   if (isPublicRoute(pathname) && response.status >= 300 && response.status < 400) {
-     response = NextResponse.next();
+    // Do not suppress redirects for auth API routes (like callbacks)
+    if (pathname.startsWith('/api/auth')) {
+      return response;
+    }
+
+    const newResponse = NextResponse.next();
+    
+    // Preserve headers from the auth middleware response (e.g. Set-Cookie)
+    response.headers.forEach((value, key) => {
+      newResponse.headers.set(key, value);
+    });
+    
+    response = newResponse;
   }
 
   // Re-attach CORS headers if it was an API request

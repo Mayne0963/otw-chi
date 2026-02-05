@@ -116,7 +116,7 @@ export async function POST(_request: Request) {
       {
         name: 'OTW BASIC',
         description: 'Best for food, groceries, and quick errands.',
-        stripeEnvKey: 'STRIPE_PRICE_BASIC',
+        stripeEnvKey: 'price_1Su3BtDcrdanf6e5Wz2uczBC',
         publicMonthlyPriceCents: 9900,
         monthlyServiceMiles: 60,
         rolloverCapMiles: 0,
@@ -130,7 +130,7 @@ export async function POST(_request: Request) {
       {
         name: 'OTW PLUS',
         description: 'More miles for multi-stop runs, longer waits, and light priority.',
-        stripeEnvKey: 'STRIPE_PRICE_PLUS',
+        stripeEnvKey: 'price_1Su3DKDcrdanf6e5NsBJmYw8',
         publicMonthlyPriceCents: 16900,
         monthlyServiceMiles: 120,
         rolloverCapMiles: 30,
@@ -144,7 +144,7 @@ export async function POST(_request: Request) {
       {
         name: 'OTW PRO',
         description: 'Most popular. Markup-free requests with priority routing.',
-        stripeEnvKey: 'STRIPE_PRICE_PRO',
+        stripeEnvKey: 'price_1Su3EQDcrdanf6e5ZXBOzaRd',
         publicMonthlyPriceCents: 26900,
         monthlyServiceMiles: 200,
         rolloverCapMiles: 75,
@@ -158,7 +158,7 @@ export async function POST(_request: Request) {
       {
         name: 'OTW ELITE',
         description: 'Cash handling and peer-to-peer delivery included.',
-        stripeEnvKey: 'STRIPE_PRICE_ELITE',
+        stripeEnvKey: 'price_1Su3FZDcrdanf6e5bywNpGWD',
         publicMonthlyPriceCents: 42900,
         monthlyServiceMiles: 350,
         rolloverCapMiles: 150,
@@ -172,7 +172,7 @@ export async function POST(_request: Request) {
       {
         name: 'OTW BLACK',
         description: 'Concierge tier with unlimited rollover and priority support.',
-        stripeEnvKey: 'STRIPE_PRICE_BLACK',
+        stripeEnvKey: 'price_1Su3H8Dcrdanf6e51pTmditF',
         publicMonthlyPriceCents: 69900,
         monthlyServiceMiles: 600,
         rolloverCapMiles: UNLIMITED_SERVICE_MILES,
