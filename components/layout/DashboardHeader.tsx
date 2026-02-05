@@ -1,5 +1,5 @@
 'use client';
-import { UserButton } from "@neondatabase/neon-js/auth/react";
+import { UserButton } from "@neondatabase/auth/react";
 import OtwButton from "@/components/ui/otw/OtwButton"
 
 export function DashboardHeader() {

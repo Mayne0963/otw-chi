@@ -13,6 +13,8 @@ import {
   SheetClose
 } from "@/components/ui/sheet"
 
+import { SignOutButton } from "@/components/auth/SignOutButton"
+
 function NavLinks() {
   return (
     <>
@@ -144,6 +146,9 @@ export function MarketingNav() {
                         <OtwButton as="a" href="/dashboard" variant="outline" className="w-full">
                           Dashboard
                         </OtwButton>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <SignOutButton variant="ghost" className="w-full justify-start px-2" />
                       </SheetClose>
                     </SignedIn>
                   </div>
