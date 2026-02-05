@@ -124,7 +124,6 @@ export async function middleware(req: NextRequest) {
      return res;
   }
 
-  // For protected routes, run the auth middleware
   const response = await authMiddleware(req);
   
   // Re-attach CORS headers if it was an API request

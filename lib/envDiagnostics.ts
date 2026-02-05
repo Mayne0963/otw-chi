@@ -7,8 +7,6 @@ type EnvRequirement = {
 
 const SERVER_ENV: EnvRequirement[] = [
   { key: "DATABASE_URL", public: false, description: "Postgres connection string (Neon/Vercel Postgres)" },
-  { key: "CLERK_SECRET_KEY", public: false, description: "Clerk backend key" },
-  { key: "CLERK_WEBHOOK_SECRET", public: false, optional: true, description: "Clerk webhook verification" },
   { key: "HERE_API_KEY", public: false, description: "HERE REST API key for routing/traffic" },
   { key: "STRIPE_SECRET_KEY", public: false, description: "Stripe secret key" },
   { key: "STRIPE_WEBHOOK_SECRET", public: false, optional: true, description: "Stripe webhook verification" },
@@ -18,7 +16,6 @@ const SERVER_ENV: EnvRequirement[] = [
 ];
 
 const CLIENT_ENV: EnvRequirement[] = [
-  { key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", public: true, description: "Clerk publishable key" },
   { key: "NEXT_PUBLIC_HERE_MAPS_KEY", public: true, description: "HERE JS Maps key" },
   { key: "NEXT_PUBLIC_APP_URL", public: true, optional: true, description: "Public site URL" },
   { key: "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", public: true, optional: true, description: "Stripe publishable key" },

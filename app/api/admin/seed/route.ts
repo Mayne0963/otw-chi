@@ -29,7 +29,7 @@ export async function POST(_request: Request) {
     const prisma = getPrisma();
     
     // Seed Cities
-    // console.log('[Seed] Seeding cities...');
+    console.warn('[Seed] Seeding cities...');
     const chicago = await prisma.city.upsert({
       where: { name: 'Chicago' },
       update: {},
@@ -37,6 +37,7 @@ export async function POST(_request: Request) {
         name: 'Chicago',
       },
     });
+    console.warn('[Seed] City Chicago seeded');
 
     const fortWayne = await prisma.city.upsert({
       where: { name: 'Fort Wayne' },
@@ -45,11 +46,12 @@ export async function POST(_request: Request) {
         name: 'Fort Wayne',
       },
     });
+    console.warn('[Seed] City Fort Wayne seeded');
 
     // console.log(`[Seed] ✓ Created cities: ${chicago.name}, ${fortWayne.name}`);
 
     // Seed Zones for Chicago
-    // console.log('[Seed] Seeding zones...');
+    console.warn('[Seed] Seeding zones...');
     const southSide = await prisma.zone.upsert({
       where: { id: 'south-side' },
       update: { name: 'South Side', cityId: chicago.id },
@@ -59,6 +61,7 @@ export async function POST(_request: Request) {
         cityId: chicago.id,
       },
     });
+    console.warn('[Seed] Zone South Side seeded');
 
     const westSide = await prisma.zone.upsert({
       where: { id: 'west-side' },
