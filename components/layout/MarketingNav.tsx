@@ -1,6 +1,6 @@
 import Link from "next/link"
 import OtwButton from "@/components/ui/otw/OtwButton"
-import { UserButton } from "@neondatabase/neon-js/auth/react"
+import { UserButton } from "@neondatabase/auth/react"
 import { SignedIn, SignedOut } from "@/components/auth/auth-helpers"
 import { Menu } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"

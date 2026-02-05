@@ -29,59 +29,69 @@ const adapter = new PrismaNeon({ connectionString: getDatabaseUrl() });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const chicago = await prisma.city.upsert({
-    where: { name: 'Chicago' },
-    update: {},
-    create: { name: 'Chicago' },
-  });
+  // Helper to seed City safely
+  const seedCity = async (name) => {
+    try {
+      const existing = await prisma.city.findUnique({
+        where: { name }
+      });
+      
+      if (existing) {
+        console.log(`[Seed] City ${name} already exists (ID: ${existing.id})`);
+        return existing;
+      } else {
+        const created = await prisma.city.create({
+          data: { name }
+        });
+        console.log(`[Seed] Created City ${name} (ID: ${created.id})`);
+        return created;
+      }
+    } catch (e) {
+      console.error(`[Seed] Failed to seed city ${name}:`, e);
+      throw e;
+    }
+  };
 
-  const fortWayne = await prisma.city.upsert({
-    where: { name: 'Fort Wayne' },
-    update: {},
-    create: { name: 'Fort Wayne' },
-  });
+  const chicago = await seedCity('Chicago');
+  const fortWayne = await seedCity('Fort Wayne');
 
-  await prisma.zone.upsert({
-    where: { id: 'south-side' },
-    update: { name: 'South Side', cityId: chicago.id },
-    create: { id: 'south-side', name: 'South Side', cityId: chicago.id },
-  });
+  // Helper to seed Zone safely
+  const seedZone = async (name, cityId, legacyId = null) => {
+    // Try to find by name and city first
+    let existing = await prisma.zone.findFirst({
+      where: { name, cityId }
+    });
+    
+    // If provided legacy ID, check if that exists too (in case name changed but ID persisted)
+    if (!existing && legacyId) {
+        try {
+            existing = await prisma.zone.findUnique({ where: { id: legacyId } });
+        } catch (e) {
+            // Ignore if legacy ID format is invalid for current schema
+        }
+    }
 
-  await prisma.zone.upsert({
-    where: { id: 'west-side' },
-    update: { name: 'West Side', cityId: chicago.id },
-    create: { id: 'west-side', name: 'West Side', cityId: chicago.id },
-  });
+    if (existing) {
+      console.log(`[Seed] Zone ${name} already exists (ID: ${existing.id})`);
+      return existing;
+    } else {
+      // Create WITHOUT forcing the ID, let CUID generate
+      // We ignore legacyId for creation to respect the schema's @default(cuid())
+      const created = await prisma.zone.create({
+        data: { name, cityId }
+      });
+      console.log(`[Seed] Created Zone ${name} (ID: ${created.id})`);
+      return created;
+    }
+  };
 
-  await prisma.zone.upsert({
-    where: { id: 'downtown' },
-    update: { name: 'Downtown', cityId: chicago.id },
-    create: { id: 'downtown', name: 'Downtown', cityId: chicago.id },
-  });
-
-  await prisma.zone.upsert({
-    where: { id: 'north-otw' },
-    update: { name: 'North OTW', cityId: fortWayne.id },
-    create: { id: 'north-otw', name: 'North OTW', cityId: fortWayne.id },
-  });
-
-  await prisma.zone.upsert({
-    where: { id: 'south-otw' },
-    update: { name: 'South OTW', cityId: fortWayne.id },
-    create: { id: 'south-otw', name: 'South OTW', cityId: fortWayne.id },
-  });
-
-  await prisma.zone.upsert({
-    where: { id: 'east-otw' },
-    update: { name: 'East OTW', cityId: fortWayne.id },
-    create: { id: 'east-otw', name: 'East OTW', cityId: fortWayne.id },
-  });
-
-  await prisma.zone.upsert({
-    where: { id: 'west-otw' },
-    update: { name: 'West OTW', cityId: fortWayne.id },
-    create: { id: 'west-otw', name: 'West OTW', cityId: fortWayne.id },
-  });
+  await seedZone('South Side', chicago.id, 'south-side');
+  await seedZone('West Side', chicago.id, 'west-side');
+  await seedZone('Downtown', chicago.id, 'downtown');
+  await seedZone('North OTW', fortWayne.id, 'north-otw');
+  await seedZone('South OTW', fortWayne.id, 'south-otw');
+  await seedZone('East OTW', fortWayne.id, 'east-otw');
+  await seedZone('West OTW', fortWayne.id, 'west-otw');
 
   const plansToUpsert = [
     {
@@ -205,34 +215,39 @@ async function main() {
       }
     }
 
-    await prisma.membershipPlan.upsert({
-      where: { name: plan.name },
-      update: {
-        description: plan.description,
-        stripePriceId,
-        monthlyServiceMiles: plan.monthlyServiceMiles,
-        rolloverCapMiles: plan.rolloverCapMiles,
-        advanceDiscountMax: plan.advanceDiscountMax,
-        priorityLevel: plan.priorityLevel,
-        markupFree: plan.markupFree,
-        cashAllowed: plan.cashAllowed,
-        peerToPeerAllowed: plan.peerToPeerAllowed,
-        allowedServiceTypes: plan.allowedServiceTypes ?? undefined,
-      },
-      create: {
-        name: plan.name,
-        description: plan.description,
-        stripePriceId,
-        monthlyServiceMiles: plan.monthlyServiceMiles,
-        rolloverCapMiles: plan.rolloverCapMiles,
-        advanceDiscountMax: plan.advanceDiscountMax,
-        priorityLevel: plan.priorityLevel,
-        markupFree: plan.markupFree,
-        cashAllowed: plan.cashAllowed,
-        peerToPeerAllowed: plan.peerToPeerAllowed,
-        allowedServiceTypes: plan.allowedServiceTypes ?? undefined,
-      },
+    const planData = {
+      description: plan.description,
+      stripePriceId,
+      monthlyServiceMiles: plan.monthlyServiceMiles,
+      rolloverCapMiles: plan.rolloverCapMiles,
+      advanceDiscountMax: plan.advanceDiscountMax,
+      priorityLevel: plan.priorityLevel,
+      markupFree: plan.markupFree,
+      cashAllowed: plan.cashAllowed,
+      peerToPeerAllowed: plan.peerToPeerAllowed,
+      allowedServiceTypes: plan.allowedServiceTypes ?? undefined,
+    };
+
+    const existingPlan = await prisma.membershipPlan.findUnique({
+        where: { name: plan.name }
     });
+
+    if (existingPlan) {
+        // Safe update: Prisma allows updating fields even if ID is CUID, as long as we don't touch ID
+        await prisma.membershipPlan.update({
+            where: { name: plan.name },
+            data: planData
+        });
+        console.log(`[Seed] Updated Plan ${plan.name}`);
+    } else {
+        await prisma.membershipPlan.create({
+            data: {
+                name: plan.name,
+                ...planData
+            }
+        });
+        console.log(`[Seed] Created Plan ${plan.name}`);
+    }
   }
 }
 
