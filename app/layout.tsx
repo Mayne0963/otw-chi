@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground antialiased relative font-sans">
         <NeonAuthUIProvider
           authClient={authClient}
-          redirectTo="/account/settings"
+          redirectTo="/dashboard"
           emailOTP
         >
           <ThemeProvider
