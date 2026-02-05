@@ -6,7 +6,7 @@ const config = [
   ...nextConfig,
   {
     name: "custom:ignores",
-    ignores: ["node_modules/**", "dist/**", "lib/generated/**", "scripts/**", "prisma/seed.js"]
+    ignores: ["node_modules/**", "dist/**", "lib/generated/**", "scripts/**", "prisma/seed.js", ".vercel/**", ".next/**"]
   },
   {
     name: "custom:base-rules",
