@@ -24,7 +24,7 @@ export async function POST(_request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // console.log('[Seed] Starting database seed...');
+    console.warn('[Seed] Starting database seed... v1.1');
     
     const prisma = getPrisma();
     
@@ -32,16 +32,21 @@ export async function POST(_request: Request) {
     console.warn('[Seed] Seeding cities...');
     
     const seedCity = async (name: string) => {
-      const existing = await prisma.city.findUnique({
-        where: { name }
-      });
-      
-      if (existing) {
-        return existing;
-      } else {
-        return prisma.city.create({
-          data: { name }
+      try {
+        const existing = await prisma.city.findUnique({
+          where: { name }
         });
+        
+        if (existing) {
+          return existing;
+        } else {
+          return prisma.city.create({
+            data: { name }
+          });
+        }
+      } catch (e) {
+        console.error(`[Seed] Failed to seed city ${name}:`, e);
+        throw e;
       }
     };
 
@@ -269,11 +274,12 @@ export async function POST(_request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Database seeded successfully',
+      message: 'Database seeded successfully (v1.1)',
       data: {
         cities: [chicago.name, fortWayne.name],
         zones: [southSide.name, westSide.name, downtown.name, northOTW.name, southOTW.name, eastOTW.name, westOTW.name],
         plans: upsertedPlans,
+        version: '1.1'
       },
     });
   } catch (error: unknown) {
