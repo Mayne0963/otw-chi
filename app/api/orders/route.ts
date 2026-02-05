@@ -104,6 +104,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    console.log('Order submission payload:', JSON.stringify(body, null, 2));
     const data = orderSchema.parse(body);
     const receiptSubtotalCents = data.receiptItems?.length
       ? data.receiptItems.reduce(
