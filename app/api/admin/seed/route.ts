@@ -54,16 +54,16 @@ export async function POST(_request: Request) {
     console.warn('[Seed] Seeding zones...');
     
     const seedZone = async (name: string, cityId: string) => {
+      // Find existing zone by name/city (avoids ID validation issues)
       const existing = await prisma.zone.findFirst({
         where: { name, cityId }
       });
       
       if (existing) {
-        return prisma.zone.update({
-          where: { id: existing.id },
-          data: { name, cityId }
-        });
+        // Return existing record (safe even if ID is non-standard)
+        return existing;
       } else {
+        // Create new record with auto-generated CUID
         return prisma.zone.create({
           data: { name, cityId }
         });

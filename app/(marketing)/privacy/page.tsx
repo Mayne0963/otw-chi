@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             We do not sell your personal data. We share data only with:
           </p>
           <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li><strong>Service Providers:</strong> Stripe (payments), Clerk (authentication), Neon (database).</li>
+            <li><strong>Service Providers:</strong> Stripe (payments), Neon (database & authentication).</li>
             <li><strong>Drivers/Customers:</strong> Necessary contact and location info is shared between parties during an active request.</li>
             <li><strong>Legal Authorities:</strong> When required by law or to protect safety.</li>
           </ul>

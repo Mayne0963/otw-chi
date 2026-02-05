@@ -23,7 +23,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
   });
 
   if (!user) {
-    // Sync user from Neon Session (replaces Clerk sync)
+    // Sync user from Neon Session
     // @ts-ignore
     const neonUser = neonSession?.user || {};
     const email = neonUser.email;
