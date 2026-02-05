@@ -56,6 +56,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Ledger", href: "/admin/nip-ledger", icon: Wallet },
     { label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 },
     { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
+    { label: "Seed Database", href: "/admin/seed", icon: Settings },
   ]
 
   let routes = commonRoutes
