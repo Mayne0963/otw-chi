@@ -19,11 +19,6 @@ export const auth = createNeonAuth({
   cookies: {
     secret: process.env.NEON_AUTH_COOKIE_SECRET,
   },
-  advanced: {
-    defaultSession: {
-      expiresIn: 60 * 60 * 24 * 30, // 30 days
-    },
-  },
 });
 
 export async function getNeonSession() {
