@@ -229,34 +229,39 @@ export async function POST(_request: Request) {
           throw new Error(`Plan ${plan.name} violates Service Mile floor`);
         }
       }
-      const record = await prisma.membershipPlan.upsert({
-        where: { name: plan.name },
-        update: {
-          description: plan.description,
-          stripePriceId,
-          monthlyServiceMiles: plan.monthlyServiceMiles,
-          rolloverCapMiles: plan.rolloverCapMiles,
-          advanceDiscountMax: plan.advanceDiscountMax,
-          priorityLevel: plan.priorityLevel,
-          markupFree: plan.markupFree,
-          cashAllowed: plan.cashAllowed,
-          peerToPeerAllowed: plan.peerToPeerAllowed,
-          allowedServiceTypes: (plan.allowedServiceTypes ?? undefined) as Prisma.InputJsonValue | undefined,
-        },
-        create: {
-          name: plan.name,
-          description: plan.description,
-          stripePriceId,
-          monthlyServiceMiles: plan.monthlyServiceMiles,
-          rolloverCapMiles: plan.rolloverCapMiles,
-          advanceDiscountMax: plan.advanceDiscountMax,
-          priorityLevel: plan.priorityLevel,
-          markupFree: plan.markupFree,
-          cashAllowed: plan.cashAllowed,
-          peerToPeerAllowed: plan.peerToPeerAllowed,
-          allowedServiceTypes: (plan.allowedServiceTypes ?? undefined) as Prisma.InputJsonValue | undefined,
-        },
+
+      const existingPlan = await prisma.membershipPlan.findUnique({
+        where: { name: plan.name }
       });
+
+      let record;
+      const planData = {
+        description: plan.description,
+        stripePriceId,
+        monthlyServiceMiles: plan.monthlyServiceMiles,
+        rolloverCapMiles: plan.rolloverCapMiles,
+        advanceDiscountMax: plan.advanceDiscountMax,
+        priorityLevel: plan.priorityLevel,
+        markupFree: plan.markupFree,
+        cashAllowed: plan.cashAllowed,
+        peerToPeerAllowed: plan.peerToPeerAllowed,
+        allowedServiceTypes: (plan.allowedServiceTypes ?? undefined) as Prisma.InputJsonValue | undefined,
+      };
+
+      if (existingPlan) {
+        record = await prisma.membershipPlan.update({
+          where: { id: existingPlan.id },
+          data: planData
+        });
+      } else {
+        record = await prisma.membershipPlan.create({
+          data: {
+            name: plan.name,
+            ...planData
+          }
+        });
+      }
+
       upsertedPlans.push(record.name);
     }
 
