@@ -30,22 +30,25 @@ export async function POST(_request: Request) {
     
     // Seed Cities
     console.warn('[Seed] Seeding cities...');
-    const chicago = await prisma.city.upsert({
-      where: { name: 'Chicago' },
-      update: {},
-      create: {
-        name: 'Chicago',
-      },
-    });
+    
+    const seedCity = async (name: string) => {
+      const existing = await prisma.city.findUnique({
+        where: { name }
+      });
+      
+      if (existing) {
+        return existing;
+      } else {
+        return prisma.city.create({
+          data: { name }
+        });
+      }
+    };
+
+    const chicago = await seedCity('Chicago');
     console.warn('[Seed] City Chicago seeded');
 
-    const fortWayne = await prisma.city.upsert({
-      where: { name: 'Fort Wayne' },
-      update: {},
-      create: {
-        name: 'Fort Wayne',
-      },
-    });
+    const fortWayne = await seedCity('Fort Wayne');
     console.warn('[Seed] City Fort Wayne seeded');
 
     // console.log(`[Seed] ✓ Created cities: ${chicago.name}, ${fortWayne.name}`);
