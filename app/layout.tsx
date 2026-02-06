@@ -45,10 +45,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           authClient={authClient}
           redirectTo="/dashboard"
           emailOTP
-          captcha={{
-            provider: 'hcaptcha',
-            siteKey: process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY!,
-          }}
         >
           <ThemeProvider
             attribute="class"
