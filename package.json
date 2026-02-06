@@ -58,6 +58,12 @@
     "tesseract.js": "^7.0.0",
     "zod": "4.1.13"
   },
+  "pnpm": {
+    "overrides": {
+      "@hcaptcha/react-hcaptcha": "npm:empty-module@0.0.2",
+      "@hcaptcha/loader": "npm:empty-module@0.0.2"
+    }
+  },
   "devDependencies": {
     "@types/node": "^22.8.6",
     "@types/react": "^18.3.7",
