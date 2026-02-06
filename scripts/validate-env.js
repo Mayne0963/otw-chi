@@ -1,4 +1,20 @@
-import 'dotenv/config'
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Load .env first
+dotenv.config();
+
+// Load .env.local if it exists (overriding .env)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envLocalPath = path.resolve(__dirname, '../.env.local');
+if (fs.existsSync(envLocalPath)) {
+  const envConfig = dotenv.parse(fs.readFileSync(envLocalPath));
+  for (const k in envConfig) {
+    process.env[k] = envConfig[k];
+  }
+}
 
 // Script to validate environment variables
 const requiredDbEnvVars = [
@@ -52,8 +68,6 @@ export function validateEnv() {
     console.log('✅ All required environment variables are set.');
   }
 }
-
-import { fileURLToPath } from 'url';
 
 // Auto-run if executed directly
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
