@@ -156,6 +156,14 @@ async function runMigrations() {
   let backoffMs = initialBackoffMs;
   let disableAdvisoryLock = false;
 
+  // Proactively disable advisory locks for Neon pooled connections
+  // This prevents the common "Advisory lock timeout" error on the first attempt
+  if (migrationUrl && (migrationUrl.includes('-pooler') || migrationUrl.includes('pgbouncer'))) {
+    console.log('[migrate-deploy] Neon/PgBouncer pooled connection detected');
+    console.log('[migrate-deploy] Proactively disabling advisory locks to prevent timeouts');
+    disableAdvisoryLock = true;
+  }
+
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     console.log(`[migrate-deploy] Running: prisma migrate deploy (attempt ${attempt}/${maxAttempts})`);
     if (disableAdvisoryLock) {

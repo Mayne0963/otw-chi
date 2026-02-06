@@ -1,13 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
 export default function OtwCookieConsent() {
-  const [show, setShow] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return !window.localStorage.getItem('otw_cookie_consent');
-  });
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const consented = window.localStorage.getItem('otw_cookie_consent');
+    if (!consented) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShow(true);
+    }
+  }, []);
 
   const accept = () => {
     localStorage.setItem('otw_cookie_consent', 'true');
