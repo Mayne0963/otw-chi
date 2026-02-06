@@ -19,10 +19,6 @@ export const auth = createNeonAuth({
   cookies: {
     secret: process.env.NEON_AUTH_COOKIE_SECRET,
   },
-  captcha: {
-    provider: 'hcaptcha',
-    secretKey: process.env.HCAPTCHA_SECRET_KEY!,
-  },
 });
 
 export async function getNeonSession() {
