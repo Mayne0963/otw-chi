@@ -838,13 +838,13 @@ export default function OrderPage() {
 
     let hasServerSession = false;
     try {
-      const sessionResponse = await fetch("/api/auth/get-session", {
+      const sessionResponse = await fetch("/api/auth/me", {
         credentials: "include",
         cache: "no-store",
       });
       if (sessionResponse.ok) {
         const sessionData = await sessionResponse.json().catch(() => null);
-        hasServerSession = Boolean(sessionData?.user?.id || sessionData?.userId);
+        hasServerSession = Boolean(sessionData?.user?.id);
       }
     } catch {
       hasServerSession = false;
