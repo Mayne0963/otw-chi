@@ -863,8 +863,26 @@ export default function OrderPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
+
+      if (response.redirected && response.url.includes("/sign-in")) {
+        const returnUrl = encodeURIComponent("/order");
+        router.push(`/sign-in?redirect_url=${returnUrl}`);
+        return;
+      }
+
+      if (response.status === 401) {
+        toast({
+          title: "Session expired",
+          description: "Please sign in again to place your order.",
+          variant: "destructive",
+        });
+        const returnUrl = encodeURIComponent("/order");
+        router.push(`/sign-in?redirect_url=${returnUrl}`);
+        return;
+      }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));

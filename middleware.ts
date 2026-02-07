@@ -77,9 +77,10 @@ const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const isApiRoute = pathname.startsWith('/api');
   
   // Handle CORS for API routes
-  if (pathname.startsWith('/api')) {
+  if (isApiRoute) {
     const origin = req.headers.get('origin');
     const corsHeaders = buildCorsHeaders(origin, req.headers);
 
@@ -104,6 +105,23 @@ export async function middleware(req: NextRequest) {
   // Execute auth middleware for all routes (except static/_next handled by matcher)
   let response = await authMiddleware(req);
 
+  // API routes should never redirect to HTML sign-in pages.
+  // Return a 401 so client fetch calls can handle auth state explicitly.
+  if (
+    isApiRoute &&
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.get('location')?.includes('/sign-in')
+  ) {
+    const unauthorized = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const origin = req.headers.get('origin');
+    const corsHeaders = buildCorsHeaders(origin, req.headers);
+    if (corsHeaders) {
+      Object.entries(corsHeaders).forEach(([k, v]) => unauthorized.headers.set(k, v));
+    }
+    return unauthorized;
+  }
+
   // Handle Public Routes:
   // If the auth middleware tries to redirect (enforce auth) on a public route,
   // we override it to allow access (returning the original request flow).
@@ -126,7 +144,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Re-attach CORS headers if it was an API request
-  if (pathname.startsWith('/api')) {
+  if (isApiRoute) {
     const origin = req.headers.get('origin');
     const corsHeaders = buildCorsHeaders(origin, req.headers);
     if (corsHeaders) {
