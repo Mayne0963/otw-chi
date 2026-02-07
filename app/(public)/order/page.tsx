@@ -142,6 +142,7 @@ export default function OrderPage() {
   const [unlimitedMiles, setUnlimitedMiles] = useState<boolean>(false);
   const [milesQuote, setMilesQuote] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"STRIPE" | "MILES">("STRIPE");
+  const [paymentMethodTouched, setPaymentMethodTouched] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(0);
   const [deliveryEstimateLoading, setDeliveryEstimateLoading] = useState(false);
   const [deliveryEstimateError, setDeliveryEstimateError] = useState<string | null>(null);
@@ -534,6 +535,22 @@ export default function OrderPage() {
     : deliveryEstimateError
       ? "Unavailable"
       : formatCurrency(deliveryFeeCents);
+
+  useEffect(() => {
+    const milesAvailable =
+      unlimitedMiles || (milesQuote !== null && walletBalance >= milesQuote);
+
+    // Keep method valid as quote/balance changes.
+    if (!milesAvailable && paymentMethod === "MILES") {
+      setPaymentMethod("STRIPE");
+      return;
+    }
+
+    // Before any manual choice, prefer miles to avoid unnecessary card SDK loading.
+    if (!paymentMethodTouched && milesAvailable && paymentMethod === "STRIPE") {
+      setPaymentMethod("MILES");
+    }
+  }, [milesQuote, paymentMethod, paymentMethodTouched, unlimitedMiles, walletBalance]);
 
   function goToNextStep() {
     if (!pickupAddress || !dropoffAddress) {
@@ -1376,7 +1393,10 @@ export default function OrderPage() {
                         </Label>
                         <RadioGroup
                           value={paymentMethod}
-                          onValueChange={(val) => setPaymentMethod(val as "STRIPE" | "MILES")}
+                          onValueChange={(val) => {
+                            setPaymentMethodTouched(true);
+                            setPaymentMethod(val as "STRIPE" | "MILES");
+                          }}
                           className="grid grid-cols-1 gap-2 sm:grid-cols-2"
                         >
                           <div
