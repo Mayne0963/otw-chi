@@ -109,6 +109,7 @@ export async function middleware(req: NextRequest) {
   // Return a 401 so client fetch calls can handle auth state explicitly.
   if (
     isApiRoute &&
+    !isPublicRoute(pathname) &&
     response.status >= 300 &&
     response.status < 400 &&
     response.headers.get('location')?.includes('/sign-in')
