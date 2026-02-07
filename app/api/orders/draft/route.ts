@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const neonAuthUserId = session?.userId || session?.user?.id;
 
     if (!neonAuthUserId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ skipped: true }, { status: 200 });
     }
 
     const prisma = getPrisma();

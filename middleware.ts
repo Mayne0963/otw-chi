@@ -124,11 +124,15 @@ export async function middleware(req: NextRequest) {
   }
 
   // Handle Public Routes:
-  // If the auth middleware tries to redirect (enforce auth) on a public route,
-  // we override it to allow access (returning the original request flow).
-  // This allows the page to render for unauthenticated users, while still
-  // allowing the middleware to set session headers for authenticated users.
-  if (isPublicRoute(pathname) && response.status >= 300 && response.status < 400) {
+  // If the auth middleware enforces auth on a public route (redirect or 401/403),
+  // override it to allow the request through while preserving any set-cookie headers.
+  // Do not suppress auth API route behavior (callbacks/session endpoints).
+  const shouldBypassPublicAuth =
+    isPublicRoute(pathname) &&
+    !pathname.startsWith('/api/auth') &&
+    ((response.status >= 300 && response.status < 400) || response.status === 401 || response.status === 403);
+
+  if (shouldBypassPublicAuth) {
     // Do not suppress redirects for auth API routes (like callbacks)
     if (pathname.startsWith('/api/auth')) {
       return response;
