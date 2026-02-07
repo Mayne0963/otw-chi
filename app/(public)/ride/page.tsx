@@ -63,7 +63,9 @@ export default function RidePage() {
 
     async function loadDraft() {
       try {
-        const response = await fetch("/api/orders/draft");
+        const response = await fetch("/api/orders/draft", {
+          credentials: "include",
+        });
         if (!response.ok) {
           setDraftLoaded(true);
           return;
@@ -218,6 +220,7 @@ export default function RidePage() {
     const response = await fetch("/api/orders/draft", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(draftPayload),
     });
     if (response.ok) {

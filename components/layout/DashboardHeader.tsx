@@ -12,7 +12,7 @@ export function DashboardHeader() {
         <OtwButton as="a" href="/order" variant="gold" className="hidden sm:inline-flex shadow-md">
           Place Order
         </OtwButton>
-        <UserButton />
+        <UserButton size="icon" />
       </div>
     </header>
   )

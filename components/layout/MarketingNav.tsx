@@ -74,7 +74,7 @@ export function MarketingNav() {
             <OtwButton as="a" href="/order" size="sm" className="hidden sm:flex">
               Order Now
             </OtwButton>
-            <UserButton />
+            <UserButton size="icon" />
           </SignedIn>
           
           <SignedOut>

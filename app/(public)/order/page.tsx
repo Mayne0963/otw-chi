@@ -284,7 +284,9 @@ export default function OrderPage() {
 
     async function loadDraft() {
       try {
-        const response = await fetch("/api/orders/draft");
+        const response = await fetch("/api/orders/draft", {
+          credentials: "include",
+        });
         if (!response.ok) {
           setDraftLoaded(true);
           return;
@@ -458,6 +460,7 @@ export default function OrderPage() {
     const response = await fetch("/api/orders/draft", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(draftPayload),
     });
     if (response.ok) {
@@ -828,6 +831,31 @@ export default function OrderPage() {
     }
 
     if (!isSignedIn) {
+      const returnUrl = encodeURIComponent("/order");
+      router.push(`/sign-in?redirect_url=${returnUrl}`);
+      return;
+    }
+
+    let hasServerSession = false;
+    try {
+      const sessionResponse = await fetch("/api/auth/get-session", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json().catch(() => null);
+        hasServerSession = Boolean(sessionData?.user?.id || sessionData?.userId);
+      }
+    } catch {
+      hasServerSession = false;
+    }
+
+    if (!hasServerSession) {
+      toast({
+        title: "Session expired",
+        description: "Please sign in again to place your order.",
+        variant: "destructive",
+      });
       const returnUrl = encodeURIComponent("/order");
       router.push(`/sign-in?redirect_url=${returnUrl}`);
       return;
