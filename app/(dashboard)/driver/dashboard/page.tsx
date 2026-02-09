@@ -181,13 +181,33 @@ export default async function DriverDashboardPage() {
     }
   }
 
+  async function requireDriverForAction() {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+      redirect('/sign-in');
+    }
+
+    const prisma = getPrisma();
+    const currentDriverProfile = await prisma.driverProfile.findUnique({
+      where: { userId: currentUser.id },
+    });
+
+    if (!currentDriverProfile) {
+      throw new Error('Driver profile not found.');
+    }
+
+    return { prisma, driverId: currentDriverProfile.id };
+  }
+
   async function acceptRequest(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
 
     if (!requestId) return;
 
-    await acceptDeliveryRequest(requestId, driverId);
+    const { driverId: authenticatedDriverId } = await requireDriverForAction();
+
+    await acceptDeliveryRequest(requestId, authenticatedDriverId);
 
     revalidatePath('/driver/dashboard');
   }
@@ -195,11 +215,9 @@ export default async function DriverDashboardPage() {
   async function acceptLegacyRequest(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
-    const driverId = formData.get('driverId') as string;
+    if (!requestId) return;
 
-    if (!requestId || !driverId) return;
-
-    const prisma = getPrisma();
+    const { prisma, driverId: authenticatedDriverId } = await requireDriverForAction();
     const req = await prisma.request.findUnique({ where: { id: requestId } });
     if (req?.status !== RequestStatus.SUBMITTED) return;
 
@@ -208,13 +226,13 @@ export default async function DriverDashboardPage() {
         where: { id: requestId },
         data: {
           status: RequestStatus.ASSIGNED,
-          assignedDriverId: driverId,
+          assignedDriverId: authenticatedDriverId,
         },
       }),
       prisma.driverAssignment.create({
         data: {
           requestId,
-          driverId,
+          driverId: authenticatedDriverId,
         },
       }),
     ]);
@@ -229,9 +247,9 @@ export default async function DriverDashboardPage() {
     
     if (!requestId || !newStatus) return;
 
-    const prisma = getPrisma();
+    const { prisma, driverId: authenticatedDriverId } = await requireDriverForAction();
     const existing = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
-    if (!existing) return;
+    if (!existing || existing.assignedDriverId !== authenticatedDriverId) return;
 
     const hasCoords =
       typeof existing.lastKnownLat === 'number' &&
@@ -260,7 +278,7 @@ export default async function DriverDashboardPage() {
 
       if (distanceKm > 0.1524) return;
 
-      await markDriverArrived(requestId, driverId);
+      await markDriverArrived(requestId, authenticatedDriverId);
       revalidatePath('/driver/dashboard');
       return;
     }
@@ -268,7 +286,7 @@ export default async function DriverDashboardPage() {
     if (newStatus === 'EN_ROUTE') {
       if (existing.status !== 'PICKED_UP') return;
 
-      await markDriverDepartedPickup(requestId, driverId);
+      await markDriverDepartedPickup(requestId, authenticatedDriverId);
       revalidatePath('/driver/dashboard');
       return;
     }
@@ -276,7 +294,7 @@ export default async function DriverDashboardPage() {
     if (newStatus === 'DELIVERED') {
       if (existing.status !== 'EN_ROUTE' && existing.status !== 'PICKED_UP') return;
 
-      await completeDeliveryRequest(requestId, driverId);
+      await completeDeliveryRequest(requestId, authenticatedDriverId);
       revalidatePath('/driver/dashboard');
       return;
     }
@@ -296,9 +314,9 @@ export default async function DriverDashboardPage() {
 
     if (!requestId || !newStatus) return;
 
-    const prisma = getPrisma();
+    const { prisma, driverId: authenticatedDriverId } = await requireDriverForAction();
     const job = await prisma.request.findUnique({ where: { id: requestId } });
-    if (!job) return;
+    if (!job || job.assignedDriverId !== authenticatedDriverId) return;
 
     if (newStatus === 'PICKED_UP') {
       if (job.status !== RequestStatus.ASSIGNED) return;
@@ -552,7 +570,6 @@ export default async function DriverDashboardPage() {
                             
                             <form action={isLegacyRequest(req) ? acceptLegacyRequest : acceptRequest}>
                                 <input type="hidden" name="requestId" value={req.id} />
-                                <input type="hidden" name="driverId" value={driverProfile.id} />
                                 <Button type="submit" className="w-full" variant="outline">
                                     Accept Job
                                 </Button>

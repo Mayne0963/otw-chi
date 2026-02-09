@@ -83,6 +83,11 @@ export async function middleware(req: NextRequest) {
   const isApiRoute = pathname.startsWith('/api');
   const isServerActionRequest =
     req.method === 'POST' && req.headers.has('next-action');
+  const isDriverServerActionRequest =
+    isServerActionRequest &&
+    (pathname === '/driver/dashboard' ||
+      pathname === '/driver/jobs' ||
+      pathname.startsWith('/driver/jobs/'));
   
   // Handle CORS for API routes
   if (isApiRoute) {
@@ -109,6 +114,23 @@ export async function middleware(req: NextRequest) {
 
   // Execute auth middleware for all routes (except static/_next handled by matcher)
   let response = await authMiddleware(req);
+
+  // Some driver server-action submissions can be falsely classified as unauthenticated
+  // by edge middleware, even with a valid cookie session. Let those requests reach the
+  // action handler, where we enforce auth again.
+  if (
+    isDriverServerActionRequest &&
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.get('location')?.includes('/sign-in')
+  ) {
+    const bypassResponse = NextResponse.next();
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      bypassResponse.headers.set('set-cookie', setCookie);
+    }
+    response = bypassResponse;
+  }
 
   // Next.js server actions expect an RSC payload or an `x-action-redirect` header.
   // Neon auth middleware returns a regular HTTP redirect for unauthenticated requests,
