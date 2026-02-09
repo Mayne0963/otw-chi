@@ -19,11 +19,6 @@ export const auth = createNeonAuth({
   cookies: {
     secret: process.env.NEON_AUTH_COOKIE_SECRET,
   },
-  // @ts-ignore: Captcha config is missing from types but required
-  captcha: {
-    provider: 'hcaptcha',
-    secretKey: process.env.HCAPTCHA_SECRET_KEY!,
-  },
 });
 
 export async function getNeonSession() {
