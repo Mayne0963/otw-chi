@@ -43,6 +43,210 @@ function isLegacyRequest(req: ActiveItem): req is LegacyRequest & { isLegacy: tr
   return Boolean((req as { isLegacy?: boolean }).isLegacy);
 }
 
+async function acceptRequest(formData: FormData) {
+  'use server';
+  const requestId = formData.get('requestId') as string;
+
+  if (!requestId) return;
+  const currentUser = await getCurrentUser();
+  if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+    redirect('/sign-in');
+  }
+  const prisma = getPrisma();
+  const currentDriverProfile = await prisma.driverProfile.findUnique({
+    where: { userId: currentUser.id },
+  });
+  if (!currentDriverProfile) {
+    throw new Error('Driver profile not found.');
+  }
+
+  await acceptDeliveryRequest(requestId, currentDriverProfile.id);
+
+  revalidatePath('/driver/dashboard');
+}
+
+async function acceptLegacyRequest(formData: FormData) {
+  'use server';
+  const requestId = formData.get('requestId') as string;
+  if (!requestId) return;
+
+  const currentUser = await getCurrentUser();
+  if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+    redirect('/sign-in');
+  }
+  const prisma = getPrisma();
+  const currentDriverProfile = await prisma.driverProfile.findUnique({
+    where: { userId: currentUser.id },
+  });
+  if (!currentDriverProfile) {
+    throw new Error('Driver profile not found.');
+  }
+
+  const req = await prisma.request.findUnique({ where: { id: requestId } });
+  if (req?.status !== RequestStatus.SUBMITTED) return;
+
+  await prisma.$transaction([
+    prisma.request.update({
+      where: { id: requestId },
+      data: {
+        status: RequestStatus.ASSIGNED,
+        assignedDriverId: currentDriverProfile.id,
+      },
+    }),
+    prisma.driverAssignment.create({
+      data: {
+        requestId,
+        driverId: currentDriverProfile.id,
+      },
+    }),
+  ]);
+
+  revalidatePath('/driver/dashboard');
+}
+
+async function updateStatus(formData: FormData) {
+  'use server';
+  const requestId = formData.get('requestId') as string;
+  const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
+  
+  if (!requestId || !newStatus) return;
+
+  const currentUser = await getCurrentUser();
+  if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+    redirect('/sign-in');
+  }
+  const prisma = getPrisma();
+  const currentDriverProfile = await prisma.driverProfile.findUnique({
+    where: { userId: currentUser.id },
+  });
+  if (!currentDriverProfile) {
+    throw new Error('Driver profile not found.');
+  }
+
+  const existing = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
+  if (!existing || existing.assignedDriverId !== currentDriverProfile.id) return;
+
+  const hasCoords =
+    typeof existing.lastKnownLat === 'number' &&
+    typeof existing.lastKnownLng === 'number';
+
+  if (newStatus === 'PICKED_UP') {
+    if (existing.status !== 'ASSIGNED') return;
+
+    if (!hasCoords) return;
+
+    const pickupLocation = await validateAddress(existing.pickupAddress).catch(() => null);
+    if (!pickupLocation) return;
+
+    const distanceKm = haversineDistanceKm(
+      {
+        lat: existing.lastKnownLat as number,
+        lng: existing.lastKnownLng as number,
+        label: 'Driver',
+      },
+      {
+        lat: pickupLocation.latitude,
+        lng: pickupLocation.longitude,
+        label: 'Pickup',
+      }
+    );
+
+    if (distanceKm > 0.1524) return;
+
+    await markDriverArrived(requestId, currentDriverProfile.id);
+    revalidatePath('/driver/dashboard');
+    return;
+  }
+
+  if (newStatus === 'EN_ROUTE') {
+    if (existing.status !== 'PICKED_UP') return;
+
+    await markDriverDepartedPickup(requestId, currentDriverProfile.id);
+    revalidatePath('/driver/dashboard');
+    return;
+  }
+
+  if (newStatus === 'DELIVERED') {
+    if (existing.status !== 'EN_ROUTE' && existing.status !== 'PICKED_UP') return;
+
+    await completeDeliveryRequest(requestId, currentDriverProfile.id);
+    revalidatePath('/driver/dashboard');
+    return;
+  }
+
+  await prisma.deliveryRequest.update({
+    where: { id: requestId },
+    data: { status: newStatus },
+  });
+  
+  revalidatePath('/driver/dashboard');
+}
+
+async function updateLegacyStatus(formData: FormData) {
+  'use server';
+  const requestId = formData.get('requestId') as string;
+  const newStatus = formData.get('status') as 'PICKED_UP' | 'DELIVERED';
+
+  if (!requestId || !newStatus) return;
+
+  const currentUser = await getCurrentUser();
+  if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+    redirect('/sign-in');
+  }
+  const prisma = getPrisma();
+  const currentDriverProfile = await prisma.driverProfile.findUnique({
+    where: { userId: currentUser.id },
+  });
+  if (!currentDriverProfile) {
+    throw new Error('Driver profile not found.');
+  }
+
+  const job = await prisma.request.findUnique({ where: { id: requestId } });
+  if (!job || job.assignedDriverId !== currentDriverProfile.id) return;
+
+  if (newStatus === 'PICKED_UP') {
+    if (job.status !== RequestStatus.ASSIGNED) return;
+
+    const hasCoords =
+      typeof job.lastKnownLat === 'number' && typeof job.lastKnownLng === 'number';
+    if (!hasCoords) return;
+
+    const pickupLocation = await validateAddress(job.pickup).catch(() => null);
+    if (!pickupLocation) return;
+
+    const distanceKm = haversineDistanceKm(
+      {
+        lat: job.lastKnownLat as number,
+        lng: job.lastKnownLng as number,
+        label: 'Driver',
+      },
+      {
+        lat: pickupLocation.latitude,
+        lng: pickupLocation.longitude,
+        label: 'Pickup',
+      }
+    );
+
+    if (distanceKm > 0.1524) return;
+
+    await prisma.request.update({
+      where: { id: requestId },
+      data: { status: RequestStatus.PICKED_UP },
+    });
+  }
+
+  if (newStatus === 'DELIVERED') {
+    if (job.status !== RequestStatus.PICKED_UP) return;
+
+    await prisma.request.update({
+      where: { id: requestId },
+      data: { status: RequestStatus.DELIVERED },
+    });
+  }
+
+  revalidatePath('/driver/dashboard');
+}
+
 export default async function DriverDashboardPage() {
   noStore();
   const user = await getCurrentUser();
@@ -179,210 +383,6 @@ export default async function DriverDashboardPage() {
         },
       ];
     }
-  }
-
-  async function acceptRequest(formData: FormData) {
-    'use server';
-    const requestId = formData.get('requestId') as string;
-
-    if (!requestId) return;
-    const currentUser = await getCurrentUser();
-    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-      redirect('/sign-in');
-    }
-    const prisma = getPrisma();
-    const currentDriverProfile = await prisma.driverProfile.findUnique({
-      where: { userId: currentUser.id },
-    });
-    if (!currentDriverProfile) {
-      throw new Error('Driver profile not found.');
-    }
-
-    await acceptDeliveryRequest(requestId, currentDriverProfile.id);
-
-    revalidatePath('/driver/dashboard');
-  }
-
-  async function acceptLegacyRequest(formData: FormData) {
-    'use server';
-    const requestId = formData.get('requestId') as string;
-    if (!requestId) return;
-
-    const currentUser = await getCurrentUser();
-    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-      redirect('/sign-in');
-    }
-    const prisma = getPrisma();
-    const currentDriverProfile = await prisma.driverProfile.findUnique({
-      where: { userId: currentUser.id },
-    });
-    if (!currentDriverProfile) {
-      throw new Error('Driver profile not found.');
-    }
-
-    const req = await prisma.request.findUnique({ where: { id: requestId } });
-    if (req?.status !== RequestStatus.SUBMITTED) return;
-
-    await prisma.$transaction([
-      prisma.request.update({
-        where: { id: requestId },
-        data: {
-          status: RequestStatus.ASSIGNED,
-          assignedDriverId: currentDriverProfile.id,
-        },
-      }),
-      prisma.driverAssignment.create({
-        data: {
-          requestId,
-          driverId: currentDriverProfile.id,
-        },
-      }),
-    ]);
-
-    revalidatePath('/driver/dashboard');
-  }
-
-  async function updateStatus(formData: FormData) {
-    'use server';
-    const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as 'PICKED_UP' | 'EN_ROUTE' | 'DELIVERED';
-    
-    if (!requestId || !newStatus) return;
-
-    const currentUser = await getCurrentUser();
-    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-      redirect('/sign-in');
-    }
-    const prisma = getPrisma();
-    const currentDriverProfile = await prisma.driverProfile.findUnique({
-      where: { userId: currentUser.id },
-    });
-    if (!currentDriverProfile) {
-      throw new Error('Driver profile not found.');
-    }
-
-    const existing = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
-    if (!existing || existing.assignedDriverId !== currentDriverProfile.id) return;
-
-    const hasCoords =
-      typeof existing.lastKnownLat === 'number' &&
-      typeof existing.lastKnownLng === 'number';
-
-    if (newStatus === 'PICKED_UP') {
-      if (existing.status !== 'ASSIGNED') return;
-
-      if (!hasCoords) return;
-
-      const pickupLocation = await validateAddress(existing.pickupAddress).catch(() => null);
-      if (!pickupLocation) return;
-
-      const distanceKm = haversineDistanceKm(
-        {
-          lat: existing.lastKnownLat as number,
-          lng: existing.lastKnownLng as number,
-          label: 'Driver',
-        },
-        {
-          lat: pickupLocation.latitude,
-          lng: pickupLocation.longitude,
-          label: 'Pickup',
-        }
-      );
-
-      if (distanceKm > 0.1524) return;
-
-      await markDriverArrived(requestId, currentDriverProfile.id);
-      revalidatePath('/driver/dashboard');
-      return;
-    }
-
-    if (newStatus === 'EN_ROUTE') {
-      if (existing.status !== 'PICKED_UP') return;
-
-      await markDriverDepartedPickup(requestId, currentDriverProfile.id);
-      revalidatePath('/driver/dashboard');
-      return;
-    }
-
-    if (newStatus === 'DELIVERED') {
-      if (existing.status !== 'EN_ROUTE' && existing.status !== 'PICKED_UP') return;
-
-      await completeDeliveryRequest(requestId, currentDriverProfile.id);
-      revalidatePath('/driver/dashboard');
-      return;
-    }
-
-    await prisma.deliveryRequest.update({
-      where: { id: requestId },
-      data: { status: newStatus },
-    });
-    
-    revalidatePath('/driver/dashboard');
-  }
-
-  async function updateLegacyStatus(formData: FormData) {
-    'use server';
-    const requestId = formData.get('requestId') as string;
-    const newStatus = formData.get('status') as 'PICKED_UP' | 'DELIVERED';
-
-    if (!requestId || !newStatus) return;
-
-    const currentUser = await getCurrentUser();
-    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-      redirect('/sign-in');
-    }
-    const prisma = getPrisma();
-    const currentDriverProfile = await prisma.driverProfile.findUnique({
-      where: { userId: currentUser.id },
-    });
-    if (!currentDriverProfile) {
-      throw new Error('Driver profile not found.');
-    }
-
-    const job = await prisma.request.findUnique({ where: { id: requestId } });
-    if (!job || job.assignedDriverId !== currentDriverProfile.id) return;
-
-    if (newStatus === 'PICKED_UP') {
-      if (job.status !== RequestStatus.ASSIGNED) return;
-
-      const hasCoords =
-        typeof job.lastKnownLat === 'number' && typeof job.lastKnownLng === 'number';
-      if (!hasCoords) return;
-
-      const pickupLocation = await validateAddress(job.pickup).catch(() => null);
-      if (!pickupLocation) return;
-
-      const distanceKm = haversineDistanceKm(
-        {
-          lat: job.lastKnownLat as number,
-          lng: job.lastKnownLng as number,
-          label: 'Driver',
-        },
-        {
-          lat: pickupLocation.latitude,
-          lng: pickupLocation.longitude,
-          label: 'Pickup',
-        }
-      );
-
-      if (distanceKm > 0.1524) return;
-
-      await prisma.request.update({
-        where: { id: requestId },
-        data: { status: RequestStatus.PICKED_UP },
-      });
-    }
-
-    if (newStatus === 'DELIVERED') {
-      if (job.status !== RequestStatus.PICKED_UP) return;
-
-      await prisma.request.update({
-        where: { id: requestId },
-        data: { status: RequestStatus.DELIVERED },
-      });
-    }
-
-    revalidatePath('/driver/dashboard');
   }
 
   return (

@@ -284,6 +284,7 @@ function RequestsErrorState({ error }: { error: unknown }) {
 
 export async function assignDriverAction(formData: FormData) {
   'use server';
+  await requireRole(['ADMIN']);
   const id = String(formData.get('id') ?? '');
   const driverProfileId = String(formData.get('driverProfileId') ?? '');
   

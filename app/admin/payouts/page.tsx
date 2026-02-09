@@ -321,6 +321,7 @@ function PayoutsErrorState({ error }: { error: unknown }) {
 
 export async function resolvePayoutAction(formData: FormData) {
   'use server';
+  await requireRole(['ADMIN']);
   const id = String(formData.get('id') ?? '');
   
   if (!id) {
@@ -344,6 +345,7 @@ export async function resolvePayoutAction(formData: FormData) {
     });
     
     console.warn('[resolvePayoutAction] Successfully resolved payout:', id);
+    revalidatePath('/admin/payouts');
     
   } catch (error) {
     console.error('[resolvePayoutAction] Failed to resolve payout:', error);

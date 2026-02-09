@@ -7,6 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { revalidatePath } from 'next/cache';
 
 // Loading component for better UX
 function AdminSupportLoading() {
@@ -219,6 +220,7 @@ function SupportErrorState({ error }: { error: unknown }) {
 
 export async function resolveTicketAction(formData: FormData) {
   'use server';
+  await requireRole(['ADMIN']);
   const id = String(formData.get('id') ?? '');
   
   if (!id) {
@@ -232,6 +234,7 @@ export async function resolveTicketAction(formData: FormData) {
       where: { id },
       data: { status: 'RESOLVED' }
     });
+    revalidatePath('/admin/support');
     console.warn('[resolveTicketAction] Successfully resolved ticket:', id);
   } catch (error) {
     console.error('[resolveTicketAction] Failed to resolve ticket:', error);
@@ -241,6 +244,7 @@ export async function resolveTicketAction(formData: FormData) {
 
 export async function closeTicketAction(formData: FormData) {
   'use server';
+  await requireRole(['ADMIN']);
   const id = String(formData.get('id') ?? '');
   
   if (!id) {
@@ -254,6 +258,7 @@ export async function closeTicketAction(formData: FormData) {
       where: { id },
       data: { status: 'CLOSED' }
     });
+    revalidatePath('/admin/support');
     console.warn('[closeTicketAction] Successfully closed ticket:', id);
   } catch (error) {
     console.error('[closeTicketAction] Failed to close ticket:', error);

@@ -19,46 +19,46 @@ const createSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+async function createLog(formData: FormData) {
+  "use server";
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+  if (user.role !== "DRIVER" && user.role !== "ADMIN") throw new Error("Forbidden");
+
+  const parsed = createSchema.safeParse({
+    serviceType: String(formData.get("serviceType") ?? ""),
+    milesCharged: formData.get("milesCharged"),
+    activeMinutes: formData.get("activeMinutes"),
+    energy: String(formData.get("energy") ?? ""),
+    wouldDoAgain: formData.get("wouldDoAgain") === "on",
+    notes: String(formData.get("notes") ?? "").trim() || undefined,
+  });
+  if (!parsed.success) {
+    throw new Error("Invalid log entry");
+  }
+
+  const prisma = getPrisma();
+  await prisma.founderServiceLog.create({
+    data: {
+      userId: user.id,
+      serviceType: parsed.data.serviceType,
+      milesCharged: parsed.data.milesCharged,
+      activeMinutes: parsed.data.activeMinutes,
+      energy: parsed.data.energy,
+      wouldDoAgain: parsed.data.wouldDoAgain,
+      notes: parsed.data.notes ?? null,
+    },
+  });
+
+  revalidatePath("/driver/founder-log");
+}
+
 export default async function FounderLogPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
   if (user.role !== "DRIVER" && user.role !== "ADMIN") redirect("/");
 
   const prisma = getPrisma();
-
-  async function createLog(formData: FormData) {
-    "use server";
-    const user = await getCurrentUser();
-    if (!user) throw new Error("Unauthorized");
-    if (user.role !== "DRIVER" && user.role !== "ADMIN") throw new Error("Forbidden");
-
-    const parsed = createSchema.safeParse({
-      serviceType: String(formData.get("serviceType") ?? ""),
-      milesCharged: formData.get("milesCharged"),
-      activeMinutes: formData.get("activeMinutes"),
-      energy: String(formData.get("energy") ?? ""),
-      wouldDoAgain: formData.get("wouldDoAgain") === "on",
-      notes: String(formData.get("notes") ?? "").trim() || undefined,
-    });
-    if (!parsed.success) {
-      throw new Error("Invalid log entry");
-    }
-
-    const prisma = getPrisma();
-    await prisma.founderServiceLog.create({
-      data: {
-        userId: user.id,
-        serviceType: parsed.data.serviceType,
-        milesCharged: parsed.data.milesCharged,
-        activeMinutes: parsed.data.activeMinutes,
-        energy: parsed.data.energy,
-        wouldDoAgain: parsed.data.wouldDoAgain,
-        notes: parsed.data.notes ?? null,
-      },
-    });
-
-    revalidatePath("/driver/founder-log");
-  }
 
   const logs = await prisma.founderServiceLog.findMany({
     where: { userId: user.id },
@@ -185,4 +185,3 @@ export default async function FounderLogPage() {
     </OtwPageShell>
   );
 }
-

@@ -8,6 +8,125 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { revalidatePath } from 'next/cache';
 import { DriverApplicationStatus, DriverCandidateProfile } from '@prisma/client';
 
+const scoreOptions = [1, 2, 3, 4, 5] as const;
+
+function parseScore(raw: FormDataEntryValue | null) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  const i = Math.trunc(n);
+  if (i < 1 || i > 5) return null;
+  return i;
+}
+
+async function updateStatus(formData: FormData) {
+  'use server';
+  await requireRole(['ADMIN']);
+
+  const id = formData.get('id') as string;
+  const status = formData.get('status') as 'APPROVED' | 'DENIED' | 'WAITLIST' | 'PENDING';
+  
+  if (!id || !status) return;
+  
+  const prisma = getPrisma();
+  const app = await prisma.driverApplication.findUnique({ where: { id } });
+  if (!app) return;
+
+  await prisma.driverApplication.update({
+      where: { id },
+      data: { status },
+  });
+
+  if (status === 'APPROVED' && app.userId) {
+      await prisma.driverProfile.upsert({
+          where: { userId: app.userId },
+          create: { userId: app.userId, status: 'OFFLINE' },
+          update: {},
+      });
+
+      await prisma.user.update({
+          where: { id: app.userId },
+          data: { role: 'DRIVER' },
+      });
+  }
+  
+  revalidatePath('/admin/drivers/applications');
+}
+
+async function saveInterview(formData: FormData) {
+  'use server';
+  await requireRole(['ADMIN']);
+
+  const id = String(formData.get('id') ?? '');
+  if (!id) return;
+
+  const patienceScore = parseScore(formData.get('patienceScore'));
+  const communicationScore = parseScore(formData.get('communicationScore'));
+  const reliabilityScore = parseScore(formData.get('reliabilityScore'));
+  const attitudeScore = parseScore(formData.get('attitudeScore'));
+  const alignmentScore = parseScore(formData.get('alignmentScore'));
+
+  const candidateProfileRaw = String(formData.get('candidateProfile') ?? '').trim();
+  const candidateProfile = (Object.values(DriverCandidateProfile) as string[]).includes(candidateProfileRaw)
+    ? (candidateProfileRaw as DriverCandidateProfile)
+    : null;
+
+  const patienceAnswer = String(formData.get('patienceAnswer') ?? '').trim() || null;
+  const customerCareAnswer = String(formData.get('customerCareAnswer') ?? '').trim() || null;
+  const instructionsAnswer = String(formData.get('instructionsAnswer') ?? '').trim() || null;
+  const whyOtwAnswer = String(formData.get('whyOtwAnswer') ?? '').trim() || null;
+  const interviewNotes = String(formData.get('interviewNotes') ?? '').trim() || null;
+
+  const scores = [patienceScore, communicationScore, reliabilityScore, attitudeScore, alignmentScore];
+  const allScoresPresent = scores.every((s) => typeof s === 'number');
+  const minScore = allScoresPresent ? Math.min(...(scores as number[])) : null;
+
+  let nextStatus: DriverApplicationStatus | null = null;
+  if (allScoresPresent && minScore !== null) {
+    if (minScore >= 4) nextStatus = DriverApplicationStatus.APPROVED;
+    else if (minScore >= 3) nextStatus = DriverApplicationStatus.WAITLIST;
+    else nextStatus = DriverApplicationStatus.DENIED;
+  }
+
+  const prisma = getPrisma();
+  const app = await prisma.driverApplication.findUnique({ where: { id } });
+  if (!app) return;
+
+  const updated = await prisma.driverApplication.update({
+    where: { id },
+    data: {
+      candidateProfile,
+      patienceScore,
+      communicationScore,
+      reliabilityScore,
+      attitudeScore,
+      alignmentScore,
+      minScore,
+      interviewNotes,
+      patienceAnswer,
+      customerCareAnswer,
+      instructionsAnswer,
+      whyOtwAnswer,
+      scoredAt: allScoresPresent ? new Date() : null,
+      status: nextStatus ?? app.status,
+    },
+  });
+
+  if (updated.status === DriverApplicationStatus.APPROVED && app.userId) {
+    await prisma.driverProfile.upsert({
+      where: { userId: app.userId },
+      create: { userId: app.userId, status: 'OFFLINE' },
+      update: {},
+    });
+
+    await prisma.user.update({
+      where: { id: app.userId },
+      data: { role: 'DRIVER' },
+    });
+  }
+
+  revalidatePath('/admin/drivers/applications');
+}
+
 export default async function AdminDriverApplicationsPage() {
   await requireRole(['ADMIN']);
   const prisma = getPrisma();
@@ -25,123 +144,6 @@ export default async function AdminDriverApplicationsPage() {
     onboardingMessage:
       'OTW is a service company first, delivery second. We value patience, communication, and professionalism. If that sounds like you, you’ll thrive here.',
   };
-
-  const scoreOptions = [1, 2, 3, 4, 5] as const;
-
-  function parseScore(raw: FormDataEntryValue | null) {
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return null;
-    const i = Math.trunc(n);
-    if (i < 1 || i > 5) return null;
-    return i;
-  }
-
-  async function updateStatus(formData: FormData) {
-    'use server';
-    const id = formData.get('id') as string;
-    const status = formData.get('status') as 'APPROVED' | 'DENIED' | 'WAITLIST' | 'PENDING';
-    
-    if (!id || !status) return;
-    
-    const prisma = getPrisma();
-    const app = await prisma.driverApplication.findUnique({ where: { id } });
-    if (!app) return;
-
-    await prisma.driverApplication.update({
-        where: { id },
-        data: { status },
-    });
-
-    if (status === 'APPROVED' && app.userId) {
-        // Create Driver Profile
-        await prisma.driverProfile.upsert({
-            where: { userId: app.userId },
-            create: { userId: app.userId, status: 'OFFLINE' },
-            update: {},
-        });
-
-        // Update User Role in DB
-        await prisma.user.update({
-            where: { id: app.userId },
-            data: { role: 'DRIVER' },
-        });
-    }
-    
-    revalidatePath('/admin/drivers/applications');
-  }
-
-  async function saveInterview(formData: FormData) {
-    'use server';
-    const id = String(formData.get('id') ?? '');
-    if (!id) return;
-
-    const patienceScore = parseScore(formData.get('patienceScore'));
-    const communicationScore = parseScore(formData.get('communicationScore'));
-    const reliabilityScore = parseScore(formData.get('reliabilityScore'));
-    const attitudeScore = parseScore(formData.get('attitudeScore'));
-    const alignmentScore = parseScore(formData.get('alignmentScore'));
-
-    const candidateProfileRaw = String(formData.get('candidateProfile') ?? '').trim();
-    const candidateProfile = (Object.values(DriverCandidateProfile) as string[]).includes(candidateProfileRaw)
-      ? (candidateProfileRaw as DriverCandidateProfile)
-      : null;
-
-    const patienceAnswer = String(formData.get('patienceAnswer') ?? '').trim() || null;
-    const customerCareAnswer = String(formData.get('customerCareAnswer') ?? '').trim() || null;
-    const instructionsAnswer = String(formData.get('instructionsAnswer') ?? '').trim() || null;
-    const whyOtwAnswer = String(formData.get('whyOtwAnswer') ?? '').trim() || null;
-    const interviewNotes = String(formData.get('interviewNotes') ?? '').trim() || null;
-
-    const scores = [patienceScore, communicationScore, reliabilityScore, attitudeScore, alignmentScore];
-    const allScoresPresent = scores.every((s) => typeof s === 'number');
-    const minScore = allScoresPresent ? Math.min(...(scores as number[])) : null;
-
-    let nextStatus: DriverApplicationStatus | null = null;
-    if (allScoresPresent && minScore !== null) {
-      if (minScore >= 4) nextStatus = DriverApplicationStatus.APPROVED;
-      else if (minScore >= 3) nextStatus = DriverApplicationStatus.WAITLIST;
-      else nextStatus = DriverApplicationStatus.DENIED;
-    }
-
-    const prisma = getPrisma();
-    const app = await prisma.driverApplication.findUnique({ where: { id } });
-    if (!app) return;
-
-    const updated = await prisma.driverApplication.update({
-      where: { id },
-      data: {
-        candidateProfile,
-        patienceScore,
-        communicationScore,
-        reliabilityScore,
-        attitudeScore,
-        alignmentScore,
-        minScore,
-        interviewNotes,
-        patienceAnswer,
-        customerCareAnswer,
-        instructionsAnswer,
-        whyOtwAnswer,
-        scoredAt: allScoresPresent ? new Date() : null,
-        status: nextStatus ?? app.status,
-      },
-    });
-
-    if (updated.status === DriverApplicationStatus.APPROVED && app.userId) {
-      await prisma.driverProfile.upsert({
-        where: { userId: app.userId },
-        create: { userId: app.userId, status: 'OFFLINE' },
-        update: {},
-      });
-
-      await prisma.user.update({
-        where: { id: app.userId },
-        data: { role: 'DRIVER' },
-      });
-    }
-
-    revalidatePath('/admin/drivers/applications');
-  }
 
   return (
     <OtwPageShell>
