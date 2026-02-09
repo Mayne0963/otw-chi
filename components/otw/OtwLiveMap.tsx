@@ -39,6 +39,8 @@ const ROUTE_SOURCE_ID = "otw-route-source";
 const ROUTE_LAYER_ID = "otw-route-layer";
 const DRIVER_ROUTE_SOURCE_ID = "otw-driver-route-source";
 const DRIVER_ROUTE_LAYER_ID = "otw-driver-route-layer";
+const DRIVER_ROUTES_SOURCE_ID = "otw-driver-routes-source";
+const DRIVER_ROUTES_LAYER_ID = "otw-driver-routes-layer";
 const TRAFFIC_SOURCE_ID = "otw-traffic-source";
 const TRAFFIC_LAYER_ID = "otw-traffic-layer";
 const INCIDENT_SOURCE_ID = "otw-incident-source";
@@ -264,12 +266,31 @@ useEffect(() => {
   }, [customer, drivers, dropoff, focusDriverId, jobPickup]);
 
   const markerView: MarkerView = useMemo(() => {
+    if (showAllDrivers) return "overview";
     if (activeDriver && resolvedDriverRoute) return "navigation";
     if (jobPhase === "TO_PICKUP") return "pickup";
     return "overview";
-  }, [activeDriver, jobPhase, resolvedDriverRoute]);
+  }, [activeDriver, jobPhase, resolvedDriverRoute, showAllDrivers]);
 
   const visibleMarkers = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => {
+    if (showAllDrivers) {
+      return {
+        type: "FeatureCollection",
+        features: markerData.map((marker) => ({
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [marker.lng, marker.lat],
+          },
+          properties: {
+            id: marker.id,
+            label: marker.label,
+            color: marker.color,
+          },
+        })),
+      };
+    }
+
     const hasCustomerLike = markerData.some(
       (marker) => marker.id === "customer" || marker.id === "pickup"
     );
@@ -300,9 +321,10 @@ useEffect(() => {
         },
       })),
     };
-  }, [markerData, markerView]);
+  }, [markerData, markerView, showAllDrivers]);
 
   const routingDriver = useMemo(() => {
+    if (showAllDrivers) return null;
     if (!drivers.length) return null;
     if (jobPhase === "NONE") return null;
 
@@ -339,7 +361,7 @@ useEffect(() => {
       return bTime - aTime;
     });
     return sorted[0] ?? null;
-  }, [drivers, focusDriverId, jobDestination, jobPhase, jobPickup, requestId]);
+  }, [drivers, focusDriverId, jobDestination, jobPhase, jobPickup, requestId, showAllDrivers]);
 
   useEffect(() => {
     const targetLocation =
@@ -763,6 +785,19 @@ useEffect(() => {
       });
 
       updateGeoLayer({
+        sourceId: DRIVER_ROUTES_SOURCE_ID,
+        layerId: DRIVER_ROUTES_LAYER_ID,
+        data: driverRoutes ?? null,
+        type: "line",
+        paint: {
+          "line-color": ["coalesce", ["get", "color"], "#5e5ce6"],
+          "line-width": DRIVER_ROUTE_BASE_WIDTH,
+          "line-opacity": 0.7,
+          "line-dasharray": [2, 1.5],
+        },
+      });
+
+      updateGeoLayer({
         sourceId: TRAFFIC_SOURCE_ID,
         layerId: TRAFFIC_LAYER_ID,
         data: trafficFlow ?? null,
@@ -937,28 +972,32 @@ useEffect(() => {
 
   const driverUpdatedAgo = mounted ? formatUpdatedAgo(activeDriver?.updatedAt) : null;
 
-  if (resolvedMainSummary) {
-    statusLines.push(
-      `Job route: ${resolvedMainSummary.distanceText} • ${resolvedMainSummary.durationText}`
-    );
-  } else if (jobPickup && jobDestination) {
-    statusLines.push("Job route: calculating...");
-  } else if (jobPickup || jobDestination) {
-    statusLines.push("Job route: add pickup and destination to unlock directions.");
-  }
+  if (showAllDrivers) {
+    statusLines.push(`Live drivers: ${drivers.length}`);
+  } else {
+    if (resolvedMainSummary) {
+      statusLines.push(
+        `Job route: ${resolvedMainSummary.distanceText} • ${resolvedMainSummary.durationText}`
+      );
+    } else if (jobPickup && jobDestination) {
+      statusLines.push("Job route: calculating...");
+    } else if (jobPickup || jobDestination) {
+      statusLines.push("Job route: add pickup and destination to unlock directions.");
+    }
 
-  if (resolvedDriverSummary && activeDriver && driverTarget) {
-    statusLines.push(
-      `Driver ➜ ${driverTarget.label}: ${resolvedDriverSummary.distanceText} • ${resolvedDriverSummary.durationText}` +
-        (driverUpdatedAgo ? ` (${driverUpdatedAgo})` : "")
-    );
-  } else if (activeDriver && driverTarget) {
-    statusLines.push(
-      `Driver ➜ ${driverTarget.label}: syncing…` +
-        (driverUpdatedAgo ? ` (last seen ${driverUpdatedAgo})` : "")
-    );
-  } else if (drivers.length > 0) {
-    statusLines.push("Driver leg: add pickup and destination to anchor directions.");
+    if (resolvedDriverSummary && activeDriver && driverTarget) {
+      statusLines.push(
+        `Driver ➜ ${driverTarget.label}: ${resolvedDriverSummary.distanceText} • ${resolvedDriverSummary.durationText}` +
+          (driverUpdatedAgo ? ` (${driverUpdatedAgo})` : "")
+      );
+    } else if (activeDriver && driverTarget) {
+      statusLines.push(
+        `Driver ➜ ${driverTarget.label}: syncing…` +
+          (driverUpdatedAgo ? ` (last seen ${driverUpdatedAgo})` : "")
+      );
+    } else if (drivers.length > 0) {
+      statusLines.push("Driver leg: add pickup and destination to anchor directions.");
+    }
   }
 
   return (
