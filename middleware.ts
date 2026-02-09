@@ -17,6 +17,7 @@ const isPublicRoute = (pathname: string) => {
     '/terms',
     '/design-system',
     '/api/stripe/webhook',
+    '/api/client-error',
   ];
   if (publicPaths.includes(pathname)) return true;
   if (pathname.startsWith('/order')) return true;

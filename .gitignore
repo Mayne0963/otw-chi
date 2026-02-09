@@ -12,3 +12,6 @@ proxy.js
 
 # Prisma generated client (generated at build time)
 lib/generated/
+
+# Editor directories
+.vscode
