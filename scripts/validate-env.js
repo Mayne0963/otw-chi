@@ -42,8 +42,6 @@ const requiredEnvVars = [
   'STRIPE_PRICE_PRO',
   'STRIPE_PRICE_ELITE',
   'STRIPE_PRICE_BLACK',
-  'NEXT_PUBLIC_HCAPTCHA_SITE_KEY',
-  'HCAPTCHA_SECRET_KEY',
 ];
 
 export function validateEnv() {
