@@ -42,9 +42,11 @@ type LiveDriversResponse =
   | {
       success: false;
       error: string;
+      retryAfter?: number;
     };
 
-const POLL_MS = 5_000;
+const POLL_MS = 10_000;
+const POLL_JITTER_MS = 350;
 const ROUTE_REFRESH_MS = 45_000;
 const ROUTE_REFRESH_DISTANCE_KM = 0.2;
 const MAX_ROUTE_FETCHES_PER_TICK = 4;
@@ -130,9 +132,10 @@ export default function AdminDriversLiveMap() {
     };
 
     const load = async () => {
+      let nextDelayMs = POLL_MS + POLL_JITTER_MS;
       if (cancelled) return;
       if (pollInFlightRef.current) {
-        schedule(POLL_MS);
+        schedule(nextDelayMs);
         return;
       }
       pollInFlightRef.current = true;
@@ -141,9 +144,33 @@ export default function AdminDriversLiveMap() {
           cache: "no-store",
           credentials: "include",
         });
-        const data = (await res.json()) as LiveDriversResponse;
-        if (!res.ok || !data.success) {
-          throw new Error("error" in data ? data.error : `Request failed: ${res.status}`);
+        const data = (await res.json().catch(() => null)) as LiveDriversResponse | null;
+
+        if (res.status === 429) {
+          const retryAfterHeader = Number.parseInt(res.headers.get("Retry-After") || "", 10);
+          const retryAfterBody =
+            data && "retryAfter" in data && typeof data.retryAfter === "number"
+              ? data.retryAfter
+              : null;
+          const retryAfterSeconds =
+            Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+              ? retryAfterHeader
+              : retryAfterBody && retryAfterBody > 0
+                ? retryAfterBody
+                : Math.ceil(POLL_MS / 1000);
+
+          nextDelayMs = retryAfterSeconds * 1000 + POLL_JITTER_MS;
+          setError(`Too many requests. Retrying in ${retryAfterSeconds}s.`);
+          setLoading(false);
+          return;
+        }
+
+        if (!res.ok || !data || data.success !== true) {
+          const errorMessage =
+            data && "error" in data && typeof data.error === "string"
+              ? data.error
+              : `Request failed: ${res.status}`;
+          throw new Error(errorMessage);
         }
         if (cancelled) return;
         setDrivers(data.drivers || []);
@@ -155,7 +182,7 @@ export default function AdminDriversLiveMap() {
         setLoading(false);
       } finally {
         pollInFlightRef.current = false;
-        schedule(POLL_MS);
+        schedule(nextDelayMs);
       }
     };
 
