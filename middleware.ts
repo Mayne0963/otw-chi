@@ -27,6 +27,10 @@ const isPublicRoute = (pathname: string) => {
   if (pathname.startsWith('/api/webhooks')) return true;
   if (pathname.startsWith('/api/auth')) return true;
   if (pathname.startsWith('/api/debug')) return true;
+  // Driver endpoints enforce auth in their route handlers. Bypass edge auth
+  // middleware here to avoid false 401s on authenticated POST polling calls.
+  if (pathname === '/api/driver/location') return true;
+  if (pathname.startsWith('/api/driver/navigation')) return true;
   // Public API routes
   if (pathname.startsWith('/api/stripe')) return true;
   if (pathname.startsWith('/api/navigation')) return true;

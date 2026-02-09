@@ -8,6 +8,26 @@ const FORT_WAYNE_LAT = 41.0793;
 const FORT_WAYNE_LNG = -85.1394;
 const SERVICE_RADIUS_MILES = 25;
 
+function getAppOrigin(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return 'http://localhost:3000';
+}
+
+function getInternalApiUrl(pathname: string): URL {
+  return new URL(pathname, getAppOrigin());
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === 'object';
 }
@@ -105,7 +125,7 @@ export async function searchAddress(
       : `${query}, Fort Wayne, IN`;
 
     // Use internal API proxy to avoid CORS issues
-    const url = new URL('/api/geocoding/search', window.location.origin);
+    const url = getInternalApiUrl('/api/geocoding/search');
     url.searchParams.append('q', searchQuery);
     url.searchParams.append('format', 'json');
     url.searchParams.append('addressdetails', '1');
@@ -205,7 +225,7 @@ export async function reverseGeocodeAddress(
 ): Promise<GeocodedAddress | null> {
   try {
     // Use internal API proxy to avoid CORS issues
-    const url = new URL('/api/geocoding/reverse', window.location.origin);
+    const url = getInternalApiUrl('/api/geocoding/reverse');
     url.searchParams.append('format', 'json');
     url.searchParams.append('lat', String(latitude));
     url.searchParams.append('lon', String(longitude));
