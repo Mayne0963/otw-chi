@@ -81,6 +81,8 @@ const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApiRoute = pathname.startsWith('/api');
+  const isServerActionRequest =
+    req.method === 'POST' && req.headers.has('next-action');
   
   // Handle CORS for API routes
   if (isApiRoute) {
@@ -107,6 +109,29 @@ export async function middleware(req: NextRequest) {
 
   // Execute auth middleware for all routes (except static/_next handled by matcher)
   let response = await authMiddleware(req);
+
+  // Next.js server actions expect an RSC payload or an `x-action-redirect` header.
+  // Neon auth middleware returns a regular HTTP redirect for unauthenticated requests,
+  // which causes Next to throw "An unexpected response was received from the server."
+  // Convert auth redirects on server-action POSTs into action redirects.
+  if (isServerActionRequest && response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('location');
+    if (location) {
+      const target = new URL(location, req.url);
+      const actionRedirect = new NextResponse(null, { status: 303 });
+      actionRedirect.headers.set(
+        'x-action-redirect',
+        `${target.pathname}${target.search}${target.hash};replace`
+      );
+
+      const setCookie = response.headers.get('set-cookie');
+      if (setCookie) {
+        actionRedirect.headers.set('set-cookie', setCookie);
+      }
+
+      return actionRedirect;
+    }
+  }
 
   // API routes should never redirect to HTML sign-in pages.
   // Return a 401 so client fetch calls can handle auth state explicitly.
