@@ -181,33 +181,24 @@ export default async function DriverDashboardPage() {
     }
   }
 
-  async function requireDriverForAction() {
-    const currentUser = await getCurrentUser();
-    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-      redirect('/sign-in');
-    }
-
-    const prisma = getPrisma();
-    const currentDriverProfile = await prisma.driverProfile.findUnique({
-      where: { userId: currentUser.id },
-    });
-
-    if (!currentDriverProfile) {
-      throw new Error('Driver profile not found.');
-    }
-
-    return { prisma, driverId: currentDriverProfile.id };
-  }
-
   async function acceptRequest(formData: FormData) {
     'use server';
     const requestId = formData.get('requestId') as string;
 
     if (!requestId) return;
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+      redirect('/sign-in');
+    }
+    const prisma = getPrisma();
+    const currentDriverProfile = await prisma.driverProfile.findUnique({
+      where: { userId: currentUser.id },
+    });
+    if (!currentDriverProfile) {
+      throw new Error('Driver profile not found.');
+    }
 
-    const { driverId: authenticatedDriverId } = await requireDriverForAction();
-
-    await acceptDeliveryRequest(requestId, authenticatedDriverId);
+    await acceptDeliveryRequest(requestId, currentDriverProfile.id);
 
     revalidatePath('/driver/dashboard');
   }
@@ -217,7 +208,18 @@ export default async function DriverDashboardPage() {
     const requestId = formData.get('requestId') as string;
     if (!requestId) return;
 
-    const { prisma, driverId: authenticatedDriverId } = await requireDriverForAction();
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+      redirect('/sign-in');
+    }
+    const prisma = getPrisma();
+    const currentDriverProfile = await prisma.driverProfile.findUnique({
+      where: { userId: currentUser.id },
+    });
+    if (!currentDriverProfile) {
+      throw new Error('Driver profile not found.');
+    }
+
     const req = await prisma.request.findUnique({ where: { id: requestId } });
     if (req?.status !== RequestStatus.SUBMITTED) return;
 
@@ -226,13 +228,13 @@ export default async function DriverDashboardPage() {
         where: { id: requestId },
         data: {
           status: RequestStatus.ASSIGNED,
-          assignedDriverId: authenticatedDriverId,
+          assignedDriverId: currentDriverProfile.id,
         },
       }),
       prisma.driverAssignment.create({
         data: {
           requestId,
-          driverId: authenticatedDriverId,
+          driverId: currentDriverProfile.id,
         },
       }),
     ]);
@@ -247,9 +249,20 @@ export default async function DriverDashboardPage() {
     
     if (!requestId || !newStatus) return;
 
-    const { prisma, driverId: authenticatedDriverId } = await requireDriverForAction();
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+      redirect('/sign-in');
+    }
+    const prisma = getPrisma();
+    const currentDriverProfile = await prisma.driverProfile.findUnique({
+      where: { userId: currentUser.id },
+    });
+    if (!currentDriverProfile) {
+      throw new Error('Driver profile not found.');
+    }
+
     const existing = await prisma.deliveryRequest.findUnique({ where: { id: requestId } });
-    if (!existing || existing.assignedDriverId !== authenticatedDriverId) return;
+    if (!existing || existing.assignedDriverId !== currentDriverProfile.id) return;
 
     const hasCoords =
       typeof existing.lastKnownLat === 'number' &&
@@ -278,7 +291,7 @@ export default async function DriverDashboardPage() {
 
       if (distanceKm > 0.1524) return;
 
-      await markDriverArrived(requestId, authenticatedDriverId);
+      await markDriverArrived(requestId, currentDriverProfile.id);
       revalidatePath('/driver/dashboard');
       return;
     }
@@ -286,7 +299,7 @@ export default async function DriverDashboardPage() {
     if (newStatus === 'EN_ROUTE') {
       if (existing.status !== 'PICKED_UP') return;
 
-      await markDriverDepartedPickup(requestId, authenticatedDriverId);
+      await markDriverDepartedPickup(requestId, currentDriverProfile.id);
       revalidatePath('/driver/dashboard');
       return;
     }
@@ -294,7 +307,7 @@ export default async function DriverDashboardPage() {
     if (newStatus === 'DELIVERED') {
       if (existing.status !== 'EN_ROUTE' && existing.status !== 'PICKED_UP') return;
 
-      await completeDeliveryRequest(requestId, authenticatedDriverId);
+      await completeDeliveryRequest(requestId, currentDriverProfile.id);
       revalidatePath('/driver/dashboard');
       return;
     }
@@ -314,9 +327,20 @@ export default async function DriverDashboardPage() {
 
     if (!requestId || !newStatus) return;
 
-    const { prisma, driverId: authenticatedDriverId } = await requireDriverForAction();
+    const currentUser = await getCurrentUser();
+    if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
+      redirect('/sign-in');
+    }
+    const prisma = getPrisma();
+    const currentDriverProfile = await prisma.driverProfile.findUnique({
+      where: { userId: currentUser.id },
+    });
+    if (!currentDriverProfile) {
+      throw new Error('Driver profile not found.');
+    }
+
     const job = await prisma.request.findUnique({ where: { id: requestId } });
-    if (!job || job.assignedDriverId !== authenticatedDriverId) return;
+    if (!job || job.assignedDriverId !== currentDriverProfile.id) return;
 
     if (newStatus === 'PICKED_UP') {
       if (job.status !== RequestStatus.ASSIGNED) return;
