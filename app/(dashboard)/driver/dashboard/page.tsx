@@ -472,8 +472,18 @@ export default async function DriverDashboardPage() {
                             </div>
 
                             <div className="flex gap-2">
-                                {isAssigned && (
-                                    <form action={isLegacyRequest(req) ? updateLegacyStatus : updateStatus} className="w-full">
+                                {isAssigned && isLegacyRequest(req) && (
+                                    <form action={updateLegacyStatus} className="w-full">
+                                        <input type="hidden" name="requestId" value={req.id} />
+                                        <input type="hidden" name="status" value="PICKED_UP" />
+                                        <Button type="submit" className="w-full" variant="gold">
+                                            Confirm Pickup
+                                        </Button>
+                                    </form>
+                                )}
+
+                                {isAssigned && !isLegacyRequest(req) && (
+                                    <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="PICKED_UP" />
                                         <Button type="submit" className="w-full" variant="gold">
@@ -592,12 +602,21 @@ export default async function DriverDashboardPage() {
                                 ) : null}
                             </div>
                             
-                            <form action={isLegacyRequest(req) ? acceptLegacyRequest : acceptRequest}>
-                                <input type="hidden" name="requestId" value={req.id} />
-                                <Button type="submit" className="w-full" variant="outline">
-                                    Accept Job
-                                </Button>
-                            </form>
+                            {isLegacyRequest(req) ? (
+                              <form action={acceptLegacyRequest}>
+                                  <input type="hidden" name="requestId" value={req.id} />
+                                  <Button type="submit" className="w-full" variant="outline">
+                                      Accept Job
+                                  </Button>
+                              </form>
+                            ) : (
+                              <form action={acceptRequest}>
+                                  <input type="hidden" name="requestId" value={req.id} />
+                                  <Button type="submit" className="w-full" variant="outline">
+                                      Accept Job
+                                  </Button>
+                              </form>
+                            )}
                         </div>
                     </Card>
                   );
