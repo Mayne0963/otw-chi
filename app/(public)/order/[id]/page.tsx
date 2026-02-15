@@ -7,6 +7,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
+import { computeBillableReceiptSubtotalCents } from '@/lib/order-pricing';
 import { ArrowUpRight, CheckCircle2, MapPin, ShieldAlert, User } from 'lucide-react';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
 
@@ -63,8 +64,18 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
     (sum, item) => sum + Math.round((item.price || 0) * 100) * Math.max(1, item.quantity || 1),
     0
   );
+  const billableReceiptSubtotalCents = computeBillableReceiptSubtotalCents({
+    serviceType: order.serviceType,
+    receiptSubtotalCents:
+      typeof order.receiptSubtotalCents === 'number'
+        ? order.receiptSubtotalCents
+        : receiptItemsTotal,
+    receiptItems,
+    receiptImageData: order.receiptImageData,
+    quoteBreakdown: order.quoteBreakdown,
+  });
   const orderTotalCents =
-    receiptItemsTotal + (order.deliveryFeeCents ?? 0) - (order.discountCents ?? 0);
+    billableReceiptSubtotalCents + (order.deliveryFeeCents ?? 0) - (order.discountCents ?? 0);
 
   return (
     <OtwPageShell>
@@ -163,6 +174,11 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
                       <span className="text-otwGold">
                         {formatCurrency(receiptItemsTotal)}
                       </span>
+                    </div>
+                    <div className="text-xs text-white/50">
+                      {billableReceiptSubtotalCents > 0
+                        ? 'Included in charge for cash delivery.'
+                        : 'Receipt items are logged for verification only.'}
                     </div>
                   </div>
                 ) : (

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Prisma, ServiceType } from '@prisma/client';
 import { submitDeliveryRequest } from '@/lib/delivery-submit';
 import { rateLimit } from '@/lib/rateLimit';
+import { computeBillableBaseTotalCents } from '@/lib/order-pricing';
 
 export const revalidate = 300;
 
@@ -82,6 +83,7 @@ const orderSchema = z.object({
   paymentId: z.string().optional(),
   couponCode: z.string().optional(),
   tipCents: z.number().int().nonnegative().optional(),
+  cashDelivery: z.boolean().optional(),
   payWithMiles: z.boolean().optional(),
   travelMinutes: z.number().nonnegative().optional(),
   waitMinutes: z.number().int().min(10).optional(),
@@ -162,6 +164,7 @@ export async function POST(req: Request) {
           receiptAuthenticityScore: data.receiptAuthenticityScore,
           deliveryFeeCents: data.deliveryFeeCents,
           tipCents: data.tipCents,
+          cashHandling: data.cashDelivery,
           couponCode: data.couponCode,
         });
 
@@ -208,9 +211,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const computedSubtotal = receiptSubtotalCents ?? 0;
-    const deliveryFeeCents = data.deliveryFeeCents ?? 0;
-    const baseTotal = computedSubtotal + deliveryFeeCents;
+    const baseTotal = computeBillableBaseTotalCents({
+      serviceType: data.serviceType,
+      deliveryFeeCents: data.deliveryFeeCents ?? 0,
+      receiptSubtotalCents: receiptSubtotalCents ?? 0,
+      receiptItems: data.receiptItems,
+      receiptImageData: data.receiptImageData,
+      cashDelivery: data.cashDelivery,
+    });
     const tipCents = data.tipCents ?? 0;
     const sessionTotal = baseTotal + tipCents;
 
@@ -264,6 +272,9 @@ export async function POST(req: Request) {
         couponCode: appliedCouponCode,
         discountCents,
         tipCents,
+        quoteBreakdown: data.cashDelivery
+          ? ({ cashDelivery: true } as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
         receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,
         status: 'REQUESTED',
         waitMinutes: data.waitMinutes ?? 10,

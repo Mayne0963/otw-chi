@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest } from '@/lib/delivery-submit';
+import { computeBillableTotalAfterDiscountCents } from '@/lib/order-pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -268,22 +269,17 @@ export async function getUserRequests() {
   ]);
 
   const computeOrderTotalCents = (order: (typeof orders)[number]) => {
-    const deliveryFee = order.deliveryFeeCents ?? 0;
-    const discount = order.discountCents ?? 0;
-    const receiptSubtotal =
-      typeof order.receiptSubtotalCents === 'number'
-        ? order.receiptSubtotalCents
-        : Array.isArray(order.receiptItems)
-          ? (order.receiptItems as Array<{ price?: number; quantity?: number }>).reduce(
-              (sum, item) =>
-                sum +
-                Math.round((item.price || 0) * 100) *
-                  Math.max(1, item.quantity || 1),
-              0
-            )
-          : 0;
-
-    const total = receiptSubtotal + deliveryFee - discount;
+    const total = computeBillableTotalAfterDiscountCents({
+      serviceType: order.serviceType,
+      deliveryFeeCents: order.deliveryFeeCents,
+      discountCents: order.discountCents,
+      receiptSubtotalCents: order.receiptSubtotalCents,
+      receiptItems: Array.isArray(order.receiptItems)
+        ? (order.receiptItems as Array<{ price?: number; quantity?: number }>)
+        : undefined,
+      receiptImageData: order.receiptImageData,
+      quoteBreakdown: order.quoteBreakdown,
+    });
     return Number.isFinite(total) && total > 0 ? total : null;
   };
 

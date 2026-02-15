@@ -19,6 +19,7 @@ import { AddressSearch } from "@/components/ui/address-search";
 import StripePaymentForm from "@/components/stripe/StripePaymentForm";
 import { GeocodedAddress, formatAddressLines, validateAddress } from "@/lib/geocoding";
 import { ReceiptItem, parseReceiptText } from "@/lib/receipts/parse";
+import { computeBillableReceiptSubtotalCents } from "@/lib/order-pricing";
 
 const formatCurrency = (value: number | null | undefined) =>
   typeof value === "number" ? `$${(value / 100).toFixed(2)}` : "—";
@@ -528,7 +529,17 @@ export default function OrderPage() {
       ) ?? 0,
     [receiptAnalysis]
   );
-  const orderTotalCents = receiptSubtotalCents + deliveryFeeCents;
+  const billableReceiptSubtotalCents = useMemo(
+    () =>
+      computeBillableReceiptSubtotalCents({
+        serviceType,
+        receiptSubtotalCents,
+        receiptItems: receiptAnalysis?.items,
+        receiptImageData,
+      }),
+    [serviceType, receiptSubtotalCents, receiptAnalysis, receiptImageData]
+  );
+  const orderTotalCents = billableReceiptSubtotalCents + deliveryFeeCents;
   const payableSubtotalCents = Math.max(0, orderTotalCents - discountCents);
   const payableTotalCents = payableSubtotalCents + tipCents;
   const deliveryFeeReady =
@@ -623,7 +634,7 @@ export default function OrderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           deliveryFeeCents,
-          subtotalCents: receiptSubtotalCents,
+          subtotalCents: billableReceiptSubtotalCents,
           couponCode: code,
         }),
       });
@@ -1372,6 +1383,9 @@ export default function OrderPage() {
                       ) : (
                         <p className="text-xs text-muted-foreground">Attach your receipt to continue.</p>
                       )}
+                      <p className="text-[11px] text-muted-foreground">
+                        Receipt items are tracked for verification and only charged on cash deliveries.
+                      </p>
                     </>
                   )}
                 </div>
@@ -1404,7 +1418,9 @@ export default function OrderPage() {
                         Apply
                       </Button>
                     </div>
-                    <div className="text-xs text-muted-foreground">Applies to delivery {requiresReceipt ? "+ receipt total" : "fee"}.</div>
+                    <div className="text-xs text-muted-foreground">
+                      Applies to {requiresReceipt ? "the billable delivery total" : "delivery fee"}.
+                    </div>
                   </div>
                 ) : null}
 
