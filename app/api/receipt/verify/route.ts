@@ -3,6 +3,7 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { z } from 'zod';
 import crypto from 'crypto';
+import Client from '@veryfi/veryfi-sdk';
 
 const verifySchema = z.object({
   deliveryRequestId: z.string(),
@@ -43,9 +44,46 @@ export async function POST(req: Request) {
         return new NextResponse('This receipt has already been uploaded.', { status: 409 });
     }
 
-    // Call to Veryfi API will be added here
+    const veryfiClient = new Client(process.env.VERYFI_CLIENT_ID!, {
+      clientSecret: process.env.VERYFI_CLIENT_SECRET!,
+      username: process.env.VERYFI_USERNAME!,
+      apiKey: process.env.VERYFI_API_KEY!,
+    });
 
-    return NextResponse.json({ success: true, message: 'Receipt verification in progress.' });
+    try {
+      const veryfiResponse = await veryfiClient.process_document_buffer(fileBuffer, file.name, [
+        "Food",
+        "Groceries"
+      ]);
+
+      await prisma.receiptVerification.create({
+        data: {
+          deliveryRequestId,
+          imageHash: hash,
+          vendor: veryfiResponse.vendor?.name,
+          totalAmount: veryfiResponse.total,
+          taxAmount: veryfiResponse.tax,
+          tipAmount: veryfiResponse.tip,
+          receiptDate: veryfiResponse.date ? new Date(veryfiResponse.date) : null,
+          status: 'VERIFIED', // Or based on some logic from the response
+          rawResponse: veryfiResponse,
+        },
+      });
+
+      return NextResponse.json({ success: true, message: 'Receipt verified successfully.', data: veryfiResponse });
+    } catch (error) {
+      console.error('Veryfi API error:', error);
+      // Optionally create a verification record with a 'FAILED' status
+      await prisma.receiptVerification.create({
+        data: {
+          deliveryRequestId,
+          imageHash: hash,
+          status: 'FAILED',
+          rawResponse: error,
+        },
+      });
+      return new NextResponse('Error processing receipt with Veryfi.', { status: 500 });
+    }
   } catch (error) {
     console.error('Receipt verification error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

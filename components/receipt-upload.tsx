@@ -1,21 +1,12 @@
+'use client';
+
 import { useState } from 'react';
 
-const reasonCodeMessages: { [key: string]: string } = {
-  DUPLICATE_RECEIPT: 'Looks like this receipt was already uploaded.',
-  INVALID_TOTAL: 'We couldn’t find a valid total. Try a clearer photo.',
-  STALE_RECEIPT: 'Receipt must be from the last 24 hours.',
-  TOTAL_MISMATCH: 'Total doesn’t match the order amount—review needed.',
-  MERCHANT_MISMATCH: 'Merchant name doesn’t match the pickup location.',
-  LOW_CONFIDENCE: 'Receipt is hard to read—review needed.',
-  VERYFI_ERROR: 'We’re reviewing this manually due to a verification delay.',
-};
-
-export function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId: string }) {
+export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId: string }) {
   const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
-  const [reasonCodes, setReasonCodes] = useState<string[]>([]);
-  const [extractedData, setExtractedData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -23,12 +14,19 @@ export function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId: string
     }
   };
 
-  const handleSubmit = async () => {
-    if (!file) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      setError('Please select a file to upload.');
+      return;
+    }
 
-    setIsLoading(true);
+    setIsUploading(true);
+    setError(null);
+    setSuccess(null);
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('receipt', file);
     formData.append('deliveryRequestId', deliveryRequestId);
 
     try {
@@ -37,44 +35,57 @@ export function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId: string
         body: formData,
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      setStatus(data.status);
-      setReasonCodes(data.reasonCodes);
-      setExtractedData(data.extracted);
-    } catch (error) {
-      console.error('Receipt upload error:', error);
-      setStatus('ERROR');
+      if (!response.ok) {
+        throw new Error(result.message || 'Something went wrong');
+      }
+
+      setSuccess('Receipt uploaded successfully!');
+      // Optionally, you can do something with the result.data
+      console.log(result.data);
+
+    } catch (err: any) {
+      setError(err.message);
     } finally {
-      setIsLoading(false);
+      setIsUploading(false);
     }
   };
 
   return (
-    <div>
-      <input type="file" onChange={handleFileChange} />
-      <button onClick={handleSubmit} disabled={!file || isLoading}>
-        {isLoading ? 'Uploading...' : 'Upload Receipt'}
-      </button>
-
-      {status && (
+    <div className="mt-6 border-t border-gray-200 pt-6">
+      <h3 className="text-lg font-medium leading-6 text-gray-900">Upload Receipt</h3>
+      <p className="mt-1 text-sm text-gray-500">
+        Upload a picture of your receipt for verification.
+      </p>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>
-          <h3>Verification Status: {status}</h3>
-          {reasonCodes.length > 0 && (
-            <ul>
-              {reasonCodes.map((code) => (
-                <li key={code}>{reasonCodeMessages[code] || code}</li>
-              ))}
-            </ul>
-          )}
-          {extractedData && (
-            <div>
-              <h4>Extracted Data:</h4>
-              <pre>{JSON.stringify(extractedData, null, 2)}</pre>
-            </div>
-          )}
+          <label htmlFor="receipt-upload" className="block text-sm font-medium text-gray-700">
+            Receipt Image
+          </label>
+          <div className="mt-1 flex items-center">
+            <input
+              id="receipt-upload"
+              name="receipt-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+          </div>
         </div>
-      )}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={isUploading || !file}
+            className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            {isUploading ? 'Uploading...' : 'Upload'}
+          </button>
+        </div>
+      </form>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
     </div>
   );
 }

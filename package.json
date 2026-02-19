@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "packageManager": "pnpm@10.28.2",
+  "packageManager": "pnpm@10.30.0",
   "description": "OTW Delivery System – enterprise-ready skeleton using Next.js App Router",
   "scripts": {
     "dev": "next dev",
@@ -39,6 +39,7 @@
     "@stripe/stripe-js": "8.5.3",
     "@upstash/ratelimit": "2.0.7",
     "@upstash/redis": "1.35.8",
+    "@veryfi/veryfi-sdk": "^1.4.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "4.1.0",
@@ -62,7 +63,15 @@
     "overrides": {
       "@hcaptcha/react-hcaptcha": "npm:empty-module@0.0.2",
       "@hcaptcha/loader": "npm:empty-module@0.0.2"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "@sentry-internal/node-cpu-profiler",
+      "core-js",
+      "prisma",
+      "sharp",
+      "tesseract.js"
+    ]
   },
   "devDependencies": {
     "@types/node": "^22.8.6",

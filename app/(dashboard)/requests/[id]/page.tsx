@@ -9,6 +9,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { redirect } from 'next/navigation';
 import TrackMapWrapper from '@/components/otw/TrackMapWrapper';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
+import ReceiptUpload from '@/components/receipt-upload';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,6 +169,10 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                     {request.notes}
                   </div>
                 </div>
+              )}
+
+              {isOwner && request.status === 'DELIVERED' && (
+                <ReceiptUpload deliveryRequestId={request.id} />
               )}
 
               {/* Driver Tracking Section */}
