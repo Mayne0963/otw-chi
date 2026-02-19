@@ -18,6 +18,7 @@ const isPublicRoute = (pathname: string) => {
     '/design-system',
     '/api/stripe/webhook',
     '/api/client-error',
+    '/api/veryfi/webhook',
   ];
   if (publicPaths.includes(pathname)) return true;
   if (pathname.startsWith('/order')) return true;
