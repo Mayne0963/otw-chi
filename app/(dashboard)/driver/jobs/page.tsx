@@ -35,13 +35,13 @@ export default async function DriverJobsPage() {
   
   const available = await getAvailableJobs();
   
-  const active = await prisma.request.findMany({
+  const active = await prisma.deliveryRequest.findMany({
     where: { assignedDriverId: driver.id, status: { in: ['ASSIGNED', 'PICKED_UP'] } },
     orderBy: { createdAt: 'desc' },
     take: 25,
   });
-  const completed = await prisma.request.findMany({
-    where: { assignedDriverId: driver.id, status: { in: ['COMPLETED', 'DELIVERED'] } },
+  const completed = await prisma.deliveryRequest.findMany({
+    where: { assignedDriverId: driver.id, status: { in: ['DELIVERED'] } },
     orderBy: { createdAt: 'desc' },
     take: 25,
   });
@@ -60,8 +60,8 @@ export default async function DriverJobsPage() {
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold">{r.pickup}</div>
-                      <div className="text-xs opacity-70">to {r.dropoff}</div>
+                      <div className="font-semibold">{r.pickupAddress}</div>
+                      <div className="text-xs opacity-70">to {r.dropoffAddress}</div>
                     </div>
                     <form action={acceptJobAction} className="flex gap-2">
                       <input type="hidden" name="id" value={r.id} />
@@ -84,7 +84,7 @@ export default async function DriverJobsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-semibold">{r.status}</div>
-                        <div className="text-xs opacity-70">{r.pickup} → {r.dropoff}</div>
+                        <div className="text-xs opacity-70">{r.pickupAddress} → {r.dropoffAddress}</div>
                       </div>
                     <div className="flex gap-2">
                       <OtwButton as="a" href={`/driver/jobs/${r.id}`} variant="outline" size="sm">
@@ -110,9 +110,9 @@ export default async function DriverJobsPage() {
                 <li key={r.id} className="py-2 border-b border-white/10 last:border-0">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold">{r.pickup} → {r.dropoff}</div>
+                      <div className="font-semibold">{r.pickupAddress} → {r.dropoffAddress}</div>
                     </div>
-                    <div>${(Number(r.costEstimate || 0)/100).toFixed(2)}</div>
+                    <div>${(Number(r.deliveryFeeCents || 0)/100).toFixed(2)}</div>
                   </div>
                 </li>
               ))}

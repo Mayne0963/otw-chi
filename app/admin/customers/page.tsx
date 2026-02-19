@@ -44,7 +44,7 @@ async function getCustomersData() {
         },
         _count: {
           select: {
-            requests: true,
+            deliveryRequests: true,
             supportTickets: true
           }
         }
@@ -62,7 +62,7 @@ async function getCustomersData() {
       where: { status: 'ACTIVE' }
     });
 
-    const totalRequests = await prisma.request.count();
+    const totalRequests = await prisma.deliveryRequest.count();
 
     return { customers, totalCustomers, customersWithMembership, totalRequests };
   } catch (error) {
@@ -173,7 +173,7 @@ function CustomersTable({ customers }: { customers: CustomerRow[] }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="text-white/70">{customer._count.requests}</span>
+                    <span className="text-white/70">{customer._count.deliveryRequests}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`${customer._count.supportTickets > 0 ? 'text-yellow-400' : 'text-white/70'}`}>

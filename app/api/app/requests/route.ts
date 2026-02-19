@@ -15,14 +15,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const prisma = getPrisma();
-    const created = await prisma.request.create({
+    const created = await prisma.deliveryRequest.create({
       data: {
-        pickup: parsed.data.pickup,
-        dropoff: parsed.data.dropoff,
+        pickupAddress: parsed.data.pickup,
+        dropoffAddress: parsed.data.dropoff,
         serviceType: parsed.data.serviceType,
         notes: parsed.data.notes,
         status: 'DRAFT',
-        customerId: user.id,
+        userId: user.id,
       }
     });
     return NextResponse.json({ success: true, request: created }, { status: 201 });

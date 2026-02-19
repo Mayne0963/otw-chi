@@ -12,7 +12,6 @@ const telemetrySchema = z.object({
   altitude: z.number().optional().nullable(),
   batteryLevel: z.number().min(0).max(1).optional().nullable(),
   batteryCharging: z.boolean().optional().nullable(),
-  requestId: z.string().optional().nullable(),
   deliveryRequestId: z.string().optional().nullable(),
 });
 
@@ -76,7 +75,6 @@ export async function POST(req: Request) {
     const telemetry = await prisma.driverTelemetry.create({
       data: {
         driverId: user.driverProfile.id,
-        requestId: payload.requestId ?? undefined,
         deliveryRequestId: payload.deliveryRequestId ?? undefined,
         lat: payload.lat,
         lng: payload.lng,
@@ -89,7 +87,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const desiredStatus = payload.requestId || payload.deliveryRequestId ? "BUSY" : "ONLINE";
+    const desiredStatus = payload.deliveryRequestId ? "BUSY" : "ONLINE";
     try {
       if (user.driverProfile.status !== desiredStatus) {
         await prisma.driverProfile.update({

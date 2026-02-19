@@ -9,7 +9,7 @@ import { computeBillableTotalAfterDiscountCents } from '@/lib/order-pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { DeliveryRequestStatus, ServiceType, RequestStatus } from '@prisma/client';
+import { DeliveryRequestStatus, ServiceType } from '@prisma/client';
 
 export async function cancelOrderAction(orderId: string) {
   const user = await getCurrentUser();
@@ -43,49 +43,18 @@ export async function cancelOrderAction(orderId: string) {
     return { success: true };
   }
 
-  // Try to find as Request
-  const request = await prisma.request.findUnique({
-    where: { id: orderId },
-  });
-
-  if (request) {
-    if (request.customerId !== user.id) {
-      throw new Error('Unauthorized');
-    }
-    const cancellableStatuses: RequestStatus[] = [RequestStatus.SUBMITTED, RequestStatus.ASSIGNED];
-    if (!cancellableStatuses.includes(request.status)) {
-      throw new Error('Request cannot be canceled in current status');
-    }
-
-    await prisma.request.update({
-      where: { id: orderId },
-      data: { status: RequestStatus.CANCELLED },
-    });
-    
-    await prisma.requestEvent.create({
-        data: {
-            requestId: request.id,
-            type: 'STATUS_CANCELLED',
-            message: 'Cancelled by customer',
-        }
-    })
-
-    revalidatePath(`/requests/${orderId}`);
-    revalidatePath(`/track/${orderId}`);
-    revalidatePath('/dashboard');
-    return { success: true };
-  }
-
   throw new Error('Order not found');
 }
 
+
+
 export type UserRequestListItem = {
   id: string;
-  kind: 'REQUEST' | 'ORDER';
+  kind: 'ORDER';
   serviceType: ServiceType;
   pickup: string;
   dropoff: string;
-  status: string;
+  status: DeliveryRequestStatus | 'CANCELLED';
   costCents: number | null;
   createdAt: Date;
   href: string;
@@ -148,8 +117,6 @@ export async function createRequestAction(formData: FormData) {
   const dropoff = String(formData.get('dropoff') ?? '');
   const st = String(formData.get('serviceType') ?? 'FOOD').toUpperCase();
   const notes = String(formData.get('notes') ?? '');
-  const cityId = String(formData.get('cityId') ?? '');
-  const zoneId = String(formData.get('zoneId') ?? '');
   const parseNumber = (value: FormDataEntryValue | null) => {
     if (typeof value !== 'string') return Number.NaN;
     const trimmed = value.trim();
@@ -205,25 +172,19 @@ export async function createRequestAction(formData: FormData) {
   // Award NIP based on membership multiplier
   const nipEarned = Math.round(finalPriceDollars * membershipBenefits.nipMultiplier);
 
-  const created = await prisma.request.create({
+  const created = await prisma.deliveryRequest.create({
     data: {
-      customerId: user.id,
-      pickup,
-      dropoff,
+      userId: user.id,
+      pickupAddress: pickup,
+      dropoffAddress: dropoff,
       serviceType,
       notes: notes || null,
-      status: RequestStatus.SUBMITTED,
-      cityId: cityId || null,
-      zoneId: zoneId || null,
-      milesEstimate,
-      costEstimate: pricing.totalCents, // Store in cents
+      status: DeliveryRequestStatus.REQUESTED,
+      serviceMilesFinal: milesEstimate,
+      deliveryFeeCents: pricing.totalCents, // Store in cents
     },
   });
   
-  await prisma.requestEvent.create({
-    data: { requestId: created.id, type: 'STATUS_SUBMITTED', message: 'Submitted' },
-  });
-
   // Award NIP to user
   try {
     await prisma.nipTransaction.create({
@@ -240,7 +201,6 @@ export async function createRequestAction(formData: FormData) {
         userId: user.id,
         amount: nipEarned,
         type: 'REQUEST_REWARD',
-        requestId: created.id,
       },
     });
   }
@@ -248,7 +208,7 @@ export async function createRequestAction(formData: FormData) {
   revalidatePath('/requests');
   revalidatePath('/dashboard');
   
-  redirect(`/requests/${created.id}`);
+  redirect(`/track/${created.id}`);
 }
 
 export async function getUserRequests() {
@@ -257,16 +217,10 @@ export async function getUserRequests() {
 
   const prisma = getPrisma();
 
-  const [legacyRequests, orders] = await prisma.$transaction([
-    prisma.request.findMany({
-      where: { customerId: user.id },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.deliveryRequest.findMany({
-      where: { userId: user.id, status: { not: DeliveryRequestStatus.DRAFT } },
-      orderBy: { createdAt: 'desc' },
-    }),
-  ]);
+  const orders = await prisma.deliveryRequest.findMany({
+    where: { userId: user.id, status: { not: DeliveryRequestStatus.DRAFT } },
+    orderBy: { createdAt: 'desc' },
+  });
 
   const computeOrderTotalCents = (order: (typeof orders)[number]) => {
     const total = computeBillableTotalAfterDiscountCents({
@@ -283,30 +237,17 @@ export async function getUserRequests() {
     return Number.isFinite(total) && total > 0 ? total : null;
   };
 
-  const mapped: UserRequestListItem[] = [
-    ...orders.map((order) => ({
-      id: order.id,
-      kind: 'ORDER' as const,
-      serviceType: order.serviceType,
-      pickup: order.pickupAddress,
-      dropoff: order.dropoffAddress,
-      status: order.status === DeliveryRequestStatus.CANCELED ? 'CANCELLED' : order.status,
-      costCents: computeOrderTotalCents(order),
-      createdAt: order.createdAt,
-      href: `/track/${order.id}`,
-    })),
-    ...legacyRequests.map((request) => ({
-      id: request.id,
-      kind: 'REQUEST' as const,
-      serviceType: request.serviceType,
-      pickup: request.pickup,
-      dropoff: request.dropoff,
-      status: request.status,
-      costCents: request.costEstimate ?? null,
-      createdAt: request.createdAt,
-      href: `/track/${request.id}`,
-    })),
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const mapped = orders.map((order) => ({
+    id: order.id,
+    kind: 'ORDER' as const,
+    serviceType: order.serviceType,
+    pickup: order.pickupAddress,
+    dropoff: order.dropoffAddress,
+    status: order.status === DeliveryRequestStatus.CANCELED ? 'CANCELLED' : order.status,
+    costCents: computeOrderTotalCents(order),
+    createdAt: order.createdAt,
+    href: `/track/${order.id}`,
+  })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   return mapped;
 }
@@ -316,49 +257,20 @@ export async function getRequest(id: string) {
   if (!user) return null;
 
   const prisma = getPrisma();
-  let request: any = await prisma.request.findUnique({
+  const request = await prisma.deliveryRequest.findUnique({
     where: { id },
-    include: { 
-      events: { orderBy: { timestamp: 'desc' } },
+    include: {
       assignedDriver: {
-        include: {
-          user: true
-        }
+        include: { user: true }
       },
-      customer: true
-    },
-  });
-
-  if (!request) {
-    const deliveryRequest = await prisma.deliveryRequest.findUnique({
-      where: { id },
-      include: {
-        assignedDriver: {
-          include: { user: true }
-        },
-        user: true
-      }
-    });
-
-    if (deliveryRequest) {
-      // Map DeliveryRequest to Request-like shape
-      request = {
-        ...deliveryRequest,
-        customerId: deliveryRequest.userId,
-        customer: deliveryRequest.user,
-        pickup: deliveryRequest.pickupAddress,
-        dropoff: deliveryRequest.dropoffAddress,
-        costEstimate: deliveryRequest.deliveryFeeCents,
-        events: [], // DeliveryRequest doesn't have events relation yet?
-        isDeliveryRequest: true
-      };
+      user: true
     }
-  }
+  });
 
   if (!request) return null;
 
   const role = user.role;
-  const isCustomer = request.customerId === user.id;
+  const isCustomer = request.userId === user.id;
   const isAssignedDriver = request.assignedDriver?.userId === user.id;
   const isAdmin = role === 'ADMIN';
 

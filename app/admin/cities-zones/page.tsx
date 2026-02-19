@@ -34,17 +34,12 @@ async function getCitiesZonesData() {
           include: {
             _count: {
               select: {
-                drivers: true,
-                requests: true
+                drivers: true
               }
             }
           }
         },
-        _count: {
-          select: {
-            requests: true
-          }
-        }
+        
       },
       orderBy: { name: 'asc' }
     });
@@ -55,7 +50,7 @@ async function getCitiesZonesData() {
     const totalDriversInZones = cities.reduce((acc, city) => 
       acc + city.zones.reduce((zAcc, zone) => zAcc + zone._count.drivers, 0), 0
     );
-    const totalRequestsInCities = cities.reduce((acc, city) => acc + city._count.requests, 0);
+    const totalRequestsInCities = 0;
 
     return { cities, totalCities, totalZones, totalDriversInZones, totalRequestsInCities };
   } catch (error) {
@@ -133,7 +128,7 @@ function CitiesZonesContent({ cities }: { cities: any[] }) {
             <div>
               <h3 className="text-lg font-semibold text-white">{city.name}</h3>
               <p className="text-xs text-white/50">
-                {city.zones.length} zone{city.zones.length !== 1 ? 's' : ''} • {city._count.requests} request{city._count.requests !== 1 ? 's' : ''}
+                {city.zones.length} zone{city.zones.length !== 1 ? 's' : ''}
               </p>
             </div>
             <div className="flex gap-2">
@@ -153,7 +148,7 @@ function CitiesZonesContent({ cities }: { cities: any[] }) {
                   <tr>
                     <th className="text-left px-4 py-2">Zone Name</th>
                     <th className="text-left px-4 py-2">Drivers</th>
-                    <th className="text-left px-4 py-2">Requests</th>
+                    
                     <th className="text-left px-4 py-2">Actions</th>
                   </tr>
                 </thead>
@@ -170,7 +165,7 @@ function CitiesZonesContent({ cities }: { cities: any[] }) {
                           {zone._count.drivers} driver{zone._count.drivers !== 1 ? 's' : ''}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-white/70">{zone._count.requests}</td>
+                      
                       <td className="px-4 py-2">
                         <div className="flex gap-1">
                           <OtwButton variant="ghost" className="text-xs px-2 py-1 h-auto bg-white/10 hover:bg-white/20">

@@ -29,22 +29,14 @@ export default async function TrackDetailPage({
   }
 
   const prisma = getPrisma();
-  const [delivery, request] = await Promise.all([
-    prisma.deliveryRequest.findUnique({
-      where: { id },
-      include: { assignedDriver: { include: { user: true } } },
-    }),
-    prisma.request.findUnique({
-      where: { id },
-      include: { assignedDriver: { include: { user: true } }, events: { orderBy: { timestamp: "desc" }, take: 1 } },
-    }),
-  ]);
-
-  const record = delivery ?? request;
+  const record = await prisma.deliveryRequest.findUnique({
+    where: { id },
+    include: { assignedDriver: { include: { user: true } } },
+  });
   if (!record) {
     return (
       <OtwPageShell>
-        <OtwSectionHeader title="Tracking Not Found" subtitle="We could not find a delivery or request with that ID." />
+        <OtwSectionHeader title="Tracking Not Found" subtitle="We could not find a delivery with that ID." />
         <OtwButton as="a" href="/track" variant="ghost">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Tracking
@@ -53,8 +45,7 @@ export default async function TrackDetailPage({
     );
   }
 
-  const isDelivery = Boolean(delivery);
-  const ownerId = isDelivery ? delivery!.userId : request!.customerId;
+  const ownerId = record.userId;
   const assignedDriverUserId = record.assignedDriver?.userId;
   const isOwner = ownerId === user.id;
   const isAssignedDriver = assignedDriverUserId === user.id;
@@ -72,11 +63,9 @@ export default async function TrackDetailPage({
     );
   }
 
-  const pickupText = isDelivery ? delivery!.pickupAddress : request!.pickup;
-  const dropoffText = isDelivery ? delivery!.dropoffAddress : request!.dropoff;
-  const statusText = normalizeStatus(
-    isDelivery ? delivery!.status : request!.status
-  );
+  const pickupText = record.pickupAddress;
+  const dropoffText = record.dropoffAddress;
+  const statusText = normalizeStatus(record.status);
   const lastKnownLat = record.lastKnownLat;
   const lastKnownLng = record.lastKnownLng;
   const lastKnownAt = record.lastKnownAt;
@@ -132,7 +121,7 @@ export default async function TrackDetailPage({
            </OtwButton>
            <OtwSectionHeader 
               title={`Tracking ${record.id.slice(-6).toUpperCase()}`} 
-              subtitle={isDelivery ? "Delivery Details" : "Request Details"} 
+              subtitle="Delivery Details" 
            />
         </div>
         <span className="bg-white/10 text-white px-3 py-1 rounded-full text-sm font-medium border border-white/10 uppercase tracking-wide">
@@ -232,7 +221,7 @@ export default async function TrackDetailPage({
                 <p className="text-sm text-white/50">Need help? We’re here.</p>
             </div>
             <div className="space-y-2 text-sm px-4 pb-4">
-              <OtwButton as="a" href={isDelivery ? `/order/${record.id}` : `/requests/${record.id}`} className="w-full">
+              <OtwButton as="a" href={`/order/${record.id}`} className="w-full">
                   View details
               </OtwButton>
               <OtwButton as="a" href="/support" variant="outline" className="w-full">

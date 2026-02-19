@@ -38,7 +38,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     );
   }
 
-  const req = await prisma.request.findUnique({ where: { id }, include: { customer: true, events: true } });
+  const req = await prisma.deliveryRequest.findUnique({ where: { id }, include: { user: true } });
   if (!req) {
     return (
       <OtwPageShell>
@@ -64,7 +64,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     );
   }
 
-  const canAccept = !!driver && req.status === 'SUBMITTED' && !req.assignedDriverId;
+  const canAccept = !!driver && req.status === 'REQUESTED' && !req.assignedDriverId;
   
   return (
     <OtwPageShell>
@@ -73,9 +73,9 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
         <OtwCard>
           <div className="text-sm font-medium">Details</div>
           <div className="mt-2 text-sm opacity-90">Status: {req.status}</div>
-          <div className="mt-1 text-sm opacity-90">Pickup: {req.pickup}</div>
-          <div className="mt-1 text-sm opacity-90">Dropoff: {req.dropoff}</div>
-          <div className="mt-1 text-sm opacity-80">Customer: {req.customer?.name ?? req.customer?.email}</div>
+          <div className="mt-1 text-sm opacity-90">Pickup: {req.pickupAddress}</div>
+          <div className="mt-1 text-sm opacity-90">Dropoff: {req.dropoffAddress}</div>
+          <div className="mt-1 text-sm opacity-80">Customer: {req.user?.name ?? req.user?.email}</div>
           <div className="mt-3 flex flex-wrap gap-2">
             {canAccept && (
               <form action={acceptJobAction}>
@@ -107,11 +107,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
         <OtwCard className="md:col-span-2">
           <div className="text-sm font-medium">Events</div>
            <ul className="mt-2 text-sm opacity-80 list-disc pl-5">
-            {req.events
-              .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-              .map((ev) => (
-              <li key={ev.id}>{ev.type}{ev.message ? ` — ${ev.message}` : ''}</li>
-            ))}
+            {/* Events view is not supported for delivery requests yet */}
           </ul>
           <div className="mt-4 flex gap-2">
             <OtwButton as="a" href={`/driver?jobId=${req.id}`} variant="outline">

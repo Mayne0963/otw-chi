@@ -73,7 +73,7 @@ export default async function RequestsPage() {
                       </TableCell>
                       <TableCell>
                         <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${
-                          request.status === 'COMPLETED' || request.status === 'DELIVERED' ? 'bg-green-500/20 text-green-400' :
+                          request.status === 'DELIVERED' ? 'bg-green-500/20 text-green-400' :
                           request.status === 'CANCELLED' || request.status === 'CANCELED' ? 'bg-red-500/20 text-red-400' :
                           request.status === 'ASSIGNED' || request.status === 'PICKED_UP' || request.status === 'EN_ROUTE' ? 'bg-otwGold/20 text-otwGold' :
                           'bg-white/10 text-white/70'

@@ -56,16 +56,16 @@ export async function POST(req: Request) {
       waiveServiceFee: benefits.waiveServiceFee,
     });
 
-    const request = await prisma.request.create({
+    const request = await prisma.deliveryRequest.create({
       data: {
-        customerId: user.id,
-        pickup: data.pickup,
-        dropoff: data.dropoff,
+        userId: user.id,
+        pickupAddress: data.pickup,
+        dropoffAddress: data.dropoff,
         serviceType: data.serviceType as ServiceType,
         notes: data.notes,
-        status: 'SUBMITTED',
-        costEstimate: pricing.totalCents,
-        milesEstimate,
+        status: 'REQUESTED',
+        deliveryFeeCents: pricing.totalCents,
+        serviceMilesFinal: milesEstimate,
       },
     });
 

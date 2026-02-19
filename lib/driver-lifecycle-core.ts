@@ -224,25 +224,34 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       earlyEligible,
     });
 
-    const existingEarnings = await tx.driverEarnings.findFirst({
+    const existingEarnings = await tx.driverEarnings.findUnique({
       where: {
         driverId: driver.userId,
-        requestId: request.id,
       },
-      select: { id: true },
     });
-    if (existingEarnings) throw new Error('Earnings already created for this request');
 
-    await tx.driverEarnings.create({
-      data: {
-        driverId: driver.userId,
-        amount: totalPayCents,
-        amountCents: totalPayCents,
-        tipCents: tipsCents,
-        status: DriverEarningStatus.pending,
-        requestId: request.id,
-      },
-    });
+    if (existingEarnings) {
+      await tx.driverEarnings.update({
+        where: {
+          driverId: driver.userId,
+        },
+        data: {
+          amount: { increment: totalPayCents },
+          amountCents: { increment: totalPayCents },
+          tipCents: { increment: tipsCents },
+        },
+      });
+    } else {
+      await tx.driverEarnings.create({
+        data: {
+          driverId: driver.userId,
+          amount: totalPayCents,
+          amountCents: totalPayCents,
+          tipCents: tipsCents,
+          status: DriverEarningStatus.pending,
+        },
+      });
+    }
 
     const updatedRequest = await tx.deliveryRequest.update({
       where: { id: requestId },

@@ -39,7 +39,7 @@ async function getSystemStats() {
     ] = await Promise.all([
       prisma.user.count(),
       prisma.driverProfile.count(),
-      prisma.request.count(),
+      prisma.deliveryRequest.count(),
       prisma.city.count(),
       prisma.zone.count(),
       prisma.membershipSubscription.count({ where: { status: 'ACTIVE' } }),
@@ -50,7 +50,7 @@ async function getSystemStats() {
     ]);
 
     // Get request status breakdown
-    const requestsByStatus = await prisma.request.groupBy({
+    const requestsByStatus = await prisma.deliveryRequest.groupBy({
       by: ['status'],
       _count: true
     });

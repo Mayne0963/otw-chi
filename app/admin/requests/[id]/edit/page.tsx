@@ -26,31 +26,13 @@ type RequestStatusOption = (typeof statusOptions)[number];
 
 async function getRequestData(id: string) {
   const prisma = getPrisma();
-  let request: any = await prisma.request.findUnique({
+  const request = await prisma.deliveryRequest.findUnique({
     where: { id },
     include: {
-      customer: { select: { name: true, email: true } },
+      user: { select: { name: true, email: true } },
       assignedDriver: { include: { user: { select: { name: true, email: true } } } }
     }
   });
-
-  if (!request) {
-    const deliveryRequest = await prisma.deliveryRequest.findUnique({
-      where: { id },
-      include: {
-        user: { select: { name: true, email: true } },
-        assignedDriver: { include: { user: { select: { name: true, email: true } } } }
-      }
-    });
-
-    if (deliveryRequest) {
-      request = {
-        ...deliveryRequest,
-        customer: deliveryRequest.user,
-        isDeliveryRequest: true
-      };
-    }
-  }
 
   const drivers = await prisma.driverProfile.findMany({
     include: { user: { select: { name: true, email: true } } }
@@ -72,13 +54,13 @@ export async function updateRequestAction(formData: FormData) {
 
   const prisma = getPrisma();
   
-  // Check for Request
-  const req = await prisma.request.findUnique({
+  // Check for DeliveryRequest
+  const dr = await prisma.deliveryRequest.findUnique({
     where: { id },
     select: { status: true, assignedDriverId: true }
   });
 
-  if (req) {
+  if (dr) {
     const data: {
       status?: any;
       assignedDriverId?: string | null;
@@ -86,8 +68,8 @@ export async function updateRequestAction(formData: FormData) {
     } = {};
 
     if (statusOptions.includes(statusInput as RequestStatusOption)) {
-       // Validate against RequestStatus enum (basic check)
-       if (['DRAFT', 'SUBMITTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'COMPLETED', 'CANCELLED'].includes(statusInput)) {
+       // Validate against DeliveryRequestStatus enum
+       if (['DRAFT', 'REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'CANCELED'].includes(statusInput)) {
          data.status = statusInput;
        }
     }
@@ -95,70 +77,19 @@ export async function updateRequestAction(formData: FormData) {
     data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
     data.notes = notesInput.length > 0 ? notesInput : null;
 
-    await prisma.request.update({
+    await prisma.deliveryRequest.update({
       where: { id },
       data
     });
-
-    if (req.status !== data.status && data.status) {
-      await prisma.requestEvent.create({
-        data: {
-          requestId: id,
-          type: `STATUS_${data.status}`,
-          message: `Status updated to ${data.status}`
-        }
-      });
-    }
-
-    if (req.assignedDriverId !== data.assignedDriverId) {
-      await prisma.requestEvent.create({
-        data: {
-          requestId: id,
-          type: 'ASSIGNED',
-          message: data.assignedDriverId
-            ? `Assigned to driver ${data.assignedDriverId}`
-            : 'Driver unassigned'
-        }
-      });
-    }
-  } else {
-    // Check for DeliveryRequest
-    const dr = await prisma.deliveryRequest.findUnique({
-      where: { id },
-      select: { status: true, assignedDriverId: true }
-    });
-
-    if (dr) {
-       const data: {
-        status?: any;
-        assignedDriverId?: string | null;
-        notes?: string | null;
-      } = {};
-
-      if (statusOptions.includes(statusInput as RequestStatusOption)) {
-         // Validate against DeliveryRequestStatus enum
-         if (['DRAFT', 'REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'CANCELED'].includes(statusInput)) {
-           data.status = statusInput;
-         }
-      }
-
-      data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
-      data.notes = notesInput.length > 0 ? notesInput : null;
-
-      await prisma.deliveryRequest.update({
-        where: { id },
-        data
-      });
-      
-      // Update driver assignment relation if driver changed
-      if (data.assignedDriverId && data.assignedDriverId !== dr.assignedDriverId) {
-          await prisma.driverAssignment.create({
-              data: {
-                  deliveryRequestId: id,
-                  driverId: data.assignedDriverId
-              }
-          });
-      }
+    
+    // Update driver assignment relation if driver changed
+    if (data.assignedDriverId && data.assignedDriverId !== dr.assignedDriverId) {
+        await prisma.driverAssignment.create({
+            data: {
+                deliveryRequestId: id,
+                driverId: data.assignedDriverId
+            }
+        });
     }
   }
 
@@ -261,7 +192,7 @@ export default async function AdminRequestEditPage({
             <div>
               <label className="text-xs text-white/60">Request</label>
               <div className="mt-2 text-sm text-white">
-                {request.customer.name || 'Guest'} ({request.customer.email})
+                {request.user.name || 'Guest'} ({request.user.email})
               </div>
             </div>
 

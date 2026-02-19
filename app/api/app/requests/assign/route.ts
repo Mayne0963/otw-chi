@@ -10,12 +10,12 @@ export async function POST(req: Request) {
     if (!id || !driverProfileId) {
       return NextResponse.json({ success: false, error: 'Missing id or driverProfileId' }, { status: 400 });
     }
-    const updated = await prisma.request.update({
+    const updated = await prisma.deliveryRequest.update({
       where: { id },
       data: { assignedDriverId: driverProfileId, status: 'ASSIGNED' },
     });
-    await prisma.requestEvent.create({
-      data: { requestId: id, type: 'ASSIGNED', message: `Assigned to driver ${driverProfileId}` },
+    await prisma.driverAssignment.create({
+      data: { deliveryRequestId: id, driverId: driverProfileId },
     });
     return NextResponse.json({ success: true, request: updated });
   } catch (e) {

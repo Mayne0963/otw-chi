@@ -39,7 +39,6 @@ export default async function AdminOtwOsPage() {
       select: {
         id: true,
         driverId: true,
-        requestId: true,
         status: true,
         amountCents: true,
         amount: true,
@@ -129,17 +128,7 @@ export default async function AdminOtwOsPage() {
     serviceStats.set(key, cur);
   }
 
-  for (const e of earnings) {
-    if (!e.requestId) continue;
-    const req = requestById.get(e.requestId);
-    if (!req) continue;
-    const key = String(req.serviceType);
-    const cur = serviceStats.get(key);
-    if (!cur) continue;
-    const earnedCents = safeCents(e.amountCents ?? e.amount);
-    const tipsCents = safeCents(e.tipCents);
-    cur.compCents += Math.max(0, earnedCents - tipsCents);
-  }
+  
 
   const serviceRows = Array.from(serviceStats.entries())
     .map(([serviceType, s]) => {

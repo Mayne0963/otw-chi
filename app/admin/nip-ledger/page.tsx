@@ -205,15 +205,7 @@ function NipLedgerContent({
                   <td className="px-4 py-3 font-medium text-otwGold">
                     +{entry.amount} TIREM
                   </td>
-                  <td className="px-4 py-3 text-white/60 text-xs">
-                    {entry.requestId ? (
-                      <div className="text-xs">
-                        Request: {entry.requestId}
-                      </div>
-                    ) : (
-                      'N/A'
-                    )}
-                  </td>
+                  
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       <OtwButton variant="ghost" className="text-xs px-2 py-1 h-auto bg-white/10 hover:bg-white/20">

@@ -7,6 +7,7 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
+import { DeliveryRequestStatus } from '@prisma/client';
 import { formatDistanceToNow } from 'date-fns';
 
 // Loading component for better UX
@@ -52,10 +53,8 @@ async function getDriversData() {
           orderBy: { timestamp: 'desc' },
           take: 1
         },
-        _count: {
-          select: {
-            requests: true
-          }
+        assignedDeliveryRequests: {
+          where: { status: 'DELIVERED' }
         }
       }
     });
@@ -241,7 +240,7 @@ function DriversTable({ drivers }: { drivers: any[] }) {
                     )}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="text-white/70">{driver._count.requests}</span>
+                    <span className="text-white/70">{driver.assignedDeliveryRequests.length}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-xs">

@@ -34,7 +34,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   }
 
   // Authorization Check: Must be Owner, Assigned Driver, or Admin
-  const isOwner = request.customerId === user.id;
+  const isOwner = request.userId === user.id;
   const isAssignedDriver = request.assignedDriver?.userId === user.id;
   const isAdmin = user.role === 'ADMIN';
 
@@ -99,8 +99,8 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-white/60">Status</div>
                   <span className={`px-3 py-1 rounded text-sm font-medium uppercase ${
-                      request.status === 'COMPLETED' || request.status === 'DELIVERED' ? 'bg-green-500/20 text-green-400' :
-                      request.status === 'CANCELLED' ? 'bg-red-500/20 text-red-400' :
+                      request.status === 'DELIVERED' ? 'bg-green-500/20 text-green-400' :
+                      request.status === 'CANCELED' ? 'bg-red-500/20 text-red-400' :
                       request.status === 'ASSIGNED' || request.status === 'PICKED_UP' ? 'bg-otwGold/20 text-otwGold' :
                       'bg-white/10 text-white/70'
                   }`}>
@@ -110,7 +110,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <div className="space-y-1 text-right">
                   <div className="text-sm font-medium text-white/60">Cost</div>
                   <div className="text-xl font-bold text-white">
-                    {request.costEstimate ? formatCurrency(request.costEstimate / 100) : '-'}
+                    {request.deliveryFeeCents ? formatCurrency(request.deliveryFeeCents / 100) : '-'}
                   </div>
                 </div>
               </div>
@@ -147,7 +147,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   </div>
                   <div className="pb-4">
                     <div className="text-sm font-medium text-white/60">Pickup</div>
-                    <div className="mt-1 text-white">{request.pickup}</div>
+                    <div className="mt-1 text-white">{request.pickupAddress}</div>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -156,7 +156,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   </div>
                   <div>
                     <div className="text-sm font-medium text-white/60">Dropoff</div>
-                    <div className="mt-1 text-white">{request.dropoff}</div>
+                    <div className="mt-1 text-white">{request.dropoffAddress}</div>
                   </div>
                 </div>
               </div>
@@ -217,41 +217,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           </OtwCard>
         </div>
 
-        {/* Right Column: Timeline */}
-        <div className="space-y-6">
-          <OtwCard>
-            <div className="p-4 border-b border-white/10 mb-4">
-                <h3 className="text-lg font-medium text-white">Timeline</h3>
-                <p className="text-sm text-white/50">History of this request.</p>
-            </div>
-            <div className="p-4 pt-0">
-              <div className="relative space-y-6 pl-4 before:absolute before:left-[5px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-white/10">
-                {request.events && request.events.length > 0 ? (
-                  request.events.map((event: { id: string; type: string; timestamp: Date; message: string | null }) => (
-                    <div key={event.id} className="relative flex gap-4">
-                      <div className="absolute -left-[15px] mt-1.5 h-2.5 w-2.5 rounded-full border-2 border-otwGold bg-otwBlack ring-4 ring-otwBlack" />
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium leading-none text-white">
-                          {event.type.replace('STATUS_', '').replace(/_/g, ' ')}
-                        </div>
-                        <div className="text-xs text-white/60">
-                          {formatDate(event.timestamp)}
-                        </div>
-                        {event.message && (
-                          <div className="text-xs text-white/50 mt-1">
-                            {event.message}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-white/60">No events yet.</div>
-                )}
-              </div>
-            </div>
-          </OtwCard>
-        </div>
+
       </div>
     </OtwPageShell>
   );

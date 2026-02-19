@@ -2,7 +2,7 @@
 
 // PrismaClient is not imported here; getPrisma() from '@/lib/db' provides the client instance
 import type { Prisma } from '@prisma/client';
-import { RequestStatus } from '@prisma/client';
+import { DeliveryRequestStatus } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
@@ -22,14 +22,13 @@ export async function getAvailableJobs() {
     return [];
   }
 
-  const jobs = await prisma.request.findMany({
+  const jobs = await prisma.deliveryRequest.findMany({
     where: {
-      status: 'SUBMITTED',
-      zoneId: driverProfile.zoneId,
+      status: 'REQUESTED',
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      customer: {
+      user: {
         select: { name: true }
       }
     }
@@ -49,29 +48,23 @@ export async function acceptJob(requestId: string) {
 
   if (!driverProfile) throw new Error('Driver profile not found');
 
-  const job = await prisma.request.findUnique({
+  const job = await prisma.deliveryRequest.findUnique({
     where: { id: requestId },
   });
 
-  if (!job || job.status !== 'SUBMITTED') {
+  if (!job || job.status !== 'REQUESTED') {
     throw new Error('Job is no longer available');
   }
   
-  if (job.zoneId && job.zoneId !== driverProfile.zoneId) {
-     throw new Error('Job is outside your zone');
+  if (job.assignedDriverId) {
+     throw new Error('Job is already assigned');
   }
 
-  const updated = await prisma.request.update({
+  const updated = await prisma.deliveryRequest.update({
     where: { id: requestId },
     data: {
       status: 'ASSIGNED',
       assignedDriverId: driverProfile.id,
-      events: {
-        create: {
-          type: 'STATUS_ASSIGNED',
-          message: `Accepted by driver ${user.name}`,
-        },
-      },
     },
   });
 
@@ -85,7 +78,7 @@ export async function acceptJobAction(formData: FormData) {
   await acceptJob(id);
 }
 
-export async function updateJobStatus(requestId: string, status: RequestStatus) {
+export async function updateJobStatus(requestId: string, status: DeliveryRequestStatus) {
   const user = await getCurrentUser();
   if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) throw new Error('Unauthorized');
 
@@ -96,7 +89,7 @@ export async function updateJobStatus(requestId: string, status: RequestStatus) 
 
   if (!driverProfile) throw new Error('Driver profile not found');
 
-  const job = await prisma.request.findUnique({
+  const job = await prisma.deliveryRequest.findUnique({
     where: { id: requestId },
   });
 
@@ -105,20 +98,14 @@ export async function updateJobStatus(requestId: string, status: RequestStatus) 
   }
 
   // If completing, handle earnings
-  if (status === 'COMPLETED' && job.status !== 'COMPLETED') {
+  if (status === 'DELIVERED' && job.status !== 'DELIVERED') {
     return completeJob(requestId);
   }
 
-  const updated = await prisma.request.update({
+  const updated = await prisma.deliveryRequest.update({
     where: { id: requestId },
     data: {
       status: status,
-      events: {
-        create: {
-          type: `STATUS_${status}`,
-          message: `Status updated to ${status}`,
-        },
-      },
     },
   });
 
@@ -129,7 +116,7 @@ export async function updateJobStatus(requestId: string, status: RequestStatus) 
 
 export async function updateJobStatusAction(formData: FormData) {
   const id = formData.get('id') as string;
-  const status = formData.get('status') as RequestStatus;
+  const status = formData.get('status') as DeliveryRequestStatus;
   await updateJobStatus(id, status);
 }
 
@@ -144,7 +131,7 @@ export async function completeJob(requestId: string) {
 
   if (!driverProfile) throw new Error('Driver profile not found');
 
-  const job = await prisma.request.findUnique({
+  const job = await prisma.deliveryRequest.findUnique({
     where: { id: requestId },
   });
 
@@ -152,31 +139,20 @@ export async function completeJob(requestId: string) {
     throw new Error('You are not assigned to this job');
   }
 
-  const updated = await prisma.request.update({
+  const updated = await prisma.deliveryRequest.update({
     where: { id: requestId },
     data: {
-      status: 'COMPLETED',
-      events: {
-        create: {
-          type: 'STATUS_COMPLETED',
-          message: 'Job completed',
-        },
-      },
+      status: 'DELIVERED',
     },
   });
 
-  const basePriceCents = job.milesEstimate
-    ? calculateBasePriceCents({
-        miles: job.milesEstimate,
-        serviceType: job.serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE',
-      })
-    : job.costEstimate || 0;
+  const basePriceCents = job.deliveryFeeCents || 0;
   const earningsAmount = calculateDriverPayoutCents({ basePriceCents });
 
   if (earningsAmount > 0) {
     // Check if earnings already exist to avoid duplicates
     const existing = await prisma.driverEarnings.findFirst({
-        where: { requestId: job.id }
+        where: { driverId: job.assignedDriverId }
     });
     
     if (!existing) {
@@ -186,20 +162,19 @@ export async function completeJob(requestId: string) {
           amount: earningsAmount,
           amountCents: earningsAmount,
           status: 'available',
-          requestId: job.id,
         },
       });
     }
   }
 
   // Award NIP for customer first completed order
-  if (job.customerId) {
-    const count = await prisma.request.count({
-      where: { customerId: job.customerId, status: 'COMPLETED' },
+  if (job.userId) {
+    const count = await prisma.deliveryRequest.count({
+      where: { userId: job.userId, status: 'DELIVERED' },
     });
     if (count === 1) {
       await prisma.nipTransaction.create({
-        data: { userId: job.customerId, amount: 50, reason: 'FIRST_COMPLETED_ORDER', refId: job.id },
+        data: { userId: job.userId, amount: 50, reason: 'FIRST_COMPLETED_ORDER', refId: job.id },
       }).catch(() => {});
     }
   }

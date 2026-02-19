@@ -22,7 +22,7 @@ async function getCustomer(id: string) {
       customerProfile: true,
       _count: {
         select: {
-          requests: true,
+          deliveryRequests: true,
           supportTickets: true
         }
       }
@@ -33,31 +33,19 @@ async function getCustomer(id: string) {
 async function getCustomerRequests(customerId: string) {
   const prisma = getPrisma();
   
-  const [requests, deliveryRequests] = await Promise.all([
-    prisma.request.findMany({
-      where: { customerId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      include: {
-        assignedDriver: {
-          include: { user: { select: { name: true } } }
-        }
+  const deliveryRequests = await prisma.deliveryRequest.findMany({
+    where: { userId: customerId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    include: {
+      assignedDriver: {
+        include: { user: { select: { name: true } } }
       }
-    }),
-    prisma.deliveryRequest.findMany({
-      where: { userId: customerId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      include: {
-        assignedDriver: {
-          include: { user: { select: { name: true } } }
-        }
-      }
-    })
-  ]);
+    }
+  });
 
   // Merge and sort
-  return [...requests.map(r => ({ ...r, type: 'RIDE' })), ...deliveryRequests.map(r => ({ ...r, type: 'DELIVERY' }))]
+  return deliveryRequests.map(r => ({ ...r, type: 'DELIVERY' }))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 50);
 }
@@ -197,7 +185,7 @@ export default async function AdminCustomerDetailPage({
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Request Activity</div>
                 <div className="mt-2 text-sm text-white">
-                  Total requests: {customer._count.requests}
+                  Total requests: {customer._count.deliveryRequests}
                 </div>
               </div>
             </div>

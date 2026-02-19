@@ -24,13 +24,13 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const request = await prisma.request.findUnique({
+    const request = await prisma.deliveryRequest.findUnique({
       where: { id },
       include: {
         assignedDriver: {
           include: { user: true }
         },
-        events: { orderBy: { timestamp: 'desc' } }
+        assignments: { orderBy: { assignedAt: 'desc' } }
       }
     });
 
@@ -39,7 +39,7 @@ export async function GET(
     }
 
     // Auth check
-    const isOwner = request.customerId === user.id;
+    const isOwner = request.userId === user.id;
     const isDriver = request.assignedDriver?.userId === user.id;
     const isAdmin = user.role === 'ADMIN';
 

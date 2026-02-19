@@ -28,31 +28,17 @@ export default async function DashboardPage() {
     const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } });
     nipBalance = nip._sum?.amount ?? 0;
 
-    // Fetch latest from both tables
-    const legacyReq = await prisma.request.findFirst({
-      where: { customerId: user.id, status: { in: ['SUBMITTED', 'ASSIGNED', 'PICKED_UP'] } },
-      orderBy: { createdAt: 'desc' },
-    });
-
     const newReq = await prisma.deliveryRequest.findFirst({
       where: { userId: user.id, status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] } },
       orderBy: { createdAt: 'desc' },
     });
 
-    // Determine which is more recent
-    if (newReq && (!legacyReq || newReq.createdAt > legacyReq.createdAt)) {
+    if (newReq) {
         activeRequest = { 
             id: newReq.id, 
             status: newReq.status.replace('_', ' '), 
             pickup: newReq.pickupAddress, 
             dropoff: newReq.dropoffAddress 
-        };
-    } else if (legacyReq) {
-        activeRequest = { 
-            id: legacyReq.id, 
-            status: legacyReq.status.replace('_', ' '), 
-            pickup: legacyReq.pickup, 
-            dropoff: legacyReq.dropoff 
         };
     }
   }

@@ -13,22 +13,14 @@ async function refundRequestAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
   const id = String(formData.get('id'));
-  const isDelivery = String(formData.get('isDelivery')) === 'true';
 
   const prisma = getPrisma();
 
   try {
-    if (isDelivery) {
-      await prisma.deliveryRequest.update({
-        where: { id },
-        data: { status: 'CANCELED' }
-      });
-    } else {
-      await prisma.request.update({
-        where: { id },
-        data: { status: 'CANCELLED' }
-      });
-    }
+    await prisma.deliveryRequest.update({
+      where: { id },
+      data: { status: 'CANCELED' }
+    });
   } catch (error) {
     console.error('Failed to cancel request:', error);
   }
@@ -38,15 +30,13 @@ async function refundRequestAction(formData: FormData) {
 
 async function getRequest(id: string) {
   const prisma = getPrisma();
-  return prisma.request.findUnique({
+  return prisma.deliveryRequest.findUnique({
     where: { id },
     include: {
-      customer: { select: { name: true, email: true } },
+      user: { select: { name: true, email: true } },
       assignedDriver: {
         include: { user: { select: { name: true, email: true } } }
       },
-      zone: { select: { name: true } },
-      city: { select: { name: true } }
     }
   });
 }
@@ -135,10 +125,9 @@ export default async function AdminRequestDetailPage({
             >
               Edit Request
             </OtwButton>
-            {!['CANCELLED', 'CANCELED', 'COMPLETED', 'DELIVERED'].includes(request.status) && (
+            {!['CANCELED', 'DELIVERED'].includes(request.status) && (
               <form action={refundRequestAction}>
                 <input type="hidden" name="id" value={resolvedId} />
-                <input type="hidden" name="isDelivery" value={String(!!request.isDeliveryRequest)} />
                 <OtwButton 
                   variant="red" 
                   type="submit"
@@ -179,8 +168,8 @@ export default async function AdminRequestDetailPage({
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Miles Estimate</div>
                 <div className="text-sm text-white">
-                  {typeof request.milesEstimate === 'number'
-                    ? `${request.milesEstimate.toFixed(1)} mi`
+                  {typeof request.serviceMilesFinal === 'number'
+                    ? `${request.serviceMilesFinal.toFixed(1)} mi`
                     : 'Not set'}
                 </div>
               </div>
@@ -189,11 +178,11 @@ export default async function AdminRequestDetailPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Pickup</div>
-                <div className="mt-2 text-sm text-white">{request.pickup}</div>
+                <div className="mt-2 text-sm text-white">{request.pickupAddress}</div>
               </div>
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Dropoff</div>
-                <div className="mt-2 text-sm text-white">{request.dropoff}</div>
+                <div className="mt-2 text-sm text-white">{request.dropoffAddress}</div>
               </div>
             </div>
 
@@ -201,9 +190,9 @@ export default async function AdminRequestDetailPage({
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Customer</div>
                 <div className="mt-2 text-sm text-white">
-                  {request.customer.name || 'Guest'}
+                  {request.user.name || 'Guest'}
                 </div>
-                <div className="text-xs text-white/50">{request.customer.email}</div>
+                <div className="text-xs text-white/50">{request.user.email}</div>
               </div>
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Driver</div>
@@ -222,52 +211,42 @@ export default async function AdminRequestDetailPage({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 rounded-lg bg-white/5">
-                <div className="text-xs text-white/50">City</div>
-                <div className="mt-2 text-sm text-white">{request.city?.name || 'Unassigned'}</div>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5">
-                <div className="text-xs text-white/50">Zone</div>
-                <div className="mt-2 text-sm text-white">{request.zone?.name || 'Unassigned'}</div>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Estimated Cost</div>
                 <div className="mt-2 text-sm text-white">
-                  {typeof request.costEstimate === 'number'
-                    ? `$${(request.costEstimate / 100).toFixed(2)}`
+                  {typeof request.deliveryFeeCents === 'number'
+                    ? `$${(request.deliveryFeeCents / 100).toFixed(2)}`
                     : 'Not set'}
                 </div>
               </div>
             </div>
 
             {/* Payment Details for DeliveryRequest */}
-            {request.isDeliveryRequest && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-white/5">
-                  <div className="text-xs text-white/50">Payment Status</div>
-                  <div className="mt-2 text-sm">
-                    {request.deliveryFeePaid ? (
-                      <span className="text-green-400 font-medium">Paid</span>
-                    ) : (
-                      <span className="text-yellow-400 font-medium">Unpaid</span>
-                    )}
-                  </div>
-                </div>
-                {request.receiptSubtotalCents && (
-                   <div className="p-4 rounded-lg bg-white/5">
-                    <div className="text-xs text-white/50">Receipt Subtotal</div>
-                    <div className="mt-2 text-sm text-white">
-                      ${(request.receiptSubtotalCents / 100).toFixed(2)}
-                    </div>
-                  </div>
-                )}
-                 <div className="p-4 rounded-lg bg-white/5">
-                  <div className="text-xs text-white/50">Coupon</div>
-                  <div className="mt-2 text-sm text-white">
-                    {request.couponCode || 'None'}
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-white/5">
+                <div className="text-xs text-white/50">Payment Status</div>
+                <div className="mt-2 text-sm">
+                  {request.deliveryFeePaid ? (
+                    <span className="text-green-400 font-medium">Paid</span>
+                  ) : (
+                    <span className="text-yellow-400 font-medium">Unpaid</span>
+                  )}
                 </div>
               </div>
-            )}
+              {request.receiptSubtotalCents && (
+                 <div className="p-4 rounded-lg bg-white/5">
+                  <div className="text-xs text-white/50">Receipt Subtotal</div>
+                  <div className="mt-2 text-sm text-white">
+                    ${(request.receiptSubtotalCents / 100).toFixed(2)}
+                  </div>
+                </div>
+              )}
+               <div className="p-4 rounded-lg bg-white/5">
+                <div className="text-xs text-white/50">Coupon</div>
+                <div className="mt-2 text-sm text-white">
+                  {request.couponCode || 'None'}
+                </div>
+              </div>
+            </div>
 
             {request.notes && (
               <div className="p-4 rounded-lg bg-white/5">

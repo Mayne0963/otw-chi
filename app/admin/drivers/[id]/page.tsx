@@ -4,6 +4,7 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { DeliveryRequestStatus } from '@prisma/client';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { headers } from 'next/headers';
@@ -27,9 +28,11 @@ async function getDriver(id: string) {
         orderBy: { timestamp: 'desc' },
         take: 1
       },
-      _count: { select: { requests: true } }
+      assignedDeliveryRequests: {
+        where: { status: 'DELIVERED' }
+      }
     }
-  });
+  }) as any;
 
   if (!driver) return null;
 
@@ -157,7 +160,7 @@ export default async function AdminDriverDetailPage({
               </div>
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Completed Requests</div>
-                <div className="text-sm text-white">{data.driver._count.requests}</div>
+                <div className="text-sm text-white">{data.driver.assignedDeliveryRequests.length}</div>
               </div>
               <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Rating</div>

@@ -46,20 +46,8 @@ async function getRequestsData() {
   const prisma = getPrisma();
   
   try {
-    const [requests, deliveryRequests] = await Promise.all([
-      prisma.request.findMany({ 
-        orderBy: { createdAt: 'desc' }, 
-        take: 50, 
-        include: { 
-          zone: { select: { name: true } }, 
-          assignedDriver: { 
-            include: { 
-              user: { select: { name: true, email: true } } 
-            } 
-          }, 
-          customer: { select: { name: true, email: true } }
-        }
-      }),
+    const [deliveryRequests] = await Promise.all([
+      
       prisma.deliveryRequest.findMany({
         orderBy: { createdAt: 'desc' },
         take: 50,
@@ -75,23 +63,7 @@ async function getRequestsData() {
       })
     ]);
 
-    const mappedDeliveryRequests = deliveryRequests.map(dr => ({
-      id: dr.id,
-      serviceType: dr.serviceType,
-      status: dr.status,
-      tier: 'STANDARD', // Default or derived
-      pickup: dr.pickupAddress,
-      dropoff: dr.dropoffAddress,
-      customer: dr.user,
-      assignedDriver: dr.assignedDriver,
-      createdAt: dr.createdAt,
-      zone: null, // DeliveryRequest doesn't have zone yet
-      isDeliveryRequest: true,
-      paymentStatus: dr.deliveryFeePaid ? 'PAID' : 'UNPAID'
-    }));
-
-    // Merge and sort
-    const allRequests = [...requests, ...mappedDeliveryRequests].sort(
+    const allRequests = [...deliveryRequests].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
@@ -148,7 +120,7 @@ function EmptyRequestsState() {
   );
 }
 
-function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] }) {
+function RequestsTable({ requests, drivers }: { requests: RequestRow[], drivers: DriverRow[] }) {
   return (
     <OtwCard className="mt-3">
       <div className="overflow-x-auto">
@@ -172,7 +144,7 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
                   <div>
                     <div className="font-medium text-xs flex items-center gap-2">
                       {request.id}
-                      {request.paymentStatus === 'PAID' && (
+                      {request.deliveryFeePaid && (
                         <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">PAID</span>
                       )}
                     </div>
@@ -188,18 +160,18 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
                 </td>
                 <td className="px-4 py-3">
                   <div>
-                    <div className="font-medium">{request.customer.name || 'Guest'}</div>
-                    <div className="text-xs text-white/50">{request.customer.email}</div>
+                    <div className="font-medium">{request.user.name || 'Guest'}</div>
+                    <div className="text-xs text-white/50">{request.user.email}</div>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-xs">
-                    <div className="truncate max-w-32" title={request.pickup}>📍 {request.pickup}</div>
-                    <div className="truncate max-w-32" title={request.dropoff}>🏠 {request.dropoff}</div>
+                    <div className="truncate max-w-32" title={request.pickupAddress}>📍 {request.pickupAddress}</div>
+                    <div className="truncate max-w-32" title={request.dropoffAddress}>🏠 {request.dropoffAddress}</div>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-white/60">
-                  {request.zone?.name || '-'}
+                  {'-'}
                 </td>
                 <td className="px-4 py-3">
                   {request.assignedDriver ? (
@@ -232,7 +204,7 @@ function RequestsTable({ requests, drivers }: { requests: any[], drivers: any[] 
                     >
                       Edit
                     </OtwButton>
-                    {(request.status === 'SUBMITTED' || request.status === 'REQUESTED') && drivers.length > 0 && (
+                    {(request.status === 'REQUESTED') && drivers.length > 0 && (
                       <form action={assignDriverAction} className="inline-block">
                         <input type="hidden" name="id" value={request.id} />
                         <select 
@@ -295,54 +267,29 @@ export async function assignDriverAction(formData: FormData) {
   
   try {
     const prisma = getPrisma();
-    const req = await prisma.request.findUnique({ 
+    const deliveryRequest = await prisma.deliveryRequest.findUnique({ 
       where: { id },
       select: { status: true }
     });
     
-    if (req) {
-      await prisma.request.update({
+    if (deliveryRequest) {
+      await prisma.deliveryRequest.update({
         where: { id },
         data: { 
           assignedDriverId: driverProfileId,
-          status: req.status === 'SUBMITTED' ? 'ASSIGNED' : undefined
+          status: deliveryRequest.status === 'REQUESTED' ? 'ASSIGNED' : undefined
         }
       });
-      
-      await prisma.requestEvent.create({
+
+      await prisma.driverAssignment.create({
         data: {
-          requestId: id,
-          type: 'ASSIGNED',
-          message: `Assigned to driver ${driverProfileId}`
+          deliveryRequestId: id,
+          driverId: driverProfileId
         }
       });
     } else {
-      // Try DeliveryRequest
-      const dr = await prisma.deliveryRequest.findUnique({
-        where: { id },
-        select: { status: true }
-      });
-
-      if (dr) {
-         await prisma.deliveryRequest.update({
-            where: { id },
-            data: {
-              assignedDriverId: driverProfileId,
-              status: dr.status === 'REQUESTED' ? 'ASSIGNED' : undefined
-            }
-         });
-         
-         // Create assignment record
-         await prisma.driverAssignment.create({
-            data: {
-              deliveryRequestId: id,
-              driverId: driverProfileId
-            }
-         });
-      } else {
-        console.warn('[assignDriverAction] Request not found:', id);
-        return;
-      }
+      console.warn('[assignDriverAction] Request not found:', id);
+      return;
     }
 
     revalidatePath('/admin/requests');

@@ -11,7 +11,7 @@ const pingSchema = z.object({
     .number()
     .refine((value) => Number.isFinite(value), { message: 'lng must be a finite number' }),
   requestId: z.string().optional(),
-  requestType: z.enum(['delivery', 'legacy']).optional(),
+  requestType: z.enum(['delivery']).optional(),
 });
 
 export async function POST(req: Request) {
@@ -79,7 +79,6 @@ export async function POST(req: Request) {
     const { lat, lng, requestId, requestType } = pingSchema.parse(body);
 
     let activeDelivery = null;
-    let activeRequest = null;
 
     // If specific request context is provided, try to find that specific job first
     if (requestId && requestType === 'delivery') {
@@ -89,28 +88,11 @@ export async function POST(req: Request) {
           assignedDriverId: user.driverProfile.id,
         },
       });
-    } else if (requestId && requestType === 'legacy') {
-      activeRequest = await prisma.request.findFirst({
-        where: {
-          id: requestId,
-          assignedDriverId: user.driverProfile.id,
-        },
-      });
     }
 
     // Fallback: Find any active delivery request if not found above
-    if (!activeDelivery && !activeRequest) {
+    if (!activeDelivery) {
       activeDelivery = await prisma.deliveryRequest.findFirst({
-        where: {
-          assignedDriverId: user.driverProfile.id,
-          status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
-        },
-      });
-    }
-
-    // Fallback: Find any active legacy request if not found above
-    if (!activeDelivery && !activeRequest) {
-      activeRequest = await prisma.request.findFirst({
         where: {
           assignedDriverId: user.driverProfile.id,
           status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
@@ -126,7 +108,6 @@ export async function POST(req: Request) {
       await prisma.driverLocationPing.create({
         data: {
           driverId: user.driverProfile.id,
-          requestId: activeRequest?.id,
           deliveryRequestId: activeDelivery?.id,
           lat,
           lng,
@@ -149,15 +130,6 @@ export async function POST(req: Request) {
             lastKnownAt: new Date(),
           },
         });
-      } else if (activeRequest) {
-        await prisma.request.update({
-          where: { id: activeRequest.id },
-          data: {
-            lastKnownLat: lat,
-            lastKnownLng: lng,
-            lastKnownAt: new Date(),
-          },
-        });
       }
     } catch (locationUpdateError) {
       console.error('Location ping update error:', locationUpdateError);
@@ -166,7 +138,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const desiredStatus = activeDelivery || activeRequest ? 'BUSY' : 'ONLINE';
+    const desiredStatus = activeDelivery ? 'BUSY' : 'ONLINE';
     try {
       if (user.driverProfile?.status !== desiredStatus) {
         await prisma.driverProfile.update({

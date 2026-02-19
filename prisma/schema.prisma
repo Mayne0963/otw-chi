@@ -24,17 +24,6 @@ enum FounderEnergyLevel {
   EXHAUSTING
 }
 
-enum RequestStatus {
-  DRAFT
-  SUBMITTED
-  ASSIGNED
-  PICKED_UP
-  EN_ROUTE
-  DELIVERED
-  COMPLETED
-  CANCELLED
-}
-
 enum DeliveryRequestStatus {
   DRAFT
   REQUESTED
@@ -117,6 +106,13 @@ enum DriverTier {
   CONCIERGE
 }
 
+enum ReceiptStatus {
+  APPROVED
+  FLAGGED
+  REJECTED
+  PENDING
+}
+
 // Models
 model User {
   id                String    @id @default(cuid())
@@ -132,7 +128,6 @@ model User {
 
   driverProfile      DriverProfile?
   customerProfile    CustomerProfile?
-  requests           Request[]
   membership         MembershipSubscription?
   supportTickets     SupportTicket[]
   nIPLedger          NIPLedger[]
@@ -220,7 +215,6 @@ model DriverProfile {
   agreementSignedAt DateTime?
   user              User             @relation(fields: [userId], references: [id])
   zone              Zone?            @relation(fields: [zoneId], references: [id])
-  requests          Request[]
   assignedDeliveryRequests DeliveryRequest[]
   locations         DriverLocation[]
   assignments       DriverAssignment[]
@@ -250,7 +244,6 @@ model City {
   id       String    @id @default(cuid())
   name     String    @unique
   zones    Zone[]
-  requests Request[]
 }
 
 model Zone {
@@ -259,39 +252,9 @@ model Zone {
   cityId   String
   city     City            @relation(fields: [cityId], references: [id])
   drivers  DriverProfile[]
-  requests Request[]
 }
 
-model Request {
-  id               String        @id @default(cuid())
-  customerId       String
-  assignedDriverId String?
-  cityId           String?
-  zoneId           String?
-  pickup           String
-  dropoff          String
-  serviceType      ServiceType
-  status           RequestStatus @default(DRAFT)
-  notes            String?
-  milesEstimate    Int?
-  costEstimate     Int?
-  lastKnownLat     Float?
-  lastKnownLng     Float?
-  lastKnownAt      DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
 
-  customer       User           @relation(fields: [customerId], references: [id])
-  assignedDriver DriverProfile? @relation(fields: [assignedDriverId], references: [id])
-  events         RequestEvent[]
-  city           City?          @relation(fields: [cityId], references: [id])
-  zone           Zone?          @relation(fields: [zoneId], references: [id])
-  assignments    DriverAssignment[]
-  locationPings  DriverLocationPing[]
-
-  @@index([customerId])
-  @@index([status])
-}
 
 model DeliveryRequest {
   id               String                @id @default(cuid())
@@ -348,6 +311,7 @@ model DeliveryRequest {
   serviceMilesLedger   ServiceMilesLedger[]
   timeLogs             DriverTimeLog[]
   founderServiceLogs   FounderServiceLog[]
+  receiptVerifications ReceiptVerification[]
 
   @@index([userId])
   @@index([status])
@@ -384,14 +348,7 @@ model PromoRedemption {
   @@index([userId])
 }
 
-model RequestEvent {
-  id        String   @id @default(cuid())
-  requestId String
-  type      String
-  message   String?
-  timestamp DateTime @default(now())
-  request   Request  @relation(fields: [requestId], references: [id])
-}
+
 
 model SupportTicket {
   id        String   @id @default(cuid())
@@ -465,7 +422,6 @@ model NIPLedger {
   userId    String
   amount    Int
   type      String
-  requestId String?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
@@ -477,11 +433,10 @@ model DriverEarnings {
   amountCents Int?
   tipCents    Int                 @default(0)
   status      DriverEarningStatus @default(pending)
-  requestId   String?
   createdAt   DateTime            @default(now())
   user        User                @relation(fields: [driverId], references: [id])
 
-  @@unique([driverId, requestId])
+  @@unique([driverId])
 }
 
 model DriverPayout {
@@ -529,16 +484,13 @@ model DriverLocation {
 
 model DriverAssignment {
   id         String   @id @default(cuid())
-  requestId  String?
   driverId   String
   deliveryRequestId String?
   assignedAt DateTime @default(now())
   
-  request    Request?      @relation(fields: [requestId], references: [id])
   deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
   driver     DriverProfile @relation(fields: [driverId], references: [id])
 
-  @@index([requestId])
   @@index([driverId])
   @@index([deliveryRequestId])
 }
@@ -546,18 +498,15 @@ model DriverAssignment {
 model DriverLocationPing {
   id        String   @id @default(cuid())
   driverId  String
-  requestId String?
   deliveryRequestId String?
   lat       Float
   lng       Float
   createdAt DateTime @default(now())
 
   driver    DriverProfile @relation(fields: [driverId], references: [id])
-  request   Request?      @relation(fields: [requestId], references: [id])
   deliveryRequest DeliveryRequest? @relation(fields: [deliveryRequestId], references: [id])
 
   @@index([driverId])
-  @@index([requestId])
   @@index([deliveryRequestId])
 }
 
@@ -577,7 +526,6 @@ model DriverNavigationSettings {
 model DriverTelemetry {
   id               String   @id @default(cuid())
   driverId         String
-  requestId        String?
   deliveryRequestId String?
   lat              Float
   lng              Float
@@ -592,7 +540,6 @@ model DriverTelemetry {
   driver           DriverProfile @relation(fields: [driverId], references: [id])
 
   @@index([driverId, recordedAt])
-  @@index([requestId])
   @@index([deliveryRequestId])
 }
 
@@ -662,5 +609,31 @@ model FounderServiceLog {
 
   @@index([userId])
   @@index([createdAt])
+  @@index([deliveryRequestId])
+}
+
+model ReceiptVerification {
+  id              String   @id @default(cuid())
+  userId          String
+  deliveryRequestId String
+  expectedVendor  String?
+  merchantName    String?
+  subtotalAmount  Decimal?
+  taxAmount       Decimal?
+  tipAmount       Decimal?
+  totalAmount     Decimal?
+  receiptDate     DateTime?
+  currency        String?
+  confidenceScore Float?
+  imageHash       String   @unique
+  status          ReceiptStatus @default(PENDING)
+  reasonCodes     String[] @default([])
+  rawResponse     Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id])
+
+  @@index([userId])
   @@index([deliveryRequestId])
 }

@@ -25,8 +25,8 @@ export async function getNipTransactions(userId?: string) {
 
 export async function awardFirstCompletedOrder(customerId: string, requestId: string) {
   const prisma = getPrisma();
-  const count = await prisma.request.count({
-    where: { customerId, status: 'COMPLETED' },
+  const count = await prisma.deliveryRequest.count({
+    where: { userId: customerId, status: 'DELIVERED' },
   });
   if (count === 1) {
     await prisma.nipTransaction.create({

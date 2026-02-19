@@ -22,42 +22,24 @@ export async function GET(
   const prisma = getPrisma();
 
   try {
-    const [delivery, req] = await Promise.all([
-      prisma.deliveryRequest.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          status: true,
-          lastKnownLat: true,
-          lastKnownLng: true,
-          lastKnownAt: true,
-          assignedDriver: {
-            select: {
-              id: true,
-              user: { select: { name: true } },
-            },
+    const delivery = await prisma.deliveryRequest.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        lastKnownLat: true,
+        lastKnownLng: true,
+        lastKnownAt: true,
+        assignedDriver: {
+          select: {
+            id: true,
+            user: { select: { name: true } },
           },
         },
-      }),
-      prisma.request.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          status: true,
-          lastKnownLat: true,
-          lastKnownLng: true,
-          lastKnownAt: true,
-          assignedDriver: {
-            select: {
-              id: true,
-              user: { select: { name: true } },
-            },
-          },
-        },
-      }),
-    ]);
+      },
+    });
 
-    const record = delivery ?? req;
+    const record = delivery;
 
     if (!record) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });

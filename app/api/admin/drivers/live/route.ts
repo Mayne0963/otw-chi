@@ -93,11 +93,7 @@ export async function GET(request: Request) {
         orderBy: { updatedAt: "desc" },
         take: 1,
       },
-      requests: {
-        where: { status: { in: [...ACTIVE_JOB_STATUSES] } },
-        orderBy: { updatedAt: "desc" },
-        take: 1,
-      },
+
     },
   });
 
@@ -126,9 +122,8 @@ export async function GET(request: Request) {
             : null;
 
       const activeDelivery = driver.assignedDeliveryRequests[0] ?? null;
-      const activeRequest = activeDelivery ? null : (driver.requests[0] ?? null);
 
-      if (!activeDelivery && !activeRequest) {
+      if (!activeDelivery) {
         return {
           driverProfileId: driver.id,
           userId: driver.user.id,
@@ -140,11 +135,11 @@ export async function GET(request: Request) {
         };
       }
 
-      const jobType = activeDelivery ? "delivery" : "legacy";
-      const jobId = activeDelivery ? activeDelivery.id : activeRequest!.id;
-      const jobStatus = activeDelivery ? activeDelivery.status : activeRequest!.status;
-      const pickupAddress = activeDelivery ? activeDelivery.pickupAddress : activeRequest!.pickup;
-      const dropoffAddress = activeDelivery ? activeDelivery.dropoffAddress : activeRequest!.dropoff;
+      const jobType = "delivery";
+      const jobId = activeDelivery.id;
+      const jobStatus = activeDelivery.status;
+      const pickupAddress = activeDelivery.pickupAddress;
+      const dropoffAddress = activeDelivery.dropoffAddress;
       const nextStop = jobStatus === "ASSIGNED" ? "pickup" : "dropoff";
       const targetAddress = nextStop === "pickup" ? pickupAddress : dropoffAddress;
       const targetLocation = targetAddress ? await geocodeAddress(targetAddress) : null;

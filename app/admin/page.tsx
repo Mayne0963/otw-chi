@@ -45,7 +45,7 @@ async function getAdminStats() {
       monthlyRequests
     ] = await Promise.all([
       // Today's requests
-      prisma.request.count({ 
+      prisma.deliveryRequest.count({ 
         where: { 
           createdAt: { gte: startOfDay } 
         } 
@@ -78,20 +78,20 @@ async function getAdminStats() {
       prisma.user.count().catch(() => 0),
       
       // Total requests
-      prisma.request.count().catch(() => 0),
+      prisma.deliveryRequest.count().catch(() => 0),
       
       // Total drivers
       prisma.driverProfile.count().catch(() => 0),
       
       // Weekly requests
-      prisma.request.count({
+      prisma.deliveryRequest.count({
         where: {
           createdAt: { gte: startOfWeek }
         }
       }).catch(() => 0),
       
       // Monthly requests
-      prisma.request.count({
+      prisma.deliveryRequest.count({
         where: {
           createdAt: { gte: startOfMonth }
         }

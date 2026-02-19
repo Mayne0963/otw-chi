@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import DriverLiveMap from '@/components/otw/DriverLiveMap';
 import { validateAddress } from '@/lib/geocoding';
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
-import { RequestStatus, DeliveryRequestStatus } from '@prisma/client';
-import type { DeliveryRequest, Request as LegacyRequest } from '@prisma/client';
+import { DeliveryRequestStatus } from '@prisma/client';
+import type { DeliveryRequest } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import type { OtwLocation } from '@/lib/otw/otwTypes';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
@@ -35,14 +35,6 @@ function getDispatchPreferences(quoteBreakdown: unknown): DispatchPreferences {
   return prefs as DispatchPreferences;
 }
 
-type ActiveItem =
-  | (DeliveryRequest & { isLegacy?: false })
-  | (LegacyRequest & { isLegacy: true });
-
-function isLegacyRequest(req: ActiveItem): req is LegacyRequest & { isLegacy: true } {
-  return Boolean((req as { isLegacy?: boolean }).isLegacy);
-}
-
 async function acceptRequest(formData: FormData) {
   'use server';
   const requestId = formData.get('requestId') as string;
@@ -61,45 +53,6 @@ async function acceptRequest(formData: FormData) {
   }
 
   await acceptDeliveryRequest(requestId, currentDriverProfile.id);
-
-  revalidatePath('/driver/dashboard');
-}
-
-async function acceptLegacyRequest(formData: FormData) {
-  'use server';
-  const requestId = formData.get('requestId') as string;
-  if (!requestId) return;
-
-  const currentUser = await getCurrentUser();
-  if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-    redirect('/sign-in');
-  }
-  const prisma = getPrisma();
-  const currentDriverProfile = await prisma.driverProfile.findUnique({
-    where: { userId: currentUser.id },
-  });
-  if (!currentDriverProfile) {
-    throw new Error('Driver profile not found.');
-  }
-
-  const req = await prisma.request.findUnique({ where: { id: requestId } });
-  if (req?.status !== RequestStatus.SUBMITTED) return;
-
-  await prisma.$transaction([
-    prisma.request.update({
-      where: { id: requestId },
-      data: {
-        status: RequestStatus.ASSIGNED,
-        assignedDriverId: currentDriverProfile.id,
-      },
-    }),
-    prisma.driverAssignment.create({
-      data: {
-        requestId,
-        driverId: currentDriverProfile.id,
-      },
-    }),
-  ]);
 
   revalidatePath('/driver/dashboard');
 }
@@ -182,71 +135,6 @@ async function updateStatus(formData: FormData) {
   revalidatePath('/driver/dashboard');
 }
 
-async function updateLegacyStatus(formData: FormData) {
-  'use server';
-  const requestId = formData.get('requestId') as string;
-  const newStatus = formData.get('status') as 'PICKED_UP' | 'DELIVERED';
-
-  if (!requestId || !newStatus) return;
-
-  const currentUser = await getCurrentUser();
-  if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-    redirect('/sign-in');
-  }
-  const prisma = getPrisma();
-  const currentDriverProfile = await prisma.driverProfile.findUnique({
-    where: { userId: currentUser.id },
-  });
-  if (!currentDriverProfile) {
-    throw new Error('Driver profile not found.');
-  }
-
-  const job = await prisma.request.findUnique({ where: { id: requestId } });
-  if (!job || job.assignedDriverId !== currentDriverProfile.id) return;
-
-  if (newStatus === 'PICKED_UP') {
-    if (job.status !== RequestStatus.ASSIGNED) return;
-
-    const hasCoords =
-      typeof job.lastKnownLat === 'number' && typeof job.lastKnownLng === 'number';
-    if (!hasCoords) return;
-
-    const pickupLocation = await validateAddress(job.pickup).catch(() => null);
-    if (!pickupLocation) return;
-
-    const distanceKm = haversineDistanceKm(
-      {
-        lat: job.lastKnownLat as number,
-        lng: job.lastKnownLng as number,
-        label: 'Driver',
-      },
-      {
-        lat: pickupLocation.latitude,
-        lng: pickupLocation.longitude,
-        label: 'Pickup',
-      }
-    );
-
-    if (distanceKm > 0.1524) return;
-
-    await prisma.request.update({
-      where: { id: requestId },
-      data: { status: RequestStatus.PICKED_UP },
-    });
-  }
-
-  if (newStatus === 'DELIVERED') {
-    if (job.status !== RequestStatus.PICKED_UP) return;
-
-    await prisma.request.update({
-      where: { id: requestId },
-      data: { status: RequestStatus.DELIVERED },
-    });
-  }
-
-  revalidatePath('/driver/dashboard');
-}
-
 export default async function DriverDashboardPage() {
   noStore();
   const user = await getCurrentUser();
@@ -303,27 +191,7 @@ export default async function DriverDashboardPage() {
     return b.createdAt.getTime() - a.createdAt.getTime();
   });
 
-  const assignedLegacyRequests = await prisma.request.findMany({
-    where: {
-      assignedDriverId: driverProfile.id,
-      status: { in: [RequestStatus.ASSIGNED, RequestStatus.PICKED_UP] },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const availableLegacyRequests = await prisma.request.findMany({
-    where: {
-      status: RequestStatus.SUBMITTED,
-      assignedDriverId: null,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const activeDeliveryRequest = assignedRequests[0] ?? null;
-  const activeLegacyRequest = !activeDeliveryRequest ? (assignedLegacyRequests[0] ?? null) : null;
-  
-  const activeRequest = activeDeliveryRequest ?? activeLegacyRequest;
-  const requestType = activeDeliveryRequest ? 'delivery' : (activeLegacyRequest ? 'legacy' : null);
+  const activeRequest = assignedRequests[0] ?? null;
 
   let customerLocation: OtwLocation | undefined;
   let pickupLocation: OtwLocation | undefined;
@@ -331,12 +199,9 @@ export default async function DriverDashboardPage() {
   let driverLocations: OtwDriverLocation[] = [];
 
   if (activeRequest) {
-    const pickupStr = activeDeliveryRequest ? activeDeliveryRequest.pickupAddress : (activeLegacyRequest ? activeLegacyRequest.pickup : '');
-    const dropoffStr = activeDeliveryRequest ? activeDeliveryRequest.dropoffAddress : (activeLegacyRequest ? activeLegacyRequest.dropoff : '');
-
     const [pickup, dropoff] = await Promise.all([
-      validateAddress(pickupStr).catch(() => null),
-      validateAddress(dropoffStr).catch(() => null),
+      validateAddress(activeRequest.pickupAddress).catch(() => null),
+      validateAddress(activeRequest.dropoffAddress).catch(() => null),
     ]);
 
     if (pickup) {
@@ -406,7 +271,7 @@ export default async function DriverDashboardPage() {
                           pickup={pickupLocation}
                           dropoff={dropoffLocation}
                           requestId={activeRequest.id}
-                          requestType={requestType === 'legacy' ? 'legacy' : 'delivery'}
+                          requestType={'delivery'}
                           jobStatus={activeRequest.status}
                           initialDriverLocation={driverLocations[0] ?? null}
                       />
@@ -423,23 +288,16 @@ export default async function DriverDashboardPage() {
         <section className="mt-8">
             <h2 className="text-xl font-semibold mb-4 text-white">My Active Jobs</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {([
-                  ...assignedRequests,
-                  ...assignedLegacyRequests.map((r) => ({ ...r, isLegacy: true as const })),
-                ] as ActiveItem[]).map((req) => {
-                  const isAssigned = isLegacyRequest(req)
-                    ? req.status === RequestStatus.ASSIGNED
-                    : req.status === DeliveryRequestStatus.ASSIGNED;
-                  const isPickedUp = isLegacyRequest(req)
-                    ? req.status === RequestStatus.PICKED_UP
-                    : req.status === DeliveryRequestStatus.PICKED_UP;
-                  const isEnRoute = !isLegacyRequest(req) && req.status === DeliveryRequestStatus.EN_ROUTE;
+                {assignedRequests.map((req) => {
+                  const isAssigned = req.status === DeliveryRequestStatus.ASSIGNED;
+                  const isPickedUp = req.status === DeliveryRequestStatus.PICKED_UP;
+                  const isEnRoute = req.status === DeliveryRequestStatus.EN_ROUTE;
 
                   return (
                     <Card key={req.id} className="border-otwGold/30 bg-otwGold/10 p-5 sm:p-6">
                         <div className="p-4 border-b border-otwGold/20 flex justify-between items-center">
                             <span className="font-medium text-otwGold">{req.serviceType}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${(req as ActiveItem).isLegacy ? "bg-white/10 text-white/70" : "bg-otwGold text-black"}`}>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase bg-otwGold text-black`}>
                                 {String(req.status).replace('_', ' ')}
                             </span>
                         </div>
@@ -452,7 +310,7 @@ export default async function DriverDashboardPage() {
                                     </div>
                                     <div>
                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Pickup</span>
-                                        <p className="text-base leading-snug text-white">{("pickupAddress" in req ? req.pickupAddress : req.pickup) || ""}</p>
+                                        <p className="text-base leading-snug text-white">{req.pickupAddress || ""}</p>
                                     </div>
                                     
                                     <div className="flex flex-col items-center pb-1">
@@ -460,7 +318,7 @@ export default async function DriverDashboardPage() {
                                     </div>
                                     <div>
                                         <span className="text-xs text-white/50 uppercase tracking-wider font-medium">Dropoff</span>
-                                        <p className="text-base leading-snug text-white">{("dropoffAddress" in req ? req.dropoffAddress : req.dropoff) || ""}</p>
+                                        <p className="text-base leading-snug text-white">{req.dropoffAddress || ""}</p>
                                     </div>
                                 </div>
 
@@ -472,17 +330,7 @@ export default async function DriverDashboardPage() {
                             </div>
 
                             <div className="flex gap-2">
-                                {isAssigned && isLegacyRequest(req) && (
-                                    <form action={updateLegacyStatus} className="w-full">
-                                        <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value="PICKED_UP" />
-                                        <Button type="submit" className="w-full" variant="gold">
-                                            Confirm Pickup
-                                        </Button>
-                                    </form>
-                                )}
-
-                                {isAssigned && !isLegacyRequest(req) && (
+                                {isAssigned && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="PICKED_UP" />
@@ -492,17 +340,7 @@ export default async function DriverDashboardPage() {
                                     </form>
                                 )}
                                 
-                                {isPickedUp && isLegacyRequest(req) && (
-                                    <form action={updateLegacyStatus} className="w-full">
-                                        <input type="hidden" name="requestId" value={req.id} />
-                                        <input type="hidden" name="status" value="DELIVERED" />
-                                        <Button type="submit" className="w-full" variant="gold">
-                                            Complete Delivery
-                                        </Button>
-                                    </form>
-                                )}
-
-                                {isPickedUp && !isLegacyRequest(req) && (
+                                {isPickedUp && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
                                         <input type="hidden" name="status" value="EN_ROUTE" />
@@ -527,7 +365,7 @@ export default async function DriverDashboardPage() {
                   );
                 })}
                 
-                {[...assignedRequests, ...assignedLegacyRequests].length === 0 && (
+                {assignedRequests.length === 0 && (
                     <div className="col-span-full">
                         <OtwEmptyState
                             title="No Active Jobs"
@@ -542,14 +380,9 @@ export default async function DriverDashboardPage() {
         <section className="mt-8">
             <h2 className="text-xl font-semibold mb-4 text-white">Available Requests</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {([
-                  ...prioritizedAvailableRequests,
-                  ...availableLegacyRequests.map((r) => ({ ...r, isLegacy: true as const })),
-                ] as ActiveItem[]).map((req) => {
-                  const miles = isLegacyRequest(req) ? (req.milesEstimate ?? 0) : (req.serviceMilesFinal ?? 0);
-                  const activeMinutesEstimate = isLegacyRequest(req)
-                    ? Math.max(10, Math.trunc((req.milesEstimate ?? 0) * 5))
-                    : Math.max(10, Math.trunc((req.estimatedMinutes ?? 0) + 10));
+                {prioritizedAvailableRequests.map((req) => {
+                  const miles = req.serviceMilesFinal ?? 0;
+                  const activeMinutesEstimate = Math.max(10, Math.trunc((req.estimatedMinutes ?? 0) + 10));
                   const pay = calculateDriverPayCents({
                     driverTier: driverProfile.tierLevel,
                     activeMinutes: activeMinutesEstimate,
@@ -559,9 +392,9 @@ export default async function DriverDashboardPage() {
                     onTimeEligible: false,
                     earlyEligible: false,
                   });
-                  const pickupText = isLegacyRequest(req) ? req.pickup : req.pickupAddress;
-                  const dropoffText = isLegacyRequest(req) ? req.dropoff : req.dropoffAddress;
-                  const prefs = !isLegacyRequest(req) ? getDispatchPreferences(req.quoteBreakdown) : {};
+                  const pickupText = req.pickupAddress;
+                  const dropoffText = req.dropoffAddress;
+                  const prefs = getDispatchPreferences(req.quoteBreakdown);
 
                   return (
                     <Card key={req.id} className="p-5 sm:p-6">
@@ -589,40 +422,31 @@ export default async function DriverDashboardPage() {
                                          <p className="text-lg font-bold text-otwGold">${(pay.totalPayCents / 100).toFixed(2)}</p>
                                      </div>
                                 </div>
-                                {!isLegacyRequest(req) && req.scheduledStart ? (
+                                {req.scheduledStart ? (
                                   <div className="pt-2 text-xs text-white/60">
                                     Scheduled: {new Date(req.scheduledStart).toLocaleString()}
                                   </div>
                                 ) : null}
-                                {!isLegacyRequest(req) && Boolean(prefs.prioritySlot) ? (
+                                {Boolean(prefs.prioritySlot) ? (
                                   <div className="text-xs text-otwGold/80">Priority slot</div>
                                 ) : null}
-                                {!isLegacyRequest(req) && Boolean(prefs.lockToPreferred) ? (
+                                {Boolean(prefs.lockToPreferred) ? (
                                   <div className="text-xs text-otwGold/80">Preferred driver window</div>
                                 ) : null}
                             </div>
                             
-                            {isLegacyRequest(req) ? (
-                              <form action={acceptLegacyRequest}>
-                                  <input type="hidden" name="requestId" value={req.id} />
-                                  <Button type="submit" className="w-full" variant="outline">
-                                      Accept Job
-                                  </Button>
-                              </form>
-                            ) : (
                               <form action={acceptRequest}>
                                   <input type="hidden" name="requestId" value={req.id} />
                                   <Button type="submit" className="w-full" variant="outline">
                                       Accept Job
                                   </Button>
                               </form>
-                            )}
                         </div>
                     </Card>
                   );
                 })}
 
-                {[...availableRequests, ...availableLegacyRequests].length === 0 && (
+                {availableRequests.length === 0 && (
                      <div className="col-span-full">
                          <OtwEmptyState
                              title="No Available Requests"

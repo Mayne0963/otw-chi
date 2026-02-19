@@ -20,12 +20,12 @@ export async function GET(
     }
 
     const prisma = getPrisma();
-    const req = await prisma.request.findUnique({
+    const req = await prisma.deliveryRequest.findUnique({
       where: { id },
       select: {
         id: true,
-        pickup: true,
-        dropoff: true,
+        pickupAddress: true,
+        dropoffAddress: true,
       },
     });
 
@@ -36,14 +36,14 @@ export async function GET(
     const stops = [
       {
         id: `${req.id}-pickup`,
-        label: req.pickup,
+        label: req.pickupAddress,
         type: "pickup" as const,
         lat: null,
         lng: null,
       },
       {
         id: `${req.id}-dropoff`,
-        label: req.dropoff,
+        label: req.dropoffAddress,
         type: "dropoff" as const,
         lat: null,
         lng: null,

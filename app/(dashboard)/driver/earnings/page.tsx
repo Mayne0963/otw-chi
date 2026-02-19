@@ -31,15 +31,15 @@ export default async function DriverEarningsPage() {
   
   const weekly = history
     .filter((e: { createdAt: Date }) => e.createdAt >= startOfWeek)
-    .reduce((sum: number, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
+    .reduce((sum: number, e) => sum + (e.amountCents ?? 0), 0);
     
   const monthly = history
     .filter((e: { createdAt: Date }) => e.createdAt >= startOfMonth)
-    .reduce((sum: number, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
+    .reduce((sum: number, e) => sum + (e.amountCents ?? 0), 0);
 
   const availableTotal = history
     .filter((e) => e.status === 'available')
-    .reduce((sum: number, e) => sum + (e.amountCents ?? e.amount ?? 0), 0);
+    .reduce((sum: number, e) => sum + (e.amountCents ?? 0), 0);
 
   const prisma = getPrisma();
   const latestPayout = await prisma.driverPayout.findFirst({
@@ -84,7 +84,7 @@ export default async function DriverEarningsPage() {
             {history.slice(0, 20).map((e) => (
               <li key={e.id} className="py-2 border-b border-white/10 last:border-0">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs opacity-70">Job {e.requestId?.slice(-6) ?? 'N/A'}</div>
+                  <div className="text-xs opacity-70">{new Date(e.createdAt).toLocaleDateString()}</div>
                   <div className="flex items-center gap-3">
                     <span className={`text-xs rounded-full px-2 py-1 border border-white/10 opacity-70 ${e.status === 'available' ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'}`}>{e.status ?? 'pending'}</span>
                     <span>${(((e.amountCents ?? e.amount ?? 0)/100)).toFixed(2)}</span>

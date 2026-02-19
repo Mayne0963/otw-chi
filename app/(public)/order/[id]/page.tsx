@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/utils';
 import { computeBillableReceiptSubtotalCents } from '@/lib/order-pricing';
 import { ArrowUpRight, CheckCircle2, MapPin, ShieldAlert, User } from 'lucide-react';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
+import { ReceiptUpload } from '@/components/receipt-upload';
 
 type ReceiptItem = { name: string; quantity?: number; price?: number };
 
@@ -185,6 +186,8 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
                   <div className="text-sm text-white/50">Receipt upload pending.</div>
                 )}
               </div>
+
+              <ReceiptUpload deliveryRequestId={order.id} />
 
               <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
                 <div>
