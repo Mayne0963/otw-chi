@@ -10,7 +10,7 @@ import { formatDate } from '@/lib/utils';
 import { computeBillableReceiptSubtotalCents } from '@/lib/order-pricing';
 import { ArrowUpRight, CheckCircle2, MapPin, ShieldAlert, User } from 'lucide-react';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
-import { ReceiptUpload } from '@/components/receipt-upload';
+import ReceiptUpload from '@/components/receipt-upload';
 
 type ReceiptItem = { name: string; quantity?: number; price?: number };
 
