@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId: string }) {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,18 +37,20 @@ export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId
         body: formData,
       });
 
-      const result = await response.json();
+      const result = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
 
       if (!response.ok) {
         throw new Error(result.message || 'Something went wrong');
       }
 
-      setSuccess('Receipt uploaded successfully!');
-      // Optionally, you can do something with the result.data
-      console.log(result.data);
+      setSuccess(result.message || 'Receipt uploaded successfully!');
+      setFile(null);
+      router.refresh();
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setIsUploading(false);
     }
