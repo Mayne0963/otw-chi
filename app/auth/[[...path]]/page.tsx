@@ -1,0 +1,38 @@
+'use client';
+
+import Link from 'next/link';
+import { useMemo } from 'react';
+import { usePathname } from 'next/navigation';
+import { AuthView } from '@neondatabase/auth/react';
+
+function getAuthPath(pathname: string): string {
+  const trimmed = pathname.replace(/^\/auth\/?/, '');
+  return trimmed || 'sign-in';
+}
+
+export default function AuthPage() {
+  const pathname = usePathname();
+  const authPath = useMemo(() => getAuthPath(pathname), [pathname]);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-otwBlack relative overflow-hidden">
+      <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-otwGold/5 blur-[100px]" />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-otwBlue/5 blur-[100px]" />
+
+      <div className="w-full max-w-md z-10 space-y-8">
+        <div className="text-center space-y-2">
+          <Link href="/" className="inline-block">
+            <h1 className="text-4xl font-display font-bold text-otwGold tracking-tight">OTW</h1>
+          </Link>
+          <p className="text-otwOffWhite/60 text-sm tracking-wide uppercase">Luxury Delivery Concierge</p>
+        </div>
+
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl">
+          <div className="bg-otwBlack/50 rounded-xl p-6">
+            <AuthView path={authPath} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

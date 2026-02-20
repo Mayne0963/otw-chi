@@ -63,7 +63,7 @@ export default async function DashboardPage() {
     <OtwPageShell>
       <OtwSectionHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
       
-      <div className="grid md:grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         {/* Compliance Alert */}
         {!user.dob && (
           <div className="md:col-span-3">
