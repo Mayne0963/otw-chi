@@ -43,6 +43,10 @@ export type ReceiptExportDeliveryRequest = {
   tipCents: number;
   discountCents: number | null;
   serviceMilesFinal: number | null;
+  isLocked: boolean;
+  lockedAt: Date | null;
+  lockReason: string | null;
+  refundPolicy: string;
   orderConfirmation: {
     id: string;
     customerConfirmed: boolean;
@@ -102,6 +106,10 @@ export const RECEIPT_EXPORT_HEADERS = [
   'tipCents',
   'discountCents',
   'serviceMilesFinal',
+  'isLocked',
+  'lockedAt',
+  'lockReason',
+  'refundPolicy',
   'confirmationId',
   'customerConfirmed',
   'confirmedAt',
@@ -393,6 +401,10 @@ export function flattenReceiptExportRecord(
     tipCents: record.deliveryRequest.tipCents ?? '',
     discountCents: record.deliveryRequest.discountCents ?? '',
     serviceMilesFinal: record.deliveryRequest.serviceMilesFinal ?? '',
+    isLocked: record.deliveryRequest.isLocked ? 'true' : 'false',
+    lockedAt: toIso(record.deliveryRequest.lockedAt),
+    lockReason: record.deliveryRequest.lockReason ?? '',
+    refundPolicy: record.deliveryRequest.refundPolicy,
     confirmationId: confirmation?.id ?? '',
     customerConfirmed: confirmation?.customerConfirmed ? 'true' : 'false',
     confirmedAt: toIso(confirmation?.confirmedAt ?? null),
@@ -452,6 +464,10 @@ export function buildJsonReceiptExportRecord(
     tipCents: record.deliveryRequest.tipCents,
     discountCents: record.deliveryRequest.discountCents,
     serviceMilesFinal: record.deliveryRequest.serviceMilesFinal,
+    isLocked: record.deliveryRequest.isLocked,
+    lockedAt: record.deliveryRequest.lockedAt?.toISOString() ?? null,
+    lockReason: record.deliveryRequest.lockReason,
+    refundPolicy: record.deliveryRequest.refundPolicy,
     confirmationId: confirmation?.id ?? null,
     customerConfirmed: confirmation?.customerConfirmed ?? false,
     confirmedAt: confirmation?.confirmedAt?.toISOString() ?? null,

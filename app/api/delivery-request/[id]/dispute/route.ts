@@ -9,6 +9,7 @@ import {
   shouldMarkNeedsInfoForDispute,
   validateDisputedItemsAgainstSnapshot,
 } from '@/lib/disputes/orderConfirmation';
+import { evaluateDeliveryRequestLock } from '@/lib/refunds/lock';
 
 export async function POST(
   request: Request,
@@ -52,6 +53,14 @@ export async function POST(
 
   if (!deliveryRequest || deliveryRequest.userId !== user.id) {
     return NextResponse.json({ error: 'Delivery request not found' }, { status: 404 });
+  }
+
+  // Check if order is locked - only allow disputes when locked
+  const lockEvaluation = await evaluateDeliveryRequestLock(deliveryRequest.id);
+  if (!lockEvaluation.locked) {
+    return NextResponse.json({ 
+      error: 'Order must be locked (receipt verified + items confirmed) before filing a dispute.' 
+    }, { status: 400 });
   }
 
   const body = await request.json().catch(() => null);

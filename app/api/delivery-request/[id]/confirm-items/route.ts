@@ -7,6 +7,7 @@ import {
   computeTotalSnapshotDecimal,
   confirmPayloadSchema,
 } from '@/lib/disputes/orderConfirmation';
+import { evaluateDeliveryRequestLock, applyDeliveryRequestLock } from '@/lib/refunds/lock';
 
 export async function POST(
   request: Request,
@@ -95,6 +96,12 @@ export async function POST(
     },
     select: { id: true },
   });
+
+  // After successful confirmation, evaluate and apply lock if needed
+  const lockEvaluation = await evaluateDeliveryRequestLock(deliveryRequest.id);
+  if (lockEvaluation.locked) {
+    await applyDeliveryRequestLock(deliveryRequest.id, user.id);
+  }
 
   return NextResponse.json({
     ok: true,

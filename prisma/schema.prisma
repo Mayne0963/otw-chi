@@ -113,6 +113,11 @@ enum ReceiptStatus {
   PENDING
 }
 
+enum RefundPolicy {
+  AUTO_ALLOWED
+  LOCKED_REQUIRES_REVIEW
+}
+
 enum DisputeStatus {
   NONE
   OPEN
@@ -151,6 +156,7 @@ model User {
   contactMessages    ContactMessage[]
   serviceMilesWallet ServiceMilesWallet?
   founderServiceLogs FounderServiceLog[]
+  auditLogs          AuditLog[]
 }
 
 model DriverApplication {
@@ -321,6 +327,14 @@ model DeliveryRequest {
   founderServiceLogs   FounderServiceLog[]
   receiptVerifications ReceiptVerification[]
   orderConfirmation    OrderConfirmation?
+
+  // Lock fields
+  receiptVerificationId String?  // latest linked receipt
+  confirmationId      String? // linked confirmation record
+  isLocked            Boolean      @default(false)
+  lockedAt            DateTime?
+  lockReason          String?
+  refundPolicy        RefundPolicy @default(AUTO_ALLOWED)
 
   @@index([userId])
   @@index([status])
@@ -675,9 +689,29 @@ model OrderConfirmation {
 
   deliveryRequest      DeliveryRequest     @relation(fields: [deliveryRequestId], references: [id])
   receiptVerification  ReceiptVerification? @relation(fields: [receiptVerificationId], references: [id])
+  auditLogs            AuditLog[]
 
   @@index([userId])
   @@index([disputeStatus])
   @@index([createdAt])
   @@index([receiptVerificationId])
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String
+  deliveryRequestId String
+  action          String   // "LOCK", "UNLOCK", "DISPUTE_RESOLVED", etc.
+  details         Json?
+  previousState   Json?
+  newState        Json?
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  user            User              @relation(fields: [userId], references: [id])
+  orderConfirmation OrderConfirmation? @relation(fields: [deliveryRequestId], references: [id])
+
+  @@index([userId])
+  @@index([deliveryRequestId])
+  @@index([createdAt])
 }

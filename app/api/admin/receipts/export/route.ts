@@ -49,6 +49,10 @@ const buildSelect = (includeRaw: boolean) =>
         tipCents: true,
         discountCents: true,
         serviceMilesFinal: true,
+        isLocked: true,
+        lockedAt: true,
+        lockReason: true,
+        refundPolicy: true,
         orderConfirmation: {
           select: {
             id: true,

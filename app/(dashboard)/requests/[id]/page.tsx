@@ -140,6 +140,30 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 )}
               </div>
 
+              {/* Lock Status Banner */}
+              {request.isLocked && (
+                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-green-400">Order Locked ✅</h3>
+                      <div className="mt-2 text-sm text-green-300">
+                        <p>Receipt + Confirmation recorded. This order is protected from automatic refunds.</p>
+                        {request.lockedAt && (
+                          <p className="mt-1 text-xs text-green-400/80">
+                            Locked on {formatDate(request.lockedAt)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
                 <div className="flex gap-3">
                   <div className="flex flex-col items-center">
@@ -171,8 +195,16 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 </div>
               )}
 
-              {isOwner && request.status === 'DELIVERED' && (
+              {isOwner && request.status === 'DELIVERED' && !request.isLocked && (
                 <ReceiptUpload deliveryRequestId={request.id} />
+              )}
+
+              {isOwner && request.isLocked && (
+                <div className="mt-6 border-t border-gray-200 pt-6">
+                  <OtwButton as="a" href={`/requests/${request.id}/dispute`} variant="outline">
+                    Report an Issue
+                  </OtwButton>
+                </div>
               )}
 
               {/* Driver Tracking Section */}

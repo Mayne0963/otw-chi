@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import Client from '@veryfi/veryfi-sdk';
 import { scoreReceiptRisk } from '@/lib/receipts/riskScore';
 import { buildItemsSnapshot, computeTotalSnapshotDecimal } from '@/lib/disputes/orderConfirmation';
+import { evaluateDeliveryRequestLock, applyDeliveryRequestLock } from '@/lib/refunds/lock';
 
 type ParsedMenuItem = {
   name: string;
@@ -288,6 +289,12 @@ export async function POST(req: Request) {
           });
         }
       });
+
+      // After successful receipt verification, evaluate and apply lock if needed
+      const lockEvaluation = await evaluateDeliveryRequestLock(deliveryRequestId);
+      if (lockEvaluation.locked) {
+        await applyDeliveryRequestLock(deliveryRequestId, user.id);
+      }
 
       return NextResponse.json({
         success: scoreDecision.status === 'APPROVED',

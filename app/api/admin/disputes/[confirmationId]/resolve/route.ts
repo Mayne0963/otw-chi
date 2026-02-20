@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth/roles';
+import { evaluateDeliveryRequestLock } from '@/lib/refunds/lock';
 
 const resolvePayloadSchema = z.object({
   resolution: z.enum(['APPROVED', 'DENIED', 'NEEDS_INFO']),
@@ -42,11 +43,20 @@ export async function POST(
       id: true,
       disputeStatus: true,
       disputedItems: true,
+      deliveryRequestId: true,
     },
   });
 
   if (!confirmation) {
     return NextResponse.json({ error: 'Order confirmation not found' }, { status: 404 });
+  }
+
+  // Check if the delivery request is locked
+  const lockEvaluation = await evaluateDeliveryRequestLock(confirmation.deliveryRequestId);
+  if (!lockEvaluation.locked) {
+    return NextResponse.json({ 
+      error: 'Cannot resolve dispute: delivery request is not locked. Lock requires verified receipt + confirmed items.' 
+    }, { status: 400 });
   }
 
   const disputedItemCount = Array.isArray(confirmation.disputedItems)
