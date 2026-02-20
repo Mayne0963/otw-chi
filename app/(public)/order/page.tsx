@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { authClient } from "@/lib/auth/client";
 import { useCurrentUser } from "@/components/auth/use-current-user";
-import { Loader2, Upload, X, CreditCard, MapPin, ArrowRight, Package, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Loader2, Upload, Camera, X, CreditCard, MapPin, ArrowRight, Package, ExternalLink, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1187,6 +1187,17 @@ export default function OrderPage() {
                   <input
                     type="file"
                     accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleReceiptSelect(e.target.files?.[0] || null)}
+                  />
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border/70 px-4 py-3 text-sm text-muted-foreground transition-colors duration-300 hover:border-secondary/70 hover:text-secondary">
+                  <Camera className="h-4 w-4" />
+                  <span>Take photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
                     className="hidden"
                     onChange={(e) => handleReceiptSelect(e.target.files?.[0] || null)}
                   />

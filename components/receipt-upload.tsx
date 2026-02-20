@@ -1,18 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId: string }) {
   const router = useRouter();
+  const libraryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [selectedSource, setSelectedSource] = useState<'library' | 'camera' | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    source: 'library' | 'camera'
+  ) => {
     if (e.target.files) {
       setFile(e.target.files[0]);
+      setSelectedSource(source);
+      setError(null);
+      setSuccess(null);
     }
   };
 
@@ -47,6 +56,9 @@ export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId
 
       setSuccess(result.message || 'Receipt uploaded successfully!');
       setFile(null);
+      setSelectedSource(null);
+      if (libraryInputRef.current) libraryInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
       router.refresh();
 
     } catch (err: unknown) {
@@ -64,18 +76,48 @@ export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId
       </p>
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>
-          <label htmlFor="receipt-upload" className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700">
             Receipt Image
           </label>
-          <div className="mt-1 flex items-center">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => libraryInputRef.current?.click()}
+              className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+            >
+              Choose photo
+            </button>
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Take photo
+            </button>
             <input
-              id="receipt-upload"
-              name="receipt-upload"
+              ref={libraryInputRef}
+              id="receipt-upload-library"
+              name="receipt-upload-library"
               type="file"
               accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              onChange={(e) => handleFileChange(e, 'library')}
+              className="hidden"
             />
+            <input
+              ref={cameraInputRef}
+              id="receipt-upload-camera"
+              name="receipt-upload-camera"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => handleFileChange(e, 'camera')}
+              className="hidden"
+            />
+          </div>
+          <div className="mt-2 text-sm text-gray-500">
+            {file
+              ? `Selected: ${file.name}${selectedSource === 'camera' ? ' (camera)' : ''}`
+              : 'No receipt selected yet.'}
           </div>
         </div>
         <div className="flex justify-end">
