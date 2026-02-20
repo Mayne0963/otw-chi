@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import type { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import Client from '@veryfi/veryfi-sdk';
+import { scoreReceiptRisk } from '@/lib/receipts/riskScore';
 
 type ParsedMenuItem = {
   name: string;
@@ -114,12 +115,32 @@ export async function POST(req: Request) {
     const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
     const existingVerification = await prisma.receiptVerification.findUnique({
-        where: { imageHash: hash },
+      where: { imageHash: hash },
     });
 
     if (existingVerification) {
-        return NextResponse.json({ message: 'This receipt has already been uploaded.' }, { status: 409 });
+      const duplicateDecision = scoreReceiptRisk({
+        isDuplicate: true,
+        imageHash: hash,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'This receipt has already been uploaded.',
+          status: duplicateDecision.status,
+          riskScore: duplicateDecision.riskScore,
+          reasonCodes: duplicateDecision.reasonCodes,
+          riskBreakdown: duplicateDecision.riskBreakdown,
+        },
+        { status: 409 }
+      );
     }
+
+    const expectedVendor = deliveryRequest.restaurantName ?? deliveryRequest.receiptVendor ?? null;
+    const expectedTotal =
+      typeof deliveryRequest.receiptSubtotalCents === 'number' && deliveryRequest.receiptSubtotalCents > 0
+        ? (deliveryRequest.receiptSubtotalCents / 100).toFixed(2)
+        : null;
 
     const veryfiClient = new Client(
       process.env.VERYFI_CLIENT_ID!,
@@ -141,6 +162,19 @@ export async function POST(req: Request) {
         extractString((veryfiResponse as { vendor?: { address?: unknown } }).vendor?.address) ??
         extractString((veryfiResponse as { vendor?: { raw_address?: unknown } }).vendor?.raw_address);
       const subtotalFromResponse = extractNumber((veryfiResponse as { subtotal?: unknown }).subtotal);
+      const taxAmount = extractNumber((veryfiResponse as { tax?: unknown }).tax);
+      const tipAmount = extractNumber((veryfiResponse as { tip?: unknown }).tip);
+      const totalAmount = extractNumber((veryfiResponse as { total?: unknown }).total);
+      const receiptDate = extractDate((veryfiResponse as { date?: unknown }).date);
+      const currencyCode = extractString((veryfiResponse as { currency_code?: unknown }).currency_code);
+      const confidenceScore = (() => {
+        const response = veryfiResponse as Record<string, unknown>;
+        return (
+          extractNumber(response.confidence_score) ??
+          extractNumber(response.confidence) ??
+          extractNumber(response.overall_confidence)
+        );
+      })();
       const subtotalCentsFromItems = menuItems.reduce(
         (sum, item) => sum + Math.round(item.price * 100) * item.quantity,
         0
@@ -152,10 +186,26 @@ export async function POST(req: Request) {
             ? Math.round(subtotalFromResponse * 100)
             : null;
       const receiptImageData = `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`;
+      const scoreDecision = scoreReceiptRisk({
+        deliveryRequestId,
+        currentUserId: user.id,
+        imageHash: hash,
+        expectedVendor,
+        expectedTotal,
+        merchantName,
+        subtotal: subtotalFromResponse,
+        tax: taxAmount,
+        tip: tipAmount,
+        total: totalAmount,
+        receiptDate,
+        currency: currencyCode,
+        confidenceScore,
+      });
 
       const requestUpdateData: Prisma.DeliveryRequestUpdateInput = {
         receiptImageData,
         receiptVerifiedAt: new Date(),
+        receiptAuthenticityScore: scoreDecision.riskScore / 100,
       };
 
       if (merchantName) {
@@ -180,15 +230,19 @@ export async function POST(req: Request) {
             userId: user.id,
             deliveryRequestId,
             imageHash: hash,
-            expectedVendor: deliveryRequest.restaurantName ?? deliveryRequest.receiptVendor ?? null,
+            expectedVendor,
             merchantName,
-            subtotalAmount: extractNumber((veryfiResponse as { subtotal?: unknown }).subtotal),
-            taxAmount: extractNumber((veryfiResponse as { tax?: unknown }).tax),
-            tipAmount: extractNumber((veryfiResponse as { tip?: unknown }).tip),
-            totalAmount: extractNumber((veryfiResponse as { total?: unknown }).total),
-            receiptDate: extractDate((veryfiResponse as { date?: unknown }).date),
-            currency: extractString((veryfiResponse as { currency_code?: unknown }).currency_code),
-            status: 'APPROVED',
+            subtotalAmount: subtotalFromResponse,
+            taxAmount,
+            tipAmount,
+            totalAmount,
+            receiptDate,
+            currency: currencyCode,
+            confidenceScore: scoreDecision.normalizedConfidence,
+            riskScore: scoreDecision.riskScore,
+            status: scoreDecision.status,
+            reasonCodes: scoreDecision.reasonCodes,
+            riskBreakdown: scoreDecision.riskBreakdown as Prisma.InputJsonValue,
             rawResponse: veryfiResponse as unknown as Prisma.InputJsonValue,
           },
         });
@@ -200,27 +254,48 @@ export async function POST(req: Request) {
       });
 
       return NextResponse.json({
-        success: true,
-        message: `Receipt verified. Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
+        success: scoreDecision.status === 'APPROVED',
+        status: scoreDecision.status,
+        riskScore: scoreDecision.riskScore,
+        reasonCodes: scoreDecision.reasonCodes,
+        riskBreakdown: scoreDecision.riskBreakdown,
+        message: `Receipt processed (${scoreDecision.status}). Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
         menuItems,
         data: veryfiResponse,
       });
     } catch (error) {
       console.error('Veryfi API error:', error);
+      const veryfiDecision = scoreReceiptRisk({
+        veryfiError: true,
+        imageHash: hash,
+      });
       await prisma.receiptVerification.create({
         data: {
           userId: user.id,
           deliveryRequestId,
           imageHash: hash,
-          status: 'REJECTED',
-          reasonCodes: ['VERYFI_API_ERROR'],
+          expectedVendor,
+          status: veryfiDecision.status,
+          riskScore: veryfiDecision.riskScore,
+          reasonCodes: veryfiDecision.reasonCodes,
+          riskBreakdown: veryfiDecision.riskBreakdown as Prisma.InputJsonValue,
           rawResponse:
             {
               message: error instanceof Error ? error.message : 'Unknown Veryfi error',
             } as Prisma.InputJsonValue,
         },
       });
-      return NextResponse.json({ message: 'Error processing receipt with Veryfi.' }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Error processing receipt with Veryfi.',
+          status: veryfiDecision.status,
+          riskScore: veryfiDecision.riskScore,
+          reasonCodes: veryfiDecision.reasonCodes,
+          riskBreakdown: veryfiDecision.riskBreakdown,
+        },
+        { status: 502 }
+      );
     }
   } catch (error) {
     console.error('Receipt verification error:', error);

@@ -626,8 +626,10 @@ model ReceiptVerification {
   currency        String?
   confidenceScore Float?
   imageHash       String   @unique
+  riskScore       Int      @default(0)
   status          ReceiptStatus @default(PENDING)
   reasonCodes     String[] @default([])
+  riskBreakdown   Json?
   rawResponse     Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
