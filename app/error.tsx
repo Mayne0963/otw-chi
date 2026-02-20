@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
+import { buildErrorPageHref, ERROR_PAGE_PATH } from '@/lib/error-routing';
 
 function isQuotaError(error: Error) {
   const message = `${error?.name ?? ''} ${error?.message ?? ''}`.toLowerCase();
@@ -32,6 +33,7 @@ export default function Error({
     fetch('/api/client-error', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      keepalive: true,
       body: JSON.stringify({
         digest: digest ?? null,
         name: error?.name ?? null,
@@ -40,6 +42,10 @@ export default function Error({
         href,
       }),
     }).catch(() => {});
+
+    if (typeof window !== 'undefined' && window.location.pathname !== ERROR_PAGE_PATH) {
+      window.location.replace(buildErrorPageHref(error, 'segment-error-boundary'));
+    }
   }, [error]);
 
   const quota = isQuotaError(error);

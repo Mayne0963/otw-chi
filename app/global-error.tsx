@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+import { buildErrorPageHref, ERROR_PAGE_PATH } from '@/lib/error-routing';
  
 function isQuotaError(error: Error) {
   const message = `${error?.name ?? ''} ${error?.message ?? ''}`.toLowerCase()
@@ -29,6 +30,7 @@ export default function GlobalError({
     fetch('/api/client-error', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      keepalive: true,
       body: JSON.stringify({
         digest: digest ?? null,
         name: error?.name ?? null,
@@ -37,6 +39,10 @@ export default function GlobalError({
         href,
       }),
     }).catch(() => {})
+
+    if (typeof window !== 'undefined' && window.location.pathname !== ERROR_PAGE_PATH) {
+      window.location.replace(buildErrorPageHref(error, 'global-error-boundary'))
+    }
   }, [_error])
 
   const quota = isQuotaError(_error)

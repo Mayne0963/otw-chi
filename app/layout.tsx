@@ -5,6 +5,7 @@ import { Fraunces, Manrope } from 'next/font/google';
 import '../styles/globals.css';
 import OtwCookieConsent from '@/components/ui/otw/OtwCookieConsent';
 import { ThemeProvider } from '@/components/theme-provider';
+import ErrorEventRedirector from '@/components/error/ErrorEventRedirector';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             enableSystem
             disableTransitionOnChange
           >
+            <ErrorEventRedirector />
             {children}
             <OtwCookieConsent />
           </ThemeProvider>

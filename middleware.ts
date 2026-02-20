@@ -12,6 +12,7 @@ const isPublicRoute = (pathname: string) => {
     '/how-it-works',
     '/services',
     '/contact',
+    '/app-error',
     '/driver/apply',
     '/privacy',
     '/terms',
