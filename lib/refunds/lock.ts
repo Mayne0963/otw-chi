@@ -1,13 +1,12 @@
 import { getPrisma } from '@/lib/db';
-import { Prisma } from '@prisma/client';
 
 export interface LockEvaluationResult {
   locked: boolean;
   receiptStatus?: string;
   receiptVerified: boolean;
   customerConfirmed: boolean;
-  lockedAt?: Date;
-  lockReason?: string;
+  lockedAt?: Date | null;
+  lockReason?: string | null;
   refundPolicy: 'AUTO_ALLOWED' | 'LOCKED_REQUIRES_REVIEW';
 }
 
