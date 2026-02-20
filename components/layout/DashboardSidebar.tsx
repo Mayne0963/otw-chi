@@ -16,7 +16,8 @@ import {
   MapPin,
   DollarSign,
   Building2,
-  Mail
+  Mail,
+  AlertTriangle
 } from "lucide-react"
 
 interface DashboardSidebarProps {
@@ -56,6 +57,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Ledger", href: "/admin/nip-ledger", icon: Wallet },
     { label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 },
     { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
+    { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
     { label: "Seed Database", href: "/admin/seed", icon: Settings },
   ]
 

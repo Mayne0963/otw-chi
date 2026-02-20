@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import Client from '@veryfi/veryfi-sdk';
 import { scoreReceiptRisk } from '@/lib/receipts/riskScore';
+import { buildItemsSnapshot, computeTotalSnapshotDecimal } from '@/lib/disputes/orderConfirmation';
 
 type ParsedMenuItem = {
   name: string;
@@ -225,7 +226,7 @@ export async function POST(req: Request) {
       }
 
       await prisma.$transaction(async (tx) => {
-        await tx.receiptVerification.create({
+        const createdVerification = await tx.receiptVerification.create({
           data: {
             userId: user.id,
             deliveryRequestId,
@@ -251,6 +252,41 @@ export async function POST(req: Request) {
           where: { id: deliveryRequestId },
           data: requestUpdateData,
         });
+
+        if (scoreDecision.status === 'APPROVED' || scoreDecision.status === 'FLAGGED') {
+          const itemsSnapshot = buildItemsSnapshot(
+            menuItems.length > 0 ? menuItems : deliveryRequest.receiptItems
+          );
+          const totalSnapshot = computeTotalSnapshotDecimal({
+            serviceType: deliveryRequest.serviceType,
+            receiptSubtotalCents:
+              subtotalCents != null ? subtotalCents : deliveryRequest.receiptSubtotalCents,
+            deliveryFeeCents: deliveryRequest.deliveryFeeCents,
+            receiptImageData: receiptImageData,
+            receiptItems: menuItems.length > 0 ? menuItems : deliveryRequest.receiptItems,
+            quoteBreakdown: deliveryRequest.quoteBreakdown,
+            discountCents: deliveryRequest.discountCents,
+          });
+
+          await tx.orderConfirmation.upsert({
+            where: { deliveryRequestId },
+            create: {
+              deliveryRequestId,
+              userId: user.id,
+              itemsSnapshot: (itemsSnapshot.length > 0 ? itemsSnapshot : []) as unknown as Prisma.InputJsonValue,
+              totalSnapshot,
+              customerConfirmed: false,
+              receiptVerificationId: createdVerification.id,
+            },
+            update: {
+              receiptVerificationId: createdVerification.id,
+              ...(itemsSnapshot.length > 0
+                ? { itemsSnapshot: itemsSnapshot as unknown as Prisma.InputJsonValue }
+                : {}),
+              ...(totalSnapshot ? { totalSnapshot } : {}),
+            },
+          });
+        }
       });
 
       return NextResponse.json({

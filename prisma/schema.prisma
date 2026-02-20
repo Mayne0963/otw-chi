@@ -113,6 +113,14 @@ enum ReceiptStatus {
   PENDING
 }
 
+enum DisputeStatus {
+  NONE
+  OPEN
+  NEEDS_INFO
+  RESOLVED_APPROVED
+  RESOLVED_DENIED
+}
+
 // Models
 model User {
   id                String    @id @default(cuid())
@@ -312,6 +320,7 @@ model DeliveryRequest {
   timeLogs             DriverTimeLog[]
   founderServiceLogs   FounderServiceLog[]
   receiptVerifications ReceiptVerification[]
+  orderConfirmation    OrderConfirmation?
 
   @@index([userId])
   @@index([status])
@@ -635,10 +644,40 @@ model ReceiptVerification {
   updatedAt       DateTime @updatedAt
 
   deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id])
+  orderConfirmations OrderConfirmation[]
 
   @@index([userId])
   @@index([deliveryRequestId])
   @@index([createdAt])
   @@index([status])
   @@index([riskScore])
+}
+
+model OrderConfirmation {
+  id                   String        @id @default(cuid())
+  deliveryRequestId    String        @unique
+  userId               String
+  itemsSnapshot        Json
+  totalSnapshot        Decimal?
+  customerConfirmed    Boolean       @default(false)
+  confirmedAt          DateTime?
+  disputeStatus        DisputeStatus @default(NONE)
+  disputedItems        Json?
+  disputeNotes         String?
+  evidenceUrls         String[]      @default([])
+  receiptVerificationId String?
+  resolutionNotes      String?
+  refundAmount         Decimal?
+  resolvedAt           DateTime?
+  resolvedByUserId     String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  deliveryRequest      DeliveryRequest     @relation(fields: [deliveryRequestId], references: [id])
+  receiptVerification  ReceiptVerification? @relation(fields: [receiptVerificationId], references: [id])
+
+  @@index([userId])
+  @@index([disputeStatus])
+  @@index([createdAt])
+  @@index([receiptVerificationId])
 }

@@ -11,6 +11,7 @@ import { computeBillableReceiptSubtotalCents } from '@/lib/order-pricing';
 import { ArrowUpRight, CheckCircle2, MapPin, ShieldAlert, User } from 'lucide-react';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
 import ReceiptUpload from '@/components/receipt-upload';
+import OrderConfirmationPanel from '@/components/order/OrderConfirmationPanel';
 
 type ReceiptItem = { name: string; quantity?: number; price?: number };
 
@@ -32,6 +33,14 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
     include: {
       assignedDriver: {
         include: { user: true },
+      },
+      orderConfirmation: {
+        select: {
+          customerConfirmed: true,
+          confirmedAt: true,
+          disputeStatus: true,
+          disputedItems: true,
+        },
       },
     },
   });
@@ -77,6 +86,9 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
   });
   const orderTotalCents =
     billableReceiptSubtotalCents + (order.deliveryFeeCents ?? 0) - (order.discountCents ?? 0);
+  const disputedItemsCount = Array.isArray(order.orderConfirmation?.disputedItems)
+    ? order.orderConfirmation.disputedItems.length
+    : 0;
 
   return (
     <OtwPageShell>
@@ -232,6 +244,23 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
                     unoptimized
                   />
                 </div>
+              )}
+
+              {isOwner && (
+                <OrderConfirmationPanel
+                  deliveryRequestId={order.id}
+                  items={receiptItems}
+                  confirmation={
+                    order.orderConfirmation
+                      ? {
+                          customerConfirmed: order.orderConfirmation.customerConfirmed,
+                          confirmedAt: order.orderConfirmation.confirmedAt?.toISOString() ?? null,
+                          disputeStatus: order.orderConfirmation.disputeStatus,
+                          disputedItemsCount,
+                        }
+                      : null
+                  }
+                />
               )}
             </div>
           </Card>

@@ -43,6 +43,16 @@ export type ReceiptExportDeliveryRequest = {
   tipCents: number;
   discountCents: number | null;
   serviceMilesFinal: number | null;
+  orderConfirmation: {
+    id: string;
+    customerConfirmed: boolean;
+    confirmedAt: Date | null;
+    disputeStatus: string;
+    disputedItems: Prisma.JsonValue | null;
+    resolutionNotes: string | null;
+    refundAmount: Prisma.Decimal | null;
+    resolvedAt: Date | null;
+  } | null;
 };
 
 export type ReceiptExportRecord = {
@@ -92,6 +102,15 @@ export const RECEIPT_EXPORT_HEADERS = [
   'tipCents',
   'discountCents',
   'serviceMilesFinal',
+  'confirmationId',
+  'customerConfirmed',
+  'confirmedAt',
+  'disputeStatus',
+  'disputedItemsCount',
+  'resolutionOutcome',
+  'resolutionNotes',
+  'refundAmount',
+  'resolvedAt',
 ] as const;
 
 const MISMATCH_REASON_CODES = [
@@ -342,6 +361,10 @@ export function flattenReceiptExportRecord(
   record: ReceiptExportRecord,
   options?: { includeHash?: boolean }
 ): CsvRow {
+  const confirmation = record.deliveryRequest.orderConfirmation;
+  const disputedItemsCount = Array.isArray(confirmation?.disputedItems)
+    ? confirmation.disputedItems.length
+    : 0;
   const vendorName = record.deliveryRequest.restaurantName ?? record.deliveryRequest.receiptVendor ?? '';
   const row: CsvRow = {
     id: record.id,
@@ -370,6 +393,15 @@ export function flattenReceiptExportRecord(
     tipCents: record.deliveryRequest.tipCents ?? '',
     discountCents: record.deliveryRequest.discountCents ?? '',
     serviceMilesFinal: record.deliveryRequest.serviceMilesFinal ?? '',
+    confirmationId: confirmation?.id ?? '',
+    customerConfirmed: confirmation?.customerConfirmed ? 'true' : 'false',
+    confirmedAt: toIso(confirmation?.confirmedAt ?? null),
+    disputeStatus: confirmation?.disputeStatus ?? 'NONE',
+    disputedItemsCount,
+    resolutionOutcome: confirmation?.disputeStatus ?? '',
+    resolutionNotes: confirmation?.resolutionNotes ?? '',
+    refundAmount: toMoneyString(confirmation?.refundAmount ?? null),
+    resolvedAt: toIso(confirmation?.resolvedAt ?? null),
   };
 
   if (options?.includeHash) {
@@ -384,6 +416,10 @@ export function buildJsonReceiptExportRecord(
   options?: { includeRaw?: boolean; includeHash?: boolean; nested?: boolean }
 ): Record<string, unknown> {
   const vendorName = record.deliveryRequest.restaurantName ?? record.deliveryRequest.receiptVendor ?? null;
+  const confirmation = record.deliveryRequest.orderConfirmation;
+  const disputedItemsCount = Array.isArray(confirmation?.disputedItems)
+    ? confirmation.disputedItems.length
+    : 0;
   const receiptBlock = {
     id: record.id,
     createdAt: record.createdAt.toISOString(),
@@ -416,6 +452,15 @@ export function buildJsonReceiptExportRecord(
     tipCents: record.deliveryRequest.tipCents,
     discountCents: record.deliveryRequest.discountCents,
     serviceMilesFinal: record.deliveryRequest.serviceMilesFinal,
+    confirmationId: confirmation?.id ?? null,
+    customerConfirmed: confirmation?.customerConfirmed ?? false,
+    confirmedAt: confirmation?.confirmedAt?.toISOString() ?? null,
+    disputeStatus: confirmation?.disputeStatus ?? 'NONE',
+    disputedItemsCount,
+    resolutionOutcome: confirmation?.disputeStatus ?? null,
+    resolutionNotes: confirmation?.resolutionNotes ?? null,
+    refundAmount: toMoneyString(confirmation?.refundAmount ?? null) || null,
+    resolvedAt: confirmation?.resolvedAt?.toISOString() ?? null,
   };
 
   if (options?.nested) {

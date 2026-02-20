@@ -49,6 +49,18 @@ const buildSelect = (includeRaw: boolean) =>
         tipCents: true,
         discountCents: true,
         serviceMilesFinal: true,
+        orderConfirmation: {
+          select: {
+            id: true,
+            customerConfirmed: true,
+            confirmedAt: true,
+            disputeStatus: true,
+            disputedItems: true,
+            resolutionNotes: true,
+            refundAmount: true,
+            resolvedAt: true,
+          },
+        },
       },
     },
   }) satisfies Prisma.ReceiptVerificationSelect;
