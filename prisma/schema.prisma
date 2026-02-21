@@ -119,6 +119,7 @@ enum RefundPolicy {
 }
 
 enum DisputeStatus {
+  NONE
   DRAFT
   OPEN
   NEEDS_INFO
@@ -327,6 +328,7 @@ model DeliveryRequest {
   timeLogs             DriverTimeLog[]
   founderServiceLogs   FounderServiceLog[]
   receiptVerifications ReceiptVerification[]
+  receiptAudits        ReceiptAudit[]
   orderConfirmation    OrderConfirmation?
 
   // Lock fields
