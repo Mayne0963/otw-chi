@@ -7,6 +7,10 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 
+function formatCurrency(value: number | null | undefined): string {
+  return `$${Number(value ?? 0).toFixed(2)}`;
+}
+
 // Loading component for better UX
 function AdminOverviewLoading() {
   return (
@@ -123,7 +127,7 @@ async function getAdminStats() {
   }
 }
 
-function AdminStatsContent({ stats }: { stats: any }) {
+function AdminStatsBody({ stats, summary }: { stats: any, summary: any }) {
   return (
     <div className="space-y-6">
       {/* Primary KPIs */}
@@ -292,7 +296,7 @@ function AdminStatsContent({ stats }: { stats: any }) {
             <OtwCard>
               <div className="text-sm font-medium text-muted-foreground">Flagged</div>
               <div className="mt-2">
-                <OtwStatPill label="Count" value={String(summary.flaggedCount)} tone="warning" />
+                <OtwStatPill label="Count" value={String(summary.flaggedCount)} tone="info" />
               </div>
             </OtwCard>
             <OtwCard>
@@ -334,7 +338,8 @@ function AdminStatsErrorState({ error }: { error: unknown }) {
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
       <OtwButton 
-        onClick={() => window.location.reload()} 
+        as="a"
+        href="/admin"
         className="mt-4 text-xs px-3 py-2"
         variant="ghost"
       >
@@ -361,10 +366,10 @@ async function AdminStats() {
     return <AdminStatsErrorState error={error} />;
   }
 
-  return <AdminStatsContent stats={stats} summary={summary} />;
+  return <AdminStatsBody stats={stats} summary={summary} />;
 }
 
-function AdminStatsContent({ stats, summary }: { stats: any, summary: any }) {
+export default async function AdminPage() {
   await requireRole(['ADMIN']);
   
   return (

@@ -7,6 +7,7 @@ import Client from '@veryfi/veryfi-sdk';
 import { buildItemsSnapshot, computeTotalSnapshotDecimal } from '@/lib/disputes/orderConfirmation';
 import { evaluateDeliveryRequestLock, applyDeliveryRequestLock } from '@/lib/refunds/lock';
 import { computeProofScore } from '@/lib/receipts/proofScore';
+import { scoreReceiptRisk } from '@/lib/receipts/riskScore';
 import { getTestModeResult } from '@/lib/receipts/testMode';
 
 type ParsedMenuItem = {

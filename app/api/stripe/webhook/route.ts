@@ -7,6 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
 import { redeemPromoCode } from '@/lib/promo-code';
 import { activateMembershipAtomically } from '@/lib/membership-activation';
+import { evaluateDeliveryRequestLock } from '@/lib/refunds/lock';
 
 export const runtime = 'nodejs';
 
@@ -413,7 +414,7 @@ export async function POST(req: Request) {
             performedBy: 'STRIPE_WEBHOOK',
             metadata: { 
               chargeId: charge.id,
-              refundId: charge.refunds.data[0].id,
+              refundId: charge.refunds?.data?.[0]?.id ?? null,
               amount: charge.amount_refunded,
              },
           },

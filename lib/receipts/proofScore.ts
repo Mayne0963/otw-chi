@@ -183,12 +183,12 @@ function calculateProofScore(input: ProofScoreInput): number {
   }
 
   // Vendor match score (20% weight)
-  const vendorScore = calculateVendorMatchScore(input.merchantName, input.expectedVendor);
+  const vendorScore = calculateVendorMatchScore(input.merchantName ?? null, input.expectedVendor ?? null);
   score += vendorScore * 0.2;
   factors += 0.2;
 
   // Total amount match (20% weight)
-  if (input.totalAmount !== null && input.expectedTotal !== null) {
+  if (input.totalAmount != null && input.expectedTotal != null) {
     const diff = Math.abs(input.totalAmount - input.expectedTotal);
     if (diff <= 1.00) {
       score += 20 * 0.2; // Perfect match
@@ -203,7 +203,7 @@ function calculateProofScore(input: ProofScoreInput): number {
   }
 
   // Image quality score (10% weight)
-  const imageQuality = input.imageQuality ?? calculateImageQuality(input.confidenceScore);
+  const imageQuality = input.imageQuality ?? calculateImageQuality(input.confidenceScore ?? null);
   score += imageQuality * 0.1;
   factors += 0.1;
 
@@ -217,17 +217,17 @@ function calculateProofScore(input: ProofScoreInput): number {
 }
 
 export function computeProofScore(input: ProofScoreInput): ProofScoreResult {
-  const imageQuality = input.imageQuality ?? calculateImageQuality(input.confidenceScore);
+  const imageQuality = input.imageQuality ?? calculateImageQuality(input.confidenceScore ?? null);
   const tamperScore = input.tamperScore ?? calculateTamperScore();
-  const itemMatchScore = calculateItemMatchScore(input.menuItems || [], input.expectedItems);
+  const itemMatchScore = calculateItemMatchScore(input.menuItems || [], input.expectedItems ?? []);
   const proofScore = calculateProofScore({
     ...input,
     imageQuality,
     tamperScore,
   });
 
-  const extractedTotal = input.totalAmount;
-  const vendorName = input.merchantName;
+  const extractedTotal = input.totalAmount ?? null;
+  const vendorName = input.merchantName ?? null;
 
   // Determine status based on proof score
   let status: 'APPROVED' | 'FLAGGED' | 'REJECTED';

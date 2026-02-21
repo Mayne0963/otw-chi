@@ -64,8 +64,14 @@ export type ReceiptExportRecord = {
   createdAt: Date;
   status: ReceiptStatus;
   riskScore: number;
+  proofScore: number | null;
+  itemMatchScore: number | null;
+  imageQuality: number | null;
+  tamperScore: number | null;
+  locked: boolean;
   reasonCodes: string[];
   merchantName: string | null;
+  vendorName: string | null;
   expectedVendor: string | null;
   receiptDate: Date | null;
   currency: string | null;
@@ -73,6 +79,7 @@ export type ReceiptExportRecord = {
   taxAmount: Prisma.Decimal | null;
   tipAmount: Prisma.Decimal | null;
   totalAmount: Prisma.Decimal | null;
+  extractedTotal: number | null;
   confidenceScore: number | null;
   imageHash: string;
   rawResponse?: Prisma.JsonValue | null;
