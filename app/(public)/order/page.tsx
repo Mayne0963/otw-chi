@@ -1187,7 +1187,7 @@ export default function OrderPage() {
                   <input
                     type="file"
                     accept="image/*"
-                    className="hidden"
+                    className="sr-only"
                     onChange={(e) => handleReceiptSelect(e.target.files?.[0] || null)}
                   />
                 </label>
@@ -1198,7 +1198,7 @@ export default function OrderPage() {
                     type="file"
                     accept="image/*"
                     capture="environment"
-                    className="hidden"
+                    className="sr-only"
                     onChange={(e) => handleReceiptSelect(e.target.files?.[0] || null)}
                   />
                 </label>

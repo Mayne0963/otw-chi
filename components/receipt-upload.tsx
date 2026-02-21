@@ -1,10 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId: string }) {
   const router = useRouter();
+  const libraryInputId = useId();
+  const cameraInputId = useId();
   const libraryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -80,38 +82,36 @@ export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId
             Receipt Image
           </label>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => libraryInputRef.current?.click()}
+            <label
+              htmlFor={libraryInputId}
               className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
             >
               Choose photo
-            </button>
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
+            </label>
+            <label
+              htmlFor={cameraInputId}
               className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               Take photo
-            </button>
+            </label>
             <input
               ref={libraryInputRef}
-              id="receipt-upload-library"
+              id={libraryInputId}
               name="receipt-upload-library"
               type="file"
               accept="image/*"
               onChange={(e) => handleFileChange(e, 'library')}
-              className="hidden"
+              className="sr-only"
             />
             <input
               ref={cameraInputRef}
-              id="receipt-upload-camera"
+              id={cameraInputId}
               name="receipt-upload-camera"
               type="file"
               accept="image/*"
               capture="environment"
               onChange={(e) => handleFileChange(e, 'camera')}
-              className="hidden"
+              className="sr-only"
             />
           </div>
           <div className="mt-2 text-sm text-gray-500">
