@@ -91,14 +91,21 @@ export async function updateJobStatus(requestId: string, status: DeliveryRequest
 
   const job = await prisma.deliveryRequest.findUnique({
     where: { id: requestId },
+    include: {
+      receiptVerification: true,
+    },
   });
 
   if (!job || job.assignedDriverId !== driverProfile.id) {
     throw new Error('You are not assigned to this job');
   }
 
-  // If completing, handle earnings
+  // Check receipt verification before allowing delivery completion
   if (status === 'DELIVERED' && job.status !== 'DELIVERED') {
+    const hasReceiptVerification = job.receiptVerification && job.receiptVerification.status === 'APPROVED';
+    if (!hasReceiptVerification) {
+      throw new Error('Receipt verification required before completing delivery');
+    }
     return completeJob(requestId);
   }
 

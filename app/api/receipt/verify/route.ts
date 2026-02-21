@@ -4,9 +4,10 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import type { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import Client from '@veryfi/veryfi-sdk';
-import { scoreReceiptRisk } from '@/lib/receipts/riskScore';
 import { buildItemsSnapshot, computeTotalSnapshotDecimal } from '@/lib/disputes/orderConfirmation';
 import { evaluateDeliveryRequestLock, applyDeliveryRequestLock } from '@/lib/refunds/lock';
+import { computeProofScore } from '@/lib/receipts/proofScore';
+import { getTestModeResult } from '@/lib/receipts/testMode';
 
 type ParsedMenuItem = {
   name: string;
@@ -43,6 +44,13 @@ const extractDate = (value: unknown): Date | null => {
   if (typeof raw !== 'string') return null;
   const parsed = new Date(raw);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const normalizeConfidence = (raw: number | null | undefined): number | null => {
+  if (raw == null || !Number.isFinite(raw)) return null;
+  if (raw >= 0 && raw <= 1) return raw * 100;
+  if (raw >= 0 && raw <= 100) return raw;
+  return null;
 };
 
 const parseMenuItems = (lineItems: unknown): ParsedMenuItem[] => {
@@ -141,14 +149,129 @@ export async function POST(req: Request) {
     const expectedVendor = deliveryRequest.restaurantName ?? deliveryRequest.receiptVendor ?? null;
     const expectedTotal =
       typeof deliveryRequest.receiptSubtotalCents === 'number' && deliveryRequest.receiptSubtotalCents > 0
-        ? (deliveryRequest.receiptSubtotalCents / 100).toFixed(2)
+        ? (deliveryRequest.receiptSubtotalCents / 100)
         : null;
 
+    // Check for TEST_MODE override
+    const testModeResult = getTestModeResult(file.name);
+    if (testModeResult) {
+      const proofScoreResult = {
+        proofScore: testModeResult.proofScore,
+        itemMatchScore: 85, // Default good match for test mode
+        imageQuality: 90,   // Default good quality for test mode
+        tamperScore: 95,    // Default no tampering for test mode
+        extractedTotal: expectedTotal,
+        vendorName: expectedVendor,
+        status: testModeResult.status,
+        locked: testModeResult.status === 'APPROVED' || testModeResult.status === 'FLAGGED',
+      };
+
+      await prisma.$transaction(async (tx) => {
+        const createdVerification = await tx.receiptVerification.create({
+          data: {
+            userId: user.id,
+            deliveryRequestId,
+            imageHash: hash,
+            expectedVendor,
+            merchantName: expectedVendor,
+            subtotalAmount: expectedTotal,
+            totalAmount: expectedTotal,
+            confidenceScore: 0.9,
+            riskScore: testModeResult.proofScore,
+            status: testModeResult.status,
+            reasonCodes: ['TEST_MODE'],
+            proofScore: proofScoreResult.proofScore,
+            extractedTotal: proofScoreResult.extractedTotal,
+            vendorName: proofScoreResult.vendorName,
+            itemMatchScore: proofScoreResult.itemMatchScore,
+            imageQuality: proofScoreResult.imageQuality,
+            tamperScore: proofScoreResult.tamperScore,
+            locked: proofScoreResult.locked,
+            riskBreakdown: {
+              base: 100,
+              penalties: [{ code: 'TEST_MODE', delta: testModeResult.proofScore - 100 }],
+              fuzzyScore: null,
+              diff: null,
+              expectedTotal: expectedTotal?.toString() || null,
+              extractedTotal: proofScoreResult.extractedTotal?.toString() || null,
+            } as Prisma.InputJsonValue,
+            rawResponse: { testMode: true, filename: file.name } as Prisma.InputJsonValue,
+          },
+        });
+
+        await tx.deliveryRequest.update({
+          where: { id: deliveryRequestId },
+          data: {
+            receiptImageData: `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`,
+            receiptVerifiedAt: new Date(),
+            receiptAuthenticityScore: testModeResult.proofScore / 100,
+          },
+        });
+
+        if (proofScoreResult.locked) {
+          const itemsSnapshot = buildItemsSnapshot([]);
+          const totalSnapshot = computeTotalSnapshotDecimal({
+            serviceType: deliveryRequest.serviceType,
+            receiptSubtotalCents: deliveryRequest.receiptSubtotalCents,
+            deliveryFeeCents: deliveryRequest.deliveryFeeCents,
+            receiptImageData: `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`,
+            receiptItems: [],
+            quoteBreakdown: deliveryRequest.quoteBreakdown,
+            discountCents: deliveryRequest.discountCents,
+          });
+
+          await tx.orderConfirmation.upsert({
+            where: { deliveryRequestId },
+            create: {
+              deliveryRequestId,
+              userId: user.id,
+              itemsSnapshot: [] as unknown as Prisma.InputJsonValue,
+              totalSnapshot,
+              customerConfirmed: false,
+              receiptVerificationId: createdVerification.id,
+            },
+            update: {
+              receiptVerificationId: createdVerification.id,
+              totalSnapshot,
+            },
+          });
+        }
+      });
+
+      return NextResponse.json({
+        success: testModeResult.status === 'APPROVED',
+        status: testModeResult.status,
+        proofScore: proofScoreResult.proofScore,
+        itemMatchScore: proofScoreResult.itemMatchScore,
+        imageQuality: proofScoreResult.imageQuality,
+        tamperScore: proofScoreResult.tamperScore,
+        extractedTotal: proofScoreResult.extractedTotal,
+        vendorName: proofScoreResult.vendorName,
+        locked: proofScoreResult.locked,
+        message: testModeResult.message,
+        menuItems: [],
+        data: { testMode: true },
+      });
+    }
+
+    // Validate Veryfi configuration
+    const veryfiClientId = process.env.VERYFI_CLIENT_ID;
+    const veryfiClientSecret = process.env.VERYFI_CLIENT_SECRET;
+    const veryfiUsername = process.env.VERYFI_USERNAME;
+    const veryfiApiKey = process.env.VERYFI_API_KEY;
+
+    if (!veryfiClientId || !veryfiUsername || !veryfiApiKey) {
+      return NextResponse.json(
+        { message: 'Receipt verification service configuration incomplete' },
+        { status: 500 }
+      );
+    }
+
     const veryfiClient = new Client(
-      process.env.VERYFI_CLIENT_ID!,
-      process.env.VERYFI_CLIENT_SECRET,
-      process.env.VERYFI_USERNAME!,
-      process.env.VERYFI_API_KEY!
+      veryfiClientId,
+      veryfiClientSecret,
+      veryfiUsername,
+      veryfiApiKey
     );
 
     try {
@@ -188,26 +311,22 @@ export async function POST(req: Request) {
             ? Math.round(subtotalFromResponse * 100)
             : null;
       const receiptImageData = `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`;
-      const scoreDecision = scoreReceiptRisk({
+
+      const proofScoreResult = computeProofScore({
         deliveryRequestId,
-        currentUserId: user.id,
-        imageHash: hash,
+        merchantName,
+        totalAmount,
+        confidenceScore,
         expectedVendor,
         expectedTotal,
-        merchantName,
-        subtotal: subtotalFromResponse,
-        tax: taxAmount,
-        tip: tipAmount,
-        total: totalAmount,
-        receiptDate,
-        currency: currencyCode,
-        confidenceScore,
+        menuItems,
+        expectedItems: deliveryRequest.receiptItems,
       });
 
       const requestUpdateData: Prisma.DeliveryRequestUpdateInput = {
         receiptImageData,
         receiptVerifiedAt: new Date(),
-        receiptAuthenticityScore: scoreDecision.riskScore / 100,
+        receiptAuthenticityScore: proofScoreResult.proofScore / 100,
       };
 
       if (merchantName) {
@@ -240,12 +359,19 @@ export async function POST(req: Request) {
             totalAmount,
             receiptDate,
             currency: currencyCode,
-            confidenceScore: scoreDecision.normalizedConfidence,
-            riskScore: scoreDecision.riskScore,
-            status: scoreDecision.status,
-            reasonCodes: scoreDecision.reasonCodes,
-            riskBreakdown: scoreDecision.riskBreakdown as Prisma.InputJsonValue,
+            confidenceScore: normalizeConfidence(confidenceScore),
+            riskScore: proofScoreResult.proofScore,
+            status: proofScoreResult.status,
+            reasonCodes: [], // Will be replaced by a more robust system
+            riskBreakdown: {} as Prisma.InputJsonValue,
             rawResponse: veryfiResponse as unknown as Prisma.InputJsonValue,
+            proofScore: proofScoreResult.proofScore,
+            extractedTotal: proofScoreResult.extractedTotal,
+            vendorName: proofScoreResult.vendorName,
+            itemMatchScore: proofScoreResult.itemMatchScore,
+            imageQuality: proofScoreResult.imageQuality,
+            tamperScore: proofScoreResult.tamperScore,
+            locked: proofScoreResult.locked,
           },
         });
 
@@ -254,7 +380,7 @@ export async function POST(req: Request) {
           data: requestUpdateData,
         });
 
-        if (scoreDecision.status === 'APPROVED' || scoreDecision.status === 'FLAGGED') {
+        if (proofScoreResult.locked) {
           const itemsSnapshot = buildItemsSnapshot(
             menuItems.length > 0 ? menuItems : deliveryRequest.receiptItems
           );
@@ -291,51 +417,32 @@ export async function POST(req: Request) {
       });
 
       // After successful receipt verification, evaluate and apply lock if needed
-      const lockEvaluation = await evaluateDeliveryRequestLock(deliveryRequestId);
-      if (lockEvaluation.locked) {
+      if (proofScoreResult.locked) {
         await applyDeliveryRequestLock(deliveryRequestId, user.id);
       }
 
       return NextResponse.json({
-        success: scoreDecision.status === 'APPROVED',
-        status: scoreDecision.status,
-        riskScore: scoreDecision.riskScore,
-        reasonCodes: scoreDecision.reasonCodes,
-        riskBreakdown: scoreDecision.riskBreakdown,
-        message: `Receipt processed (${scoreDecision.status}). Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
+        success: proofScoreResult.status === 'APPROVED',
+        status: proofScoreResult.status,
+        proofScore: proofScoreResult.proofScore,
+        itemMatchScore: proofScoreResult.itemMatchScore,
+        imageQuality: proofScoreResult.imageQuality,
+        tamperScore: proofScoreResult.tamperScore,
+        extractedTotal: proofScoreResult.extractedTotal,
+        vendorName: proofScoreResult.vendorName,
+        locked: proofScoreResult.locked,
+        message: `Receipt processed (${proofScoreResult.status}). Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
         menuItems,
         data: veryfiResponse,
       });
     } catch (error) {
       console.error('Veryfi API error:', error);
-      const veryfiDecision = scoreReceiptRisk({
-        veryfiError: true,
-        imageHash: hash,
-      });
-      await prisma.receiptVerification.create({
-        data: {
-          userId: user.id,
-          deliveryRequestId,
-          imageHash: hash,
-          expectedVendor,
-          status: veryfiDecision.status,
-          riskScore: veryfiDecision.riskScore,
-          reasonCodes: veryfiDecision.reasonCodes,
-          riskBreakdown: veryfiDecision.riskBreakdown as Prisma.InputJsonValue,
-          rawResponse:
-            {
-              message: error instanceof Error ? error.message : 'Unknown Veryfi error',
-            } as Prisma.InputJsonValue,
-        },
-      });
       return NextResponse.json(
         {
           success: false,
           message: 'Error processing receipt with Veryfi.',
-          status: veryfiDecision.status,
-          riskScore: veryfiDecision.riskScore,
-          reasonCodes: veryfiDecision.reasonCodes,
-          riskBreakdown: veryfiDecision.riskBreakdown,
+          status: 'REJECTED',
+          proofScore: 0,
         },
         { status: 502 }
       );

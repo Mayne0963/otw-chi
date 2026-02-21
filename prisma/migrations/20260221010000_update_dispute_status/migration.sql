@@ -1,0 +1,2 @@
+ALTER TYPE "DisputeStatus" ADD VALUE 'DRAFT';
+ALTER TYPE "DisputeStatus" ADD VALUE 'RESOLVED';

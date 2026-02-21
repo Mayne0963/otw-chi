@@ -236,6 +236,20 @@ function AdminStatsContent({ stats }: { stats: any }) {
         </OtwCard>
 
         <OtwCard>
+          <div className="text-sm font-medium text-white/80">Reports</div>
+          <div className="mt-3 space-y-2">
+            <div className="text-xs text-white/60">
+              Export data for analysis and record-keeping.
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <OtwButton as="a" href="/api/admin/receipts/export" variant="ghost" className="text-xs px-2 py-1 h-auto text-center justify-center bg-white/10 hover:bg-white/20" data-testid="admin-export-button">
+                Export Receipts
+              </OtwButton>
+            </div>
+          </div>
+        </OtwCard>
+
+        <OtwCard>
           <div className="text-sm font-medium text-white/80">Quick Actions</div>
           <div className="mt-3 space-y-2">
             <div className="text-xs text-white/60">
@@ -258,6 +272,56 @@ function AdminStatsContent({ stats }: { stats: any }) {
           </div>
         </OtwCard>
       </div>
+
+      {summary && (
+        <div className="mt-6" data-testid="admin-summary-widget">
+          <OtwSectionHeader title="Receipts Summary" subtitle="Overview of receipt verification stats." />
+          <div className="mt-3 grid md:grid-cols-4 gap-4">
+            <OtwCard>
+              <div className="text-sm font-medium text-muted-foreground">Total Receipts</div>
+              <div className="mt-2">
+                <OtwStatPill label="Count" value={String(summary.totalReceipts)} />
+              </div>
+            </OtwCard>
+            <OtwCard>
+              <div className="text-sm font-medium text-muted-foreground">Approved</div>
+              <div className="mt-2">
+                <OtwStatPill label="Count" value={String(summary.approvedCount)} tone="success" />
+              </div>
+            </OtwCard>
+            <OtwCard>
+              <div className="text-sm font-medium text-muted-foreground">Flagged</div>
+              <div className="mt-2">
+                <OtwStatPill label="Count" value={String(summary.flaggedCount)} tone="warning" />
+              </div>
+            </OtwCard>
+            <OtwCard>
+              <div className="text-sm font-medium text-muted-foreground">Rejected</div>
+              <div className="mt-2">
+                <OtwStatPill label="Count" value={String(summary.rejectedCount)} tone="danger" />
+              </div>
+            </OtwCard>
+            <OtwCard>
+              <div className="text-sm font-medium text-muted-foreground">Avg. Proof Score</div>
+              <div className="mt-2">
+                <OtwStatPill label="Score" value={String(summary.avgProofScore.toFixed(2))} />
+              </div>
+            </OtwCard>
+            <OtwCard>
+              <div className="text-sm font-medium text-muted-foreground">Locked</div>
+              <div className="mt-2">
+                <OtwStatPill label="Count" value={String(summary.lockedCount)} />
+              </div>
+            </OtwCard>
+            <OtwCard>
+              <div className="text-sm font-medium text-muted-foreground">Approved Revenue</div>
+              <div className="mt-2">
+                <OtwStatPill label="Total" value={formatCurrency(summary.totalApprovedRevenue)} />
+              </div>
+            </OtwCard>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -283,9 +347,12 @@ function AdminStatsErrorState({ error }: { error: unknown }) {
 async function AdminStats() {
   let stats: any = null;
   let error: unknown = null;
+  let summary: any = null;
 
   try {
     stats = await getAdminStats();
+    const summaryRes = await fetch('/api/admin/receipts/summary');
+    summary = await summaryRes.json();
   } catch (err) {
     error = err;
   }
@@ -294,10 +361,10 @@ async function AdminStats() {
     return <AdminStatsErrorState error={error} />;
   }
 
-  return <AdminStatsContent stats={stats} />;
+  return <AdminStatsContent stats={stats} summary={summary} />;
 }
 
-export default async function AdminOverviewPage() {
+function AdminStatsContent({ stats, summary }: { stats: any, summary: any }) {
   await requireRole(['ADMIN']);
   
   return (

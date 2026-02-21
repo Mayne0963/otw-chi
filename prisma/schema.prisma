@@ -119,9 +119,10 @@ enum RefundPolicy {
 }
 
 enum DisputeStatus {
-  NONE
+  DRAFT
   OPEN
   NEEDS_INFO
+  RESOLVED
   RESOLVED_APPROVED
   RESOLVED_DENIED
 }
@@ -654,17 +655,30 @@ model ReceiptVerification {
   reasonCodes     String[] @default([])
   riskBreakdown   Json?
   rawResponse     Json?
+  
+  // New fields for Receipt Risk Score System
+  proofScore       Int?     // 0-100 score for receipt authenticity
+  extractedTotal   Float?   // Total amount extracted from receipt
+  vendorName       String?  // Vendor name from receipt
+  itemMatchScore   Int?     // 0-100 score for item matching
+  imageQuality     Int?     // 0-100 score for image quality
+  tamperScore      Int?     // 0-100 score for tampering detection
+  locked           Boolean  @default(false)  // Whether this verification is locked
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id])
   orderConfirmations OrderConfirmation[]
+  receiptAudits   ReceiptAudit[]
 
+  @@unique([deliveryRequestId])
   @@index([userId])
   @@index([deliveryRequestId])
   @@index([createdAt])
   @@index([status])
   @@index([riskScore])
+  @@index([proofScore])
 }
 
 model OrderConfirmation {
@@ -712,6 +726,21 @@ model AuditLog {
   orderConfirmation OrderConfirmation? @relation(fields: [deliveryRequestId], references: [id])
 
   @@index([userId])
+  @@index([deliveryRequestId])
+  @@index([createdAt])
+}
+
+model ReceiptAudit {
+  id                String   @id @default(cuid())
+  deliveryRequestId String
+  action            String   // "REFUND", "UNLOCK", "VERIFICATION_LOCKED", etc.
+  performedBy       String   // User ID who performed the action
+  metadata          Json?    // Additional data about the action
+  createdAt         DateTime @default(now())
+
+  deliveryRequest   DeliveryRequest   @relation(fields: [deliveryRequestId], references: [id])
+  receiptVerification ReceiptVerification[]
+
   @@index([deliveryRequestId])
   @@index([createdAt])
 }

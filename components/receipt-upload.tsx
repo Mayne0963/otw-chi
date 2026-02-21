@@ -76,7 +76,7 @@ export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId
       <p className="mt-1 text-sm text-gray-500">
         Upload a picture of your receipt for verification.
       </p>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4" data-testid="receipt-verify-button">
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Receipt Image
@@ -125,6 +125,7 @@ export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId
             type="submit"
             disabled={isUploading || !file}
             className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            data-testid="receipt-upload-button"
           >
             {isUploading ? 'Uploading...' : 'Upload'}
           </button>

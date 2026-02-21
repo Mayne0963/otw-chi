@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     },
   } as const;
 
-  const [statusGroups, avgAggregate, totalCount, mismatchCount, duplicateCount, veryfiErrorCount, flaggedRows] =
+  const [statusGroups, avgAggregate, totalCount, lockedCount, totalApprovedRevenue] =
     await Promise.all([
       prisma.receiptVerification.groupBy({
         by: ['status'],
@@ -43,49 +43,13 @@ export async function GET(request: Request) {
       }),
       prisma.receiptVerification.aggregate({
         where,
-        _avg: { riskScore: true },
+        _avg: { proofScore: true },
       }),
       prisma.receiptVerification.count({ where }),
-      prisma.receiptVerification.count({
-        where: {
-          ...where,
-          reasonCodes: {
-            hasSome: [...getMismatchReasonCodes()],
-          },
-        },
-      }),
-      prisma.receiptVerification.count({
-        where: {
-          ...where,
-          reasonCodes: {
-            has: 'DUPLICATE_RECEIPT',
-          },
-        },
-      }),
-      prisma.receiptVerification.count({
-        where: {
-          ...where,
-          reasonCodes: {
-            has: 'VERYFI_ERROR',
-          },
-        },
-      }),
-      prisma.receiptVerification.findMany({
-        where: {
-          ...where,
-          status: 'FLAGGED',
-        },
-        select: {
-          merchantName: true,
-          expectedVendor: true,
-          deliveryRequest: {
-            select: {
-              restaurantName: true,
-              receiptVendor: true,
-            },
-          },
-        },
-        take: 10_000,
+      prisma.receiptVerification.count({ where: { ...where, locked: true } }),
+      prisma.receiptVerification.aggregate({
+        where: { ...where, status: 'APPROVED' },
+        _sum: { extractedTotal: true },
       }),
     ]);
 
@@ -99,41 +63,17 @@ export async function GET(request: Request) {
     countsByStatus[group.status] = group._count._all;
   }
 
-  const vendorCounts = new Map<string, { vendor: string; count: number }>();
-  for (const row of flaggedRows) {
-    const vendorCandidate =
-      row.merchantName ??
-      row.expectedVendor ??
-      row.deliveryRequest.restaurantName ??
-      row.deliveryRequest.receiptVendor ??
-      'Unknown Vendor';
-    const key = normalizeVendor(vendorCandidate) || 'unknown vendor';
-    const existing = vendorCounts.get(key);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      vendorCounts.set(key, { vendor: vendorCandidate, count: 1 });
-    }
-  }
-
-  const topVendorsFlagged = [...vendorCounts.values()]
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
-
-  const mismatchRate = totalCount > 0 ? mismatchCount / totalCount : 0;
-
   return NextResponse.json({
     range: {
       start: startAt.toISOString(),
       end: endAt.toISOString(),
     },
-    total: totalCount,
-    countsByStatus,
-    avgRiskScore: avgAggregate._avg.riskScore ?? 0,
-    mismatchRate,
-    mismatchRatePercent: Number((mismatchRate * 100).toFixed(2)),
-    duplicatesCount: duplicateCount,
-    veryfiErrorCount,
-    topVendorsFlagged,
+    totalReceipts: totalCount,
+    approvedCount: countsByStatus['APPROVED'] ?? 0,
+    flaggedCount: countsByStatus['FLAGGED'] ?? 0,
+    rejectedCount: countsByStatus['REJECTED'] ?? 0,
+    avgProofScore: avgAggregate._avg.proofScore ?? 0,
+    lockedCount: lockedCount,
+    totalApprovedRevenue: totalApprovedRevenue._sum.extractedTotal ?? 0,
   });
 }

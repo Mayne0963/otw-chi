@@ -21,7 +21,7 @@ export default function SignInPage() {
           </p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl" data-testid="sign-in-form">
           <div className="bg-otwBlack/50 rounded-xl p-6">
              <AuthView view={"SIGN_IN"} />
           </div>

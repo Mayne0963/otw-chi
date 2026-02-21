@@ -211,6 +211,7 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
             className="w-full"
             disabled={!agreed || isConfirming}
             onClick={handleConfirm}
+            data-testid="confirm-items-button"
           >
             {isConfirming ? 'Confirming...' : 'Confirm Items'}
           </OtwButton>
@@ -234,7 +235,7 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
       </div>
 
       {showDisputeForm && (
-        <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3">
+        <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3" data-testid="dispute-modal">
           <div className="text-xs uppercase tracking-wide text-white/60">
             Select specific item(s) to dispute
           </div>

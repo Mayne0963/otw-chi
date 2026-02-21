@@ -22,8 +22,14 @@ const buildSelect = (includeRaw: boolean) =>
     createdAt: true,
     status: true,
     riskScore: true,
+    proofScore: true,
+    itemMatchScore: true,
+    imageQuality: true,
+    tamperScore: true,
+    locked: true,
     reasonCodes: true,
     merchantName: true,
+    vendorName: true,
     expectedVendor: true,
     receiptDate: true,
     currency: true,
@@ -31,6 +37,7 @@ const buildSelect = (includeRaw: boolean) =>
     taxAmount: true,
     tipAmount: true,
     totalAmount: true,
+    extractedTotal: true,
     confidenceScore: true,
     imageHash: true,
     rawResponse: includeRaw,
@@ -93,6 +100,17 @@ export async function GET(request: Request) {
 
   const filters = parsed.value;
   const where = buildReceiptExportWhere(filters);
+
+  // Add audit log for export action
+  const user = await requireRole(['ADMIN']);
+  await prisma.receiptAudit.create({
+    data: {
+      deliveryRequestId: 'N/A', // Not specific to a single request
+      action: 'EXPORT',
+      performedBy: user.id,
+      metadata: { filters },
+    },
+  });
 
   if (filters.format === 'json') {
     const select = buildSelect(filters.includeRaw);
@@ -188,6 +206,9 @@ export async function GET(request: Request) {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="receipts_export_${dateStamp()}.csv"`,
       'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-Robots-Tag': 'noindex, nofollow',
     },
   });
 }

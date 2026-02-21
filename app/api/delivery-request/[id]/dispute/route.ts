@@ -23,6 +23,63 @@ export async function POST(
   const { id } = await context.params;
   const prisma = getPrisma();
 
+  // Check if order is locked
+  const lockEvaluation = await evaluateDeliveryRequestLock(id);
+  if (lockEvaluation.locked) {
+    const body = await request.json().catch(() => null);
+    const parsed = disputePayloadSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 });
+    }
+
+    if (!parsed.data.disputedItems || parsed.data.disputedItems.length === 0) {
+      return NextResponse.json(
+        {
+          error: 'ORDER_LOCKED',
+          message: 'Order is receipt-locked. Disputes must be item-specific.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Further validation for locked orders can be added here, e.g., checking refund amount against item total
+    if (parsed.data.disputedItems.length === 0) {
+      return NextResponse.json({ error: 'Must select at least one item to dispute.' }, { status: 400 });
+    }
+
+    if (!parsed.data.disputeNotes) {
+      return NextResponse.json({ error: 'Must provide a reason for the dispute.' }, { status: 400 });
+    }
+
+    if (lockEvaluation.locked && (!parsed.data.evidenceUrls || parsed.data.evidenceUrls.length === 0)) {
+      return NextResponse.json({ error: 'Must provide evidence for a locked order dispute.' }, { status: 400 });
+    }
+
+    // Validate evidence URLs for security
+    if (parsed.data.evidenceUrls && parsed.data.evidenceUrls.length > 0) {
+      const validUrlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|pdf|mp4|mov)$/i;
+      const invalidUrls = parsed.data.evidenceUrls.filter(url => !validUrlPattern.test(url));
+      if (invalidUrls.length > 0) {
+        return NextResponse.json({ error: 'Invalid evidence URL format. Only image, video, and PDF files are allowed.' }, { status: 400 });
+      }
+    }
+
+    // Prevent duplicate disputes on the same item
+    const existingDispute = await prisma.orderConfirmation.findFirst({
+      where: {
+        deliveryRequestId: id,
+        disputedItems: {
+          equals: parsed.data.disputedItems as any,
+        },
+      },
+    });
+
+    if (existingDispute) {
+      return NextResponse.json({ error: 'A dispute for this item has already been submitted.' }, { status: 409 });
+    }
+
+  }
+
   const deliveryRequest = await prisma.deliveryRequest.findUnique({
     where: { id },
     select: {
@@ -53,14 +110,6 @@ export async function POST(
 
   if (!deliveryRequest || deliveryRequest.userId !== user.id) {
     return NextResponse.json({ error: 'Delivery request not found' }, { status: 404 });
-  }
-
-  // Check if order is locked - only allow disputes when locked
-  const lockEvaluation = await evaluateDeliveryRequestLock(deliveryRequest.id);
-  if (!lockEvaluation.locked) {
-    return NextResponse.json({ 
-      error: 'Order must be locked (receipt verified + items confirmed) before filing a dispute.' 
-    }, { status: 400 });
   }
 
   const body = await request.json().catch(() => null);
@@ -100,7 +149,7 @@ export async function POST(
     disputedValidation.normalized,
     evidenceUrls
   );
-  const disputeStatus = needsInfo ? 'NEEDS_INFO' : 'OPEN';
+  const disputeStatus = parsed.data.disputedItems.length > 0 ? (needsInfo ? 'NEEDS_INFO' : 'OPEN') : 'DRAFT';
 
   const totalSnapshot = computeTotalSnapshotDecimal({
     serviceType: deliveryRequest.serviceType,

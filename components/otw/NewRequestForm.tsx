@@ -172,7 +172,7 @@ export function NewRequestForm() {
           <p className="text-muted-foreground">Tell us what you need and where it needs to go.</p>
         </div>
 
-        <form action={onSubmit} className="space-y-6">
+        <form action={onSubmit} className="space-y-6" data-testid="request-create-form">
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Pickup Address</label>

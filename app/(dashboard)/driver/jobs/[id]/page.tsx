@@ -93,10 +93,10 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
                   </form>
                 )}
                 {req.status === 'PICKED_UP' && (
-                  <form action={updateJobStatusAction}>
+                  <form action={updateJobStatusAction} data-testid="driver-complete-delivery-form">
                     <input type="hidden" name="id" value={req.id} />
                     <input type="hidden" name="status" value="COMPLETED" />
-                    <OtwButton type="submit" variant="gold">Delivered</OtwButton>
+                    <OtwButton type="submit" variant="gold" data-testid="driver-complete-delivery-button">Delivered</OtwButton>
                   </form>
                 )}
               </>

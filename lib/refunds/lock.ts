@@ -40,8 +40,8 @@ export async function evaluateDeliveryRequestLock(deliveryRequestId: string): Pr
   const customerConfirmed = orderConfirmation ? 
     (orderConfirmation.customerConfirmed === true && orderConfirmation.confirmedAt !== null) : false;
 
-  // Determine locked state
-  const locked = receiptVerified && customerConfirmed;
+  // Determine locked state from ReceiptVerification
+  const locked = latestReceipt?.locked ?? false;
 
   return {
     locked,

@@ -381,6 +381,44 @@ export async function POST(req: Request) {
           },
         });
       }
+    } else if (event.type === 'charge.refunded') {
+      const charge = event.data.object as Stripe.Charge;
+      const deliveryRequestId = charge.metadata.deliveryRequestId;
+
+      if (deliveryRequestId) {
+        const lockEvaluation = await evaluateDeliveryRequestLock(deliveryRequestId);
+
+        if (lockEvaluation.locked) {
+          const refundAmount = charge.amount_refunded;
+          const deliveryRequest = await prisma.deliveryRequest.findUnique({
+            where: { id: deliveryRequestId },
+            include: { orderConfirmation: true },
+          });
+
+          if (deliveryRequest?.orderConfirmation?.disputedItems) {
+            const disputedItems = deliveryRequest.orderConfirmation.disputedItems as any[];
+            const maxRefundable = disputedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0) * 100;
+
+            if (refundAmount > maxRefundable) {
+              // This should ideally be handled before the refund is initiated
+              console.error(`Refund for locked order ${deliveryRequestId} exceeds disputed item total.`);
+            }
+          }
+        }
+
+        await prisma.receiptAudit.create({
+          data: {
+            deliveryRequestId,
+            action: 'REFUND',
+            performedBy: 'STRIPE_WEBHOOK',
+            metadata: { 
+              chargeId: charge.id,
+              refundId: charge.refunds.data[0].id,
+              amount: charge.amount_refunded,
+             },
+          },
+        });
+      }
     }
   } catch (error) {
     console.error('Webhook handler failed', error);

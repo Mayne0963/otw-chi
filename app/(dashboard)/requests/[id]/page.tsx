@@ -142,7 +142,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
               {/* Lock Status Banner */}
               {request.isLocked && (
-                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4" data-testid="lock-banner">
                   <div className="flex">
                     <div className="flex-shrink-0">
                       <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
