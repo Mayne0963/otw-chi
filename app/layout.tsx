@@ -6,6 +6,7 @@ import '../styles/globals.css';
 import OtwCookieConsent from '@/components/ui/otw/OtwCookieConsent';
 import { ThemeProvider } from '@/components/theme-provider';
 import ErrorEventRedirector from '@/components/error/ErrorEventRedirector';
+import DeploymentUpdateChecker from '@/components/system/DeploymentUpdateChecker';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             enableSystem
             disableTransitionOnChange
           >
+            <DeploymentUpdateChecker />
             <ErrorEventRedirector />
             {children}
             <OtwCookieConsent />
