@@ -1,0 +1,39 @@
+{
+  "vendor": {
+    "name": "City Deli",
+    "address": "10 Market St"
+  },
+  "vendors": [
+    {
+      "name": "City Deli"
+    }
+  ],
+  "date": "2026-02-21T20:10:00Z",
+  "currency_code": "USD",
+  "subtotal": 14,
+  "tax": 1,
+  "total": 19,
+  "payment": {
+    "type": "cash",
+    "cash": 20,
+    "change": 1
+  },
+  "img_blur": false,
+  "is_blurry": [false],
+  "meta": {
+    "ocr_score": 0.94,
+    "fraud": {
+      "decision": "Not Fraud",
+      "color": "green",
+      "score": 0.07,
+      "types": []
+    },
+    "pages": [
+      {
+        "is_blurry": {
+          "value": false
+        }
+      }
+    ]
+  }
+}

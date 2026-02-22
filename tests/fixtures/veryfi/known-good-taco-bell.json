@@ -1,0 +1,55 @@
+{
+  "vendor": {
+    "name": "Taco Bell",
+    "address": "123 Main St, Chicago, IL"
+  },
+  "vendors": [
+    {
+      "name": "Taco Bell"
+    }
+  ],
+  "date": "2026-02-21T18:47:36Z",
+  "currency_code": "USD",
+  "subtotal": 18.5,
+  "tax": 1.5,
+  "total": 20,
+  "payment": {
+    "type": "cash",
+    "cash": 25,
+    "change": 5
+  },
+  "img_blur": false,
+  "is_blurry": [false],
+  "line_items": [
+    {
+      "description": "2x Chalupa Supreme",
+      "quantity": 2,
+      "price": null,
+      "subtotal": null,
+      "total": 12
+    },
+    {
+      "description": "Crunchwrap Combo",
+      "quantity": 1,
+      "price": null,
+      "subtotal": null,
+      "total": 8
+    }
+  ],
+  "meta": {
+    "ocr_score": 0.965,
+    "fraud": {
+      "decision": "Not Fraud",
+      "color": "green",
+      "score": 0.05,
+      "types": []
+    },
+    "pages": [
+      {
+        "is_blurry": {
+          "value": false
+        }
+      }
+    ]
+  }
+}

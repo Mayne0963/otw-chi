@@ -122,6 +122,34 @@ export async function POST(req: Request) {
       : null;
     let appliedCouponCode: string | null = null;
     let discountCents: number | null = null;
+    const logReviewOverrideIfNeeded = async (deliveryRequestId: string) => {
+      try {
+        const latestVerification = await prisma.receiptVerification.findUnique({
+          where: { deliveryRequestId },
+          select: {
+            status: true,
+            riskScore: true,
+            reasonCodes: true,
+          },
+        });
+
+        if (latestVerification?.status === 'FLAGGED') {
+          await prisma.receiptAudit.create({
+            data: {
+              deliveryRequestId,
+              action: 'REVIEW_OVERRIDE_CONFIRMED',
+              performedBy: user.id,
+              metadata: {
+                riskScore: latestVerification.riskScore,
+                reasonCodes: latestVerification.reasonCodes,
+              } as Prisma.InputJsonValue,
+            },
+          });
+        }
+      } catch (auditError) {
+        console.error('Review override audit logging failed:', auditError);
+      }
+    };
 
     if (data.serviceType === ServiceType.FOOD) {
       if (!(data.restaurantName || data.receiptVendor)) {
@@ -198,6 +226,8 @@ export async function POST(req: Request) {
             console.error('Receipt verification transfer failed:', transferError);
           }
         }
+
+        await logReviewOverrideIfNeeded(result.id);
 
         // Cleanup draft
         try {
@@ -320,6 +350,8 @@ export async function POST(req: Request) {
             ...commonOrderData,
           },
         });
+
+    await logReviewOverrideIfNeeded(order.id);
 
     try {
       await prisma.deliveryRequest.deleteMany({

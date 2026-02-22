@@ -6,8 +6,13 @@ import crypto from 'crypto';
 import Client from '@veryfi/veryfi-sdk';
 import { buildItemsSnapshot, computeTotalSnapshotDecimal } from '@/lib/disputes/orderConfirmation';
 import { applyDeliveryRequestLock } from '@/lib/refunds/lock';
-import { scoreReceiptRisk } from '@/lib/receipts/riskScore';
 import { getTestModeResult } from '@/lib/receipts/testMode';
+import {
+  evaluateVeryfiReceipt,
+  mapDecisionToReceiptStatus,
+  type ReceiptDecision,
+  type VeryfiReceiptEvaluation,
+} from '@/lib/receipts/receiptValidity';
 
 
 type ParsedMenuItem = {
@@ -91,6 +96,58 @@ const parseMenuItems = (lineItems: unknown): ParsedMenuItem[] => {
   return parsed;
 };
 
+const statusToDecision = (status: string): ReceiptDecision => {
+  if (status === 'APPROVED') return 'APPROVE';
+  if (status === 'FLAGGED') return 'REVIEW';
+  return 'REJECT';
+};
+
+const reasonCodeToMessage = (code: string): string => {
+  switch (code) {
+    case 'TOTAL_MISMATCH':
+    case 'TOTAL_LARGE_MISMATCH':
+    case 'TOTAL_PERCENT_MISMATCH':
+    case 'TOTAL_SMALL_MISMATCH':
+    case 'TOTAL_MATH_MISMATCH':
+    case 'TOTALS_MISMATCH':
+      return 'Totals do not add up';
+    case 'LOW_CONFIDENCE':
+    case 'VERY_LOW_CONFIDENCE':
+    case 'LOW_OCR_SCORE':
+      return 'Low OCR quality';
+    case 'BLURRY_IMAGE':
+      return 'Receipt appears blurry';
+    case 'MERCHANT_MISSING':
+    case 'MISSING_MERCHANT':
+      return 'Missing merchant information';
+    case 'DUPLICATE_RECEIPT':
+      return 'Duplicate receipt detected';
+    case 'SCREENSHOT_OR_LCD':
+      return 'Possible screenshot or LCD photo';
+    case 'FRAUD_COLOR_RED':
+    case 'FRAUD_COLOR_YELLOW':
+    case 'FRAUD_TYPES':
+      return 'Possible fraud signals detected';
+    case 'MISSING_CURRENCY':
+    case 'CURRENCY_MISSING':
+      return 'Missing currency code';
+    case 'INVALID_TOTAL':
+    case 'TOTAL_NOT_FOUND':
+      return 'Missing or invalid total';
+    default:
+      return code
+        .split('_')
+        .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+        .join(' ');
+  }
+};
+
+const toResponseReasons = (reasonCodes: string[], fallback: string[] = []): string[] => {
+  if (fallback.length > 0) return fallback;
+  const mapped = reasonCodes.map(reasonCodeToMessage).filter((reason) => reason.length > 0);
+  return [...new Set(mapped)];
+};
+
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
@@ -136,6 +193,42 @@ export async function POST(req: Request) {
         const existingReasonCodes = Array.isArray(existingVerification.reasonCodes)
           ? existingVerification.reasonCodes
           : [];
+        const existingBreakdown =
+          existingVerification.riskBreakdown && typeof existingVerification.riskBreakdown === 'object'
+            ? (existingVerification.riskBreakdown as Record<string, unknown>)
+            : null;
+        const existingDecisionRaw =
+          typeof existingBreakdown?.decision === 'string' ? existingBreakdown.decision : null;
+        const existingDecision =
+          existingDecisionRaw === 'APPROVE' || existingDecisionRaw === 'REVIEW' || existingDecisionRaw === 'REJECT'
+            ? existingDecisionRaw
+            : statusToDecision(existingVerification.status);
+        const existingPercentRealRaw =
+          typeof existingBreakdown?.percentReal === 'number'
+            ? existingBreakdown.percentReal
+            : existingProofScore;
+        const existingPercentReal = Math.max(0, Math.min(100, Math.round(existingPercentRealRaw)));
+        const existingScores =
+          existingBreakdown?.scores && typeof existingBreakdown.scores === 'object'
+            ? (existingBreakdown.scores as Record<string, unknown>)
+            : null;
+        const authenticityScoreRaw =
+          typeof existingScores?.authenticity === 'number' ? existingScores.authenticity : existingPercentReal / 100;
+        const extractionScoreRaw =
+          typeof existingScores?.extraction === 'number'
+            ? existingScores.extraction
+            : typeof existingVerification.imageQuality === 'number'
+              ? existingVerification.imageQuality / 100
+              : existingPercentReal / 100;
+        const businessScoreRaw =
+          typeof existingScores?.business === 'number' ? existingScores.business : existingPercentReal / 100;
+        const existingReasons = toResponseReasons(
+          existingReasonCodes,
+          Array.isArray(existingBreakdown?.reasons)
+            ? existingBreakdown.reasons.filter((item): item is string => typeof item === 'string' && item.length > 0)
+            : []
+        );
+
         return NextResponse.json({
           success: existingVerification.status === 'APPROVED',
           status: existingVerification.status,
@@ -143,6 +236,14 @@ export async function POST(req: Request) {
           reasonCodes: existingReasonCodes,
           riskBreakdown: existingVerification.riskBreakdown,
           proofScore: existingProofScore,
+          decision: existingDecision,
+          percentReal: existingPercentReal,
+          scores: {
+            authenticity: Math.max(0, Math.min(1, authenticityScoreRaw)),
+            extraction: Math.max(0, Math.min(1, extractionScoreRaw)),
+            business: Math.max(0, Math.min(1, businessScoreRaw)),
+          },
+          reasons: existingDecision === 'APPROVE' ? [] : existingReasons,
           itemMatchScore: existingVerification.itemMatchScore,
           imageQuality: existingVerification.imageQuality,
           tamperScore: existingVerification.tamperScore,
@@ -158,18 +259,50 @@ export async function POST(req: Request) {
         });
       }
 
-      const duplicateDecision = scoreReceiptRisk({
-        isDuplicate: true,
-        imageHash: hash,
+      const duplicateDecision: VeryfiReceiptEvaluation = {
+        decision: 'REJECT',
+        percentReal: 0,
+        scores: {
+          authenticity: 0,
+          extraction: 1,
+          business: 1,
+        },
+        reasons: ['Duplicate receipt detected'],
+        reasonCodes: ['DUPLICATE_RECEIPT'],
+        meta: {
+          fraudScore: null,
+          fraudColor: null,
+          fraudTypes: ['duplicate'],
+          ocrScore: null,
+          blurry: false,
+        },
+      };
+      console.info('[receipt-verify] duplicate detected', {
+        deliveryRequestId,
+        decision: duplicateDecision.decision,
+        percentReal: duplicateDecision.percentReal,
+        reasons: duplicateDecision.reasons,
       });
       return NextResponse.json(
         {
           success: false,
           message: 'This receipt has already been uploaded.',
-          status: duplicateDecision.status,
-          riskScore: duplicateDecision.riskScore,
+          status: 'REJECTED',
+          riskScore: duplicateDecision.percentReal,
           reasonCodes: duplicateDecision.reasonCodes,
-          riskBreakdown: duplicateDecision.riskBreakdown,
+          riskBreakdown: {
+            model: 'veryfi-receipt-validity-v1',
+            decision: duplicateDecision.decision,
+            percentReal: duplicateDecision.percentReal,
+            scores: duplicateDecision.scores,
+            reasons: duplicateDecision.reasons,
+            reasonCodes: duplicateDecision.reasonCodes,
+          },
+          decision: duplicateDecision.decision,
+          percentReal: duplicateDecision.percentReal,
+          scores: duplicateDecision.scores,
+          reasons: duplicateDecision.reasons,
+          proofScore: duplicateDecision.percentReal,
         },
         { status: 409 }
       );
@@ -178,25 +311,38 @@ export async function POST(req: Request) {
     // Check for TEST_MODE override
     const testModeResult = getTestModeResult(file.name);
     if (testModeResult) {
-      const testModeDecision = {
-        riskScore: testModeResult.proofScore,
-        status: testModeResult.status,
-        reasonCodes: ['TEST_MODE'],
-        riskBreakdown: {
-          base: 100,
-          penalties: [{ code: 'TEST_MODE', delta: testModeResult.proofScore - 100 }],
-          fuzzyScore: null,
-          diff: null,
-          expectedTotal: expectedTotal?.toString() || null,
-          extractedTotal: expectedTotal?.toString() || null,
-        } as Prisma.InputJsonValue,
+      const decision: ReceiptDecision =
+        testModeResult.status === 'APPROVED'
+          ? 'APPROVE'
+          : testModeResult.status === 'FLAGGED'
+            ? 'REVIEW'
+            : 'REJECT';
+      const percentReal = Math.max(0, Math.min(100, Math.round(testModeResult.proofScore)));
+      const scores = {
+        authenticity: Math.max(0, Math.min(1, percentReal / 100)),
+        extraction: Math.max(0, Math.min(1, percentReal / 100)),
+        business: Math.max(0, Math.min(1, percentReal / 100)),
       };
-      const locked = testModeDecision.status === 'APPROVED' || testModeDecision.status === 'FLAGGED';
+      const reasonCodes = ['TEST_MODE'];
+      const reasons = decision === 'APPROVE' ? [] : ['Test mode review required'];
+      const riskBreakdown = {
+        model: 'veryfi-receipt-validity-v1',
+        decision,
+        percentReal,
+        scores,
+        reasons,
+        reasonCodes,
+        expectedTotal: expectedTotal?.toString() || null,
+        extractedTotal: expectedTotal?.toString() || null,
+        testMode: true,
+      } as Prisma.InputJsonValue;
+      const status = mapDecisionToReceiptStatus(decision);
+      const locked = status === 'APPROVED' || status === 'FLAGGED';
       const imageQuality = 90;
       const tamperScore = 95;
       const extractedTotal = expectedTotal;
       const vendorName = expectedVendor;
-      const proofScore = testModeDecision.riskScore;
+      const proofScore = percentReal;
       const itemMatchScore = null;
 
       await prisma.$transaction(async (tx) => {
@@ -211,9 +357,9 @@ export async function POST(req: Request) {
             subtotalAmount: expectedTotal,
             totalAmount: expectedTotal,
             confidenceScore: 90,
-            riskScore: testModeDecision.riskScore,
-            status: testModeDecision.status,
-            reasonCodes: testModeDecision.reasonCodes,
+            riskScore: percentReal,
+            status,
+            reasonCodes,
             proofScore,
             extractedTotal,
             vendorName,
@@ -221,7 +367,7 @@ export async function POST(req: Request) {
             imageQuality,
             tamperScore,
             locked,
-            riskBreakdown: testModeDecision.riskBreakdown,
+            riskBreakdown,
             rawResponse: { testMode: true, filename: file.name } as Prisma.InputJsonValue,
           },
           update: {
@@ -231,9 +377,9 @@ export async function POST(req: Request) {
             subtotalAmount: expectedTotal,
             totalAmount: expectedTotal,
             confidenceScore: 90,
-            riskScore: testModeDecision.riskScore,
-            status: testModeDecision.status,
-            reasonCodes: testModeDecision.reasonCodes,
+            riskScore: percentReal,
+            status,
+            reasonCodes,
             proofScore,
             extractedTotal,
             vendorName,
@@ -241,7 +387,7 @@ export async function POST(req: Request) {
             imageQuality,
             tamperScore,
             locked,
-            riskBreakdown: testModeDecision.riskBreakdown,
+            riskBreakdown,
             rawResponse: { testMode: true, filename: file.name } as Prisma.InputJsonValue,
           },
         });
@@ -251,7 +397,7 @@ export async function POST(req: Request) {
           data: {
             receiptImageData: `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`,
             receiptVerifiedAt: new Date(),
-            receiptAuthenticityScore: testModeDecision.riskScore / 100,
+            receiptAuthenticityScore: percentReal / 100,
           },
         });
 
@@ -285,13 +431,23 @@ export async function POST(req: Request) {
         }
       });
 
+      console.info('[receipt-verify] test mode evaluation', {
+        deliveryRequestId,
+        decision,
+        percentReal,
+        reasons,
+      });
       return NextResponse.json({
-        success: testModeDecision.status === 'APPROVED',
-        status: testModeDecision.status,
-        riskScore: testModeDecision.riskScore,
-        reasonCodes: testModeDecision.reasonCodes,
-        riskBreakdown: testModeDecision.riskBreakdown,
+        success: status === 'APPROVED',
+        status,
+        riskScore: percentReal,
+        reasonCodes,
+        riskBreakdown,
         proofScore,
+        decision,
+        percentReal,
+        scores,
+        reasons,
         itemMatchScore,
         imageQuality,
         tamperScore,
@@ -342,14 +498,6 @@ export async function POST(req: Request) {
       const totalAmount = extractNumber((veryfiResponse as { total?: unknown }).total);
       const receiptDate = extractDate((veryfiResponse as { date?: unknown }).date);
       const currencyCode = extractString((veryfiResponse as { currency_code?: unknown }).currency_code);
-      const confidenceScore = (() => {
-        const response = veryfiResponse as Record<string, unknown>;
-        return (
-          extractNumber(response.confidence_score) ??
-          extractNumber(response.confidence) ??
-          extractNumber(response.overall_confidence)
-        );
-      })();
       const subtotalCentsFromItems = menuItems.reduce(
         (sum, item) => sum + Math.round(item.price * 100) * item.quantity,
         0
@@ -361,35 +509,34 @@ export async function POST(req: Request) {
             ? Math.round(subtotalFromResponse * 100)
             : null;
       const receiptImageData = `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`;
-
-      const riskDecision = scoreReceiptRisk({
-        deliveryRequestId,
-        currentUserId: user.id,
-        expectedVendor,
-        expectedTotal,
-        merchantName,
-        subtotal: subtotalFromResponse,
-        tax: taxAmount,
-        tip: tipAmount,
-        total: totalAmount,
-        receiptDate,
-        currency: currencyCode,
-        confidenceScore,
-        imageHash: hash,
-      });
-      const locked = riskDecision.status === 'APPROVED' || riskDecision.status === 'FLAGGED';
-      const proofScore = riskDecision.riskScore;
+      const evaluation = evaluateVeryfiReceipt(veryfiResponse);
+      const status = mapDecisionToReceiptStatus(evaluation.decision);
+      const locked = status === 'APPROVED' || status === 'FLAGGED';
+      const proofScore = evaluation.percentReal;
       const itemMatchScore = null;
-      const imageQuality =
-        riskDecision.normalizedConfidence == null ? null : Math.round(riskDecision.normalizedConfidence);
+      const imageQuality = Math.round(evaluation.scores.extraction * 100);
       const tamperScore = null;
       const extractedTotal = totalAmount ?? null;
       const vendorName = merchantName ?? null;
+      const riskBreakdown = {
+        model: 'veryfi-receipt-validity-v1',
+        decision: evaluation.decision,
+        percentReal: evaluation.percentReal,
+        scores: evaluation.scores,
+        reasons: evaluation.reasons,
+        reasonCodes: evaluation.reasonCodes,
+        weights: {
+          authenticity: 0.45,
+          extraction: 0.35,
+          business: 0.2,
+        },
+        veryfi: evaluation.meta,
+      };
 
       const requestUpdateData: Prisma.DeliveryRequestUpdateInput = {
         receiptImageData,
         receiptVerifiedAt: new Date(),
-        receiptAuthenticityScore: riskDecision.riskScore / 100,
+        receiptAuthenticityScore: evaluation.percentReal / 100,
       };
 
       if (merchantName) {
@@ -423,11 +570,11 @@ export async function POST(req: Request) {
             totalAmount,
             receiptDate,
             currency: currencyCode,
-            confidenceScore: riskDecision.normalizedConfidence,
-            riskScore: riskDecision.riskScore,
-            status: riskDecision.status,
-            reasonCodes: riskDecision.reasonCodes,
-            riskBreakdown: riskDecision.riskBreakdown as unknown as Prisma.InputJsonValue,
+            confidenceScore: imageQuality,
+            riskScore: evaluation.percentReal,
+            status,
+            reasonCodes: evaluation.reasonCodes,
+            riskBreakdown: riskBreakdown as unknown as Prisma.InputJsonValue,
             rawResponse: veryfiResponse as unknown as Prisma.InputJsonValue,
             proofScore,
             extractedTotal,
@@ -447,11 +594,11 @@ export async function POST(req: Request) {
             totalAmount,
             receiptDate,
             currency: currencyCode,
-            confidenceScore: riskDecision.normalizedConfidence,
-            riskScore: riskDecision.riskScore,
-            status: riskDecision.status,
-            reasonCodes: riskDecision.reasonCodes,
-            riskBreakdown: riskDecision.riskBreakdown as unknown as Prisma.InputJsonValue,
+            confidenceScore: imageQuality,
+            riskScore: evaluation.percentReal,
+            status,
+            reasonCodes: evaluation.reasonCodes,
+            riskBreakdown: riskBreakdown as unknown as Prisma.InputJsonValue,
             rawResponse: veryfiResponse as unknown as Prisma.InputJsonValue,
             proofScore,
             extractedTotal,
@@ -509,42 +656,66 @@ export async function POST(req: Request) {
         await applyDeliveryRequestLock(deliveryRequestId, user.id);
       }
 
+      console.info('[receipt-verify] evaluation', {
+        deliveryRequestId,
+        decision: evaluation.decision,
+        percentReal: evaluation.percentReal,
+        reasons: evaluation.reasons,
+      });
+
       return NextResponse.json({
-        success: riskDecision.status === 'APPROVED',
-        status: riskDecision.status,
-        riskScore: riskDecision.riskScore,
-        reasonCodes: riskDecision.reasonCodes,
-        riskBreakdown: riskDecision.riskBreakdown,
+        success: status === 'APPROVED',
+        status,
+        riskScore: evaluation.percentReal,
+        reasonCodes: evaluation.reasonCodes,
+        riskBreakdown,
         proofScore,
+        decision: evaluation.decision,
+        percentReal: evaluation.percentReal,
+        scores: evaluation.scores,
+        reasons: evaluation.reasons,
         itemMatchScore,
         imageQuality,
         tamperScore,
         extractedTotal,
         vendorName,
         locked,
-        message: `Receipt processed (${riskDecision.status}). Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
+        message: `Receipt processed (${status}). Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
         menuItems,
         data: veryfiResponse,
       });
     } catch (error) {
       console.error('Veryfi API error:', error);
-      const fallbackDecision = scoreReceiptRisk({
-        deliveryRequestId,
-        currentUserId: user.id,
-        expectedVendor,
-        expectedTotal,
-        veryfiError: true,
-        imageHash: hash,
-      });
+      const fallbackReasonCodes = ['VERYFI_ERROR'];
+      const fallbackReasons = ['Receipt verification service is unavailable. Please retry.'];
       return NextResponse.json(
         {
           success: false,
           message: 'Error processing receipt with Veryfi.',
-          status: fallbackDecision.status,
-          riskScore: fallbackDecision.riskScore,
-          reasonCodes: fallbackDecision.reasonCodes,
-          riskBreakdown: fallbackDecision.riskBreakdown,
-          proofScore: fallbackDecision.riskScore,
+          status: 'PENDING',
+          riskScore: 0,
+          reasonCodes: fallbackReasonCodes,
+          riskBreakdown: {
+            model: 'veryfi-receipt-validity-v1',
+            decision: 'REVIEW',
+            percentReal: 0,
+            scores: {
+              authenticity: 0,
+              extraction: 0,
+              business: 0,
+            },
+            reasons: fallbackReasons,
+            reasonCodes: fallbackReasonCodes,
+          },
+          proofScore: 0,
+          decision: 'REVIEW',
+          percentReal: 0,
+          scores: {
+            authenticity: 0,
+            extraction: 0,
+            business: 0,
+          },
+          reasons: fallbackReasons,
         },
         { status: 502 }
       );

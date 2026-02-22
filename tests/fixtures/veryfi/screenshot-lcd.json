@@ -1,0 +1,37 @@
+{
+  "vendor": {
+    "name": "Corner Grill",
+    "address": "99 City Ave"
+  },
+  "vendors": [
+    {
+      "name": "Corner Grill"
+    }
+  ],
+  "date": "2026-02-21T19:00:00Z",
+  "currency_code": "USD",
+  "subtotal": 32,
+  "tax": 2.56,
+  "total": 34.56,
+  "payment": {
+    "type": "card"
+  },
+  "img_blur": false,
+  "is_blurry": [false],
+  "meta": {
+    "ocr_score": 0.91,
+    "fraud": {
+      "decision": "Fraud Review",
+      "color": "yellow",
+      "score": 0.38,
+      "types": ["screenshot", "LCD photo"]
+    },
+    "pages": [
+      {
+        "is_blurry": {
+          "value": false
+        }
+      }
+    ]
+  }
+}

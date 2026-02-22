@@ -26,12 +26,22 @@ const formatCurrency = (value: number | null | undefined) =>
 
 type Step = "details" | "restaurant" | "receipt" | "review";
 
+type ReceiptDecision = "APPROVE" | "REVIEW" | "REJECT";
+
 type ReceiptAnalysis = {
   vendorName: string;
   location: string;
   items: ReceiptItem[];
   authenticityScore: number;
   authenticityReason: string;
+  decision: ReceiptDecision;
+  percentReal: number;
+  reasons: string[];
+  scores: {
+    authenticity: number;
+    extraction: number;
+    business: number;
+  };
   imageData?: string;
 };
 
@@ -66,8 +76,45 @@ const SERVICE_LABELS: Record<string, string> = {
   RIDE: "Ride",
 };
 
-const AUTHENTICITY_THRESHOLD = 0.5;
 const SESSION_DRAFT_KEY = "otw-order-draft-cache-v1";
+
+function normalizeDecision(value: unknown, fallbackStatus?: unknown): ReceiptDecision {
+  if (value === "APPROVE" || value === "REVIEW" || value === "REJECT") return value;
+  if (fallbackStatus === "APPROVED") return "APPROVE";
+  if (fallbackStatus === "FLAGGED") return "REVIEW";
+  return "REJECT";
+}
+
+function normalizeUnitScore(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value >= 0 && value <= 1) return value;
+    if (value > 1 && value <= 100) return value / 100;
+  }
+  return fallback;
+}
+
+function decisionLabel(decision: ReceiptDecision): string {
+  if (decision === "APPROVE") return "Approved";
+  if (decision === "REVIEW") return "Needs Review";
+  return "Rejected";
+}
+
+function decisionBadgeClass(decision: ReceiptDecision): string {
+  if (decision === "APPROVE") return "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
+  if (decision === "REVIEW") return "border-amber-500/40 bg-amber-500/15 text-amber-200";
+  return "border-red-500/40 bg-red-500/15 text-red-200";
+}
+
+function reviewActionHint(reasons: string[]): string {
+  const joined = reasons.join(" ").toLowerCase();
+  if (joined.includes("total")) {
+    return "Confirm subtotal, tax, and total values before placing the order.";
+  }
+  if (joined.includes("ocr") || joined.includes("blurry") || joined.includes("screenshot") || joined.includes("lcd")) {
+    return "Retake a clearer photo of the full receipt and rerun verification.";
+  }
+  return "You can continue, then confirm receipt details in the review flow.";
+}
 
 function calculateMiles(a: GeocodedAddress, b: GeocodedAddress): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -162,7 +209,39 @@ export default function OrderPage() {
         setReceiptImageData(parsed.receiptImageData);
       }
       if (parsed.receiptAnalysis && !receiptAnalysis) {
-        setReceiptAnalysis(parsed.receiptAnalysis);
+        const restored = parsed.receiptAnalysis;
+        const percentReal =
+          typeof restored.percentReal === "number"
+            ? Math.max(0, Math.min(100, Math.round(restored.percentReal)))
+            : Math.max(
+                0,
+                Math.min(
+                  100,
+                  Math.round(normalizeUnitScore(restored.authenticityScore, 0) * 100)
+                )
+              );
+        const decision = normalizeDecision(
+          restored.decision,
+          percentReal >= 80 ? "APPROVED" : percentReal >= 60 ? "FLAGGED" : "REJECTED"
+        );
+        setReceiptAnalysis({
+          vendorName: restored.vendorName || "",
+          location: restored.location || "",
+          items: Array.isArray(restored.items) ? restored.items : [],
+          authenticityScore: percentReal / 100,
+          authenticityReason: restored.authenticityReason || "",
+          decision,
+          percentReal,
+          reasons: Array.isArray(restored.reasons)
+            ? restored.reasons.filter((reason): reason is string => typeof reason === "string")
+            : [],
+          scores: {
+            authenticity: normalizeUnitScore(restored.scores?.authenticity, percentReal / 100),
+            extraction: normalizeUnitScore(restored.scores?.extraction, percentReal / 100),
+            business: normalizeUnitScore(restored.scores?.business, percentReal / 100),
+          },
+          imageData: restored.imageData,
+        });
       }
     } catch (error) {
       console.warn("Session draft restore failed:", error);
@@ -199,15 +278,24 @@ export default function OrderPage() {
 
     const receiptItems = Array.isArray(draft.receiptItems) ? draft.receiptItems : [];
     if (receiptItems.length || draft.receiptVendor || draft.receiptLocation) {
+      const restoredScore =
+        typeof draft.receiptAuthenticityScore === "number"
+          ? Math.max(0, Math.min(1, draft.receiptAuthenticityScore))
+          : 0;
       setReceiptAnalysis({
         vendorName: draft.receiptVendor || draft.restaurantName || "",
         location: draft.receiptLocation || "",
         items: receiptItems,
-        authenticityScore:
-          typeof draft.receiptAuthenticityScore === "number"
-            ? draft.receiptAuthenticityScore
-            : 0,
+        authenticityScore: restoredScore,
         authenticityReason: "Draft restored - run receipt check to verify.",
+        decision: restoredScore >= 0.8 ? "APPROVE" : restoredScore >= 0.6 ? "REVIEW" : "REJECT",
+        percentReal: Math.round(restoredScore * 100),
+        reasons: [],
+        scores: {
+          authenticity: restoredScore,
+          extraction: restoredScore,
+          business: restoredScore,
+        },
         imageData: draft.receiptImageData || undefined,
       });
     }
@@ -780,6 +868,14 @@ export default function OrderPage() {
         riskScore?: number;
         proofScore?: number;
         reasonCodes?: string[];
+        decision?: ReceiptDecision;
+        percentReal?: number;
+        reasons?: string[];
+        scores?: {
+          authenticity?: number;
+          extraction?: number;
+          business?: number;
+        };
         vendorName?: string | null;
         menuItems?: Array<{ name?: unknown; quantity?: unknown; price?: unknown }>;
         data?: {
@@ -831,13 +927,48 @@ export default function OrderPage() {
           : typeof result.proofScore === "number"
             ? result.proofScore
             : 0;
-      const authenticityScore = Math.max(0, Math.min(1, scoreSource / 100));
+      const percentReal =
+        typeof result.percentReal === "number"
+          ? Math.max(0, Math.min(100, Math.round(result.percentReal)))
+          : Math.max(0, Math.min(100, Math.round(scoreSource)));
+      const authenticityScore = percentReal / 100;
       const reasonCodes = Array.isArray(result.reasonCodes)
         ? result.reasonCodes.filter((code): code is string => typeof code === "string" && code.length > 0)
         : [];
-      const authenticityReason = reasonCodes.length
-        ? `Veryfi ${result.status || "PROCESSED"}: ${reasonCodes.join(", ")}`
-        : `Veryfi ${result.status || "PROCESSED"}`;
+      const reasonsFromApi = Array.isArray(result.reasons)
+        ? result.reasons.filter((reason): reason is string => typeof reason === "string" && reason.length > 0)
+        : [];
+      const reasons = reasonsFromApi.length > 0 ? reasonsFromApi : reasonCodes;
+      const decision = normalizeDecision(result.decision, result.status);
+      const scores = {
+        authenticity: Math.max(
+          0,
+          Math.min(
+            1,
+            normalizeUnitScore(result.scores?.authenticity, authenticityScore)
+          )
+        ),
+        extraction: Math.max(
+          0,
+          Math.min(
+            1,
+            normalizeUnitScore(result.scores?.extraction, authenticityScore)
+          )
+        ),
+        business: Math.max(
+          0,
+          Math.min(
+            1,
+            normalizeUnitScore(result.scores?.business, authenticityScore)
+          )
+        ),
+      };
+      const authenticityReason =
+        decision === "APPROVE"
+          ? `Veryfi ${result.status || "APPROVED"}`
+          : reasons.length > 0
+            ? reasons.join(" • ")
+            : `Veryfi ${result.status || "REVIEW"}`;
 
       setReceiptAnalysis({
         vendorName,
@@ -845,6 +976,10 @@ export default function OrderPage() {
         items,
         authenticityScore,
         authenticityReason,
+        decision,
+        percentReal,
+        reasons,
+        scores,
         imageData,
       });
       if (!restaurantName.trim() && vendorName) {
@@ -1429,11 +1564,6 @@ export default function OrderPage() {
 
       {receiptAnalysis && (
         <div className="space-y-4 rounded-lg border border-border/70 bg-muted/40 p-4">
-          {receiptAnalysis.authenticityScore < AUTHENTICITY_THRESHOLD && (
-            <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-              This receipt was flagged by verification. Please upload a clearer photo or verify the details.
-            </div>
-          )}
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs text-muted-foreground">Restaurant name</div>
@@ -1444,12 +1574,34 @@ export default function OrderPage() {
                 }
               />
             </div>
-            <span className="inline-flex items-center rounded-full border border-transparent bg-green-500/20 text-green-400 px-2.5 py-0.5 text-xs font-semibold transition-colors gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              {(receiptAnalysis.authenticityScore * 100).toFixed(0)}% real
-            </span>
+            <div className="flex flex-col items-end gap-2">
+              <Badge className={decisionBadgeClass(receiptAnalysis.decision)}>
+                {decisionLabel(receiptAnalysis.decision)}
+              </Badge>
+              <span className="inline-flex items-center rounded-full border border-transparent bg-green-500/20 text-green-400 px-2.5 py-0.5 text-xs font-semibold transition-colors gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {receiptAnalysis.percentReal}% real
+              </span>
+            </div>
           </div>
-          {receiptAnalysis.authenticityReason && (
+
+          {receiptAnalysis.decision !== "APPROVE" && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+              <div className="text-sm font-medium text-amber-100">
+                {receiptAnalysis.decision === "REJECT" ? "Receipt rejected" : "Receipt needs review"}
+              </div>
+              {receiptAnalysis.reasons.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-100/90">
+                  {receiptAnalysis.reasons.map((reason, index) => (
+                    <li key={`${reason}-${index}`}>{reason}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-2 text-xs text-amber-100/80">{reviewActionHint(receiptAnalysis.reasons)}</div>
+            </div>
+          )}
+
+          {receiptAnalysis.authenticityReason && receiptAnalysis.decision === "APPROVE" && (
             <div className="text-xs text-muted-foreground">{receiptAnalysis.authenticityReason}</div>
           )}
           <div>
@@ -1510,7 +1662,7 @@ export default function OrderPage() {
                 <Button
                   onClick={() => setStep("review")}
                   className="gap-2"
-                  disabled={!receiptAnalysis}
+                  disabled={!receiptAnalysis || receiptAnalysis.decision === "REJECT"}
                 >
                   Continue to review <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

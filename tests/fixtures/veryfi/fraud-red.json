@@ -1,0 +1,37 @@
+{
+  "vendor": {
+    "name": "Quick Stop",
+    "address": "500 West Dr"
+  },
+  "vendors": [
+    {
+      "name": "Quick Stop"
+    }
+  ],
+  "date": "2026-02-21T20:30:00Z",
+  "currency_code": "USD",
+  "subtotal": 22,
+  "tax": 1.76,
+  "total": 23.76,
+  "payment": {
+    "type": "card"
+  },
+  "img_blur": false,
+  "is_blurry": [false],
+  "meta": {
+    "ocr_score": 0.95,
+    "fraud": {
+      "decision": "Fraud",
+      "color": "red",
+      "score": 0.9,
+      "types": ["digital tampering"]
+    },
+    "pages": [
+      {
+        "is_blurry": {
+          "value": false
+        }
+      }
+    ]
+  }
+}
