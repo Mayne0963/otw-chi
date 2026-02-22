@@ -35,6 +35,29 @@ type ReceiptAnalysis = {
   imageData?: string;
 };
 
+type OrderDraft = {
+  id: string;
+  serviceType?: string | null;
+  waitMinutes?: number | null;
+  notes?: string | null;
+  restaurantName?: string | null;
+  restaurantWebsite?: string | null;
+  deliveryFeeCents?: number | null;
+  deliveryFeePaid?: boolean | null;
+  deliveryCheckoutSessionId?: string | null;
+  tipCents?: number | null;
+  couponCode?: string | null;
+  discountCents?: number | null;
+  receiptImageData?: string | null;
+  receiptVendor?: string | null;
+  receiptLocation?: string | null;
+  receiptItems?: ReceiptItem[] | null;
+  receiptAuthenticityScore?: number | null;
+  pickupAddress?: string | null;
+  dropoffAddress?: string | null;
+  updatedAt?: string | null;
+};
+
 const SERVICE_LABELS: Record<string, string> = {
   FOOD: "Food Delivery",
   STORE: "Store Pickup",
@@ -119,6 +142,8 @@ export default function OrderPage() {
   const [discountCents, setDiscountCents] = useState(0);
   const [couponApplying, setCouponApplying] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<OrderDraft | null>(null);
+  const [draftChoiceLoading, setDraftChoiceLoading] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const draftSaveTimeout = useRef<number | null>(null);
   const receiptObjectUrl = useRef<string | null>(null);
@@ -145,6 +170,142 @@ export default function OrderPage() {
   }, [receiptAnalysis, receiptImageData]);
 
   const requiresReceipt = serviceType === "FOOD";
+
+  async function restoreDraft(draft: OrderDraft) {
+    setDraftId(draft.id);
+    setServiceType(draft.serviceType || "FOOD");
+    if (typeof draft.waitMinutes === "number") {
+      setWaitMinutes(Math.max(10, draft.waitMinutes));
+    }
+    setNotes(draft.notes || "");
+    setRestaurantName(draft.restaurantName || "");
+    setRestaurantWebsite(draft.restaurantWebsite || "");
+    if (typeof draft.deliveryFeeCents === "number") {
+      setDeliveryFeeCents(draft.deliveryFeeCents);
+    }
+    setFeePaid(Boolean(draft.deliveryFeePaid));
+    setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
+    setTipCents(typeof draft.tipCents === "number" ? Math.max(0, Math.trunc(draft.tipCents)) : 0);
+    setCouponCode(draft.couponCode || "");
+    setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
+    if (draft.receiptImageData) {
+      setReceiptPreview(draft.receiptImageData);
+      setReceiptImageData(draft.receiptImageData);
+      if (receiptObjectUrl.current) {
+        URL.revokeObjectURL(receiptObjectUrl.current);
+        receiptObjectUrl.current = null;
+      }
+    }
+
+    const receiptItems = Array.isArray(draft.receiptItems) ? draft.receiptItems : [];
+    if (receiptItems.length || draft.receiptVendor || draft.receiptLocation) {
+      setReceiptAnalysis({
+        vendorName: draft.receiptVendor || draft.restaurantName || "",
+        location: draft.receiptLocation || "",
+        items: receiptItems,
+        authenticityScore:
+          typeof draft.receiptAuthenticityScore === "number"
+            ? draft.receiptAuthenticityScore
+            : 0,
+        authenticityReason: "Draft restored - run receipt check to verify.",
+        imageData: draft.receiptImageData || undefined,
+      });
+    }
+
+    const hasReceiptItems = receiptItems.length > 0;
+    const hasRestaurantInfo = Boolean(draft.restaurantName || draft.receiptVendor);
+    const nextStep =
+      draft.serviceType !== "FOOD"
+        ? "details"
+        : hasReceiptItems
+          ? "review"
+          : hasRestaurantInfo
+            ? "receipt"
+            : "restaurant";
+    setStep(nextStep);
+
+    if (draft.pickupAddress) {
+      const restoredPickup = await validateAddress(draft.pickupAddress);
+      if (restoredPickup) setPickupAddress(restoredPickup);
+    }
+    if (draft.dropoffAddress) {
+      const restoredDropoff = await validateAddress(draft.dropoffAddress);
+      if (restoredDropoff) setDropoffAddress(restoredDropoff);
+    }
+  }
+
+  async function handleContinueDraft() {
+    if (!pendingDraft) return;
+    setDraftChoiceLoading(true);
+    try {
+      await restoreDraft(pendingDraft);
+      setPendingDraft(null);
+    } catch (error) {
+      console.error("Draft restore failed:", error);
+      toast({
+        title: "Unable to restore draft",
+        description: "Please try again or start over.",
+        variant: "destructive",
+      });
+    } finally {
+      setDraftChoiceLoading(false);
+    }
+  }
+
+  async function handleStartOverDraft() {
+    setDraftChoiceLoading(true);
+    try {
+      const response = await fetch("/api/orders/draft", {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to remove previous draft.");
+      }
+      setPendingDraft(null);
+      setDraftId(null);
+      setStep("details");
+      setPickupAddress(null);
+      setDropoffAddress(null);
+      setServiceType("FOOD");
+      setWaitMinutes(10);
+      setNotes("");
+      setRestaurantName("");
+      setRestaurantWebsite("");
+      setReceiptFile(null);
+      setReceiptPreview(null);
+      setReceiptImageData(null);
+      setAnalysisError(null);
+      setReceiptAnalysis(null);
+      setDeliveryFeeCents(0);
+      setMilesQuote(null);
+      setPaymentMethod("STRIPE");
+      setPaymentMethodTouched(false);
+      setDurationMinutes(0);
+      setDeliveryEstimateError(null);
+      setFeePaid(false);
+      setDeliveryCheckoutSessionId(null);
+      setTipCents(0);
+      setCouponCode("");
+      setDiscountCents(0);
+      if (receiptObjectUrl.current) {
+        URL.revokeObjectURL(receiptObjectUrl.current);
+        receiptObjectUrl.current = null;
+      }
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
+      }
+    } catch (error) {
+      console.error("Draft delete failed:", error);
+      toast({
+        title: "Unable to clear draft",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDraftChoiceLoading(false);
+    }
+  }
 
   const pickupLines = pickupAddress ? formatAddressLines(pickupAddress) : null;
   const dropoffLines = dropoffAddress ? formatAddressLines(dropoffAddress) : null;
@@ -263,67 +424,8 @@ export default function OrderPage() {
           setDraftLoaded(true);
           return;
         }
-
-        setDraftId(draft.id);
-        setServiceType(draft.serviceType || "FOOD");
-        if (typeof draft.waitMinutes === "number") {
-          setWaitMinutes(Math.max(10, draft.waitMinutes));
-        }
-        setNotes(draft.notes || "");
-        setRestaurantName(draft.restaurantName || "");
-        setRestaurantWebsite(draft.restaurantWebsite || "");
-        if (typeof draft.deliveryFeeCents === "number") {
-          setDeliveryFeeCents(draft.deliveryFeeCents);
-        }
-        setFeePaid(Boolean(draft.deliveryFeePaid));
-        setDeliveryCheckoutSessionId(draft.deliveryCheckoutSessionId || null);
-        setTipCents(typeof draft.tipCents === "number" ? Math.max(0, Math.trunc(draft.tipCents)) : 0);
-        setCouponCode(draft.couponCode || "");
-        setDiscountCents(typeof draft.discountCents === "number" ? draft.discountCents : 0);
-        if (draft.receiptImageData) {
-          setReceiptPreview(draft.receiptImageData);
-          setReceiptImageData(draft.receiptImageData);
-          if (receiptObjectUrl.current) {
-            URL.revokeObjectURL(receiptObjectUrl.current);
-            receiptObjectUrl.current = null;
-          }
-        }
-
-        const receiptItems = Array.isArray(draft.receiptItems) ? draft.receiptItems : [];
-        if (receiptItems.length || draft.receiptVendor || draft.receiptLocation) {
-          setReceiptAnalysis({
-            vendorName: draft.receiptVendor || draft.restaurantName || "",
-            location: draft.receiptLocation || "",
-            items: receiptItems,
-            authenticityScore:
-              typeof draft.receiptAuthenticityScore === "number"
-                ? draft.receiptAuthenticityScore
-                : 0,
-            authenticityReason: "Draft restored - run receipt check to verify.",
-            imageData: draft.receiptImageData || undefined,
-          });
-        }
-
-        const hasReceiptItems = receiptItems.length > 0;
-        const hasRestaurantInfo = Boolean(draft.restaurantName || draft.receiptVendor);
-        const nextStep =
-          draft.serviceType !== "FOOD"
-            ? "details"
-            : hasReceiptItems
-              ? "review"
-              : hasRestaurantInfo
-                ? "receipt"
-                : "restaurant";
-        setStep(nextStep);
-
-        if (draft.pickupAddress) {
-          const restoredPickup = await validateAddress(draft.pickupAddress);
-          if (!cancelled && restoredPickup) setPickupAddress(restoredPickup);
-        }
-        if (draft.dropoffAddress) {
-          const restoredDropoff = await validateAddress(draft.dropoffAddress);
-          if (!cancelled && restoredDropoff) setDropoffAddress(restoredDropoff);
-        }
+        if (cancelled) return;
+        setPendingDraft(draft as OrderDraft);
       } catch (error) {
         console.warn("Draft load failed:", error);
       } finally {
@@ -994,6 +1096,46 @@ export default function OrderPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (pendingDraft) {
+    const lastSavedLabel =
+      pendingDraft.updatedAt && !Number.isNaN(Date.parse(pendingDraft.updatedAt))
+        ? new Date(pendingDraft.updatedAt).toLocaleString()
+        : null;
+
+    return (
+      <OtwPageShell className="flex flex-col items-center justify-center min-h-[75vh]">
+        <div className="w-full max-w-2xl space-y-6">
+          <Card className="p-6 sm:p-8 space-y-5">
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold tracking-tight">Continue previous order?</h1>
+              <p className="text-sm text-muted-foreground">
+                We found an unfinished request draft in your account.
+                {lastSavedLabel ? ` Last saved ${lastSavedLabel}.` : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={handleContinueDraft}
+                disabled={draftChoiceLoading}
+                className="gap-2"
+              >
+                {draftChoiceLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Continue previous order
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleStartOverDraft}
+                disabled={draftChoiceLoading}
+              >
+                Start over
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </OtwPageShell>
+    );
   }
 
   const detailSummary = (
