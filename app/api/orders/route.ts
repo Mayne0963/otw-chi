@@ -67,6 +67,7 @@ const receiptItemSchema = z.object({
 });
 
 const orderSchema = z.object({
+  draftId: z.string().optional(),
   serviceType: z.nativeEnum(ServiceType),
   pickupAddress: z.string().min(5),
   dropoffAddress: z.string().min(5),
@@ -108,6 +109,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     // console.log('Order submission payload:', JSON.stringify(body, null, 2));
     const data = orderSchema.parse(body);
+    const existingDraft = data.draftId
+      ? await prisma.deliveryRequest.findFirst({
+          where: { id: data.draftId, userId: user.id, status: 'DRAFT' },
+        })
+      : null;
     const receiptSubtotalCents = data.receiptItems?.length
       ? data.receiptItems.reduce(
           (sum, item) => sum + Math.round(item.price * 100) * item.quantity,
@@ -167,6 +173,31 @@ export async function POST(req: Request) {
           cashHandling: data.cashDelivery,
           couponCode: data.couponCode,
         });
+
+        if (existingDraft && existingDraft.id !== result.id) {
+          try {
+            await prisma.$transaction([
+              prisma.receiptVerification.updateMany({
+                where: { deliveryRequestId: existingDraft.id },
+                data: { deliveryRequestId: result.id },
+              }),
+              prisma.orderConfirmation.updateMany({
+                where: { deliveryRequestId: existingDraft.id },
+                data: { deliveryRequestId: result.id },
+              }),
+              prisma.receiptAudit.updateMany({
+                where: { deliveryRequestId: existingDraft.id },
+                data: { deliveryRequestId: result.id },
+              }),
+              prisma.auditLog.updateMany({
+                where: { deliveryRequestId: existingDraft.id },
+                data: { deliveryRequestId: result.id },
+              }),
+            ]);
+          } catch (transferError) {
+            console.error('Receipt verification transfer failed:', transferError);
+          }
+        }
 
         // Cleanup draft
         try {
@@ -251,35 +282,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Payment verification is required.' }, { status: 400 });
     }
 
-    const order = await prisma.deliveryRequest.create({
-      data: {
-        userId: user.id,
-        serviceType: data.serviceType as ServiceType,
-        pickupAddress: data.pickupAddress,
-        dropoffAddress: data.dropoffAddress,
-        notes: data.notes || null,
-        restaurantName: data.restaurantName || null,
-        restaurantWebsite: data.restaurantWebsite || null,
-        receiptImageData: data.receiptImageData || null,
-        receiptVendor: data.receiptVendor || data.restaurantName || null,
-        receiptLocation: data.receiptLocation || null,
-        receiptItems: data.receiptItems?.length ? data.receiptItems : Prisma.JsonNull,
-        receiptAuthenticityScore: data.receiptAuthenticityScore ?? null,
-        receiptSubtotalCents,
-        deliveryFeeCents: data.deliveryFeeCents ?? null,
-        deliveryFeePaid: data.deliveryFeePaid ?? false,
-        deliveryCheckoutSessionId: data.paymentId ?? null,
-        couponCode: appliedCouponCode,
-        discountCents,
-        tipCents,
-        quoteBreakdown: data.cashDelivery
-          ? ({ cashDelivery: true } as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
-        receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,
-        status: 'REQUESTED',
-        waitMinutes: data.waitMinutes ?? 10,
-      },
-    });
+    const commonOrderData = {
+      serviceType: data.serviceType as ServiceType,
+      pickupAddress: data.pickupAddress,
+      dropoffAddress: data.dropoffAddress,
+      notes: data.notes || null,
+      restaurantName: data.restaurantName || null,
+      restaurantWebsite: data.restaurantWebsite || null,
+      receiptImageData: data.receiptImageData || null,
+      receiptVendor: data.receiptVendor || data.restaurantName || null,
+      receiptLocation: data.receiptLocation || null,
+      receiptItems: data.receiptItems?.length ? data.receiptItems : Prisma.JsonNull,
+      receiptAuthenticityScore: data.receiptAuthenticityScore ?? null,
+      receiptSubtotalCents,
+      deliveryFeeCents: data.deliveryFeeCents ?? null,
+      deliveryFeePaid: data.deliveryFeePaid ?? false,
+      deliveryCheckoutSessionId: data.paymentId ?? null,
+      couponCode: appliedCouponCode,
+      discountCents,
+      tipCents,
+      quoteBreakdown: data.cashDelivery
+        ? ({ cashDelivery: true } as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
+      receiptVerifiedAt: data.receiptItems?.length ? new Date() : null,
+      status: 'REQUESTED' as const,
+      waitMinutes: data.waitMinutes ?? 10,
+    };
+
+    const order = existingDraft
+      ? await prisma.deliveryRequest.update({
+          where: { id: existingDraft.id },
+          data: commonOrderData,
+        })
+      : await prisma.deliveryRequest.create({
+          data: {
+            userId: user.id,
+            ...commonOrderData,
+          },
+        });
 
     try {
       await prisma.deliveryRequest.deleteMany({

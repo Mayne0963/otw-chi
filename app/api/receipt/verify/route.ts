@@ -116,12 +116,47 @@ export async function POST(req: Request) {
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const expectedVendor = deliveryRequest.restaurantName ?? deliveryRequest.receiptVendor ?? null;
+    const expectedTotal =
+      typeof deliveryRequest.receiptSubtotalCents === 'number' && deliveryRequest.receiptSubtotalCents > 0
+        ? (deliveryRequest.receiptSubtotalCents / 100)
+        : null;
 
     const existingVerification = await prisma.receiptVerification.findUnique({
       where: { imageHash: hash },
     });
 
     if (existingVerification) {
+      if (existingVerification.deliveryRequestId === deliveryRequestId) {
+        const existingMenuItems = parseMenuItems(
+          (existingVerification.rawResponse as { line_items?: unknown } | null)?.line_items
+        );
+        const existingProofScore = existingVerification.proofScore ?? existingVerification.riskScore;
+        const existingReasonCodes = Array.isArray(existingVerification.reasonCodes)
+          ? existingVerification.reasonCodes
+          : [];
+        return NextResponse.json({
+          success: existingVerification.status === 'APPROVED',
+          status: existingVerification.status,
+          riskScore: existingVerification.riskScore,
+          reasonCodes: existingReasonCodes,
+          riskBreakdown: existingVerification.riskBreakdown,
+          proofScore: existingProofScore,
+          itemMatchScore: existingVerification.itemMatchScore,
+          imageQuality: existingVerification.imageQuality,
+          tamperScore: existingVerification.tamperScore,
+          extractedTotal: existingVerification.extractedTotal,
+          vendorName:
+            existingVerification.vendorName ??
+            existingVerification.merchantName ??
+            expectedVendor,
+          locked: existingVerification.locked,
+          message: 'This receipt is already verified for this order.',
+          menuItems: existingMenuItems,
+          data: existingVerification.rawResponse,
+        });
+      }
+
       const duplicateDecision = scoreReceiptRisk({
         isDuplicate: true,
         imageHash: hash,
@@ -138,12 +173,6 @@ export async function POST(req: Request) {
         { status: 409 }
       );
     }
-
-    const expectedVendor = deliveryRequest.restaurantName ?? deliveryRequest.receiptVendor ?? null;
-    const expectedTotal =
-      typeof deliveryRequest.receiptSubtotalCents === 'number' && deliveryRequest.receiptSubtotalCents > 0
-        ? (deliveryRequest.receiptSubtotalCents / 100)
-        : null;
 
     // Check for TEST_MODE override
     const testModeResult = getTestModeResult(file.name);
@@ -170,10 +199,31 @@ export async function POST(req: Request) {
       const itemMatchScore = null;
 
       await prisma.$transaction(async (tx) => {
-        const createdVerification = await tx.receiptVerification.create({
-          data: {
+        const createdVerification = await tx.receiptVerification.upsert({
+          where: { deliveryRequestId },
+          create: {
             userId: user.id,
             deliveryRequestId,
+            imageHash: hash,
+            expectedVendor,
+            merchantName: expectedVendor,
+            subtotalAmount: expectedTotal,
+            totalAmount: expectedTotal,
+            confidenceScore: 90,
+            riskScore: testModeDecision.riskScore,
+            status: testModeDecision.status,
+            reasonCodes: testModeDecision.reasonCodes,
+            proofScore,
+            extractedTotal,
+            vendorName,
+            itemMatchScore,
+            imageQuality,
+            tamperScore,
+            locked,
+            riskBreakdown: testModeDecision.riskBreakdown,
+            rawResponse: { testMode: true, filename: file.name } as Prisma.InputJsonValue,
+          },
+          update: {
             imageHash: hash,
             expectedVendor,
             merchantName: expectedVendor,
@@ -358,10 +408,35 @@ export async function POST(req: Request) {
       }
 
       await prisma.$transaction(async (tx) => {
-        const createdVerification = await tx.receiptVerification.create({
-          data: {
+        const createdVerification = await tx.receiptVerification.upsert({
+          where: { deliveryRequestId },
+          create: {
             userId: user.id,
             deliveryRequestId,
+            imageHash: hash,
+            expectedVendor,
+            merchantName,
+            subtotalAmount: subtotalFromResponse,
+            taxAmount,
+            tipAmount,
+            totalAmount,
+            receiptDate,
+            currency: currencyCode,
+            confidenceScore: riskDecision.normalizedConfidence,
+            riskScore: riskDecision.riskScore,
+            status: riskDecision.status,
+            reasonCodes: riskDecision.reasonCodes,
+            riskBreakdown: riskDecision.riskBreakdown as unknown as Prisma.InputJsonValue,
+            rawResponse: veryfiResponse as unknown as Prisma.InputJsonValue,
+            proofScore,
+            extractedTotal,
+            vendorName,
+            itemMatchScore,
+            imageQuality,
+            tamperScore,
+            locked,
+          },
+          update: {
             imageHash: hash,
             expectedVendor,
             merchantName,

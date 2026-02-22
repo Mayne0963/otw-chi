@@ -18,7 +18,7 @@ import OtwPageShell from "@/components/ui/otw/OtwPageShell";
 import { AddressSearch } from "@/components/ui/address-search";
 import StripePaymentForm from "@/components/stripe/StripePaymentForm";
 import { GeocodedAddress, formatAddressLines, validateAddress } from "@/lib/geocoding";
-import { ReceiptItem, parseReceiptText } from "@/lib/receipts/parse";
+import { ReceiptItem } from "@/lib/receipts/parse";
 import { computeBillableReceiptSubtotalCents } from "@/lib/order-pricing";
 
 const formatCurrency = (value: number | null | undefined) =>
@@ -43,26 +43,8 @@ const SERVICE_LABELS: Record<string, string> = {
   RIDE: "Ride",
 };
 
-const AUTHENTICITY_THRESHOLD = 0.85;
-const MAX_OCR_BYTES = 1.2 * 1024 * 1024;
-const OCR_TIMEOUT_MS = 6_000;
+const AUTHENTICITY_THRESHOLD = 0.5;
 const SESSION_DRAFT_KEY = "otw-order-draft-cache-v1";
-
-function computeAuthenticity(
-  ocrConfidence: number,
-  sizeBytes: number
-): { score: number; reason: string } {
-  const sizeScore = Math.min(1, sizeBytes / 120_000);
-  const ocrScore = Math.min(1, Math.max(0, ocrConfidence / 100));
-  const combined = Number((sizeScore * 0.4 + ocrScore * 0.6).toFixed(2));
-  const reason =
-    combined > 0.8
-      ? "Passed realism and OCR checks"
-      : combined > 0.55
-        ? "Looks like a real photo but OCR confidence is moderate"
-        : "Low OCR confidence; please double-check clarity";
-  return { score: combined, reason };
-}
 
 function calculateMiles(a: GeocodedAddress, b: GeocodedAddress): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -90,23 +72,6 @@ async function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error || new Error("Failed to read receipt image"));
     reader.readAsDataURL(file);
   });
-}
-
-async function runOcr(file: File) {
-  if (file.size > MAX_OCR_BYTES) {
-    return { text: "", confidence: 0 };
-  }
-
-  const { recognize } = await import("tesseract.js");
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    const id = setTimeout(() => {
-      clearTimeout(id);
-      reject(new Error("OCR timed out"));
-    }, OCR_TIMEOUT_MS);
-  });
-
-  const result = await Promise.race([recognize(file, "eng"), timeoutPromise]);
-  return { text: result.data.text || "", confidence: result.data.confidence || 0 };
 }
 
 export default function OrderPage() {
@@ -454,9 +419,9 @@ export default function OrderPage() {
   ]);
 
   const persistDraft = useCallback(async (payload?: Record<string, unknown> | null) => {
-    if (!isSignedIn) return;
+    if (!isSignedIn) return null;
     const draftPayload = payload ?? buildDraftPayload();
-    if (!draftPayload) return;
+    if (!draftPayload) return null;
 
     const response = await fetch("/api/orders/draft", {
       method: "POST",
@@ -468,8 +433,10 @@ export default function OrderPage() {
       const data = await response.json().catch(() => ({}));
       if (data?.draftId) {
         setDraftId(data.draftId);
+        return data.draftId as string;
       }
     }
+    return null;
   }, [buildDraftPayload, isSignedIn]);
 
   useEffect(() => {
@@ -668,46 +635,129 @@ export default function OrderPage() {
       setAnalysisError("Upload your receipt before running analysis.");
       return;
     }
+    if (!isSignedIn) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in before verifying your receipt.",
+        variant: "destructive",
+      });
+      const returnUrl = encodeURIComponent("/order");
+      router.push(`/sign-in?redirect_url=${returnUrl}`);
+      return;
+    }
 
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
       const imageData = receiptImageData || (await fileToDataUrl(receiptFile));
       setReceiptImageData(imageData);
-      let ocrText = "";
-      let ocrConfidence = 0;
-      try {
-        const ocrResult = await runOcr(receiptFile);
-        ocrText = ocrResult.text;
-        ocrConfidence = ocrResult.confidence;
-      } catch (ocrError) {
-        console.warn("Receipt OCR skipped:", ocrError);
+      const draftPayload = buildDraftPayload({ receiptImageData: imageData });
+      if (!draftPayload) {
+        throw new Error("Add pickup and dropoff details before verifying a receipt.");
       }
 
-      const parsed = parseReceiptText(ocrText);
-      const vendorName = parsed.vendorName || restaurantName.trim() || "";
-      const location = parsed.location || pickupAddress?.formattedAddress || "";
-      const items = parsed.items;
-      const authenticity = computeAuthenticity(ocrConfidence, receiptFile.size);
+      const ensuredDraftId = draftId ?? (await persistDraft(draftPayload));
+      if (!ensuredDraftId) {
+        throw new Error("Unable to create your order draft for receipt verification.");
+      }
+
+      const formData = new FormData();
+      formData.append("receipt", receiptFile);
+      formData.append("deliveryRequestId", ensuredDraftId);
+
+      const response = await fetch("/api/receipt/verify", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const result = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+        status?: string;
+        riskScore?: number;
+        proofScore?: number;
+        reasonCodes?: string[];
+        vendorName?: string | null;
+        menuItems?: Array<{ name?: unknown; quantity?: unknown; price?: unknown }>;
+        data?: {
+          vendor?: {
+            address?: unknown;
+            raw_address?: unknown;
+          };
+        };
+      };
+
+      if (response.status === 401) {
+        const returnUrl = encodeURIComponent("/order");
+        router.push(`/sign-in?redirect_url=${returnUrl}`);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || "Receipt verification failed.");
+      }
+
+      const items: ReceiptItem[] = Array.isArray(result.menuItems)
+        ? result.menuItems
+            .map((item) => ({
+              name: typeof item?.name === "string" ? item.name.trim() : "",
+              quantity:
+                typeof item?.quantity === "number" && Number.isFinite(item.quantity)
+                  ? Math.max(1, Math.round(item.quantity))
+                  : 1,
+              price:
+                typeof item?.price === "number" && Number.isFinite(item.price)
+                  ? Math.max(0, Number(item.price.toFixed(2)))
+                  : 0,
+            }))
+            .filter((item) => item.name.length > 0)
+        : [];
+
+      const vendorName =
+        (typeof result.vendorName === "string" && result.vendorName.trim()) ||
+        restaurantName.trim() ||
+        "";
+      const location =
+        (typeof result.data?.vendor?.address === "string" && result.data.vendor.address.trim()) ||
+        (typeof result.data?.vendor?.raw_address === "string" && result.data.vendor.raw_address.trim()) ||
+        pickupAddress?.formattedAddress ||
+        "";
+      const scoreSource =
+        typeof result.riskScore === "number"
+          ? result.riskScore
+          : typeof result.proofScore === "number"
+            ? result.proofScore
+            : 0;
+      const authenticityScore = Math.max(0, Math.min(1, scoreSource / 100));
+      const reasonCodes = Array.isArray(result.reasonCodes)
+        ? result.reasonCodes.filter((code): code is string => typeof code === "string" && code.length > 0)
+        : [];
+      const authenticityReason = reasonCodes.length
+        ? `Veryfi ${result.status || "PROCESSED"}: ${reasonCodes.join(", ")}`
+        : `Veryfi ${result.status || "PROCESSED"}`;
 
       setReceiptAnalysis({
         vendorName,
         location,
         items,
-        authenticityScore: authenticity.score,
-        authenticityReason: authenticity.reason,
+        authenticityScore,
+        authenticityReason,
         imageData,
       });
+      if (!restaurantName.trim() && vendorName) {
+        setRestaurantName(vendorName);
+      }
       toast({
-        title: "Receipt analyzed",
-        description: "We detected the restaurant and line items. Please review below.",
+        title: "Receipt verified",
+        description: "Veryfi parsed your receipt and scored it. Review the details below.",
       });
     } catch (error) {
       console.error(error);
-      setAnalysisError(error instanceof Error ? error.message : "Failed to analyze receipt");
+      setAnalysisError(error instanceof Error ? error.message : "Failed to verify receipt");
       toast({
-        title: "Receipt scan failed",
-        description: "Try another image or retake a clearer screenshot.",
+        title: "Receipt verification failed",
+        description: "Try another image or retake a clearer photo.",
         variant: "destructive",
       });
     } finally {
@@ -875,6 +925,7 @@ export default function OrderPage() {
     setLoading(true);
     try {
       const payload: Record<string, unknown> = {
+        draftId: draftId || undefined,
         serviceType,
         pickupAddress: pickupAddress.formattedAddress,
         dropoffAddress: dropoffAddress.formattedAddress,
@@ -1213,7 +1264,7 @@ export default function OrderPage() {
                   className="gap-2"
                 >
                   {analysisLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Run AI receipt check
+                  Run Veryfi receipt check
                 </Button>
               </div>
 
@@ -1238,7 +1289,7 @@ export default function OrderPage() {
         <div className="space-y-4 rounded-lg border border-border/70 bg-muted/40 p-4">
           {receiptAnalysis.authenticityScore < AUTHENTICITY_THRESHOLD && (
             <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-              This receipt didn’t pass our 85% authenticity check. Please upload a clearer photo or verify the details.
+              This receipt was flagged by verification. Please upload a clearer photo or verify the details.
             </div>
           )}
           <div className="flex items-start justify-between gap-3">
@@ -1256,6 +1307,9 @@ export default function OrderPage() {
               {(receiptAnalysis.authenticityScore * 100).toFixed(0)}% real
             </span>
           </div>
+          {receiptAnalysis.authenticityReason && (
+            <div className="text-xs text-muted-foreground">{receiptAnalysis.authenticityReason}</div>
+          )}
           <div>
               <div className="text-xs text-muted-foreground mb-1">Pickup location on receipt</div>
             <Input
