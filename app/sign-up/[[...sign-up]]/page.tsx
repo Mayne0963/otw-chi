@@ -1,5 +1,5 @@
 'use client';
-import { AuthView } from '@neondatabase/neon-js/auth/react';
+import { AuthView } from '@neondatabase/auth/react';
 import Link from 'next/link';
 
 export default function SignUpPage() {
@@ -23,7 +23,7 @@ export default function SignUpPage() {
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl">
           <div className="bg-otwBlack/50 rounded-xl p-6">
-             <AuthView view={"SIGN_UP"} />
+             <AuthView path="sign-up" />
           </div>
         </div>
         

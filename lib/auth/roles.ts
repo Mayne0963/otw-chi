@@ -1,25 +1,15 @@
 import { getPrisma } from '@/lib/db';
 import { Role } from '@prisma/client';
-import { getNeonSession } from '@/lib/auth/server';
+import { extractNeonAuthEmail, extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 
 export async function getCurrentUser() {
   try {
     const sessionData = await getNeonSession();
-    // console.log('[getCurrentUser] sessionData:', JSON.stringify(sessionData, null, 2));
     if (!sessionData) return null;
 
-    // Neon Auth session structure typically contains userId directly or nested in user object
-    interface NeonSession {
-      userId?: string;
-      user?: {
-        id?: string;
-        email?: string;
-        name?: string;
-      };
-    }
-    const session = sessionData as unknown as NeonSession;
-    const userId = session?.userId || session?.user?.id;
-    const email = session?.user?.email;
+    const session = sessionData as { user?: { name?: string } };
+    const userId = extractNeonAuthUserId(sessionData);
+    const email = extractNeonAuthEmail(sessionData);
     
     if (!userId) return null;
     
@@ -36,13 +26,15 @@ export async function getCurrentUser() {
 
         if (email) {
             // Check if user exists by email to handle migration or re-login
-            const existingUser = await prisma.user.findUnique({ where: { email } });
+            const existingUser = await prisma.user.findFirst({
+              where: { email: { equals: email, mode: 'insensitive' } },
+            });
 
             if (existingUser) {
               // Update the existing user with the new Neon Auth ID
               user = await prisma.user.update({
                 where: { id: existingUser.id },
-                data: { neonAuthId: userId },
+                data: { neonAuthId: userId, email },
               });
             } else {
               // Try to create user

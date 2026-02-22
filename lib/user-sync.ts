@@ -1,4 +1,4 @@
-import { getNeonSession } from '@/lib/auth/server';
+import { extractNeonAuthEmail, extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 
 export async function syncUserOnDashboard() {
@@ -15,8 +15,8 @@ export async function syncUserOnDashboard() {
   }
 
   const session = sessionData as unknown as NeonSession;
-  const userId = session?.userId || session?.user?.id;
-  const email = session?.user?.email;
+  const userId = extractNeonAuthUserId(sessionData);
+  const email = extractNeonAuthEmail(sessionData);
   
   if (!userId) return null;
   
@@ -31,12 +31,14 @@ export async function syncUserOnDashboard() {
     if (!user) {
         // Check by Email
         if (email) {
-            const existingUser = await prisma.user.findUnique({ where: { email } });
+            const existingUser = await prisma.user.findFirst({
+              where: { email: { equals: email, mode: 'insensitive' } },
+            });
             if (existingUser) {
                 // Link existing user
                 user = await prisma.user.update({
                     where: { id: existingUser.id },
-                    data: { neonAuthId: userId, name }
+                    data: { neonAuthId: userId, name, email }
                 });
             } else {
                 // Create new user

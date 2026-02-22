@@ -1,41 +1,111 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { authClient } from '@/lib/auth/client';
-// @ts-ignore
-// import { UserRole } from "@prisma/client";
-
-// Define locally if import fails or is not generated yet
 export type UserRole = 'CUSTOMER' | 'DRIVER' | 'ADMIN' | 'FRANCHISE';
 
 export interface UseCurrentUserReturn {
-  isLoaded: boolean;
+  isLoading: boolean;
   isSignedIn: boolean;
   user: {
     id: string;
     email: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    imageUrl?: string;
-    role?: UserRole;
-    publicMetadata: {
-      role?: UserRole;
-    };
-  } | null | undefined;
+    name?: string | null;
+    role: UserRole;
+  } | null;
 }
 
-export function useCurrentUser() {
+type ApiCurrentUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  role?: UserRole;
+};
+
+function asRole(value: unknown): UserRole | null {
+  if (value === 'CUSTOMER' || value === 'DRIVER' || value === 'ADMIN' || value === 'FRANCHISE') {
+    return value;
+  }
+  return null;
+}
+
+export function useCurrentUser(): UseCurrentUserReturn {
   const session = authClient.useSession();
-  
-  const user = session.data?.user ? {
-      id: session.data.user.id,
-      email: session.data.user.email || '',
-      name: session.data.user.name,
-      role: 'CUSTOMER' as UserRole, // Default until fetched
-  } : null;
+  const sessionUser = session.data?.user ?? null;
+  const [dbUser, setDbUser] = useState<ApiCurrentUser | null>(null);
+  const [dbLoading, setDbLoading] = useState(false);
+
+  useEffect(() => {
+    if (!sessionUser?.id) {
+      setDbUser(null);
+      setDbLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setDbLoading(true);
+
+    fetch('/api/auth/me', {
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`auth/me failed (${res.status})`);
+        }
+        const payload = (await res.json().catch(() => ({}))) as { user?: unknown };
+        const user = (payload.user && typeof payload.user === 'object'
+          ? payload.user
+          : null) as (Record<string, unknown> | null);
+        if (!user || typeof user.id !== 'string' || typeof user.email !== 'string') return null;
+        return {
+          id: user.id,
+          email: user.email,
+          name: typeof user.name === 'string' ? user.name : null,
+          role: asRole(user.role) ?? undefined,
+        } satisfies ApiCurrentUser;
+      })
+      .then((user) => {
+        if (cancelled) return;
+        setDbUser(user);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.warn('[useCurrentUser] failed to load /api/auth/me:', error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDbLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionUser?.id]);
+
+  const user = useMemo(() => {
+    if (!sessionUser) return null;
+    const sessionRecord = sessionUser as unknown as Record<string, unknown>;
+    const sessionPublicMetadata =
+      sessionRecord.publicMetadata && typeof sessionRecord.publicMetadata === 'object'
+        ? (sessionRecord.publicMetadata as Record<string, unknown>)
+        : null;
+
+    const sessionRole =
+      asRole(sessionRecord.role) ??
+      asRole(sessionPublicMetadata?.role);
+
+    return {
+      id: dbUser?.id ?? sessionUser.id,
+      email: dbUser?.email ?? sessionUser.email ?? '',
+      name: dbUser?.name ?? sessionUser.name ?? null,
+      role: dbUser?.role ?? sessionRole ?? 'CUSTOMER',
+    };
+  }, [dbUser, sessionUser]);
 
   return {
     user,
-    isLoading: session.isPending,
-    isSignedIn: !!session.data?.user,
+    isLoading: session.isPending || (Boolean(sessionUser) && dbLoading),
+    isSignedIn: Boolean(sessionUser),
   };
 }

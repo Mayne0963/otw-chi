@@ -1,19 +1,21 @@
 import { getPrisma } from '@/lib/db';
-import { getNeonSession } from '@/lib/auth/server';
+import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 
 export async function requireAuth() {
   const session = await getNeonSession();
-  if (!session?.user?.id) throw new Error('Unauthorized');
-  return { id: session.user.id };
+  const neonAuthUserId = extractNeonAuthUserId(session);
+  if (!neonAuthUserId) throw new Error('Unauthorized');
+  return { id: neonAuthUserId };
 }
 
 export async function getUserRole(): Promise<'CUSTOMER' | 'DRIVER' | 'ADMIN' | 'FRANCHISE'> {
   const session = await getNeonSession();
-  if (!session?.user?.id) return 'CUSTOMER';
+  const neonAuthUserId = extractNeonAuthUserId(session);
+  if (!neonAuthUserId) return 'CUSTOMER';
 
   const prisma = getPrisma();
   try {
-    const row = await prisma.user.findFirst({ where: { neonAuthId: session.user.id } });
+    const row = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
     if (row && (row.role === 'DRIVER' || row.role === 'ADMIN' || row.role === 'FRANCHISE' || row.role === 'CUSTOMER')) {
       return row.role;
     }

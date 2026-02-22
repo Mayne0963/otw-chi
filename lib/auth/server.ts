@@ -21,10 +21,65 @@ export const auth = createNeonAuth({
   },
 });
 
+type AnyRecord = Record<string, unknown>;
+
+const asNonEmptyString = (value: unknown): string | null => {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+};
+
+export function extractNeonAuthUserId(sessionData: unknown): string | null {
+  if (!sessionData || typeof sessionData !== 'object') return null;
+  const data = sessionData as AnyRecord;
+  const user = (data.user && typeof data.user === 'object' ? data.user : {}) as AnyRecord;
+  const metadata = (data.metadata && typeof data.metadata === 'object' ? data.metadata : {}) as AnyRecord;
+  const claims = (data.sessionClaims && typeof data.sessionClaims === 'object' ? data.sessionClaims : {}) as AnyRecord;
+
+  return (
+    asNonEmptyString(data.userId) ??
+    asNonEmptyString(user.id) ??
+    asNonEmptyString(metadata.neonAuthUserId) ??
+    asNonEmptyString(claims.sub) ??
+    null
+  );
+}
+
+export function extractNeonAuthEmail(sessionData: unknown): string | null {
+  if (!sessionData || typeof sessionData !== 'object') return null;
+  const data = sessionData as AnyRecord;
+  const user = (data.user && typeof data.user === 'object' ? data.user : {}) as AnyRecord;
+  const claims = (data.sessionClaims && typeof data.sessionClaims === 'object' ? data.sessionClaims : {}) as AnyRecord;
+
+  return (
+    asNonEmptyString(user.email) ??
+    asNonEmptyString(data.email) ??
+    asNonEmptyString(claims.email) ??
+    null
+  );
+}
+
+function normalizeSessionData(sessionData: unknown): unknown {
+  if (!sessionData || typeof sessionData !== 'object') return sessionData;
+  const data = sessionData as AnyRecord;
+  const normalizedUserId = extractNeonAuthUserId(data);
+  const normalizedEmail = extractNeonAuthEmail(data);
+  const user = (data.user && typeof data.user === 'object' ? data.user : {}) as AnyRecord;
+
+  return {
+    ...data,
+    ...(normalizedUserId ? { userId: normalizedUserId } : {}),
+    user: {
+      ...user,
+      ...(normalizedUserId ? { id: asNonEmptyString(user.id) ?? normalizedUserId } : {}),
+      ...(normalizedEmail ? { email: asNonEmptyString(user.email) ?? normalizedEmail } : {}),
+    },
+  };
+}
+
 export async function getNeonSession() {
   try {
     const session = await auth.getSession();
-    return session?.data || null;
+    if (!session?.data) return null;
+    return normalizeSessionData(session.data);
   } catch (error) {
     console.error('Neon Auth Error:', error);
     return null;
