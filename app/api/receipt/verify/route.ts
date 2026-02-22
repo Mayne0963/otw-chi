@@ -5,8 +5,7 @@ import type { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import Client from '@veryfi/veryfi-sdk';
 import { buildItemsSnapshot, computeTotalSnapshotDecimal } from '@/lib/disputes/orderConfirmation';
-import { evaluateDeliveryRequestLock, applyDeliveryRequestLock } from '@/lib/refunds/lock';
-import { computeProofScore } from '@/lib/receipts/proofScore';
+import { applyDeliveryRequestLock } from '@/lib/refunds/lock';
 import { scoreReceiptRisk } from '@/lib/receipts/riskScore';
 import { getTestModeResult } from '@/lib/receipts/testMode';
 
@@ -45,13 +44,6 @@ const extractDate = (value: unknown): Date | null => {
   if (typeof raw !== 'string') return null;
   const parsed = new Date(raw);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-const normalizeConfidence = (raw: number | null | undefined): number | null => {
-  if (raw == null || !Number.isFinite(raw)) return null;
-  if (raw >= 0 && raw <= 1) return raw * 100;
-  if (raw >= 0 && raw <= 100) return raw;
-  return null;
 };
 
 const parseMenuItems = (lineItems: unknown): ParsedMenuItem[] => {
@@ -156,16 +148,26 @@ export async function POST(req: Request) {
     // Check for TEST_MODE override
     const testModeResult = getTestModeResult(file.name);
     if (testModeResult) {
-      const proofScoreResult = {
-        proofScore: testModeResult.proofScore,
-        itemMatchScore: 85, // Default good match for test mode
-        imageQuality: 90,   // Default good quality for test mode
-        tamperScore: 95,    // Default no tampering for test mode
-        extractedTotal: expectedTotal,
-        vendorName: expectedVendor,
+      const testModeDecision = {
+        riskScore: testModeResult.proofScore,
         status: testModeResult.status,
-        locked: testModeResult.status === 'APPROVED' || testModeResult.status === 'FLAGGED',
+        reasonCodes: ['TEST_MODE'],
+        riskBreakdown: {
+          base: 100,
+          penalties: [{ code: 'TEST_MODE', delta: testModeResult.proofScore - 100 }],
+          fuzzyScore: null,
+          diff: null,
+          expectedTotal: expectedTotal?.toString() || null,
+          extractedTotal: expectedTotal?.toString() || null,
+        } as Prisma.InputJsonValue,
       };
+      const locked = testModeDecision.status === 'APPROVED' || testModeDecision.status === 'FLAGGED';
+      const imageQuality = 90;
+      const tamperScore = 95;
+      const extractedTotal = expectedTotal;
+      const vendorName = expectedVendor;
+      const proofScore = testModeDecision.riskScore;
+      const itemMatchScore = null;
 
       await prisma.$transaction(async (tx) => {
         const createdVerification = await tx.receiptVerification.create({
@@ -177,25 +179,18 @@ export async function POST(req: Request) {
             merchantName: expectedVendor,
             subtotalAmount: expectedTotal,
             totalAmount: expectedTotal,
-            confidenceScore: 0.9,
-            riskScore: testModeResult.proofScore,
-            status: testModeResult.status,
-            reasonCodes: ['TEST_MODE'],
-            proofScore: proofScoreResult.proofScore,
-            extractedTotal: proofScoreResult.extractedTotal,
-            vendorName: proofScoreResult.vendorName,
-            itemMatchScore: proofScoreResult.itemMatchScore,
-            imageQuality: proofScoreResult.imageQuality,
-            tamperScore: proofScoreResult.tamperScore,
-            locked: proofScoreResult.locked,
-            riskBreakdown: {
-              base: 100,
-              penalties: [{ code: 'TEST_MODE', delta: testModeResult.proofScore - 100 }],
-              fuzzyScore: null,
-              diff: null,
-              expectedTotal: expectedTotal?.toString() || null,
-              extractedTotal: proofScoreResult.extractedTotal?.toString() || null,
-            } as Prisma.InputJsonValue,
+            confidenceScore: 90,
+            riskScore: testModeDecision.riskScore,
+            status: testModeDecision.status,
+            reasonCodes: testModeDecision.reasonCodes,
+            proofScore,
+            extractedTotal,
+            vendorName,
+            itemMatchScore,
+            imageQuality,
+            tamperScore,
+            locked,
+            riskBreakdown: testModeDecision.riskBreakdown,
             rawResponse: { testMode: true, filename: file.name } as Prisma.InputJsonValue,
           },
         });
@@ -205,11 +200,11 @@ export async function POST(req: Request) {
           data: {
             receiptImageData: `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`,
             receiptVerifiedAt: new Date(),
-            receiptAuthenticityScore: testModeResult.proofScore / 100,
+            receiptAuthenticityScore: testModeDecision.riskScore / 100,
           },
         });
 
-        if (proofScoreResult.locked) {
+        if (locked) {
           const itemsSnapshot = buildItemsSnapshot([]);
           const totalSnapshot = computeTotalSnapshotDecimal({
             serviceType: deliveryRequest.serviceType,
@@ -240,15 +235,18 @@ export async function POST(req: Request) {
       });
 
       return NextResponse.json({
-        success: testModeResult.status === 'APPROVED',
-        status: testModeResult.status,
-        proofScore: proofScoreResult.proofScore,
-        itemMatchScore: proofScoreResult.itemMatchScore,
-        imageQuality: proofScoreResult.imageQuality,
-        tamperScore: proofScoreResult.tamperScore,
-        extractedTotal: proofScoreResult.extractedTotal,
-        vendorName: proofScoreResult.vendorName,
-        locked: proofScoreResult.locked,
+        success: testModeDecision.status === 'APPROVED',
+        status: testModeDecision.status,
+        riskScore: testModeDecision.riskScore,
+        reasonCodes: testModeDecision.reasonCodes,
+        riskBreakdown: testModeDecision.riskBreakdown,
+        proofScore,
+        itemMatchScore,
+        imageQuality,
+        tamperScore,
+        extractedTotal,
+        vendorName,
+        locked,
         message: testModeResult.message,
         menuItems: [],
         data: { testMode: true },
@@ -313,21 +311,34 @@ export async function POST(req: Request) {
             : null;
       const receiptImageData = `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`;
 
-      const proofScoreResult = computeProofScore({
+      const riskDecision = scoreReceiptRisk({
         deliveryRequestId,
-        merchantName,
-        totalAmount,
-        confidenceScore,
+        currentUserId: user.id,
         expectedVendor,
         expectedTotal,
-        menuItems,
-        expectedItems: deliveryRequest.receiptItems,
+        merchantName,
+        subtotal: subtotalFromResponse,
+        tax: taxAmount,
+        tip: tipAmount,
+        total: totalAmount,
+        receiptDate,
+        currency: currencyCode,
+        confidenceScore,
+        imageHash: hash,
       });
+      const locked = riskDecision.status === 'APPROVED' || riskDecision.status === 'FLAGGED';
+      const proofScore = riskDecision.riskScore;
+      const itemMatchScore = null;
+      const imageQuality =
+        riskDecision.normalizedConfidence == null ? null : Math.round(riskDecision.normalizedConfidence);
+      const tamperScore = null;
+      const extractedTotal = totalAmount ?? null;
+      const vendorName = merchantName ?? null;
 
       const requestUpdateData: Prisma.DeliveryRequestUpdateInput = {
         receiptImageData,
         receiptVerifiedAt: new Date(),
-        receiptAuthenticityScore: proofScoreResult.proofScore / 100,
+        receiptAuthenticityScore: riskDecision.riskScore / 100,
       };
 
       if (merchantName) {
@@ -360,19 +371,19 @@ export async function POST(req: Request) {
             totalAmount,
             receiptDate,
             currency: currencyCode,
-            confidenceScore: normalizeConfidence(confidenceScore),
-            riskScore: proofScoreResult.proofScore,
-            status: proofScoreResult.status,
-            reasonCodes: [], // Will be replaced by a more robust system
-            riskBreakdown: {} as Prisma.InputJsonValue,
+            confidenceScore: riskDecision.normalizedConfidence,
+            riskScore: riskDecision.riskScore,
+            status: riskDecision.status,
+            reasonCodes: riskDecision.reasonCodes,
+            riskBreakdown: riskDecision.riskBreakdown as unknown as Prisma.InputJsonValue,
             rawResponse: veryfiResponse as unknown as Prisma.InputJsonValue,
-            proofScore: proofScoreResult.proofScore,
-            extractedTotal: proofScoreResult.extractedTotal,
-            vendorName: proofScoreResult.vendorName,
-            itemMatchScore: proofScoreResult.itemMatchScore,
-            imageQuality: proofScoreResult.imageQuality,
-            tamperScore: proofScoreResult.tamperScore,
-            locked: proofScoreResult.locked,
+            proofScore,
+            extractedTotal,
+            vendorName,
+            itemMatchScore,
+            imageQuality,
+            tamperScore,
+            locked,
           },
         });
 
@@ -381,7 +392,7 @@ export async function POST(req: Request) {
           data: requestUpdateData,
         });
 
-        if (proofScoreResult.locked) {
+        if (locked) {
           const itemsSnapshot = buildItemsSnapshot(
             menuItems.length > 0 ? menuItems : deliveryRequest.receiptItems
           );
@@ -418,32 +429,46 @@ export async function POST(req: Request) {
       });
 
       // After successful receipt verification, evaluate and apply lock if needed
-      if (proofScoreResult.locked) {
+      if (locked) {
         await applyDeliveryRequestLock(deliveryRequestId, user.id);
       }
 
       return NextResponse.json({
-        success: proofScoreResult.status === 'APPROVED',
-        status: proofScoreResult.status,
-        proofScore: proofScoreResult.proofScore,
-        itemMatchScore: proofScoreResult.itemMatchScore,
-        imageQuality: proofScoreResult.imageQuality,
-        tamperScore: proofScoreResult.tamperScore,
-        extractedTotal: proofScoreResult.extractedTotal,
-        vendorName: proofScoreResult.vendorName,
-        locked: proofScoreResult.locked,
-        message: `Receipt processed (${proofScoreResult.status}). Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
+        success: riskDecision.status === 'APPROVED',
+        status: riskDecision.status,
+        riskScore: riskDecision.riskScore,
+        reasonCodes: riskDecision.reasonCodes,
+        riskBreakdown: riskDecision.riskBreakdown,
+        proofScore,
+        itemMatchScore,
+        imageQuality,
+        tamperScore,
+        extractedTotal,
+        vendorName,
+        locked,
+        message: `Receipt processed (${riskDecision.status}). Retrieved ${menuItems.length} menu item${menuItems.length === 1 ? '' : 's'}.`,
         menuItems,
         data: veryfiResponse,
       });
     } catch (error) {
       console.error('Veryfi API error:', error);
+      const fallbackDecision = scoreReceiptRisk({
+        deliveryRequestId,
+        currentUserId: user.id,
+        expectedVendor,
+        expectedTotal,
+        veryfiError: true,
+        imageHash: hash,
+      });
       return NextResponse.json(
         {
           success: false,
           message: 'Error processing receipt with Veryfi.',
-          status: 'REJECTED',
-          proofScore: 0,
+          status: fallbackDecision.status,
+          riskScore: fallbackDecision.riskScore,
+          reasonCodes: fallbackDecision.reasonCodes,
+          riskBreakdown: fallbackDecision.riskBreakdown,
+          proofScore: fallbackDecision.riskScore,
         },
         { status: 502 }
       );
