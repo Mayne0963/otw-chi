@@ -199,13 +199,41 @@ export async function DELETE() {
       return new NextResponse('User not found', { status: 404 });
     }
 
-    await prisma.deliveryRequest.deleteMany({
+    const drafts = await prisma.deliveryRequest.findMany({
       where: { userId: user.id, status: DRAFT_STATUS },
+      select: { id: true },
     });
+    const draftIds = drafts.map((draft) => draft.id);
+
+    if (draftIds.length > 0) {
+      await prisma.$transaction(async (tx) => {
+        // Remove dependent receipt/dispute records first to satisfy FK constraints.
+        await tx.receiptAudit.deleteMany({
+          where: { deliveryRequestId: { in: draftIds } },
+        });
+
+        await tx.orderConfirmation.deleteMany({
+          where: { deliveryRequestId: { in: draftIds } },
+        });
+
+        await tx.receiptVerification.deleteMany({
+          where: { deliveryRequestId: { in: draftIds } },
+        });
+
+        await tx.auditLog.deleteMany({
+          where: { deliveryRequestId: { in: draftIds } },
+        });
+
+        await tx.deliveryRequest.deleteMany({
+          where: { id: { in: draftIds }, userId: user.id, status: DRAFT_STATUS },
+        });
+      });
+    }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Draft delete error:', error);
-    return new NextResponse('Invalid request', { status: 400 });
+    const message = error instanceof Error ? error.message : 'Invalid request';
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
