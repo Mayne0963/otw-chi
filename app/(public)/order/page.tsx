@@ -344,55 +344,72 @@ export default function OrderPage() {
     }
   }
 
-  async function handleStartOverDraft() {
-    setDraftChoiceLoading(true);
+  function resetDraftFormState() {
+    setPendingDraft(null);
+    setDraftId(null);
+    setStep("details");
+    setPickupAddress(null);
+    setDropoffAddress(null);
+    setServiceType("FOOD");
+    setWaitMinutes(10);
+    setNotes("");
+    setRestaurantName("");
+    setRestaurantWebsite("");
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptImageData(null);
+    setAnalysisError(null);
+    setReceiptAnalysis(null);
+    setDeliveryFeeCents(0);
+    setMilesQuote(null);
+    setPaymentMethod("STRIPE");
+    setPaymentMethodTouched(false);
+    setDurationMinutes(0);
+    setDeliveryEstimateError(null);
+    setFeePaid(false);
+    setDeliveryCheckoutSessionId(null);
+    setTipCents(0);
+    setCouponCode("");
+    setDiscountCents(0);
+    if (receiptObjectUrl.current) {
+      URL.revokeObjectURL(receiptObjectUrl.current);
+      receiptObjectUrl.current = null;
+    }
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
+    }
+  }
+
+  async function deleteDraftWithTimeout(timeoutMs = 7000): Promise<boolean> {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch("/api/orders/draft", {
         method: "DELETE",
         credentials: "include",
+        signal: controller.signal,
+        cache: "no-store",
       });
-      if (!response.ok) {
+      return response.ok;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
+  async function handleStartOverDraft() {
+    setDraftChoiceLoading(true);
+    // Reset locally first so mobile users are never blocked by a slow/failed DELETE request.
+    resetDraftFormState();
+    try {
+      const deleted = await deleteDraftWithTimeout();
+      if (!deleted) {
         throw new Error("Failed to remove previous draft.");
-      }
-      setPendingDraft(null);
-      setDraftId(null);
-      setStep("details");
-      setPickupAddress(null);
-      setDropoffAddress(null);
-      setServiceType("FOOD");
-      setWaitMinutes(10);
-      setNotes("");
-      setRestaurantName("");
-      setRestaurantWebsite("");
-      setReceiptFile(null);
-      setReceiptPreview(null);
-      setReceiptImageData(null);
-      setAnalysisError(null);
-      setReceiptAnalysis(null);
-      setDeliveryFeeCents(0);
-      setMilesQuote(null);
-      setPaymentMethod("STRIPE");
-      setPaymentMethodTouched(false);
-      setDurationMinutes(0);
-      setDeliveryEstimateError(null);
-      setFeePaid(false);
-      setDeliveryCheckoutSessionId(null);
-      setTipCents(0);
-      setCouponCode("");
-      setDiscountCents(0);
-      if (receiptObjectUrl.current) {
-        URL.revokeObjectURL(receiptObjectUrl.current);
-        receiptObjectUrl.current = null;
-      }
-      if (typeof window !== "undefined") {
-        window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
       }
     } catch (error) {
       console.error("Draft delete failed:", error);
       toast({
-        title: "Unable to clear draft",
-        description: "Please try again.",
-        variant: "destructive",
+        title: "Started fresh",
+        description: "We reset your form, but could not clear the saved server draft right now.",
       });
     } finally {
       setDraftChoiceLoading(false);
@@ -610,6 +627,7 @@ export default function OrderPage() {
     restaurantWebsite,
     serviceType,
     tipCents,
+    waitMinutes,
   ]);
 
   const persistDraft = useCallback(async (payload?: Record<string, unknown> | null) => {
@@ -1256,6 +1274,7 @@ export default function OrderPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button
+                type="button"
                 onClick={handleContinueDraft}
                 disabled={draftChoiceLoading}
                 className="gap-2"
@@ -1264,6 +1283,7 @@ export default function OrderPage() {
                 Continue previous order
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 onClick={handleStartOverDraft}
                 disabled={draftChoiceLoading}
