@@ -6,10 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { ensureWeeklyActiveMemberGrant } from '@/app/actions/nip';
+import { notFound } from 'next/navigation';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NipWalletPage() {
+  if (!isFeatureEnabled('nip')) {
+    notFound();
+  }
+
   const prisma = getPrisma();
   const user = await getCurrentUser();
   if (!user) {

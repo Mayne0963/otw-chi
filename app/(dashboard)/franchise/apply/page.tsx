@@ -4,13 +4,18 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
 export default async function FranchiseApplyPage() {
+  if (!isFeatureEnabled('franchise')) {
+    notFound();
+  }
+
   const user = await getCurrentUser();
   if (!user) {
     redirect('/sign-in');
@@ -68,6 +73,10 @@ export default async function FranchiseApplyPage() {
 
 export async function submitFranchiseApplication(formData: FormData) {
   'use server';
+  if (!isFeatureEnabled('franchise')) {
+    return;
+  }
+
   const { getNeonSession } = await import('@/lib/auth/server');
   const session = await getNeonSession();
   // @ts-ignore

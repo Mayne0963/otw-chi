@@ -3,6 +3,7 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { Metadata } from 'next';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 type Props = {
   params: Promise<{ city: string }>;
@@ -91,9 +92,11 @@ export default async function CityCoveragePage({ params }: Props) {
             <OtwButton as="a" href="/driver/apply" variant="outline">
               Become a Driver
             </OtwButton>
-            <OtwButton as="a" href="/franchise/apply" variant="ghost">
-              Franchise Inquiry
-            </OtwButton>
+            {isFeatureEnabled('franchise') ? (
+              <OtwButton as="a" href="/franchise/apply" variant="ghost">
+                Franchise Inquiry
+              </OtwButton>
+            ) : null}
           </div>
         </section>
       </div>

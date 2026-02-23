@@ -1,5 +1,6 @@
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { isServerFeatureEnabled } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,10 @@ const escapeCsv = (value: unknown) => {
 };
 
 export async function GET() {
+  if (!isServerFeatureEnabled('franchise')) {
+    return new Response('Not Found', { status: 404 });
+  }
+
   try {
     await requireRole(['ADMIN']);
   } catch (_error) {

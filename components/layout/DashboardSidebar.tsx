@@ -4,10 +4,11 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { isFeatureEnabled } from "@/lib/featureFlags"
 import { 
   LayoutDashboard, 
   Package, 
-  Wallet, 
+  Wallet,
   CreditCard, 
   LifeBuoy, 
   Settings,
@@ -31,13 +32,15 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   const commonRoutes = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "My Requests", href: "/requests", icon: Package },
-    { label: "Wallet", href: "/wallet/nip", icon: Wallet },
     { label: "Membership", href: "/membership/manage", icon: CreditCard },
     { label: "Service Miles", href: "/service-miles", icon: CreditCard },
     { label: "Design Lab", href: "/design-lab", icon: LayoutDashboard },
     { label: "Support", href: "/support", icon: LifeBuoy },
     { label: "Settings", href: "/settings", icon: Settings },
   ]
+  if (isFeatureEnabled('nip')) {
+    commonRoutes.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
+  }
 
   const driverRoutes = [
     { label: "Driver Dashboard", href: "/driver/dashboard", icon: Truck },
@@ -54,12 +57,19 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Requests", href: "/admin/requests", icon: Package },
     { label: "Drivers", href: "/admin/drivers", icon: Truck },
     { label: "Customers", href: "/admin/customers", icon: LayoutDashboard },
-    { label: "Ledger", href: "/admin/nip-ledger", icon: Wallet },
-    { label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 },
     { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
     { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
     { label: "Seed Database", href: "/admin/seed", icon: Settings },
   ]
+  if (isFeatureEnabled('nip')) {
+    adminRoutes.push({ label: "Ledger", href: "/admin/nip-ledger", icon: Wallet })
+  }
+  if (isFeatureEnabled('franchise')) {
+    adminRoutes.push({ label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 })
+  }
+  if (isFeatureEnabled('adminZones')) {
+    adminRoutes.push({ label: "Cities & Zones", href: "/admin/cities-zones", icon: MapPin })
+  }
 
   let routes = commonRoutes
   if (role === 'DRIVER') {

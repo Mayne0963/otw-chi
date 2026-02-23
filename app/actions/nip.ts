@@ -3,8 +3,14 @@
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription } from '@/lib/membership';
+import { isServerFeatureEnabled } from '@/lib/featureFlags';
+
+function isNipFeatureEnabled() {
+  return isServerFeatureEnabled('nip');
+}
 
 export async function getNipBalance(userId?: string) {
+  if (!isNipFeatureEnabled()) return 0;
   const prisma = getPrisma();
   const uid = userId ?? (await getCurrentUser())?.id;
   if (!uid) return 0;
@@ -13,6 +19,7 @@ export async function getNipBalance(userId?: string) {
 }
 
 export async function getNipTransactions(userId?: string) {
+  if (!isNipFeatureEnabled()) return [];
   const prisma = getPrisma();
   const uid = userId ?? (await getCurrentUser())?.id;
   if (!uid) return [];
@@ -24,6 +31,7 @@ export async function getNipTransactions(userId?: string) {
 }
 
 export async function awardFirstCompletedOrder(customerId: string, requestId: string) {
+  if (!isNipFeatureEnabled()) return;
   const prisma = getPrisma();
   const count = await prisma.deliveryRequest.count({
     where: { userId: customerId, status: 'DELIVERED' },
@@ -36,6 +44,7 @@ export async function awardFirstCompletedOrder(customerId: string, requestId: st
 }
 
 export async function ensureWeeklyActiveMemberGrant() {
+  if (!isNipFeatureEnabled()) return;
   const user = await getCurrentUser();
   if (!user) return;
   const prisma = getPrisma();
@@ -60,6 +69,7 @@ export async function ensureWeeklyActiveMemberGrant() {
 }
 
 export async function awardOnTimePayment(userId: string, refId?: string) {
+  if (!isNipFeatureEnabled()) return;
   const prisma = getPrisma();
   await prisma.nipTransaction.create({
     data: { userId, amount: 10, reason: 'ON_TIME_PAYMENT', refId },
@@ -67,6 +77,7 @@ export async function awardOnTimePayment(userId: string, refId?: string) {
 }
 
 export async function awardReferral(userId: string, refId?: string) {
+  if (!isNipFeatureEnabled()) return;
   const prisma = getPrisma();
   await prisma.nipTransaction.create({
     data: { userId, amount: 100, reason: 'REFERRAL_BONUS', refId },
@@ -74,6 +85,7 @@ export async function awardReferral(userId: string, refId?: string) {
 }
 
 export async function spendNip(userId: string, amount: number, reason: 'ORDER_DISCOUNT' | 'PRIORITY_DISPATCH' | 'FEE_WAIVER', refId?: string) {
+  if (!isNipFeatureEnabled()) return;
   const prisma = getPrisma();
   if (amount <= 0) return;
   await prisma.nipTransaction.create({

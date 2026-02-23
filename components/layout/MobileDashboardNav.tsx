@@ -6,13 +6,15 @@ import { cn } from "@/lib/utils"
 import { 
   LayoutDashboard, 
   Package, 
-  Wallet, 
+  CreditCard,
+  Wallet,
   Truck, 
   Menu as MenuIcon 
 } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar"
 import { useState } from "react"
+import { isFeatureEnabled } from "@/lib/featureFlags"
 
 interface MobileDashboardNavProps {
   role: string
@@ -25,8 +27,11 @@ export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
   const commonTabs = [
     { label: "Home", href: "/dashboard", icon: LayoutDashboard },
     { label: "Requests", href: "/requests", icon: Package },
-    { label: "Wallet", href: "/wallet/nip", icon: Wallet },
+    { label: "Miles", href: "/service-miles", icon: CreditCard },
   ]
+  if (isFeatureEnabled('nip')) {
+    commonTabs.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
+  }
 
   let tabs = [...commonTabs]
 

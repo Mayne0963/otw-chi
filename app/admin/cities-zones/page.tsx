@@ -6,6 +6,8 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 // Loading component for better UX
 function AdminCitiesZonesLoading() {
@@ -212,6 +214,10 @@ function CitiesZonesErrorState({ error }: { error: unknown }) {
 }
 
 export default async function AdminCitiesZonesPage() {
+  if (!isFeatureEnabled('adminZones')) {
+    notFound();
+  }
+
   await requireRole(['ADMIN']);
   
   return (

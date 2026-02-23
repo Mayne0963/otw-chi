@@ -6,6 +6,8 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
+import { notFound } from 'next/navigation';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +23,10 @@ function statusStyles(status: string) {
 }
 
 export default async function AdminFranchiseApplicationsPage() {
+  if (!isFeatureEnabled('franchise')) {
+    notFound();
+  }
+
   await requireRole(['ADMIN']);
 
   const prisma = getPrisma();

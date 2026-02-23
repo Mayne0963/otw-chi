@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth/server';
+import { isServerFeatureEnabled } from '@/lib/featureFlags';
 
 const isPublicRoute = (pathname: string) => {
   const publicPaths = [
@@ -89,8 +90,40 @@ const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
   } satisfies Record<string, string>;
 };
 
+function isBlockedFeaturePath(pathname: string): boolean {
+  if (
+    (pathname.startsWith('/franchise') || pathname.startsWith('/admin/franchise')) &&
+    !isServerFeatureEnabled('franchise')
+  ) {
+    return true;
+  }
+  if (
+    (pathname.startsWith('/wallet/nip') || pathname.startsWith('/admin/nip-ledger')) &&
+    !isServerFeatureEnabled('nip')
+  ) {
+    return true;
+  }
+  if (pathname.startsWith('/admin/cities-zones') && !isServerFeatureEnabled('adminZones')) {
+    return true;
+  }
+  if (
+    (pathname.startsWith('/pos') || pathname.startsWith('/admin/pos') || pathname.startsWith('/merchant')) &&
+    !isServerFeatureEnabled('pos')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (isBlockedFeaturePath(pathname)) {
+    const notFoundUrl = req.nextUrl.clone();
+    notFoundUrl.pathname = '/404';
+    notFoundUrl.search = '';
+    return NextResponse.rewrite(notFoundUrl);
+  }
+
   const isApiRoute = pathname.startsWith('/api');
   const isServerActionRequest =
     req.method === 'POST' && req.headers.has('next-action');

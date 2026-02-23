@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { getPrisma } from "@/lib/db";
+import { isServerFeatureEnabled } from "@/lib/featureFlags";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  if (!isServerFeatureEnabled('adminZones')) {
+    return new Response('Not Found', { status: 404 });
+  }
+
   const prisma = getPrisma();
 
   const cities = await prisma.city.findMany({
@@ -37,4 +42,3 @@ export async function GET() {
     }
   );
 }
-

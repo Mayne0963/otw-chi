@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { isFeatureEnabled } from "@/lib/featureFlags"
 
 export function MarketingFooter() {
   return (
@@ -23,7 +24,9 @@ export function MarketingFooter() {
           <ul className="space-y-2 text-sm">
             <li><Link href="/about" className="hover:text-secondary transition-colors duration-300">About</Link></li>
             <li><Link href="/driver/apply" className="hover:text-secondary transition-colors duration-300">Drive with Us</Link></li>
-            <li><Link href="/franchise/apply" className="hover:text-secondary transition-colors duration-300">Franchise</Link></li>
+            {isFeatureEnabled('franchise') ? (
+              <li><Link href="/franchise/apply" className="hover:text-secondary transition-colors duration-300">Franchise</Link></li>
+            ) : null}
           </ul>
         </div>
         <div className="space-y-3">

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet"
 
 import { SignOutButton } from "@/components/auth/SignOutButton"
+import { isFeatureEnabled } from "@/lib/featureFlags"
 
 function NavLinks() {
   return (
@@ -30,12 +31,14 @@ function NavLinks() {
       >
         Apply Today
       </Link>
-      <Link 
-        href="/franchise/apply" 
-        className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
-      >
-        Franchise
-      </Link>
+      {isFeatureEnabled('franchise') ? (
+        <Link 
+          href="/franchise/apply" 
+          className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
+        >
+          Franchise
+        </Link>
+      ) : null}
       <Link 
         href="/request" 
         className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
@@ -119,11 +122,13 @@ export function MarketingNav() {
                         Drive
                       </Link>
                     </SheetClose>
-                    <SheetClose asChild>
-                      <Link href="/franchise/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
-                        Franchise
-                      </Link>
-                    </SheetClose>
+                    {isFeatureEnabled('franchise') ? (
+                      <SheetClose asChild>
+                        <Link href="/franchise/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
+                          Franchise
+                        </Link>
+                      </SheetClose>
+                    ) : null}
                   </nav>
                   
                   <div className="flex flex-col gap-3 pt-4 border-t border-border/70">

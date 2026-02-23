@@ -3,8 +3,14 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 export default function FranchisePage() {
+  if (!isFeatureEnabled('franchise')) {
+    notFound();
+  }
+
   return (
     <OtwPageShell>
       <OtwSectionHeader title="OTW Franchise" subtitle="Zone ownership and local operations." />
@@ -19,4 +25,3 @@ export default function FranchisePage() {
     </OtwPageShell>
   );
 }
-

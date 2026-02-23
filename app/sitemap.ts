@@ -18,7 +18,6 @@ const marketingRoutes = [
 const publicRoutes = [
   "/order",
   "/driver/apply",
-  "/otw/franchise-requirements",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

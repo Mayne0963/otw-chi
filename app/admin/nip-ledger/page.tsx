@@ -7,6 +7,8 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { notFound } from 'next/navigation';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 // Loading component for better UX
 function AdminNipLedgerLoading() {
@@ -246,6 +248,10 @@ function NipLedgerErrorState({ error }: { error: unknown }) {
 }
 
 export default async function AdminNipLedgerPage() {
+  if (!isFeatureEnabled('nip')) {
+    notFound();
+  }
+
   await requireRole(['ADMIN']);
   
   return (

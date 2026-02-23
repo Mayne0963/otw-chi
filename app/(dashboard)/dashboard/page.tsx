@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { syncUserOnDashboard } from '@/lib/user-sync';
 import { getPrisma } from '@/lib/db';
 import { getActiveSubscription } from '@/lib/membership';
+import { UNLIMITED_SERVICE_MILES } from '@/lib/membership-miles';
 import { LayoutDashboard, Wallet, CreditCard, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,7 +17,7 @@ export default async function DashboardPage() {
   await syncUserOnDashboard();
   const user = await getCurrentUser();
   let membershipTier = 'None';
-  let nipBalance = 0;
+  let serviceMilesBalance = '0';
   let activeRequest: { id: string; status: string; pickup: string; dropoff: string } | null = null;
 
   if (user) {
@@ -25,8 +26,15 @@ export default async function DashboardPage() {
     const sub = await getActiveSubscription(user.id);
     membershipTier = sub?.plan?.name ?? 'None';
 
-    const nip = await prisma.nIPLedger.aggregate({ where: { userId: user.id }, _sum: { amount: true } });
-    nipBalance = nip._sum?.amount ?? 0;
+    const wallet = await prisma.serviceMilesWallet.findUnique({
+      where: { userId: user.id },
+      select: { balanceMiles: true },
+    });
+    if (wallet?.balanceMiles === UNLIMITED_SERVICE_MILES) {
+      serviceMilesBalance = 'Unlimited';
+    } else {
+      serviceMilesBalance = String(wallet?.balanceMiles ?? 0);
+    }
 
     const newReq = await prisma.deliveryRequest.findFirst({
       where: { userId: user.id, status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] } },
@@ -50,7 +58,7 @@ export default async function DashboardPage() {
         <Card className="mt-3 p-5 sm:p-6">
           <OtwEmptyState
             title="Sign in to view your dashboard"
-            subtitle="Access requests, membership and TIREM."
+            subtitle="Access requests, membership, and Service Miles."
             actionLabel="Sign In"
             actionHref="/sign-in"
           />
@@ -115,15 +123,15 @@ export default async function DashboardPage() {
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="h-4 w-4 text-otwGold" />
-            <h3 className="text-sm font-medium text-otwGold">TIREM Balance</h3>
+            <h3 className="text-sm font-medium text-otwGold">Service Miles Wallet</h3>
           </div>
           <div className="space-y-4">
             <div>
-              <div className="text-2xl font-bold text-white">{nipBalance.toLocaleString()}</div>
-              <div className="text-sm text-white/60 mt-1">Tokens Available</div>
+              <div className="text-2xl font-bold text-white">{serviceMilesBalance}</div>
+              <div className="text-sm text-white/60 mt-1">Miles Available</div>
             </div>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/wallet/nip">
+              <Link href="/service-miles">
                 Manage Wallet
               </Link>
             </Button>

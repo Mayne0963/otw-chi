@@ -52,7 +52,7 @@ async function getAdminStats() {
       requestsToday,
       activeDrivers,
       openTickets,
-      nipIssuedToday,
+      dispatchQueue,
       totalUsers,
       totalRequests,
       totalDrivers,
@@ -80,14 +80,12 @@ async function getAdminStats() {
         } 
       }).catch(() => 0),
       
-      // TIREM issued today
-      prisma.nIPLedger.aggregate({
-        where: { 
-          createdAt: { gte: startOfDay }, 
-          amount: { gt: 0 } 
+      // Dispatch queue size
+      prisma.deliveryRequest.count({
+        where: {
+          status: { in: ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
         },
-        _sum: { amount: true }
-      }).then(result => result._sum?.amount ?? 0).catch(() => 0),
+      }).catch(() => 0),
       
       // Total users
       prisma.user.count().catch(() => 0),
@@ -122,7 +120,7 @@ async function getAdminStats() {
       requestsToday,
       activeDrivers,
       openTickets,
-      nipIssuedToday,
+      dispatchQueue,
       totalUsers,
       totalRequests,
       totalDrivers,
@@ -256,16 +254,16 @@ function AdminStatsBody({ stats, summary }: { stats: any, summary: ReceiptsSumma
         <OtwCard className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-otwGold/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
           <div className="relative z-10">
-            <div className="text-sm font-medium text-muted-foreground">TIREM Issued Today</div>
+            <div className="text-sm font-medium text-muted-foreground">Dispatch Queue</div>
             <div className="mt-2">
               <OtwStatPill 
-                label="TIREM" 
-                value={String(stats.nipIssuedToday)} 
+                label="Open" 
+                value={String(stats.dispatchQueue)} 
                 tone="gold" 
               />
             </div>
             <div className="text-xs text-muted-foreground mt-2">
-              Points distributed
+              Requests awaiting completion
             </div>
           </div>
         </OtwCard>
@@ -310,20 +308,6 @@ function AdminStatsBody({ stats, summary }: { stats: any, summary: ReceiptsSumma
         </OtwCard>
 
         <OtwCard>
-          <div className="text-sm font-medium text-white/80">Reports</div>
-          <div className="mt-3 space-y-2">
-            <div className="text-xs text-white/60">
-              Export data for analysis and record-keeping.
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <OtwButton as="a" href="/api/admin/receipts/export" variant="ghost" className="text-xs px-2 py-1 h-auto text-center justify-center bg-white/10 hover:bg-white/20" data-testid="admin-export-button">
-                Export Receipts
-              </OtwButton>
-            </div>
-          </div>
-        </OtwCard>
-
-        <OtwCard>
           <div className="text-sm font-medium text-white/80">Quick Actions</div>
           <div className="mt-3 space-y-2">
             <div className="text-xs text-white/60">
@@ -335,9 +319,6 @@ function AdminStatsBody({ stats, summary }: { stats: any, summary: ReceiptsSumma
               </OtwButton>
               <OtwButton as="a" href="/admin/drivers" variant="ghost" className="text-xs px-2 py-1 h-auto text-center justify-center bg-white/10 hover:bg-white/20">
                 Drivers
-              </OtwButton>
-              <OtwButton as="a" href="/admin/cities-zones" variant="ghost" className="text-xs px-2 py-1 h-auto text-center justify-center bg-white/10 hover:bg-white/20">
-                Zones
               </OtwButton>
               <OtwButton as="a" href="/admin/settings" variant="ghost" className="text-xs px-2 py-1 h-auto text-center justify-center bg-white/10 hover:bg-white/20">
                 Settings
