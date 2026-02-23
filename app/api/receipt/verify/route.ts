@@ -687,38 +687,115 @@ export async function POST(req: Request) {
     } catch (error) {
       console.error('Veryfi API error:', error);
       const fallbackReasonCodes = ['VERYFI_ERROR'];
-      const fallbackReasons = ['Receipt verification service is unavailable. Please retry.'];
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Error processing receipt with Veryfi.',
-          status: 'PENDING',
-          riskScore: 0,
-          reasonCodes: fallbackReasonCodes,
-          riskBreakdown: {
-            model: 'veryfi-receipt-validity-v1',
-            decision: 'REVIEW',
-            percentReal: 0,
-            scores: {
-              authenticity: 0,
-              extraction: 0,
-              business: 0,
-            },
-            reasons: fallbackReasons,
-            reasonCodes: fallbackReasonCodes,
-          },
-          proofScore: 0,
-          decision: 'REVIEW',
-          percentReal: 0,
-          scores: {
-            authenticity: 0,
-            extraction: 0,
-            business: 0,
-          },
-          reasons: fallbackReasons,
+      const fallbackReasons = ['Automatic receipt verification is temporarily unavailable. Receipt saved for review.'];
+      const fallbackErrorMessage =
+        error instanceof Error && error.message.trim()
+          ? error.message.trim()
+          : 'Unknown Veryfi API error';
+      const fallbackRiskBreakdown = {
+        model: 'veryfi-receipt-validity-v1',
+        decision: 'REVIEW',
+        percentReal: 0,
+        scores: {
+          authenticity: 0,
+          extraction: 0,
+          business: 0,
         },
-        { status: 502 }
-      );
+        reasons: fallbackReasons,
+        reasonCodes: fallbackReasonCodes,
+        veryfiError: fallbackErrorMessage,
+      } as Prisma.InputJsonValue;
+      const fallbackImageData = `data:${file.type || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.receiptVerification.upsert({
+          where: { deliveryRequestId },
+          create: {
+            userId: user.id,
+            deliveryRequestId,
+            imageHash: hash,
+            expectedVendor,
+            merchantName: expectedVendor,
+            subtotalAmount: expectedTotal,
+            totalAmount: expectedTotal,
+            confidenceScore: 0,
+            riskScore: 0,
+            status: 'PENDING',
+            reasonCodes: fallbackReasonCodes,
+            riskBreakdown: fallbackRiskBreakdown,
+            rawResponse: {
+              veryfiError: fallbackErrorMessage,
+              retriable: true,
+            } as Prisma.InputJsonValue,
+            proofScore: 0,
+            extractedTotal: expectedTotal,
+            vendorName: expectedVendor,
+            itemMatchScore: null,
+            imageQuality: 0,
+            tamperScore: null,
+            locked: false,
+          },
+          update: {
+            imageHash: hash,
+            expectedVendor,
+            merchantName: expectedVendor,
+            subtotalAmount: expectedTotal,
+            totalAmount: expectedTotal,
+            confidenceScore: 0,
+            riskScore: 0,
+            status: 'PENDING',
+            reasonCodes: fallbackReasonCodes,
+            riskBreakdown: fallbackRiskBreakdown,
+            rawResponse: {
+              veryfiError: fallbackErrorMessage,
+              retriable: true,
+            } as Prisma.InputJsonValue,
+            proofScore: 0,
+            extractedTotal: expectedTotal,
+            vendorName: expectedVendor,
+            itemMatchScore: null,
+            imageQuality: 0,
+            tamperScore: null,
+            locked: false,
+          },
+        });
+
+        await tx.deliveryRequest.update({
+          where: { id: deliveryRequestId },
+          data: {
+            receiptImageData: fallbackImageData,
+            receiptVendor: expectedVendor,
+            receiptVerifiedAt: null,
+            receiptAuthenticityScore: null,
+          },
+        });
+      });
+
+      return NextResponse.json({
+        success: false,
+        message: 'Receipt uploaded. Automatic verification is temporarily unavailable, so this was saved for manual review.',
+        status: 'PENDING',
+        riskScore: 0,
+        reasonCodes: fallbackReasonCodes,
+        riskBreakdown: fallbackRiskBreakdown,
+        proofScore: 0,
+        decision: 'REVIEW',
+        percentReal: 0,
+        scores: {
+          authenticity: 0,
+          extraction: 0,
+          business: 0,
+        },
+        reasons: fallbackReasons,
+        itemMatchScore: null,
+        imageQuality: 0,
+        tamperScore: null,
+        extractedTotal: expectedTotal,
+        vendorName: expectedVendor,
+        locked: false,
+        menuItems: [],
+        data: { veryfiError: fallbackErrorMessage, retriable: true },
+      });
     }
   } catch (error) {
     console.error('Receipt verification error:', error);

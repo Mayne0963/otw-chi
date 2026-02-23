@@ -34,6 +34,9 @@ const isPublicRoute = (pathname: string) => {
   // middleware here to avoid false 401s on authenticated POST polling calls.
   if (pathname === '/api/driver/location') return true;
   if (pathname.startsWith('/api/driver/navigation')) return true;
+  // Order confirmation/dispute endpoints enforce ownership + auth in handlers.
+  // Bypass edge auth here to avoid false unauthenticated responses from middleware.
+  if (pathname.startsWith('/api/delivery-request/')) return true;
   // Public API routes
   if (pathname.startsWith('/api/stripe')) return true;
   if (pathname.startsWith('/api/navigation')) return true;
