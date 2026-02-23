@@ -45,6 +45,7 @@ export default function ReceiptUpload({ deliveryRequestId }: { deliveryRequestId
     try {
       const response = await fetch('/api/receipt/verify', {
         method: 'POST',
+        credentials: 'include',
         body: formData,
       });
 

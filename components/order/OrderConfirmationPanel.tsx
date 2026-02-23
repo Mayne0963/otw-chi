@@ -91,6 +91,7 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
     try {
       const response = await fetch(`/api/delivery-request/${deliveryRequestId}/confirm-items`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           customerConfirmed: true,
@@ -133,6 +134,7 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
     try {
       const response = await fetch(`/api/delivery-request/${deliveryRequestId}/dispute`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           disputedItems: selectedDisputedItems.map((item) => ({
