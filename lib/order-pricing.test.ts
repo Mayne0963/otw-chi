@@ -38,6 +38,25 @@ describe('order pricing', () => {
     expect(subtotal).toBe(2500);
   });
 
+  it('charges delivery fee only for store deliveries with uploaded receipt', () => {
+    const subtotal = computeBillableReceiptSubtotalCents({
+      serviceType: 'STORE',
+      deliveryFeeCents: 1299,
+      receiptImageData: 'data:image/png;base64,abc',
+      receiptItems: [{ price: 14.25, quantity: 1 }],
+    });
+
+    expect(subtotal).toBe(0);
+    expect(
+      computeBillableBaseTotalCents({
+        serviceType: 'STORE',
+        deliveryFeeCents: 1299,
+        receiptImageData: 'data:image/png;base64,abc',
+        receiptItems: [{ price: 14.25, quantity: 1 }],
+      })
+    ).toBe(1299);
+  });
+
   it('detects cash delivery from quote breakdown', () => {
     expect(
       isCashDelivery({

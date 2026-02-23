@@ -14,7 +14,7 @@ export type BillableOrderInput = {
   quoteBreakdown?: unknown;
 };
 
-const FOOD_SERVICE_TYPE = 'FOOD';
+const RECEIPT_REQUIRED_SERVICE_TYPES = new Set(['FOOD', 'STORE']);
 
 const asNonNegativeInt = (value: number | null | undefined) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
@@ -68,10 +68,11 @@ export const isCashDelivery = (input: Pick<BillableOrderInput, 'cashDelivery' | 
 export const computeBillableReceiptSubtotalCents = (input: BillableOrderInput) => {
   const receiptSubtotalCents = normalizeReceiptSubtotalCents(input);
 
-  const isFoodReceiptDelivery =
-    String(input.serviceType || '').toUpperCase() === FOOD_SERVICE_TYPE && hasReceiptUpload(input);
+  const isReceiptRequiredDelivery =
+    RECEIPT_REQUIRED_SERVICE_TYPES.has(String(input.serviceType || '').toUpperCase()) &&
+    hasReceiptUpload(input);
 
-  if (isFoodReceiptDelivery && !isCashDelivery(input)) {
+  if (isReceiptRequiredDelivery && !isCashDelivery(input)) {
     return 0;
   }
 

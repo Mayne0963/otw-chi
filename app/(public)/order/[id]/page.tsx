@@ -17,6 +17,7 @@ type ReceiptItem = { name: string; quantity?: number; price?: number };
 
 const formatCurrency = (value?: number | null) =>
   typeof value === 'number' ? `$${(value / 100).toFixed(2)}` : '—';
+const RECEIPT_REQUIRED_SERVICE_TYPES = new Set<ServiceType>([ServiceType.FOOD, ServiceType.STORE]);
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,8 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
   const disputedItemsCount = Array.isArray(order.orderConfirmation?.disputedItems)
     ? order.orderConfirmation.disputedItems.length
     : 0;
+  const merchantLabel = order.serviceType === ServiceType.STORE ? 'Store' : 'Restaurant';
+  const flowLabel = order.serviceType === ServiceType.STORE ? 'Grocery / Store' : 'Food Pickup';
 
   return (
     <OtwPageShell>
@@ -129,17 +132,17 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
           </div>
         </Card>
 
-        {order.serviceType === ServiceType.FOOD && (
+        {RECEIPT_REQUIRED_SERVICE_TYPES.has(order.serviceType) && (
           <Card>
             <div className="p-4 border-b border-white/10 mb-4">
-              <h3 className="text-lg font-medium text-white">Food Pickup &amp; Receipt</h3>
+              <h3 className="text-lg font-medium text-white">{flowLabel} &amp; Receipt</h3>
             </div>
             <div className="p-4 space-y-4 text-white">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-[0.18em] text-white/50">Restaurant</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-white/50">{merchantLabel}</div>
                   <div className="text-sm font-medium">
-                    {order.restaurantName || order.receiptVendor || 'Restaurant not provided'}
+                    {order.restaurantName || order.receiptVendor || `${merchantLabel} not provided`}
                   </div>
                   {order.receiptLocation && (
                     <div className="text-xs text-white/50">{order.receiptLocation}</div>
@@ -151,7 +154,7 @@ export default async function OrderStatusPage({ params }: { params: Promise<{ id
                       rel="noreferrer"
                       className="text-xs text-otwGold inline-flex items-center gap-1"
                     >
-                      Visit menu <ArrowUpRight className="h-3 w-3" />
+                      Visit site <ArrowUpRight className="h-3 w-3" />
                     </a>
                   )}
                 </div>

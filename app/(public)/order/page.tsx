@@ -76,6 +76,7 @@ const SERVICE_LABELS: Record<string, string> = {
   RIDE: "Ride",
 };
 
+const RECEIPT_REQUIRED_SERVICE_TYPES = new Set(["FOOD", "STORE"]);
 const SESSION_DRAFT_KEY = "otw-order-draft-cache-v1";
 
 function normalizeDecision(value: unknown, fallbackStatus?: unknown): ReceiptDecision {
@@ -248,7 +249,10 @@ export default function OrderPage() {
     }
   }, [receiptAnalysis, receiptImageData]);
 
-  const requiresReceipt = serviceType === "FOOD";
+  const requiresReceipt = RECEIPT_REQUIRED_SERVICE_TYPES.has(serviceType);
+  const merchantLabel = serviceType === "STORE" ? "Store" : "Restaurant";
+  const merchantWebsiteLabel = serviceType === "STORE" ? "Store Website" : "Restaurant Website";
+  const merchantFlowLabel = serviceType === "STORE" ? "Grocery / store flow" : "Food pickup flow";
 
   async function restoreDraft(draft: OrderDraft) {
     setDraftId(draft.id);
@@ -303,7 +307,7 @@ export default function OrderPage() {
     const hasReceiptItems = receiptItems.length > 0;
     const hasRestaurantInfo = Boolean(draft.restaurantName || draft.receiptVendor);
     const nextStep =
-      draft.serviceType !== "FOOD"
+      !RECEIPT_REQUIRED_SERVICE_TYPES.has(draft.serviceType || "FOOD")
         ? "details"
         : hasReceiptItems
           ? "review"
@@ -1296,7 +1300,7 @@ export default function OrderPage() {
 
   const stepLabel = {
     details: "Request Details",
-    restaurant: "Choose Restaurant",
+    restaurant: serviceType === "STORE" ? "Choose Store" : "Choose Restaurant",
     receipt: "Upload Receipt",
     review: "Review & Pay",
   }[step];
@@ -1450,20 +1454,20 @@ export default function OrderPage() {
           {step === "restaurant" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">Food pickup flow</div>
+                <div className="text-sm text-muted-foreground">{merchantFlowLabel}</div>
                 <span className="inline-flex items-center rounded-full border border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80 px-2.5 py-0.5 text-xs font-semibold transition-colors">Receipt required</span>
               </div>
               {detailSummary}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Restaurant Name</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">{merchantLabel} Name</label>
                   <Input
                     value={restaurantName}
                     onChange={(e) => setRestaurantName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">Restaurant Website</label>
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground ml-1">{merchantWebsiteLabel}</label>
                   <Input
                     value={restaurantWebsite}
                     onChange={(e) => setRestaurantWebsite(e.target.value)}
@@ -1481,7 +1485,7 @@ export default function OrderPage() {
                     if (restaurantWebsite) window.open(restaurantWebsite, "_blank");
                   }}
                 >
-                  Open restaurant site <ExternalLink className="h-4 w-4" />
+                  Open {merchantLabel.toLowerCase()} site <ExternalLink className="h-4 w-4" />
                 </Button>
                 <Button
                   onClick={() => setStep("receipt")}
@@ -1505,7 +1509,7 @@ export default function OrderPage() {
             <div className="space-y-5">
               <div className="rounded-lg border border-border/70 bg-muted/40 p-4 text-sm text-muted-foreground space-y-2">
                 <p className="font-semibold text-foreground">Upload your paid receipt</p>
-                <p>We will check that it looks real, pull the restaurant name, location, and the items you purchased. You can edit anything we find.</p>
+                <p>We will check that it looks real, pull the merchant name, location, and the items you purchased. You can edit anything we find.</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -1566,7 +1570,7 @@ export default function OrderPage() {
         <div className="space-y-4 rounded-lg border border-border/70 bg-muted/40 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs text-muted-foreground">Restaurant name</div>
+              <div className="text-xs text-muted-foreground">{merchantLabel} name</div>
               <Input
                 value={receiptAnalysis.vendorName}
                 onChange={(e) =>
@@ -1671,7 +1675,7 @@ export default function OrderPage() {
                   variant="ghost"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Back to restaurant
+                  Back to {merchantLabel.toLowerCase()}
                 </Button>
               </div>
             </div>
@@ -1692,9 +1696,9 @@ export default function OrderPage() {
                 {requiresReceipt && (
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Restaurant</div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{merchantLabel}</div>
                       <div className="text-sm font-semibold text-foreground">
-                        {restaurantName || receiptAnalysis?.vendorName || "Restaurant name required"}
+                        {restaurantName || receiptAnalysis?.vendorName || `${merchantLabel} name required`}
                       </div>
                       {restaurantWebsite && (
                         <a
@@ -1703,7 +1707,7 @@ export default function OrderPage() {
                           rel="noreferrer"
                           className="text-xs text-secondary inline-flex items-center gap-1"
                         >
-                          Visit menu <ExternalLink className="h-3 w-3" />
+                          Visit {merchantLabel.toLowerCase()} site <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
                     </div>

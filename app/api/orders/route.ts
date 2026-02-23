@@ -90,6 +90,8 @@ const orderSchema = z.object({
   waitMinutes: z.number().int().min(10).optional(),
 });
 
+const RECEIPT_REQUIRED_SERVICE_TYPES = new Set<ServiceType>([ServiceType.FOOD, ServiceType.STORE]);
+
 export async function POST(req: Request) {
   try {
     const session = await getNeonSession();
@@ -151,17 +153,17 @@ export async function POST(req: Request) {
       }
     };
 
-    if (data.serviceType === ServiceType.FOOD) {
+    if (RECEIPT_REQUIRED_SERVICE_TYPES.has(data.serviceType)) {
       if (!(data.restaurantName || data.receiptVendor)) {
         return NextResponse.json(
-          { error: 'Provide the restaurant or vendor detected on the receipt.' },
+          { error: 'Provide the merchant or vendor detected on the receipt.' },
           { status: 400 }
         );
       }
 
       if (!data.receiptItems?.length) {
         return NextResponse.json(
-          { error: 'We need the scanned receipt items to dispatch a runner.' },
+          { error: 'We need the scanned receipt items to dispatch a driver.' },
           { status: 400 }
         );
       }
