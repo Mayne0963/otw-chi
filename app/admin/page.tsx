@@ -5,6 +5,7 @@ import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { parseReceiptSummaryRange } from '@/lib/admin/receiptsExport';
 import { Suspense } from 'react';
 
 function formatCurrency(value: number | null | undefined): string {
@@ -20,20 +21,6 @@ type ReceiptsSummary = {
   lockedCount: number;
   totalApprovedRevenue: number;
 };
-
-function isReceiptsSummary(value: unknown): value is ReceiptsSummary {
-  if (!value || typeof value !== 'object') return false;
-  const data = value as Record<string, unknown>;
-  return (
-    typeof data.totalReceipts === 'number' &&
-    typeof data.approvedCount === 'number' &&
-    typeof data.flaggedCount === 'number' &&
-    typeof data.rejectedCount === 'number' &&
-    typeof data.avgProofScore === 'number' &&
-    typeof data.lockedCount === 'number' &&
-    typeof data.totalApprovedRevenue === 'number'
-  );
-}
 
 // Loading component for better UX
 function AdminOverviewLoading() {
@@ -148,6 +135,65 @@ async function getAdminStats() {
   } catch (error) {
     console.error('[AdminOverview] Failed to fetch statistics:', error);
     throw error;
+  }
+}
+
+async function getReceiptsSummary(): Promise<ReceiptsSummary | null> {
+  const prisma = getPrisma();
+
+  try {
+    const parsedRange = parseReceiptSummaryRange(new URLSearchParams());
+    if (!parsedRange.value) return null;
+
+    const { startAt, endAt } = parsedRange.value;
+    const where = {
+      createdAt: {
+        gte: startAt,
+        lte: endAt,
+      },
+    } as const;
+
+    const [statusGroups, avgAggregate, totalCount, lockedCount, totalApprovedRevenue] =
+      await Promise.all([
+        prisma.receiptVerification.groupBy({
+          by: ['status'],
+          where,
+          _count: { _all: true },
+        }),
+        prisma.receiptVerification.aggregate({
+          where,
+          _avg: { proofScore: true },
+        }),
+        prisma.receiptVerification.count({ where }),
+        prisma.receiptVerification.count({ where: { ...where, locked: true } }),
+        prisma.receiptVerification.aggregate({
+          where: { ...where, status: 'APPROVED' },
+          _sum: { extractedTotal: true },
+        }),
+      ]);
+
+    const countsByStatus: Record<string, number> = {
+      APPROVED: 0,
+      FLAGGED: 0,
+      REJECTED: 0,
+      PENDING: 0,
+    };
+    for (const group of statusGroups) {
+      countsByStatus[group.status] = group._count._all;
+    }
+
+    return {
+      totalReceipts: totalCount,
+      approvedCount: countsByStatus.APPROVED ?? 0,
+      flaggedCount: countsByStatus.FLAGGED ?? 0,
+      rejectedCount: countsByStatus.REJECTED ?? 0,
+      avgProofScore: avgAggregate._avg.proofScore ?? 0,
+      lockedCount: lockedCount,
+      totalApprovedRevenue: totalApprovedRevenue._sum.extractedTotal ?? 0,
+    };
+  } catch (error) {
+    console.error('[AdminOverview] Failed to load receipts summary:', error);
+    return null;
   }
 }
 
@@ -380,15 +426,7 @@ async function AdminStats() {
 
   try {
     stats = await getAdminStats();
-    const summaryRes = await fetch('/api/admin/receipts/summary', {
-      cache: 'no-store',
-    });
-    if (summaryRes.ok) {
-      const summaryData = await summaryRes.json().catch(() => null);
-      if (isReceiptsSummary(summaryData)) {
-        summary = summaryData;
-      }
-    }
+    summary = await getReceiptsSummary();
   } catch (err) {
     error = err;
   }
