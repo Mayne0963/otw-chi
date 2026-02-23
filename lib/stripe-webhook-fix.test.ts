@@ -36,6 +36,9 @@ import { getStripe } from '@/lib/stripe';
 
 describe('Stripe Webhook - Invoice Paid Recovery', () => {
   const mockPrisma = {
+    stripeWebhookEvent: {
+      create: vi.fn(),
+    },
     membershipSubscription: {
       findFirst: vi.fn(),
       upsert: vi.fn(),
@@ -46,6 +49,9 @@ describe('Stripe Webhook - Invoice Paid Recovery', () => {
     },
     user: {
       findUnique: vi.fn(),
+    },
+    paymentTransaction: {
+      create: vi.fn(),
     },
     serviceMilesWallet: {
       findUnique: vi.fn(),

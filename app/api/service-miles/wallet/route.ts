@@ -52,6 +52,10 @@ export async function GET() {
             cashAllowed: plan.cashAllowed,
             peerToPeerAllowed: plan.peerToPeerAllowed,
             allowedServiceTypes: plan.allowedServiceTypes,
+            overageBillingMode: plan.overageBillingMode,
+            overageRateCentsPerMile: plan.overageRateCentsPerMile,
+            overageMinimumCents: plan.overageMinimumCents,
+            overageCreditLimitCents: plan.overageCreditLimitCents,
           }
         : null,
       wallet: wallet
@@ -70,4 +74,3 @@ export async function GET() {
     { status: 200 }
   );
 }
-

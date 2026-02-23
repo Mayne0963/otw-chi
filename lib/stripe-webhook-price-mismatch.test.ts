@@ -35,6 +35,9 @@ vi.mock('@/lib/stripe', () => ({
 
 describe('Stripe Webhook - Price Mismatch Recovery', () => {
   const mockPrisma = {
+    stripeWebhookEvent: {
+      create: vi.fn(),
+    },
     membershipSubscription: {
       findFirst: vi.fn(),
       upsert: vi.fn(),
@@ -44,6 +47,9 @@ describe('Stripe Webhook - Price Mismatch Recovery', () => {
     },
     user: {
       findUnique: vi.fn(),
+    },
+    paymentTransaction: {
+      create: vi.fn(),
     },
     serviceMilesWallet: {
       findUnique: vi.fn(),

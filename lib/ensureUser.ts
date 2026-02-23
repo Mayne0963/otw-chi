@@ -39,6 +39,10 @@ export async function ensureUser({ neonAuthUserId, email }: EnsureUserInput) {
           cashAllowed: false,
           peerToPeerAllowed: false,
           allowedServiceTypes: ['FOOD', 'STORE'],
+          overageBillingMode: 'INSTANT',
+          overageRateCentsPerMile: 200,
+          overageMinimumCents: 500,
+          overageCreditLimitCents: 0,
         },
       }));
 

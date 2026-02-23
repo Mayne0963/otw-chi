@@ -35,8 +35,14 @@ vi.mock('@/lib/stripe', () => ({
 
 describe('Stripe Webhook - Checkout Session Completed', () => {
   const mockPrisma = {
+    stripeWebhookEvent: {
+      create: vi.fn(),
+    },
     user: {
       findUnique: vi.fn(),
+    },
+    paymentTransaction: {
+      create: vi.fn(),
     },
     membershipPlan: {
       findFirst: vi.fn(),

@@ -39,6 +39,7 @@ const isPublicRoute = (pathname: string) => {
   if (pathname.startsWith('/api/delivery-request/')) return true;
   // Public API routes
   if (pathname.startsWith('/api/stripe')) return true;
+  if (pathname.startsWith('/api/billing/overage/close-period')) return true;
   if (pathname.startsWith('/api/navigation')) return true;
   if (pathname.startsWith('/api/geocoding')) return true;
   if (pathname.startsWith('/api/otw/estimate')) return true;

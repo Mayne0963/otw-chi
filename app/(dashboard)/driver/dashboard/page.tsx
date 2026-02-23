@@ -205,6 +205,14 @@ export default async function DriverDashboardPage() {
             status: 'REQUESTED',
             assignedDriverId: null,
             userId: { not: user.id },
+            paymentRequired: false,
+            NOT: {
+              AND: [
+                { overageBillingMode: 'INSTANT' },
+                { overageMiles: { gt: 0 } },
+                { overageStatus: { not: 'PAID' } },
+              ],
+            },
           },
           orderBy: { createdAt: 'desc' },
         });

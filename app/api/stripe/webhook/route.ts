@@ -2,7 +2,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { MembershipStatus } from '@prisma/client';
+import { MembershipStatus, OverageStatus, Prisma } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
 import { redeemPromoCode } from '@/lib/promo-code';
@@ -37,6 +37,20 @@ export async function POST(req: Request) {
 
   const prisma = getPrisma();
   const stripe = getStripe();
+
+  try {
+    await prisma.stripeWebhookEvent.create({
+      data: {
+        stripeEventId: event.id,
+        type: event.type,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return new NextResponse(null, { status: 200 });
+    }
+    throw error;
+  }
 
   const statusMap: Record<string, MembershipStatus> = {
     active: 'ACTIVE',
@@ -213,8 +227,175 @@ export async function POST(req: Request) {
     });
   }
 
+  async function createStripePaymentTransaction(input: {
+    userId: string;
+    amountCents: number;
+    orderId?: string | null;
+    status?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    await prisma.paymentTransaction.create({
+      data: {
+        userId: input.userId,
+        amountCents: input.amountCents,
+        currency: 'usd',
+        status: input.status ?? 'SUCCEEDED',
+        provider: 'STRIPE',
+        orderId: input.orderId ?? null,
+        metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  async function resolveOveragePeriodFromInvoice(invoice: Stripe.Invoice) {
+    const metadata = invoice.metadata ?? {};
+    const userId = metadata.userId ? String(metadata.userId) : null;
+    const periodId = metadata.periodId ? String(metadata.periodId) : null;
+    const periodKey = metadata.periodKey ? String(metadata.periodKey) : null;
+
+    if (!userId) return null;
+
+    if (periodId) {
+      return prisma.overageInvoicePeriod.findUnique({
+        where: { id: periodId },
+      });
+    }
+
+    if (!periodKey) return null;
+
+    return prisma.overageInvoicePeriod.findUnique({
+      where: {
+        userId_periodKey: {
+          userId,
+          periodKey,
+        },
+      },
+    });
+  }
+
+  async function markOverageInvoicePaid(invoice: Stripe.Invoice) {
+    const period = await resolveOveragePeriodFromInvoice(invoice);
+    if (!period) return;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.overageInvoicePeriod.update({
+        where: { id: period.id },
+        data: {
+          status: OverageStatus.PAID,
+          stripeInvoiceId: invoice.id,
+        },
+      });
+
+      await tx.overageLineItem.updateMany({
+        where: { periodId: period.id },
+        data: { status: OverageStatus.PAID },
+      });
+
+      const lineItems = await tx.overageLineItem.findMany({
+        where: { periodId: period.id },
+        select: { deliveryRequestId: true },
+      });
+
+      await tx.deliveryRequest.updateMany({
+        where: {
+          id: { in: lineItems.map((item) => item.deliveryRequestId) },
+        },
+        data: {
+          overageStatus: OverageStatus.PAID,
+          overageInvoiceId: invoice.id,
+          paymentRequired: false,
+        },
+      });
+    });
+
+    await createStripePaymentTransaction({
+      userId: period.userId,
+      amountCents: invoice.amount_paid || 0,
+      orderId: `OVERAGE:${period.periodKey}`,
+      metadata: {
+        purpose: 'overage_invoice',
+        periodId: period.id,
+        periodKey: period.periodKey,
+        stripeInvoiceId: invoice.id,
+      },
+    });
+  }
+
+  async function markOverageInvoiceFailed(invoice: Stripe.Invoice) {
+    const period = await resolveOveragePeriodFromInvoice(invoice);
+    if (!period) return;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.overageInvoicePeriod.update({
+        where: { id: period.id },
+        data: {
+          status: OverageStatus.FAILED,
+          stripeInvoiceId: invoice.id,
+        },
+      });
+
+      await tx.overageLineItem.updateMany({
+        where: { periodId: period.id },
+        data: { status: OverageStatus.FAILED },
+      });
+
+      const lineItems = await tx.overageLineItem.findMany({
+        where: { periodId: period.id },
+        select: { deliveryRequestId: true },
+      });
+
+      await tx.deliveryRequest.updateMany({
+        where: {
+          id: { in: lineItems.map((item) => item.deliveryRequestId) },
+        },
+        data: {
+          overageStatus: OverageStatus.FAILED,
+          overageInvoiceId: invoice.id,
+        },
+      });
+
+      await tx.membershipSubscription.updateMany({
+        where: { userId: period.userId },
+        data: { status: MembershipStatus.PAST_DUE },
+      });
+    });
+  }
+
   try {
-    if (event.type === 'checkout.session.completed') {
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      const metadata = paymentIntent.metadata ?? {};
+
+      if (metadata.purpose === 'overage_payment') {
+        const deliveryRequestId = metadata.deliveryRequestId ? String(metadata.deliveryRequestId) : null;
+        const userId = metadata.userId ? String(metadata.userId) : null;
+
+        if (deliveryRequestId && userId) {
+          await prisma.deliveryRequest.updateMany({
+            where: {
+              id: deliveryRequestId,
+              userId,
+            },
+            data: {
+              paymentRequired: false,
+              overageStatus: OverageStatus.PAID,
+              overagePaymentIntentId: paymentIntent.id,
+            },
+          });
+
+          await createStripePaymentTransaction({
+            userId,
+            amountCents: paymentIntent.amount_received || paymentIntent.amount || 0,
+            orderId: deliveryRequestId,
+            metadata: {
+              purpose: 'overage_payment',
+              deliveryRequestId,
+              stripePaymentIntentId: paymentIntent.id,
+            },
+          });
+        }
+      }
+    } else if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
 
       if (session.metadata?.purpose === 'order_payment') {
@@ -302,6 +483,11 @@ export async function POST(req: Request) {
       await upsertMembershipFromStripeSubscription(subscription);
     } else if (event.type === 'invoice.payment_succeeded') {
       const invoice = event.data.object as Stripe.Invoice;
+      if (invoice.metadata?.purpose === 'overage_invoice') {
+        await markOverageInvoicePaid(invoice);
+        return new NextResponse(null, { status: 200 });
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subscriptionField = (invoice as any).subscription;
       const subscriptionId = typeof subscriptionField === 'string' 
@@ -354,6 +540,12 @@ export async function POST(req: Request) {
         throw err;
       }
 
+    } else if (event.type === 'invoice.payment_failed') {
+      const invoice = event.data.object as Stripe.Invoice;
+      if (invoice.metadata?.purpose === 'overage_invoice') {
+        await markOverageInvoiceFailed(invoice);
+        return new NextResponse(null, { status: 200 });
+      }
     } else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription;
       const stripeCustomerId = subscription.customer as string;

@@ -68,6 +68,23 @@ type OrderDraft = {
   updatedAt?: string | null;
 };
 
+type SubmitOrderResponse = {
+  id: string;
+  paymentRequired?: boolean;
+  overageMiles?: number;
+  overageCents?: number;
+  overageBillingMode?: "INSTANT" | "INVOICE" | null;
+  overagePaymentIntentId?: string | null;
+  overageClientSecret?: string | null;
+};
+
+type OveragePaymentState = {
+  requestId: string;
+  clientSecret: string;
+  amountCents: number;
+  paymentIntentId: string | null;
+};
+
 const SERVICE_LABELS: Record<string, string> = {
   FOOD: "Food Delivery",
   STORE: "Store Pickup",
@@ -185,6 +202,7 @@ export default function OrderPage() {
   const [deliveryEstimateError, setDeliveryEstimateError] = useState<string | null>(null);
   const [feePaid, setFeePaid] = useState(false);
   const [deliveryCheckoutSessionId, setDeliveryCheckoutSessionId] = useState<string | null>(null);
+  const [overagePayment, setOveragePayment] = useState<OveragePaymentState | null>(null);
   const [tipCents, setTipCents] = useState(0);
   const [couponCode, setCouponCode] = useState("");
   const [discountCents, setDiscountCents] = useState(0);
@@ -368,6 +386,7 @@ export default function OrderPage() {
     setDeliveryEstimateError(null);
     setFeePaid(false);
     setDeliveryCheckoutSessionId(null);
+    setOveragePayment(null);
     setTipCents(0);
     setCouponCode("");
     setDiscountCents(0);
@@ -721,6 +740,8 @@ export default function OrderPage() {
   const orderTotalCents = billableReceiptSubtotalCents + deliveryFeeCents;
   const payableSubtotalCents = Math.max(0, orderTotalCents - discountCents);
   const payableTotalCents = payableSubtotalCents + tipCents;
+  const milesShortfall =
+    !unlimitedMiles && milesQuote !== null ? Math.max(0, milesQuote - walletBalance) : 0;
   const deliveryFeeReady =
     deliveryFeeCents > 0 && !deliveryEstimateLoading && !deliveryEstimateError;
   const deliveryFeeLabel = deliveryEstimateLoading
@@ -730,17 +751,15 @@ export default function OrderPage() {
       : formatCurrency(deliveryFeeCents);
 
   useEffect(() => {
-    const milesAvailable =
-      unlimitedMiles || (milesQuote !== null && walletBalance >= milesQuote);
+    const milesOptionReady = unlimitedMiles || milesQuote !== null;
 
-    // Keep method valid as quote/balance changes.
-    if (!milesAvailable && paymentMethod === "MILES") {
+    if (!milesOptionReady && paymentMethod === "MILES") {
       setPaymentMethod("STRIPE");
       return;
     }
 
     // Before any manual choice, prefer miles to avoid unnecessary card SDK loading.
-    if (!paymentMethodTouched && milesAvailable && paymentMethod === "STRIPE") {
+    if (!paymentMethodTouched && milesOptionReady && paymentMethod === "STRIPE") {
       setPaymentMethod("MILES");
     }
   }, [milesQuote, paymentMethod, paymentMethodTouched, unlimitedMiles, walletBalance]);
@@ -1117,6 +1136,38 @@ export default function OrderPage() {
 
   const handleStripePaymentSuccess = useCallback((id: string) => handleSuccessRef.current(id), []);
   const handleStripePaymentError = useCallback((err: string) => handleErrorRef.current(err), []);
+  const handleOveragePaymentSuccess = useCallback(
+    (paymentIntentId: string) => {
+      if (!overagePayment) return;
+      setOveragePayment((prev) =>
+        prev
+          ? {
+              ...prev,
+              paymentIntentId,
+            }
+          : prev
+      );
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
+      }
+      toast({
+        title: "Overage payment confirmed",
+        description: "Your request is now eligible for dispatch.",
+      });
+      router.push(`/order/${overagePayment.requestId}`);
+    },
+    [overagePayment, router, toast]
+  );
+  const handleOveragePaymentError = useCallback(
+    (error: string) => {
+      toast({
+        title: "Overage payment failed",
+        description: error || "Please try again.",
+        variant: "destructive",
+      });
+    },
+    [toast]
+  );
 
   async function handleSubmit() {
     if (!pickupAddress || !dropoffAddress) return;
@@ -1138,16 +1189,14 @@ export default function OrderPage() {
       setStep("review");
       return;
     }
-
-    if (paymentMethod === "MILES") {
-      if (!unlimitedMiles && milesQuote && walletBalance < milesQuote) {
-        toast({
-          title: "Insufficient Miles",
-          description: "You do not have enough miles for this delivery.",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (paymentMethod === "MILES" && overagePayment) {
+      toast({
+        title: "Overage payment pending",
+        description: "Complete the overage payment below before continuing.",
+        variant: "destructive",
+      });
+      setStep("review");
+      return;
     }
 
     if (!isSignedIn) {
@@ -1238,7 +1287,31 @@ export default function OrderPage() {
         throw new Error(error?.error || "Failed to submit order");
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as SubmitOrderResponse;
+      if (!data?.id) {
+        throw new Error("Order response missing request id");
+      }
+
+      if (paymentMethod === "MILES" && data.paymentRequired) {
+        if (!data.overageClientSecret || typeof data.overageCents !== "number") {
+          throw new Error("Overage payment details were not returned by the server");
+        }
+
+        setOveragePayment({
+          requestId: data.id,
+          clientSecret: data.overageClientSecret,
+          amountCents: data.overageCents,
+          paymentIntentId: data.overagePaymentIntentId ?? null,
+        });
+
+        toast({
+          title: "Overage payment required",
+          description: `An overage of ${formatCurrency(data.overageCents)} must be paid before dispatch.`,
+        });
+        return;
+      }
+
+      setOveragePayment(null);
       if (typeof window !== "undefined") {
         window.sessionStorage.removeItem(SESSION_DRAFT_KEY);
       }
@@ -1861,7 +1934,7 @@ export default function OrderPage() {
                             className={`flex items-center space-x-2 rounded-lg border p-3 ${
                               paymentMethod === "MILES" ? "border-primary bg-primary/5" : "border-border"
                             } ${
-                              !unlimitedMiles && (!milesQuote || walletBalance < milesQuote)
+                              !unlimitedMiles && milesQuote === null
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                             }`}
@@ -1869,15 +1942,15 @@ export default function OrderPage() {
                             <RadioGroupItem
                               value="MILES"
                               id="pm-miles"
-                              disabled={!unlimitedMiles && (!milesQuote || walletBalance < milesQuote)}
+                              disabled={!unlimitedMiles && milesQuote === null}
                             />
                             <Label htmlFor="pm-miles" className="flex-1 cursor-pointer">
                               <div className="font-medium">Service Miles</div>
                               <div className="text-xs text-muted-foreground">
                                 {unlimitedMiles ? "Unlimited" : `${milesQuote ?? "?"} miles`}
-                                {!unlimitedMiles && milesQuote && walletBalance < milesQuote && (
-                                  <span className="block text-red-400">
-                                    Insufficient balance ({walletBalance})
+                                {!unlimitedMiles && milesShortfall > 0 && (
+                                  <span className="block text-amber-400">
+                                    {walletBalance} miles available. {milesShortfall} overage miles billed at checkout.
                                   </span>
                                 )}
                               </div>
@@ -1944,18 +2017,42 @@ export default function OrderPage() {
                         />
                       </>
                     ) : (
-                      <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4 text-center">
-                        <div className="flex items-center justify-center gap-2 font-semibold text-otwGold">
-                          <Package className="h-5 w-5" /> Pay with Service Miles
+                      <div className="space-y-3">
+                        <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4 text-center">
+                          <div className="flex items-center justify-center gap-2 font-semibold text-otwGold">
+                            <Package className="h-5 w-5" /> Pay with Service Miles
+                          </div>
+                          <p className="text-xs opacity-80 mt-1">
+                            {unlimitedMiles
+                              ? "Your membership covers this delivery."
+                              : `${Math.max(0, milesQuote ?? 0)} miles will be deducted from your wallet.`}
+                          </p>
+                          {!unlimitedMiles && milesShortfall > 0 && (
+                            <p className="text-xs text-amber-300 mt-2">
+                              Remaining {milesShortfall} miles will be charged as overage after request submission.
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Tips can be paid in cash to the driver.
+                          </p>
                         </div>
-                        <p className="text-xs opacity-80 mt-1">
-                          {unlimitedMiles
-                            ? "Your membership covers this delivery."
-                            : `${milesQuote} miles will be deducted from your wallet.`}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Tips can be paid in cash to the driver.
-                        </p>
+
+                        {overagePayment && (
+                          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+                            <div className="text-sm font-semibold text-amber-200">
+                              Complete overage payment to dispatch this request
+                            </div>
+                            <p className="text-xs text-amber-100/90">
+                              Overage due: {formatCurrency(overagePayment.amountCents)}
+                            </p>
+                            <StripePaymentForm
+                              amountCents={overagePayment.amountCents}
+                              initialClientSecret={overagePayment.clientSecret}
+                              onSuccess={handleOveragePaymentSuccess}
+                              onError={handleOveragePaymentError}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1988,7 +2085,12 @@ export default function OrderPage() {
                 <Button
                   onClick={handleSubmit}
                   className="w-full"
-                  disabled={loading || (requiresReceipt && !receiptAnalysis) || (paymentMethod === "STRIPE" && !feePaid)}
+                  disabled={
+                    loading ||
+                    (requiresReceipt && !receiptAnalysis) ||
+                    (paymentMethod === "STRIPE" && !feePaid) ||
+                    (paymentMethod === "MILES" && overagePayment !== null)
+                  }
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Place Order

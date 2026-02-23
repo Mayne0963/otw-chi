@@ -38,6 +38,14 @@ export async function getAvailableJobs() {
     where: {
       status: 'REQUESTED',
       userId: { not: user.id },
+      paymentRequired: false,
+      NOT: {
+        AND: [
+          { overageBillingMode: 'INSTANT' },
+          { overageMiles: { gt: 0 } },
+          { overageStatus: { not: 'PAID' } },
+        ],
+      },
     },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -67,6 +75,12 @@ export async function acceptJob(requestId: string) {
 
   if (!job || job.status !== 'REQUESTED') {
     throw new Error('Job is no longer available');
+  }
+  if (job.paymentRequired) {
+    throw new Error('Job is awaiting overage payment');
+  }
+  if (job.overageBillingMode === 'INSTANT' && job.overageMiles > 0 && job.overageStatus !== 'PAID') {
+    throw new Error('Job overage payment is not settled');
   }
   if (job.userId === user.id) {
     throw new Error('Drivers cannot accept their own requests');

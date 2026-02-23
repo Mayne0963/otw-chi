@@ -99,6 +99,19 @@ enum ServiceMilesTransactionType {
   ROLL_IN
 }
 
+enum OverageBillingMode {
+  INSTANT
+  INVOICE
+}
+
+enum OverageStatus {
+  NONE
+  PENDING
+  INVOICED
+  PAID
+  FAILED
+}
+
 enum DriverTier {
   PROBATION
   STANDARD
@@ -153,6 +166,8 @@ model User {
   franchiseProfile   FranchiseProfile?
   driverApplications DriverApplication[]
   deliveryRequests   DeliveryRequest[]
+  overageInvoicePeriods OverageInvoicePeriod[]
+  overageLineItems   OverageLineItem[]
   promoRedemptions   PromoRedemption[]
   franchiseApplications FranchiseApplication[]
   contactMessages    ContactMessage[]
@@ -320,11 +335,20 @@ model DeliveryRequest {
   serviceMilesAdders   Int?
   serviceMilesDiscount Int?
   serviceMilesFinal    Int?
+  milesUsed            Int                 @default(0)
+  overageMiles         Int                 @default(0)
+  overageCents         Int                 @default(0)
+  overageBillingMode   OverageBillingMode?
+  overageStatus        OverageStatus       @default(NONE)
+  overagePaymentIntentId String?
+  overageInvoiceId     String?
+  paymentRequired      Boolean             @default(false)
   quoteBreakdown       Json?
   customerRating       Int?
   complaintFlag        Boolean             @default(false)
   
   serviceMilesLedger   ServiceMilesLedger[]
+  overageLineItem      OverageLineItem?
   timeLogs             DriverTimeLog[]
   founderServiceLogs   FounderServiceLog[]
   receiptVerifications ReceiptVerification[]
@@ -401,6 +425,10 @@ model MembershipPlan {
   cashAllowed         Boolean  @default(false)
   peerToPeerAllowed   Boolean  @default(false)
   allowedServiceTypes Json?
+  overageBillingMode  OverageBillingMode @default(INSTANT)
+  overageRateCentsPerMile Int            @default(0)
+  overageMinimumCents Int                @default(0)
+  overageCreditLimitCents Int            @default(0)
 
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
@@ -598,6 +626,47 @@ model ServiceMilesLedger {
   @@unique([walletId, idempotencyKey])
   @@index([walletId])
   @@index([deliveryRequestId])
+}
+
+model OverageInvoicePeriod {
+  id             String        @id @default(cuid())
+  userId         String
+  periodKey      String
+  status         OverageStatus @default(PENDING)
+  stripeInvoiceId String?      @unique
+  totalCents     Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id])
+  items          OverageLineItem[]
+
+  @@unique([userId, periodKey])
+  @@index([userId, periodKey])
+}
+
+model OverageLineItem {
+  id                String        @id @default(cuid())
+  periodId          String
+  userId            String
+  deliveryRequestId String        @unique
+  overageCents      Int
+  status            OverageStatus @default(PENDING)
+  createdAt         DateTime      @default(now())
+
+  period            OverageInvoicePeriod @relation(fields: [periodId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id])
+  deliveryRequest   DeliveryRequest      @relation(fields: [deliveryRequestId], references: [id])
+
+  @@index([periodId])
+  @@index([userId])
+}
+
+model StripeWebhookEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  type          String
+  createdAt     DateTime @default(now())
 }
 
 model DriverTimeLog {

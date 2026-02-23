@@ -35,6 +35,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!canTransition(from, to)) {
       return NextResponse.json({ success: false, error: `Invalid transition ${from} -> ${to}` }, { status: 400 });
     }
+    if (to === DeliveryRequestStatus.ASSIGNED && request.paymentRequired) {
+      return NextResponse.json(
+        { success: false, error: 'Request cannot be dispatched until payment is completed' },
+        { status: 400 }
+      );
+    }
+    if (
+      to === DeliveryRequestStatus.ASSIGNED &&
+      request.overageBillingMode === 'INSTANT' &&
+      request.overageMiles > 0 &&
+      request.overageStatus !== 'PAID'
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Request overage payment is not settled yet' },
+        { status: 400 }
+      );
+    }
     if (to === DeliveryRequestStatus.ASSIGNED && request.assignedDriverId) {
       const activeRequest = await prisma.deliveryRequest.findFirst({
         where: {

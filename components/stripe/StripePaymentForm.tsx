@@ -90,6 +90,7 @@ interface StripePaymentFormProps {
   amountCents: number;
   couponCode?: string;
   tipCents?: number;
+  initialClientSecret?: string;
   onSuccess: (paymentIntentId: string) => void;
   onError?: (error: string) => void;
 }
@@ -98,6 +99,7 @@ export default function StripePaymentForm({
   amountCents,
   couponCode,
   tipCents,
+  initialClientSecret,
   onSuccess,
   onError,
 }: StripePaymentFormProps) {
@@ -118,6 +120,13 @@ export default function StripePaymentForm({
       setIsFree(false);
       setLoading(false);
       onError?.("Stripe is not configured.");
+      return;
+    }
+
+    if (initialClientSecret) {
+      setClientSecret(initialClientSecret);
+      setIsFree(false);
+      setLoading(false);
       return;
     }
 
@@ -167,7 +176,7 @@ export default function StripePaymentForm({
     };
 
     createPaymentIntent();
-  }, [amountCents, couponCode, tipCents, onSuccess, onError, toast, stripeConfigured]);
+  }, [amountCents, couponCode, tipCents, initialClientSecret, onSuccess, onError, toast, stripeConfigured]);
 
   if (!stripeConfigured) {
     return (

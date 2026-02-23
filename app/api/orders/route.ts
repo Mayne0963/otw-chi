@@ -202,26 +202,27 @@ export async function POST(req: Request) {
           tipCents: data.tipCents,
           cashHandling: data.cashDelivery,
           couponCode: data.couponCode,
+          idempotencyKey: existingDraft ? `order_draft:${existingDraft.id}:miles` : undefined,
         });
 
-        if (existingDraft && existingDraft.id !== result.id) {
+        if (existingDraft && existingDraft.id !== result.request.id) {
           try {
             await prisma.$transaction([
               prisma.receiptVerification.updateMany({
                 where: { deliveryRequestId: existingDraft.id },
-                data: { deliveryRequestId: result.id },
+                data: { deliveryRequestId: result.request.id },
               }),
               prisma.orderConfirmation.updateMany({
                 where: { deliveryRequestId: existingDraft.id },
-                data: { deliveryRequestId: result.id },
+                data: { deliveryRequestId: result.request.id },
               }),
               prisma.receiptAudit.updateMany({
                 where: { deliveryRequestId: existingDraft.id },
-                data: { deliveryRequestId: result.id },
+                data: { deliveryRequestId: result.request.id },
               }),
               prisma.auditLog.updateMany({
                 where: { deliveryRequestId: existingDraft.id },
-                data: { deliveryRequestId: result.id },
+                data: { deliveryRequestId: result.request.id },
               }),
             ]);
           } catch (transferError) {
@@ -229,7 +230,7 @@ export async function POST(req: Request) {
           }
         }
 
-        await logReviewOverrideIfNeeded(result.id);
+        await logReviewOverrideIfNeeded(result.request.id);
 
         // Cleanup draft
         try {
@@ -240,7 +241,15 @@ export async function POST(req: Request) {
             console.error('Draft cleanup failed:', cleanupError);
         }
 
-        return NextResponse.json({ id: result.id });
+        return NextResponse.json({
+          id: result.request.id,
+          paymentRequired: result.paymentRequired,
+          overageMiles: result.overageMiles,
+          overageCents: result.overageCents,
+          overageBillingMode: result.overageBillingMode,
+          overagePaymentIntentId: result.overagePaymentIntentId,
+          overageClientSecret: result.overageClientSecret,
+        });
 
       } catch (error) {
         console.error('Submit delivery (miles) error:', error);

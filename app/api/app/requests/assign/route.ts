@@ -21,7 +21,14 @@ export async function POST(req: Request) {
     const [request, driverProfile] = await Promise.all([
       prisma.deliveryRequest.findUnique({
         where: { id },
-        select: { id: true, userId: true },
+        select: {
+          id: true,
+          userId: true,
+          paymentRequired: true,
+          overageBillingMode: true,
+          overageMiles: true,
+          overageStatus: true,
+        },
       }),
       prisma.driverProfile.findUnique({
         where: { id: driverProfileId },
@@ -31,6 +38,22 @@ export async function POST(req: Request) {
 
     if (!request) {
       return NextResponse.json({ success: false, error: 'Request not found' }, { status: 404 });
+    }
+    if (request.paymentRequired) {
+      return NextResponse.json(
+        { success: false, error: 'Request cannot be dispatched until payment is completed' },
+        { status: 400 }
+      );
+    }
+    if (
+      request.overageBillingMode === 'INSTANT' &&
+      request.overageMiles > 0 &&
+      request.overageStatus !== 'PAID'
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Request overage payment is not settled yet' },
+        { status: 400 }
+      );
     }
     if (!driverProfile) {
       return NextResponse.json({ success: false, error: 'Driver not found' }, { status: 404 });

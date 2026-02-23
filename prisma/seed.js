@@ -4,6 +4,22 @@ import { PrismaNeon } from '@prisma/adapter-neon';
 
 const UNLIMITED_SERVICE_MILES = -1;
 
+function getOverageDefaults(planName) {
+  const upper = String(planName || '').toUpperCase();
+  const invoiceMode =
+    upper === 'OTW ELITE' ||
+    upper === 'OTW BLACK' ||
+    upper === 'OTW ENTERPRISE' ||
+    upper.startsWith('OTW BUSINESS');
+
+  return {
+    overageBillingMode: invoiceMode ? 'INVOICE' : 'INSTANT',
+    overageRateCentsPerMile: 200,
+    overageMinimumCents: 500,
+    overageCreditLimitCents: invoiceMode ? 50000 : 0,
+  };
+}
+
 const DATABASE_URL_KEYS = [
   'DATABASE_URL',
   'NEON_DATABASE_URL',
@@ -226,6 +242,7 @@ async function main() {
       cashAllowed: plan.cashAllowed,
       peerToPeerAllowed: plan.peerToPeerAllowed,
       allowedServiceTypes: plan.allowedServiceTypes ?? undefined,
+      ...getOverageDefaults(plan.name),
     };
 
     const existingPlan = await prisma.membershipPlan.findUnique({

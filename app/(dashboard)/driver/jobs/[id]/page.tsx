@@ -77,6 +77,8 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     !!driver &&
     req.status === 'REQUESTED' &&
     !req.assignedDriverId &&
+    !req.paymentRequired &&
+    !(req.overageBillingMode === 'INSTANT' && req.overageMiles > 0 && req.overageStatus !== 'PAID') &&
     req.userId !== user.id &&
     !hasOtherActiveJob;
   

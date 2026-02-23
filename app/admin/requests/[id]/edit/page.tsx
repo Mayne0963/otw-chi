@@ -59,7 +59,15 @@ export async function updateRequestAction(formData: FormData) {
   // Check for DeliveryRequest
   const dr = await prisma.deliveryRequest.findUnique({
     where: { id },
-    select: { status: true, assignedDriverId: true, userId: true }
+    select: {
+      status: true,
+      assignedDriverId: true,
+      userId: true,
+      paymentRequired: true,
+      overageBillingMode: true,
+      overageMiles: true,
+      overageStatus: true,
+    }
   });
 
   if (dr) {
@@ -77,6 +85,16 @@ export async function updateRequestAction(formData: FormData) {
     }
 
     if (driverIdInput.length > 0) {
+      if (dr.paymentRequired) {
+        throw new Error('Request cannot be dispatched until payment is completed');
+      }
+      if (
+        dr.overageBillingMode === 'INSTANT' &&
+        dr.overageMiles > 0 &&
+        dr.overageStatus !== 'PAID'
+      ) {
+        throw new Error('Request overage payment is not settled yet');
+      }
       const driverProfile = await prisma.driverProfile.findUnique({
         where: { id: driverIdInput },
         select: { id: true, userId: true },

@@ -7,6 +7,22 @@ import type { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
 
+function getOverageDefaults(planName: string) {
+  const upper = planName.toUpperCase();
+  const invoiceMode =
+    upper === 'OTW ELITE' ||
+    upper === 'OTW BLACK' ||
+    upper === 'OTW ENTERPRISE' ||
+    upper.startsWith('OTW BUSINESS');
+
+  return {
+    overageBillingMode: invoiceMode ? 'INVOICE' : 'INSTANT',
+    overageRateCentsPerMile: 200,
+    overageMinimumCents: 500,
+    overageCreditLimitCents: invoiceMode ? 50000 : 0,
+  } as const;
+}
+
 export async function POST(_request: Request) {
   try {
     // Check authentication
@@ -251,6 +267,7 @@ export async function POST(_request: Request) {
         cashAllowed: plan.cashAllowed,
         peerToPeerAllowed: plan.peerToPeerAllowed,
         allowedServiceTypes: (plan.allowedServiceTypes ?? undefined) as Prisma.InputJsonValue | undefined,
+        ...getOverageDefaults(plan.name),
       };
 
       if (existingPlan) {

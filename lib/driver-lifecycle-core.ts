@@ -16,6 +16,10 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
         status: true,
         quoteBreakdown: true,
         userId: true,
+        paymentRequired: true,
+        overageBillingMode: true,
+        overageMiles: true,
+        overageStatus: true,
       },
     });
     const driverProfile = await tx.driverProfile.findUnique({
@@ -27,6 +31,16 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
     if (!driverProfile) throw new Error('Driver not found');
     if (request.status !== DeliveryRequestStatus.REQUESTED) {
       throw new Error('Request is not available for acceptance');
+    }
+    if (request.paymentRequired) {
+      throw new Error('Request cannot be dispatched until payment is completed');
+    }
+    if (
+      request.overageBillingMode === 'INSTANT' &&
+      request.overageMiles > 0 &&
+      request.overageStatus !== 'PAID'
+    ) {
+      throw new Error('Request overage payment is not settled yet');
     }
     if (request.userId === driverProfile.userId) {
       throw new Error('Drivers cannot accept their own requests');

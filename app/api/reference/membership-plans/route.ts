@@ -21,6 +21,10 @@ export async function GET() {
       cashAllowed: true,
       peerToPeerAllowed: true,
       allowedServiceTypes: true,
+      overageBillingMode: true,
+      overageRateCentsPerMile: true,
+      overageMinimumCents: true,
+      overageCreditLimitCents: true,
       updatedAt: true,
     },
   });
@@ -50,4 +54,3 @@ export async function GET() {
     }
   );
 }
-

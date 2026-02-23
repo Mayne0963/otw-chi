@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import StripePaymentForm from '@/components/stripe/StripePaymentForm';
 import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
 
 type QuoteResponse = {
@@ -43,6 +44,14 @@ type WalletResponse = {
 
 type PreferredDriversResponse = {
   drivers: Array<{ id: string; name: string }>;
+};
+
+type SubmitResponse = {
+  id: string;
+  paymentRequired?: boolean;
+  overageMiles?: number;
+  overageCents?: number;
+  overageClientSecret?: string | null;
 };
 
 async function fetchRouteMinutes(origin: GeocodedAddress, destination: GeocodedAddress): Promise<number> {
@@ -97,6 +106,11 @@ export function ServiceMilesCalculator() {
 
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [overagePayment, setOveragePayment] = useState<{
+    requestId: string;
+    amountCents: number;
+    clientSecret: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -248,10 +262,9 @@ export function ServiceMilesCalculator() {
     }
   }
 
-  const hasEnoughMiles = useMemo(() => {
-    if (!wallet || !quote) return false;
-    if (wallet.unlimited) return true;
-    return wallet.wallet.balanceMiles >= quote.quote.serviceMilesFinal;
+  const milesShortfall = useMemo(() => {
+    if (!wallet || !quote || wallet.unlimited) return 0;
+    return Math.max(0, quote.quote.serviceMilesFinal - wallet.wallet.balanceMiles);
   }, [wallet, quote]);
 
   async function submit() {
@@ -282,11 +295,26 @@ export function ServiceMilesCalculator() {
           quoteToken: quote.quoteToken,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as { id?: string; error?: unknown };
+      const data = (await res.json().catch(() => ({}))) as SubmitResponse & { error?: unknown };
       if (!res.ok) {
         throw new Error(typeof data?.error === 'string' ? data.error : 'Submit failed');
       }
       if (!data.id) throw new Error('Missing request id');
+      if (data.paymentRequired) {
+        if (!data.overageClientSecret || typeof data.overageCents !== 'number') {
+          throw new Error('Overage payment is required but missing payment details');
+        }
+        setOveragePayment({
+          requestId: data.id,
+          amountCents: data.overageCents,
+          clientSecret: data.overageClientSecret,
+        });
+        toast({
+          title: 'Overage payment required',
+          description: `Please pay $${(data.overageCents / 100).toFixed(2)} to dispatch this request.`,
+        });
+        return;
+      }
       toast({ title: 'Request submitted', description: 'Your Service Miles request is now queued.' });
       router.push(`/order/${data.id}`);
     } catch (error) {
@@ -552,7 +580,7 @@ export function ServiceMilesCalculator() {
           </Button>
           {quote ? (
             <>
-              <Button type="button" variant="outline" onClick={submit} disabled={!hasEnoughMiles}>
+              <Button type="button" variant="outline" onClick={submit} disabled={!quote}>
                 Accept
               </Button>
               <Button
@@ -565,13 +593,34 @@ export function ServiceMilesCalculator() {
               </Button>
             </>
           ) : null}
-          {!wallet?.unlimited && quote && !hasEnoughMiles ? (
-            <div className="text-sm text-red-500 self-center">
-              Not enough Service Miles.
+          {!wallet?.unlimited && quote && milesShortfall > 0 ? (
+            <div className="text-sm text-amber-500 self-center">
+              {wallet?.wallet.balanceMiles ?? 0} miles available. {milesShortfall} overage miles will be billed.
             </div>
           ) : null}
         </div>
       </Card>
+
+      {overagePayment ? (
+        <Card className="p-5 sm:p-6 space-y-3">
+          <div className="text-sm font-semibold">Complete Overage Payment</div>
+          <div className="text-sm text-muted-foreground">
+            Pay ${ (overagePayment.amountCents / 100).toFixed(2) } to unlock dispatch.
+          </div>
+          <StripePaymentForm
+            amountCents={overagePayment.amountCents}
+            initialClientSecret={overagePayment.clientSecret}
+            onSuccess={() => router.push(`/order/${overagePayment.requestId}`)}
+            onError={(error) =>
+              toast({
+                title: 'Overage payment failed',
+                description: error,
+                variant: 'destructive',
+              })
+            }
+          />
+        </Card>
+      ) : null}
 
       {quote ? (
         <Card className="p-5 sm:p-6 space-y-2">

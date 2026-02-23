@@ -87,7 +87,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const request = await submitDeliveryRequest({
+    const result = await submitDeliveryRequest({
       userId: user.id,
       serviceType: parsed.data.serviceType,
       pickupAddress: parsed.data.pickupAddress,
@@ -109,7 +109,18 @@ export async function POST(req: Request) {
       quotedAt,
     });
 
-    return NextResponse.json({ id: request.id }, { status: 201 });
+    return NextResponse.json(
+      {
+        id: result.request.id,
+        paymentRequired: result.paymentRequired,
+        overageMiles: result.overageMiles,
+        overageCents: result.overageCents,
+        overageBillingMode: result.overageBillingMode,
+        overagePaymentIntentId: result.overagePaymentIntentId,
+        overageClientSecret: result.overageClientSecret,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Server error';
     const status = /Unauthorized|not found/i.test(message) ? 401 : 400;
