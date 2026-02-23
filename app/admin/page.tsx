@@ -11,6 +11,30 @@ function formatCurrency(value: number | null | undefined): string {
   return `$${Number(value ?? 0).toFixed(2)}`;
 }
 
+type ReceiptsSummary = {
+  totalReceipts: number;
+  approvedCount: number;
+  flaggedCount: number;
+  rejectedCount: number;
+  avgProofScore: number;
+  lockedCount: number;
+  totalApprovedRevenue: number;
+};
+
+function isReceiptsSummary(value: unknown): value is ReceiptsSummary {
+  if (!value || typeof value !== 'object') return false;
+  const data = value as Record<string, unknown>;
+  return (
+    typeof data.totalReceipts === 'number' &&
+    typeof data.approvedCount === 'number' &&
+    typeof data.flaggedCount === 'number' &&
+    typeof data.rejectedCount === 'number' &&
+    typeof data.avgProofScore === 'number' &&
+    typeof data.lockedCount === 'number' &&
+    typeof data.totalApprovedRevenue === 'number'
+  );
+}
+
 // Loading component for better UX
 function AdminOverviewLoading() {
   return (
@@ -127,7 +151,7 @@ async function getAdminStats() {
   }
 }
 
-function AdminStatsBody({ stats, summary }: { stats: any, summary: any }) {
+function AdminStatsBody({ stats, summary }: { stats: any, summary: ReceiptsSummary | null }) {
   return (
     <div className="space-y-6">
       {/* Primary KPIs */}
@@ -352,12 +376,19 @@ function AdminStatsErrorState({ error }: { error: unknown }) {
 async function AdminStats() {
   let stats: any = null;
   let error: unknown = null;
-  let summary: any = null;
+  let summary: ReceiptsSummary | null = null;
 
   try {
     stats = await getAdminStats();
-    const summaryRes = await fetch('/api/admin/receipts/summary');
-    summary = await summaryRes.json();
+    const summaryRes = await fetch('/api/admin/receipts/summary', {
+      cache: 'no-store',
+    });
+    if (summaryRes.ok) {
+      const summaryData = await summaryRes.json().catch(() => null);
+      if (isReceiptsSummary(summaryData)) {
+        summary = summaryData;
+      }
+    }
   } catch (err) {
     error = err;
   }

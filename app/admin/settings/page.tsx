@@ -246,7 +246,8 @@ function SettingsErrorState({ error }: { error: unknown }) {
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
       <OtwButton 
-        onClick={() => window.location.reload()} 
+        as="a"
+        href="/admin/settings"
         variant="outline"
         className="mt-4 h-8 text-xs"
       >

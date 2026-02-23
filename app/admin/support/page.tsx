@@ -207,7 +207,8 @@ function SupportErrorState({ error }: { error: unknown }) {
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
       <OtwButton 
-        onClick={() => window.location.reload()} 
+        as="a"
+        href="/admin/support"
         variant="outline"
         size="sm"
         className="mt-4"

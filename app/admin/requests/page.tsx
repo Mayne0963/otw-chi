@@ -233,7 +233,8 @@ function RequestsErrorState({ error }: { error: unknown }) {
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
       <OtwButton 
-        onClick={() => window.location.reload()} 
+        as="a"
+        href="/admin/requests"
         className="mt-4 text-xs px-3 py-2"
         variant="ghost"
       >

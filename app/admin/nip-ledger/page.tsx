@@ -233,12 +233,14 @@ function NipLedgerErrorState({ error }: { error: unknown }) {
       <div className="text-xs text-white/40 mt-2">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
-      <button 
-        onClick={() => window.location.reload()} 
-        className="mt-4 text-xs px-3 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors"
+      <OtwButton
+        as="a"
+        href="/admin/nip-ledger"
+        className="mt-4 text-xs px-3 py-2 h-auto bg-white/10 hover:bg-white/20"
+        variant="ghost"
       >
         Retry
-      </button>
+      </OtwButton>
     </OtwCard>
   );
 }

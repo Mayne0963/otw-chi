@@ -243,7 +243,8 @@ function MembershipsErrorState({ error }: { error: unknown }) {
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
       <OtwButton 
-        onClick={() => window.location.reload()} 
+        as="a"
+        href="/admin/memberships"
         variant="ghost"
         className="mt-4 text-xs px-3 py-2 h-auto bg-white/10 hover:bg-white/20"
       >
