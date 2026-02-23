@@ -102,27 +102,41 @@ export async function applyDeliveryRequestLock(
     }
   });
 
-  // Create audit log
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      deliveryRequestId,
-      action: 'LOCK',
-      details: { reason },
-      previousState: {
-        isLocked: currentRequest.isLocked,
-        lockedAt: currentRequest.lockedAt,
-        lockReason: currentRequest.lockReason,
-        refundPolicy: currentRequest.refundPolicy
-      },
-      newState: {
-        isLocked: updatedRequest.isLocked,
-        lockedAt: updatedRequest.lockedAt,
-        lockReason: updatedRequest.lockReason,
-        refundPolicy: updatedRequest.refundPolicy
-      }
-    }
+  // AuditLog.deliveryRequestId references OrderConfirmation.id in current schema.
+  // Resolve the linked confirmation id from the delivery request id to avoid FK violations.
+  const confirmation = await prisma.orderConfirmation.findUnique({
+    where: { deliveryRequestId },
+    select: { id: true },
   });
+  if (!confirmation) {
+    console.warn('[lock] audit log skipped: missing orderConfirmation', { deliveryRequestId, action: 'LOCK' });
+    return;
+  }
+
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        deliveryRequestId: confirmation.id,
+        action: 'LOCK',
+        details: { reason, deliveryRequestId },
+        previousState: {
+          isLocked: currentRequest.isLocked,
+          lockedAt: currentRequest.lockedAt,
+          lockReason: currentRequest.lockReason,
+          refundPolicy: currentRequest.refundPolicy
+        },
+        newState: {
+          isLocked: updatedRequest.isLocked,
+          lockedAt: updatedRequest.lockedAt,
+          lockReason: updatedRequest.lockReason,
+          refundPolicy: updatedRequest.refundPolicy
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[lock] audit log create failed', { deliveryRequestId, action: 'LOCK', error });
+  }
 }
 
 export async function removeDeliveryRequestLock(
@@ -158,25 +172,38 @@ export async function removeDeliveryRequestLock(
     }
   });
 
-  // Create audit log
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      deliveryRequestId,
-      action: 'UNLOCK',
-      details: { reason },
-      previousState: {
-        isLocked: currentRequest.isLocked,
-        lockedAt: currentRequest.lockedAt,
-        lockReason: currentRequest.lockReason,
-        refundPolicy: currentRequest.refundPolicy
-      },
-      newState: {
-        isLocked: updatedRequest.isLocked,
-        lockedAt: updatedRequest.lockedAt,
-        lockReason: updatedRequest.lockReason,
-        refundPolicy: updatedRequest.refundPolicy
-      }
-    }
+  // AuditLog.deliveryRequestId references OrderConfirmation.id in current schema.
+  const confirmation = await prisma.orderConfirmation.findUnique({
+    where: { deliveryRequestId },
+    select: { id: true },
   });
+  if (!confirmation) {
+    console.warn('[lock] audit log skipped: missing orderConfirmation', { deliveryRequestId, action: 'UNLOCK' });
+    return;
+  }
+
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        deliveryRequestId: confirmation.id,
+        action: 'UNLOCK',
+        details: { reason, deliveryRequestId },
+        previousState: {
+          isLocked: currentRequest.isLocked,
+          lockedAt: currentRequest.lockedAt,
+          lockReason: currentRequest.lockReason,
+          refundPolicy: currentRequest.refundPolicy
+        },
+        newState: {
+          isLocked: updatedRequest.isLocked,
+          lockedAt: updatedRequest.lockedAt,
+          lockReason: updatedRequest.lockReason,
+          refundPolicy: updatedRequest.refundPolicy
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[lock] audit log create failed', { deliveryRequestId, action: 'UNLOCK', error });
+  }
 }
