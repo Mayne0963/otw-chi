@@ -25,6 +25,7 @@ export async function getAvailableJobs() {
   const jobs = await prisma.deliveryRequest.findMany({
     where: {
       status: 'REQUESTED',
+      userId: { not: user.id },
     },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -54,6 +55,9 @@ export async function acceptJob(requestId: string) {
 
   if (!job || job.status !== 'REQUESTED') {
     throw new Error('Job is no longer available');
+  }
+  if (job.userId === user.id) {
+    throw new Error('Drivers cannot accept their own requests');
   }
   
   if (job.assignedDriverId) {

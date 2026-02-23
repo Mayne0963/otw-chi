@@ -57,7 +57,7 @@ export async function updateRequestAction(formData: FormData) {
   // Check for DeliveryRequest
   const dr = await prisma.deliveryRequest.findUnique({
     where: { id },
-    select: { status: true, assignedDriverId: true }
+    select: { status: true, assignedDriverId: true, userId: true }
   });
 
   if (dr) {
@@ -72,6 +72,19 @@ export async function updateRequestAction(formData: FormData) {
        if (['DRAFT', 'REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'CANCELED'].includes(statusInput)) {
          data.status = statusInput;
        }
+    }
+
+    if (driverIdInput.length > 0) {
+      const driverProfile = await prisma.driverProfile.findUnique({
+        where: { id: driverIdInput },
+        select: { id: true, userId: true },
+      });
+      if (!driverProfile) {
+        throw new Error('Driver not found');
+      }
+      if (driverProfile.userId === dr.userId) {
+        throw new Error('Drivers cannot accept their own requests');
+      }
     }
 
     data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;

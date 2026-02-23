@@ -257,14 +257,25 @@ export async function assignDriverAction(formData: FormData) {
     const prisma = getPrisma();
     const deliveryRequest = await prisma.deliveryRequest.findUnique({ 
       where: { id },
-      select: { status: true }
+      select: { status: true, userId: true }
+    });
+    const driverProfile = await prisma.driverProfile.findUnique({
+      where: { id: driverProfileId },
+      select: { id: true, userId: true },
     });
     
     if (deliveryRequest) {
+      if (!driverProfile) {
+        throw new Error('Driver not found');
+      }
+      if (deliveryRequest.userId === driverProfile.userId) {
+        throw new Error('Drivers cannot accept their own requests');
+      }
+
       await prisma.deliveryRequest.update({
         where: { id },
         data: { 
-          assignedDriverId: driverProfileId,
+          assignedDriverId: driverProfile.id,
           status: deliveryRequest.status === 'REQUESTED' ? 'ASSIGNED' : undefined
         }
       });
@@ -272,7 +283,7 @@ export async function assignDriverAction(formData: FormData) {
       await prisma.driverAssignment.create({
         data: {
           deliveryRequestId: id,
-          driverId: driverProfileId
+          driverId: driverProfile.id
         }
       });
     } else {

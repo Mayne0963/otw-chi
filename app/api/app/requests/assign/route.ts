@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth/roles';
 
 export async function POST(req: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const prisma = getPrisma();
     const body = await req.json();
     const id = String(body?.id || '');
@@ -10,12 +16,37 @@ export async function POST(req: Request) {
     if (!id || !driverProfileId) {
       return NextResponse.json({ success: false, error: 'Missing id or driverProfileId' }, { status: 400 });
     }
+
+    const [request, driverProfile] = await Promise.all([
+      prisma.deliveryRequest.findUnique({
+        where: { id },
+        select: { id: true, userId: true },
+      }),
+      prisma.driverProfile.findUnique({
+        where: { id: driverProfileId },
+        select: { id: true, userId: true },
+      }),
+    ]);
+
+    if (!request) {
+      return NextResponse.json({ success: false, error: 'Request not found' }, { status: 404 });
+    }
+    if (!driverProfile) {
+      return NextResponse.json({ success: false, error: 'Driver not found' }, { status: 404 });
+    }
+    if (request.userId === driverProfile.userId) {
+      return NextResponse.json(
+        { success: false, error: 'Drivers cannot accept their own requests' },
+        { status: 400 }
+      );
+    }
+
     const updated = await prisma.deliveryRequest.update({
-      where: { id },
-      data: { assignedDriverId: driverProfileId, status: 'ASSIGNED' },
+      where: { id: request.id },
+      data: { assignedDriverId: driverProfile.id, status: 'ASSIGNED' },
     });
     await prisma.driverAssignment.create({
-      data: { deliveryRequestId: id, driverId: driverProfileId },
+      data: { deliveryRequestId: request.id, driverId: driverProfile.id },
     });
     return NextResponse.json({ success: true, request: updated });
   } catch (e) {
@@ -23,4 +54,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
-

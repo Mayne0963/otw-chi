@@ -10,11 +10,25 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
   return await client.$transaction(async (tx) => {
     const request = await tx.deliveryRequest.findUnique({
       where: { id: requestId },
+      select: {
+        id: true,
+        status: true,
+        quoteBreakdown: true,
+        userId: true,
+      },
+    });
+    const driverProfile = await tx.driverProfile.findUnique({
+      where: { id: driverId },
+      select: { id: true, userId: true },
     });
 
     if (!request) throw new Error('Request not found');
+    if (!driverProfile) throw new Error('Driver not found');
     if (request.status !== DeliveryRequestStatus.REQUESTED) {
       throw new Error('Request is not available for acceptance');
+    }
+    if (request.userId === driverProfile.userId) {
+      throw new Error('Drivers cannot accept their own requests');
     }
 
     const now = new Date();

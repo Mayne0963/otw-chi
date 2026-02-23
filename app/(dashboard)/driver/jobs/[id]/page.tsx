@@ -64,7 +64,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     );
   }
 
-  const canAccept = !!driver && req.status === 'REQUESTED' && !req.assignedDriverId;
+  const canAccept = !!driver && req.status === 'REQUESTED' && !req.assignedDriverId && req.userId !== user.id;
   
   return (
     <OtwPageShell>

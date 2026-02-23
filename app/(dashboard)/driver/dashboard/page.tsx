@@ -200,7 +200,8 @@ export default async function DriverDashboardPage() {
   const availableRequests = await prisma.deliveryRequest.findMany({
     where: { 
         status: 'REQUESTED',
-        assignedDriverId: null 
+        assignedDriverId: null,
+        userId: { not: user.id },
     },
     orderBy: { createdAt: 'desc' }
   });
