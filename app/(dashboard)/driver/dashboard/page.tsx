@@ -6,7 +6,6 @@ import DriverLiveMap from '@/components/otw/DriverLiveMap';
 import { validateAddress } from '@/lib/geocoding';
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 import { DeliveryRequestStatus } from '@prisma/client';
-import type { DeliveryRequest } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import type { OtwLocation } from '@/lib/otw/otwTypes';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
@@ -199,10 +198,9 @@ export default async function DriverDashboardPage() {
   let driverLocations: OtwDriverLocation[] = [];
 
   if (activeRequest) {
-    const [pickup, dropoff] = await Promise.all([
-      validateAddress(activeRequest.pickupAddress).catch(() => null),
-      validateAddress(activeRequest.dropoffAddress).catch(() => null),
-    ]);
+    // Geocode sequentially to avoid upstream rate-limit collisions on free geocoding services.
+    const pickup = await validateAddress(activeRequest.pickupAddress).catch(() => null);
+    const dropoff = await validateAddress(activeRequest.dropoffAddress).catch(() => null);
 
     if (pickup) {
       pickupLocation = {

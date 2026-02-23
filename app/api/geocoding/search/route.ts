@@ -1,5 +1,38 @@
 import { NextResponse } from 'next/server';
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchWithRetry(url: URL, headers: Record<string, string>, maxAttempts = 3): Promise<Response> {
+  let lastResponse: Response | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetch(url.toString(), { headers });
+    lastResponse = response;
+
+    if (response.ok) {
+      return response;
+    }
+
+    const isRetryable = response.status === 429 || response.status === 503;
+    if (!isRetryable || attempt >= maxAttempts) {
+      return response;
+    }
+
+    const retryAfterHeader = response.headers.get('retry-after');
+    const retryAfterSeconds = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : NaN;
+    const retryMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1000
+      : 1200 * attempt;
+    await sleep(retryMs);
+  }
+
+  if (lastResponse) {
+    return lastResponse;
+  }
+
+  throw new Error('Nominatim request failed before receiving a response');
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -20,12 +53,13 @@ export async function GET(req: Request) {
         url.searchParams.append('format', 'json');
     }
 
-    const response = await fetch(url.toString(), {
-      headers: {
+    const response = await fetchWithRetry(
+      url,
+      {
         'User-Agent': 'OTW-Delivery-App',
         'Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://otw-delivery.com',
-      },
-    });
+      }
+    );
 
     if (!response.ok) {
       return new NextResponse(`Nominatim API Error: ${response.status}`, { status: response.status });
