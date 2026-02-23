@@ -34,6 +34,33 @@ function getDispatchPreferences(quoteBreakdown: unknown): DispatchPreferences {
   return prefs as DispatchPreferences;
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function geocodeAddressWithFallback(address: string) {
+  const normalized = address.replace(/\s+/g, ' ').trim();
+  if (!normalized) return null;
+
+  const withoutCountry = normalized.replace(/,\s*United States$/i, '').trim();
+  const parts = withoutCountry.split(',').map((part) => part.trim()).filter(Boolean);
+  const withoutVenue = parts.length > 1 ? parts.slice(1).join(', ') : withoutCountry;
+  const localityTail = parts.length > 4 ? parts.slice(parts.length - 4).join(', ') : withoutCountry;
+
+  const candidates = Array.from(
+    new Set([normalized, withoutCountry, withoutVenue, localityTail].filter((value) => value.length >= 5))
+  );
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const result = await validateAddress(candidate).catch(() => null);
+    if (result) return result;
+    if (index < candidates.length - 1) {
+      await wait(250);
+    }
+  }
+
+  return null;
+}
+
 async function acceptRequest(formData: FormData) {
   'use server';
   const requestId = formData.get('requestId') as string;
@@ -198,9 +225,9 @@ export default async function DriverDashboardPage() {
   let driverLocations: OtwDriverLocation[] = [];
 
   if (activeRequest) {
-    // Geocode sequentially to avoid upstream rate-limit collisions on free geocoding services.
-    const pickup = await validateAddress(activeRequest.pickupAddress).catch(() => null);
-    const dropoff = await validateAddress(activeRequest.dropoffAddress).catch(() => null);
+    // Geocode sequentially with retries/fallback queries to reduce route gaps.
+    const pickup = await geocodeAddressWithFallback(activeRequest.pickupAddress);
+    const dropoff = await geocodeAddressWithFallback(activeRequest.dropoffAddress);
 
     if (pickup) {
       pickupLocation = {

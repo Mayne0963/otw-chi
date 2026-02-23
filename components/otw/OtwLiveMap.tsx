@@ -342,7 +342,7 @@ useEffect(() => {
       jobPhase === "TO_DROPOFF"
         ? jobDestination
         : jobPhase === "TO_PICKUP"
-          ? jobPickup
+          ? jobPickup ?? jobDestination
           : null;
 
     if (targetLocation) {
@@ -368,7 +368,7 @@ useEffect(() => {
       jobPhase === "TO_DROPOFF"
         ? jobDestination
         : jobPhase === "TO_PICKUP"
-          ? jobPickup
+          ? jobPickup ?? jobDestination
           : null;
     if (routingDriver && targetLocation) {
       setActiveDriver(routingDriver);
@@ -981,8 +981,10 @@ useEffect(() => {
       );
     } else if (jobPickup && jobDestination) {
       statusLines.push("Job route: calculating...");
-    } else if (jobPickup || jobDestination) {
-      statusLines.push("Job route: add pickup and destination to unlock directions.");
+    } else if (jobDestination) {
+      statusLines.push("Job route: pickup unresolved, showing destination guidance.");
+    } else if (jobPickup) {
+      statusLines.push("Job route: destination unresolved, waiting for full route.");
     }
 
     if (resolvedDriverSummary && activeDriver && driverTarget) {
