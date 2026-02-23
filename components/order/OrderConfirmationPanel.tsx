@@ -47,7 +47,8 @@ function formatDate(value: string | null): string {
   if (!value) return 'Not confirmed yet';
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString();
+  // Use a deterministic UTC format to avoid server/client hydration mismatches.
+  return parsed.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
 }
 
 export default function OrderConfirmationPanel({ deliveryRequestId, items, confirmation }: Props) {
