@@ -2,7 +2,9 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import type { DeliveryRequestStatus } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
+import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import { requireRole } from '@/lib/auth';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -84,6 +86,20 @@ export async function updateRequestAction(formData: FormData) {
       }
       if (driverProfile.userId === dr.userId) {
         throw new Error('Drivers cannot accept their own requests');
+      }
+      const nextStatus = (data.status ?? dr.status) as DeliveryRequestStatus;
+      if (DRIVER_ACTIVE_REQUEST_STATUSES.includes(nextStatus)) {
+        const activeRequest = await prisma.deliveryRequest.findFirst({
+          where: {
+            assignedDriverId: driverProfile.id,
+            status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+            id: { not: id },
+          },
+          select: { id: true },
+        });
+        if (activeRequest) {
+          throw new Error('Driver already has an active request');
+        }
       }
     }
 

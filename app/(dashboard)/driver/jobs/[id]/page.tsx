@@ -6,6 +6,7 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { acceptJobAction, updateJobStatusAction } from '@/app/actions/driver';
+import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -50,6 +51,14 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
 
   const isAssignedToMe = !!driver && req.assignedDriverId === driver.id;
   const isUnassigned = req.assignedDriverId === null;
+  const hasOtherActiveJob = !!driver && !!(await prisma.deliveryRequest.findFirst({
+    where: {
+      assignedDriverId: driver.id,
+      status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+      id: { not: req.id },
+    },
+    select: { id: true },
+  }));
   
   // Visibility Rule: 
   // 1. If assigned to me: Visible.
@@ -64,7 +73,12 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     );
   }
 
-  const canAccept = !!driver && req.status === 'REQUESTED' && !req.assignedDriverId && req.userId !== user.id;
+  const canAccept =
+    !!driver &&
+    req.status === 'REQUESTED' &&
+    !req.assignedDriverId &&
+    req.userId !== user.id &&
+    !hasOtherActiveJob;
   
   return (
     <OtwPageShell>

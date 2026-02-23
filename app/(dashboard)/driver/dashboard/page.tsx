@@ -197,14 +197,17 @@ export default async function DriverDashboardPage() {
     orderBy: { createdAt: 'desc' }
   });
 
-  const availableRequests = await prisma.deliveryRequest.findMany({
-    where: { 
-        status: 'REQUESTED',
-        assignedDriverId: null,
-        userId: { not: user.id },
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+  const availableRequests =
+    assignedRequests.length > 0
+      ? []
+      : await prisma.deliveryRequest.findMany({
+          where: {
+            status: 'REQUESTED',
+            assignedDriverId: null,
+            userId: { not: user.id },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
 
   const prioritizedAvailableRequests = [...availableRequests].sort((a, b) => {
     const aPref = getDispatchPreferences(a.quoteBreakdown);

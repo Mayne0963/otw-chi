@@ -5,6 +5,7 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { revalidatePath } from 'next/cache';
@@ -270,6 +271,17 @@ export async function assignDriverAction(formData: FormData) {
       }
       if (deliveryRequest.userId === driverProfile.userId) {
         throw new Error('Drivers cannot accept their own requests');
+      }
+      const activeRequest = await prisma.deliveryRequest.findFirst({
+        where: {
+          assignedDriverId: driverProfile.id,
+          status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+          id: { not: id },
+        },
+        select: { id: true },
+      });
+      if (activeRequest) {
+        throw new Error('Driver already has an active request');
       }
 
       await prisma.deliveryRequest.update({

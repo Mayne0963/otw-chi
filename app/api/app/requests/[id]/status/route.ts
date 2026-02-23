@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getPrisma } from '@/lib/db';
 import { DeliveryRequestStatus } from '@prisma/client';
+import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 
 const allowed: Record<DeliveryRequestStatus, DeliveryRequestStatus[]> = {
   DRAFT: ['REQUESTED', 'CANCELED'],
@@ -33,6 +34,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const to = nextStatus as DeliveryRequestStatus;
     if (!canTransition(from, to)) {
       return NextResponse.json({ success: false, error: `Invalid transition ${from} -> ${to}` }, { status: 400 });
+    }
+    if (to === DeliveryRequestStatus.ASSIGNED && request.assignedDriverId) {
+      const activeRequest = await prisma.deliveryRequest.findFirst({
+        where: {
+          assignedDriverId: request.assignedDriverId,
+          status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+          id: { not: request.id },
+        },
+        select: { id: true },
+      });
+      if (activeRequest) {
+        return NextResponse.json(
+          { success: false, error: 'Driver already has an active request' },
+          { status: 400 }
+        );
+      }
     }
     const updated = await prisma.deliveryRequest.update({
       where: { id },

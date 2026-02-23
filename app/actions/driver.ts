@@ -7,6 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
 import { calculateBasePriceCents, calculateDriverPayoutCents } from '@/lib/pricing';
+import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 
 export async function getAvailableJobs() {
   const user = await getCurrentUser();
@@ -19,6 +20,17 @@ export async function getAvailableJobs() {
   });
 
   if (!driverProfile?.zoneId) {
+    return [];
+  }
+
+  const activeJob = await prisma.deliveryRequest.findFirst({
+    where: {
+      assignedDriverId: driverProfile.id,
+      status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+    },
+    select: { id: true },
+  });
+  if (activeJob) {
     return [];
   }
 
@@ -58,6 +70,17 @@ export async function acceptJob(requestId: string) {
   }
   if (job.userId === user.id) {
     throw new Error('Drivers cannot accept their own requests');
+  }
+  const activeJob = await prisma.deliveryRequest.findFirst({
+    where: {
+      assignedDriverId: driverProfile.id,
+      status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+      id: { not: requestId },
+    },
+    select: { id: true },
+  });
+  if (activeJob) {
+    throw new Error('Driver already has an active request');
   }
   
   if (job.assignedDriverId) {

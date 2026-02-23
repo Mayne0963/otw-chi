@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
+import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 
 export async function POST(req: Request) {
   try {
@@ -37,6 +38,20 @@ export async function POST(req: Request) {
     if (request.userId === driverProfile.userId) {
       return NextResponse.json(
         { success: false, error: 'Drivers cannot accept their own requests' },
+        { status: 400 }
+      );
+    }
+    const activeRequest = await prisma.deliveryRequest.findFirst({
+      where: {
+        assignedDriverId: driverProfile.id,
+        status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+        id: { not: request.id },
+      },
+      select: { id: true },
+    });
+    if (activeRequest) {
+      return NextResponse.json(
+        { success: false, error: 'Driver already has an active request' },
         { status: 400 }
       );
     }

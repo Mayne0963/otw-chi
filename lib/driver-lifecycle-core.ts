@@ -1,6 +1,7 @@
 import { DeliveryRequestStatus, DriverEarningStatus } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { calculateDriverPayCents } from './driver-pay';
+import { DRIVER_ACTIVE_REQUEST_STATUSES } from './driver-assignment';
 
 type PrismaLikeClient = {
   $transaction: <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) => Promise<T>;
@@ -29,6 +30,17 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
     }
     if (request.userId === driverProfile.userId) {
       throw new Error('Drivers cannot accept their own requests');
+    }
+    const existingActiveRequest = await tx.deliveryRequest.findFirst({
+      where: {
+        assignedDriverId: driverId,
+        status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+        id: { not: requestId },
+      },
+      select: { id: true },
+    });
+    if (existingActiveRequest) {
+      throw new Error('Driver already has an active request');
     }
 
     const now = new Date();
