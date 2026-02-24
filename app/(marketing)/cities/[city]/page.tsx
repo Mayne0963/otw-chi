@@ -3,7 +3,7 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { Metadata } from 'next';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 type Props = {
   params: Promise<{ city: string }>;
@@ -26,6 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CityCoveragePage({ params }: Props) {
+  const capabilities = getServerCapabilities();
   const { city: rawCity } = await params;
   const city = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
   const zones = ['South Side', 'West Side', 'Downtown', 'North End (Coming Soon)'];
@@ -92,7 +93,7 @@ export default async function CityCoveragePage({ params }: Props) {
             <OtwButton as="a" href="/driver/apply" variant="outline">
               Become a Driver
             </OtwButton>
-            {isFeatureEnabled('franchise') ? (
+            {capabilities.canSeeFranchise ? (
               <OtwButton as="a" href="/franchise/apply" variant="ghost">
                 Franchise Inquiry
               </OtwButton>

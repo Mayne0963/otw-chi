@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { isFeatureEnabled } from "@/lib/featureFlags"
+import { getClientCapabilities } from "@/lib/capabilities"
 import { 
   LayoutDashboard, 
   Package, 
@@ -28,6 +28,7 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const capabilities = getClientCapabilities({ role })
 
   const commonRoutes = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -38,7 +39,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Support", href: "/support", icon: LifeBuoy },
     { label: "Settings", href: "/settings", icon: Settings },
   ]
-  if (isFeatureEnabled('nip')) {
+  if (capabilities.canSeeNip) {
     commonRoutes.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
   }
 
@@ -61,13 +62,13 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
     { label: "Seed Database", href: "/admin/seed", icon: Settings },
   ]
-  if (isFeatureEnabled('nip')) {
+  if (capabilities.canSeeNip) {
     adminRoutes.push({ label: "Ledger", href: "/admin/nip-ledger", icon: Wallet })
   }
-  if (isFeatureEnabled('franchise')) {
+  if (capabilities.canSeeFranchise) {
     adminRoutes.push({ label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 })
   }
-  if (isFeatureEnabled('adminZones')) {
+  if (capabilities.canSeeAdminZones) {
     adminRoutes.push({ label: "Cities & Zones", href: "/admin/cities-zones", icon: MapPin })
   }
 

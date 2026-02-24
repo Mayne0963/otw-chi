@@ -8,7 +8,7 @@ import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { notFound } from 'next/navigation';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 // Loading component for better UX
 function AdminNipLedgerLoading() {
@@ -248,7 +248,8 @@ function NipLedgerErrorState({ error }: { error: unknown }) {
 }
 
 export default async function AdminNipLedgerPage() {
-  if (!isFeatureEnabled('nip')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeNip) {
     notFound();
   }
 

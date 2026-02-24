@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { getPrisma } from "@/lib/db";
-import { isServerFeatureEnabled } from "@/lib/featureFlags";
+import { getServerCapabilities } from "@/lib/capabilities";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  if (!isServerFeatureEnabled('adminZones')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeAdminZones) {
     return new Response('Not Found', { status: 404 });
   }
 

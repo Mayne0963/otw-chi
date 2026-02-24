@@ -1,10 +1,11 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import FranchiseRequirements from '@/components/otw/FranchiseRequirements';
 import { notFound } from 'next/navigation';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 export default function FranchiseRequirementsPage() {
-  if (!isFeatureEnabled('franchise')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeFranchise) {
     notFound();
   }
 

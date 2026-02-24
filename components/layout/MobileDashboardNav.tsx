@@ -14,7 +14,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar"
 import { useState } from "react"
-import { isFeatureEnabled } from "@/lib/featureFlags"
+import { getClientCapabilities } from "@/lib/capabilities"
 
 interface MobileDashboardNavProps {
   role: string
@@ -23,13 +23,14 @@ interface MobileDashboardNavProps {
 export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const capabilities = getClientCapabilities({ role })
 
   const commonTabs = [
     { label: "Home", href: "/dashboard", icon: LayoutDashboard },
     { label: "Requests", href: "/requests", icon: Package },
     { label: "Miles", href: "/service-miles", icon: CreditCard },
   ]
-  if (isFeatureEnabled('nip')) {
+  if (capabilities.canSeeNip) {
     commonTabs.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
   }
 

@@ -1,6 +1,6 @@
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
-import { isServerFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,8 @@ const escapeCsv = (value: unknown) => {
 };
 
 export async function GET() {
-  if (!isServerFeatureEnabled('franchise')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeFranchise) {
     return new Response('Not Found', { status: 404 });
   }
 

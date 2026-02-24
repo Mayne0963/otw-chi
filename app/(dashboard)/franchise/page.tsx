@@ -4,10 +4,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 export default function FranchisePage() {
-  if (!isFeatureEnabled('franchise')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeFranchise) {
     notFound();
   }
 

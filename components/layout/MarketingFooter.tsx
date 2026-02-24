@@ -1,7 +1,9 @@
 import Link from "next/link"
-import { isFeatureEnabled } from "@/lib/featureFlags"
+import { getServerCapabilities } from "@/lib/capabilities"
 
 export function MarketingFooter() {
+  const capabilities = getServerCapabilities()
+
   return (
     <footer className="border-t border-border/70 bg-background py-12 text-muted-foreground">
       <div className="otw-container grid gap-8 md:grid-cols-2 lg:grid-cols-5">
@@ -24,7 +26,7 @@ export function MarketingFooter() {
           <ul className="space-y-2 text-sm">
             <li><Link href="/about" className="hover:text-secondary transition-colors duration-300">About</Link></li>
             <li><Link href="/driver/apply" className="hover:text-secondary transition-colors duration-300">Drive with Us</Link></li>
-            {isFeatureEnabled('franchise') ? (
+            {capabilities.canSeeFranchise ? (
               <li><Link href="/franchise/apply" className="hover:text-secondary transition-colors duration-300">Franchise</Link></li>
             ) : null}
           </ul>

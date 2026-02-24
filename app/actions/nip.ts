@@ -3,10 +3,10 @@
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription } from '@/lib/membership';
-import { isServerFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 function isNipFeatureEnabled() {
-  return isServerFeatureEnabled('nip');
+  return getServerCapabilities().canSeeNip;
 }
 
 export async function getNipBalance(userId?: string) {

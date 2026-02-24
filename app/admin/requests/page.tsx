@@ -192,24 +192,24 @@ function RequestsTable({ requests, drivers }: { requests: RequestRow[], drivers:
                         <OtwButton as="a" href={`/admin/requests/${request.id}?id=${request.id}`} variant="ghost" className="h-7 px-2 text-xs">View</OtwButton>
                         <OtwButton as="a" href={`/admin/requests/${request.id}/edit?id=${request.id}`} variant="outline" className="h-7 px-2 text-xs">Edit</OtwButton>
                         {(request.status === 'REQUESTED') && drivers.length > 0 && (
-                          <form action={assignDriverAction} className="inline-block">
+                          <form action={assignDriverAction} className="inline-flex items-center gap-1">
                             <input type="hidden" name="id" value={request.id} />
                             <select 
                               name="driverProfileId" 
                               className="text-xs rounded bg-otwBlack/40 border border-white/15 px-2 py-1"
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  e.target.form?.submit();
-                                }
-                              }}
+                              defaultValue=""
+                              required
                             >
-                              <option value="">Assign Driver</option>
+                              <option value="" disabled>Assign Driver</option>
                               {drivers.map((driver) => (
                                 <option key={driver.id} value={driver.id}>
                                   {driver.user.name} ({driver.status})
                                 </option>
                               ))}
                             </select>
+                            <OtwButton type="submit" variant="ghost" className="h-7 px-2 text-xs">
+                              Assign
+                            </OtwButton>
                           </form>
                         )}
                       </div>

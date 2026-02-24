@@ -7,7 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 // Loading component for better UX
 function AdminCitiesZonesLoading() {
@@ -214,7 +214,8 @@ function CitiesZonesErrorState({ error }: { error: unknown }) {
 }
 
 export default async function AdminCitiesZonesPage() {
-  if (!isFeatureEnabled('adminZones')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeAdminZones) {
     notFound();
   }
 

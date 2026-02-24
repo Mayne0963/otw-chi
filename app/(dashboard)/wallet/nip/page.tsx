@@ -7,12 +7,13 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { ensureWeeklyActiveMemberGrant } from '@/app/actions/nip';
 import { notFound } from 'next/navigation';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NipWalletPage() {
-  if (!isFeatureEnabled('nip')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeNip) {
     notFound();
   }
 

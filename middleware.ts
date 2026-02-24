@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth/server';
-import { isServerFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 const isPublicRoute = (pathname: string) => {
   const publicPaths = [
@@ -91,24 +91,26 @@ const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
 };
 
 function isBlockedFeaturePath(pathname: string): boolean {
+  const capabilities = getServerCapabilities();
+
   if (
     (pathname.startsWith('/franchise') || pathname.startsWith('/admin/franchise')) &&
-    !isServerFeatureEnabled('franchise')
+    !capabilities.canSeeFranchise
   ) {
     return true;
   }
   if (
     (pathname.startsWith('/wallet/nip') || pathname.startsWith('/admin/nip-ledger')) &&
-    !isServerFeatureEnabled('nip')
+    !capabilities.canSeeNip
   ) {
     return true;
   }
-  if (pathname.startsWith('/admin/cities-zones') && !isServerFeatureEnabled('adminZones')) {
+  if (pathname.startsWith('/admin/cities-zones') && !capabilities.canSeeAdminZones) {
     return true;
   }
   if (
     (pathname.startsWith('/pos') || pathname.startsWith('/admin/pos') || pathname.startsWith('/merchant')) &&
-    !isServerFeatureEnabled('pos')
+    !capabilities.canSeePos
   ) {
     return true;
   }

@@ -7,12 +7,13 @@ import { getPrisma } from '@/lib/db';
 import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 export const dynamic = 'force-dynamic';
 
 export default async function FranchiseApplyPage() {
-  if (!isFeatureEnabled('franchise')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeFranchise) {
     notFound();
   }
 
@@ -73,7 +74,8 @@ export default async function FranchiseApplyPage() {
 
 export async function submitFranchiseApplication(formData: FormData) {
   'use server';
-  if (!isFeatureEnabled('franchise')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeFranchise) {
     return;
   }
 

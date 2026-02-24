@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/sheet"
 
 import { SignOutButton } from "@/components/auth/SignOutButton"
-import { isFeatureEnabled } from "@/lib/featureFlags"
+import { getServerCapabilities } from "@/lib/capabilities"
 
 function NavLinks() {
+  const capabilities = getServerCapabilities()
+
   return (
     <>
       <Link 
@@ -31,7 +33,7 @@ function NavLinks() {
       >
         Apply Today
       </Link>
-      {isFeatureEnabled('franchise') ? (
+      {capabilities.canSeeFranchise ? (
         <Link 
           href="/franchise/apply" 
           className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
@@ -50,6 +52,8 @@ function NavLinks() {
 }
 
 export function MarketingNav() {
+  const capabilities = getServerCapabilities()
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="otw-container flex h-16 items-center justify-between">
@@ -122,7 +126,7 @@ export function MarketingNav() {
                         Drive
                       </Link>
                     </SheetClose>
-                    {isFeatureEnabled('franchise') ? (
+                    {capabilities.canSeeFranchise ? (
                       <SheetClose asChild>
                         <Link href="/franchise/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
                           Franchise

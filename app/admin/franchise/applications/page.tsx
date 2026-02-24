@@ -7,7 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import { notFound } from 'next/navigation';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { getServerCapabilities } from '@/lib/capabilities';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,8 @@ function statusStyles(status: string) {
 }
 
 export default async function AdminFranchiseApplicationsPage() {
-  if (!isFeatureEnabled('franchise')) {
+  const capabilities = getServerCapabilities();
+  if (!capabilities.canSeeFranchise) {
     notFound();
   }
 
