@@ -76,8 +76,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   if (role === 'DRIVER') {
     routes = [...commonRoutes, ...driverRoutes]
   } else if (role === 'ADMIN') {
-    // Admin gets access to ALL features: customer, driver, and admin
-    routes = [...commonRoutes, ...driverRoutes, ...adminRoutes]
+    routes = [...commonRoutes, ...adminRoutes]
   }
 
   return (
