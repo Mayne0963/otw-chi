@@ -6,7 +6,7 @@ import { getActiveSubscription } from '@/lib/membership';
 import { getServerCapabilities } from '@/lib/capabilities';
 
 function isNipFeatureEnabled() {
-  return getServerCapabilities().canSeeNip;
+  return getServerCapabilities({}).canSeeNip;
 }
 
 export async function getNipBalance(userId?: string) {

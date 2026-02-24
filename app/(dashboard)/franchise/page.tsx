@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation';
 import { getServerCapabilities } from '@/lib/capabilities';
 
 export default function FranchisePage() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeFranchise) {
     notFound();
   }

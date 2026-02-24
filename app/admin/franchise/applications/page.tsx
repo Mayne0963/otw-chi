@@ -23,7 +23,7 @@ function statusStyles(status: string) {
 }
 
 export default async function AdminFranchiseApplicationsPage() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeFranchise) {
     notFound();
   }

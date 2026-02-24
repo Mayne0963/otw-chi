@@ -248,7 +248,7 @@ function NipLedgerErrorState({ error }: { error: unknown }) {
 }
 
 export default async function AdminNipLedgerPage() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeNip) {
     notFound();
   }

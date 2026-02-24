@@ -214,7 +214,7 @@ function CitiesZonesErrorState({ error }: { error: unknown }) {
 }
 
 export default async function AdminCitiesZonesPage() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeAdminZones) {
     notFound();
   }
