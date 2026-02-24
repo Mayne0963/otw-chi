@@ -184,11 +184,33 @@ export async function middleware(req: NextRequest) {
     response = bypassResponse;
   }
 
+  // Public-route server actions can be falsely classified as unauthenticated by edge auth.
+  // Let the server action handler enforce auth instead of forcing a sign-in redirect.
+  if (
+    isServerActionRequest &&
+    isPublicRoute(pathname) &&
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.get('location')?.includes('/sign-in')
+  ) {
+    const bypassResponse = NextResponse.next();
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      bypassResponse.headers.set('set-cookie', setCookie);
+    }
+    response = bypassResponse;
+  }
+
   // Next.js server actions expect an RSC payload or an `x-action-redirect` header.
   // Neon auth middleware returns a regular HTTP redirect for unauthenticated requests,
   // which causes Next to throw "An unexpected response was received from the server."
   // Convert auth redirects on server-action POSTs into action redirects.
-  if (isServerActionRequest && response.status >= 300 && response.status < 400) {
+  if (
+    isServerActionRequest &&
+    !isPublicRoute(pathname) &&
+    response.status >= 300 &&
+    response.status < 400
+  ) {
     const location = response.headers.get('location');
     if (location) {
       const target = new URL(location, req.url);
