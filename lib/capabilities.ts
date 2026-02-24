@@ -42,10 +42,10 @@ const getCapabilities = ({
   };
 };
 
-export const getServerCapabilities = (props: Omit<CapabilitiesProps, 'isServer'>) => {
+export const getServerCapabilities = (props: Omit<CapabilitiesProps, 'isServer'> = {}) => {
   return getCapabilities({ ...props, isServer: true });
 };
 
-export const getClientCapabilities = (props: Omit<CapabilitiesProps, 'isServer'>) => {
+export const getClientCapabilities = (props: Omit<CapabilitiesProps, 'isServer'> = {}) => {
   return getCapabilities({ ...props, isServer: false });
 };
