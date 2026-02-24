@@ -141,6 +141,10 @@ export async function middleware(req: NextRequest) {
       pathname === '/driver/jobs' ||
       pathname.startsWith('/driver/jobs/'));
   
+  const isAdminServerActionRequest =
+    isServerActionRequest &&
+    pathname.startsWith('/admin/');
+  
   // Handle CORS for API routes
   if (isApiRoute) {
     const origin = req.headers.get('origin');
@@ -172,6 +176,22 @@ export async function middleware(req: NextRequest) {
   // action handler, where we enforce auth again.
   if (
     isDriverServerActionRequest &&
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.get('location')?.includes('/sign-in')
+  ) {
+    const bypassResponse = NextResponse.next();
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      bypassResponse.headers.set('set-cookie', setCookie);
+    }
+    response = bypassResponse;
+  }
+
+  // Admin server actions can also be falsely classified as unauthenticated by edge middleware.
+  // Let those requests reach the action handler, where we enforce auth again.
+  if (
+    isAdminServerActionRequest &&
     response.status >= 300 &&
     response.status < 400 &&
     response.headers.get('location')?.includes('/sign-in')
