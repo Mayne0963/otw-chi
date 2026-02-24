@@ -1,90 +1,51 @@
-import {
-  type FeatureName,
-  type OtwMode,
-  getFeatureFlags,
-  getOtwMode,
-  getServerFeatureFlags,
-  getServerOtwMode,
-} from '@/lib/featureFlags';
 
-type FlagsInput = Partial<Record<FeatureName, boolean>>;
+import { serverFeatureFlags, clientFeatureFlags } from './featureFlags';
 
-type PlanConfigInput = {
-  overageBillingMode?: string | null;
-} | null | undefined;
-
-export type Capabilities = {
-  canSeeFranchise: boolean;
-  canSeeNip: boolean;
-  canSeeAdminZones: boolean;
-  canSeePos: boolean;
-  canUseInvoiceOverage: boolean;
-  canUsePrioritySlot: boolean;
-};
-
-export type GetCapabilitiesInput = {
-  role?: string | null;
-  planName?: string | null;
-  planConfig?: PlanConfigInput;
-  flags?: FlagsInput;
-  mode?: OtwMode;
-};
-
-function normalizeMode(mode: OtwMode | undefined): OtwMode {
-  return mode === 'expansion' ? 'expansion' : 'core';
+interface PlanConfig {
+  overageBillingMode?: string;
 }
 
-function normalizeFlag(value: unknown): boolean {
-  return value === true;
+interface CapabilitiesProps {
+  role?: string;
+  planName?: string;
+  planConfig?: PlanConfig;
+  isServer?: boolean;
 }
 
-function hasPrioritySlot(planName: string | null | undefined): boolean {
-  if (!planName) return false;
-  const normalized = planName.trim().toUpperCase();
-  return normalized === 'OTW ELITE' || normalized === 'OTW BLACK';
-}
+const getCapabilities = ({ 
+  role, 
+  planName, 
+  planConfig, 
+  isServer = false 
+}: CapabilitiesProps) => {
+  const flags = isServer ? serverFeatureFlags : clientFeatureFlags;
 
-function canInvoiceOverage(planConfig: PlanConfigInput): boolean {
-  const mode = String(planConfig?.overageBillingMode ?? '').trim().toUpperCase();
-  return mode === 'INVOICE';
-}
+  // Core capabilities
+  const canUseInvoiceOverage = planConfig?.overageBillingMode === 'INVOICE';
+  const canUsePrioritySlot = planName === 'Elite' || planName === 'Black';
 
-export function getCapabilities(input: GetCapabilitiesInput = {}): Capabilities {
-  const mode = normalizeMode(input.mode);
-  const flags = input.flags ?? {};
-  const expansionEnabled = mode === 'expansion';
-
-  const canSeeFranchise = expansionEnabled && normalizeFlag(flags.franchise);
-  const canSeeNip = expansionEnabled && normalizeFlag(flags.nip);
-  const canSeeAdminZones = expansionEnabled && normalizeFlag(flags.adminZones);
-  const canSeePos = expansionEnabled && normalizeFlag(flags.pos);
+  // Expansion capabilities (gated by feature flags)
+  const canSeeFranchise = flags.franchise && role === 'ADMIN';
+  const canSeeNip = flags.nip;
+  const canSeeAdminZones = flags.adminZones && role === 'ADMIN';
+  const canSeePos = flags.pos;
+  const canSeeBilling = flags.billing;
 
   return {
     canSeeFranchise,
     canSeeNip,
     canSeeAdminZones,
     canSeePos,
-    canUseInvoiceOverage: canInvoiceOverage(input.planConfig),
-    canUsePrioritySlot: hasPrioritySlot(input.planName),
+    canSeeBilling,
+    canUseInvoiceOverage,
+    canUsePrioritySlot,
   };
-}
+};
 
-export function getClientCapabilities(
-  input: Omit<GetCapabilitiesInput, 'flags' | 'mode'> & { flags?: FlagsInput } = {}
-): Capabilities {
-  return getCapabilities({
-    ...input,
-    mode: getOtwMode(),
-    flags: input.flags ?? getFeatureFlags(),
-  });
-}
+export const getServerCapabilities = (props: Omit<CapabilitiesProps, 'isServer'>) => {
+  return getCapabilities({ ...props, isServer: true });
+};
 
-export function getServerCapabilities(
-  input: Omit<GetCapabilitiesInput, 'flags' | 'mode'> & { flags?: FlagsInput } = {}
-): Capabilities {
-  return getCapabilities({
-    ...input,
-    mode: getServerOtwMode(),
-    flags: input.flags ?? getServerFeatureFlags(),
-  });
-}
+export const getClientCapabilities = (props: Omit<CapabilitiesProps, 'isServer'>) => {
+  return getCapabilities({ ...props, isServer: false });
+};

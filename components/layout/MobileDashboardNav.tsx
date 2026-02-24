@@ -36,8 +36,8 @@ export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
 
   let tabs = [...commonTabs]
 
-  // Add Driver tab if role is DRIVER or ADMIN
-  if (role === 'DRIVER' || role === 'ADMIN') {
+  // Add Driver tab if role is DRIVER
+  if (role === 'DRIVER') {
     tabs.push({ label: "Driver", href: "/driver/dashboard", icon: Truck })
   }
 

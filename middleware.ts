@@ -97,7 +97,7 @@ const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
 };
 
 function isBlockedFeaturePath(pathname: string): boolean {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
 
   if (
     (matchesPath(pathname, '/franchise') || matchesPath(pathname, '/admin/franchise')) &&
@@ -117,6 +117,12 @@ function isBlockedFeaturePath(pathname: string): boolean {
   if (
     (matchesPath(pathname, '/pos') || matchesPath(pathname, '/admin/pos') || matchesPath(pathname, '/merchant')) &&
     !capabilities.canSeePos
+  ) {
+    return true;
+  }
+  if (
+    (matchesPath(pathname, '/billing') || matchesPath(pathname, '/admin/billing')) &&
+    !capabilities.canSeeBilling
   ) {
     return true;
   }
