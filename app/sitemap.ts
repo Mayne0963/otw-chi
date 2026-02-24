@@ -22,7 +22,7 @@ const publicRoutes = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   const optionalPublicRoutes = [
     { path: "/franchise/apply", enabled: capabilities.canSeeFranchise },
   ];

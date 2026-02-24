@@ -6,7 +6,7 @@ import { getServerCapabilities } from "@/lib/capabilities";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeAdminZones) {
     return new Response('Not Found', { status: 404 });
   }

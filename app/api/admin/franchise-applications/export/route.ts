@@ -14,7 +14,7 @@ const escapeCsv = (value: unknown) => {
 };
 
 export async function GET() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeFranchise) {
     return new Response('Not Found', { status: 404 });
   }

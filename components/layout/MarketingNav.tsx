@@ -17,7 +17,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton"
 import { getServerCapabilities } from "@/lib/capabilities"
 
 function NavLinks() {
-  const capabilities = getServerCapabilities()
+  const capabilities = getServerCapabilities({});
 
   return (
     <>
@@ -52,7 +52,7 @@ function NavLinks() {
 }
 
 export function MarketingNav() {
-  const capabilities = getServerCapabilities()
+  const capabilities = getServerCapabilities({});
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">

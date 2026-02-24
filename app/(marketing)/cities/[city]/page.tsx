@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CityCoveragePage({ params }: Props) {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   const { city: rawCity } = await params;
   const city = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
   const zones = ['South Side', 'West Side', 'Downtown', 'North End (Coming Soon)'];

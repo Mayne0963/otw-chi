@@ -12,7 +12,7 @@ import { getServerCapabilities } from '@/lib/capabilities';
 export const dynamic = 'force-dynamic';
 
 export default async function FranchiseApplyPage() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeFranchise) {
     notFound();
   }
@@ -74,7 +74,7 @@ export default async function FranchiseApplyPage() {
 
 export async function submitFranchiseApplication(formData: FormData) {
   'use server';
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeFranchise) {
     return;
   }

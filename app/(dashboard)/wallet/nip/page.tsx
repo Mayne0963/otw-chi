@@ -12,7 +12,7 @@ import { getServerCapabilities } from '@/lib/capabilities';
 export const dynamic = 'force-dynamic';
 
 export default async function NipWalletPage() {
-  const capabilities = getServerCapabilities();
+  const capabilities = getServerCapabilities({});
   if (!capabilities.canSeeNip) {
     notFound();
   }

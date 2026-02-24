@@ -2,7 +2,7 @@ import Link from "next/link"
 import { getServerCapabilities } from "@/lib/capabilities"
 
 export function MarketingFooter() {
-  const capabilities = getServerCapabilities()
+  const capabilities = getServerCapabilities({});
 
   return (
     <footer className="border-t border-border/70 bg-background py-12 text-muted-foreground">
