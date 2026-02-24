@@ -8,6 +8,7 @@ import { requireRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 async function refundRequestAction(formData: FormData) {
   'use server';
@@ -19,13 +20,15 @@ async function refundRequestAction(formData: FormData) {
   try {
     await prisma.deliveryRequest.update({
       where: { id },
-      data: { status: 'CANCELED' }
+      data: { status: 'CANCELED' },
     });
   } catch (error) {
     console.error('Failed to cancel request:', error);
   }
 
+  revalidatePath('/admin/requests');
   revalidatePath(`/admin/requests/${id}`);
+  redirect('/admin/requests');
 }
 
 async function getRequest(id: string) {
