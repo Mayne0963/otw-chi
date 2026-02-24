@@ -207,7 +207,7 @@ function DriversTable({ drivers }: { drivers: any[] }) {
                 <tr key={driver.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
                     <div>
-                      <div className="font-medium">{driver.user.name || 'Unknown Driver'}</div>
+                      <div className="font-medium">{driver.id || 'Unknown Driver'}</div>
                       <div className="text-xs text-white/50">{driver.user.email}</div>
                     </div>
                   </td>
