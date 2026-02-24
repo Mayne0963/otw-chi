@@ -3,6 +3,10 @@ import type { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { getServerCapabilities } from '@/lib/capabilities';
 
+function matchesPath(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
 const isPublicRoute = (pathname: string) => {
   const publicPaths = [
     '/',
@@ -23,31 +27,33 @@ const isPublicRoute = (pathname: string) => {
     '/api/receipt/verify',
   ];
   if (publicPaths.includes(pathname)) return true;
-  if (pathname.startsWith('/order')) return true;
-  if (pathname.startsWith('/request')) return true;
-  if (pathname.startsWith('/franchise')) return true;
-  if (pathname.startsWith('/cities')) return true;
-  if (pathname.startsWith('/auth')) return true;
-  if (pathname.startsWith('/api/webhooks')) return true;
-  if (pathname.startsWith('/api/auth')) return true;
-  if (pathname.startsWith('/api/debug')) return true;
+  if (matchesPath(pathname, '/sign-in')) return true;
+  if (matchesPath(pathname, '/sign-up')) return true;
+  if (matchesPath(pathname, '/order')) return true;
+  if (matchesPath(pathname, '/request')) return true;
+  if (matchesPath(pathname, '/franchise')) return true;
+  if (matchesPath(pathname, '/cities')) return true;
+  if (matchesPath(pathname, '/auth')) return true;
+  if (matchesPath(pathname, '/api/webhooks')) return true;
+  if (matchesPath(pathname, '/api/auth')) return true;
+  if (matchesPath(pathname, '/api/debug')) return true;
   // Driver endpoints enforce auth in their route handlers. Bypass edge auth
   // middleware here to avoid false 401s on authenticated POST polling calls.
   if (pathname === '/api/driver/location') return true;
-  if (pathname.startsWith('/api/driver/navigation')) return true;
+  if (matchesPath(pathname, '/api/driver/navigation')) return true;
   // Order confirmation/dispute endpoints enforce ownership + auth in handlers.
   // Bypass edge auth here to avoid false unauthenticated responses from middleware.
-  if (pathname.startsWith('/api/delivery-request/')) return true;
+  if (matchesPath(pathname, '/api/delivery-request')) return true;
   // Public API routes
-  if (pathname.startsWith('/api/stripe')) return true;
-  if (pathname.startsWith('/api/billing/overage/close-period')) return true;
-  if (pathname.startsWith('/api/navigation')) return true;
-  if (pathname.startsWith('/api/geocoding')) return true;
-  if (pathname.startsWith('/api/otw/estimate')) return true;
-  if (pathname.startsWith('/api/orders')) return true;
-  if (pathname.startsWith('/api/orders/draft')) return true;
-  if (pathname.startsWith('/api/orders/search')) return true;
-  if (pathname.startsWith('/api/requests') && pathname.includes('/tracking')) return true;
+  if (matchesPath(pathname, '/api/stripe')) return true;
+  if (matchesPath(pathname, '/api/billing/overage/close-period')) return true;
+  if (matchesPath(pathname, '/api/navigation')) return true;
+  if (matchesPath(pathname, '/api/geocoding')) return true;
+  if (matchesPath(pathname, '/api/otw/estimate')) return true;
+  if (matchesPath(pathname, '/api/orders')) return true;
+  if (matchesPath(pathname, '/api/orders/draft')) return true;
+  if (matchesPath(pathname, '/api/orders/search')) return true;
+  if (matchesPath(pathname, '/api/requests') && pathname.includes('/tracking')) return true;
   return false;
 };
 
@@ -94,22 +100,22 @@ function isBlockedFeaturePath(pathname: string): boolean {
   const capabilities = getServerCapabilities();
 
   if (
-    (pathname.startsWith('/franchise') || pathname.startsWith('/admin/franchise')) &&
+    (matchesPath(pathname, '/franchise') || matchesPath(pathname, '/admin/franchise')) &&
     !capabilities.canSeeFranchise
   ) {
     return true;
   }
   if (
-    (pathname.startsWith('/wallet/nip') || pathname.startsWith('/admin/nip-ledger')) &&
+    (matchesPath(pathname, '/wallet/nip') || matchesPath(pathname, '/admin/nip-ledger')) &&
     !capabilities.canSeeNip
   ) {
     return true;
   }
-  if (pathname.startsWith('/admin/cities-zones') && !capabilities.canSeeAdminZones) {
+  if (matchesPath(pathname, '/admin/cities-zones') && !capabilities.canSeeAdminZones) {
     return true;
   }
   if (
-    (pathname.startsWith('/pos') || pathname.startsWith('/admin/pos') || pathname.startsWith('/merchant')) &&
+    (matchesPath(pathname, '/pos') || matchesPath(pathname, '/admin/pos') || matchesPath(pathname, '/merchant')) &&
     !capabilities.canSeePos
   ) {
     return true;
@@ -225,12 +231,12 @@ export async function middleware(req: NextRequest) {
   // Do not suppress auth API route behavior (callbacks/session endpoints).
   const shouldBypassPublicAuth =
     isPublicRoute(pathname) &&
-    !pathname.startsWith('/api/auth') &&
+    !matchesPath(pathname, '/api/auth') &&
     ((response.status >= 300 && response.status < 400) || response.status === 401 || response.status === 403);
 
   if (shouldBypassPublicAuth) {
     // Do not suppress redirects for auth API routes (like callbacks)
-    if (pathname.startsWith('/api/auth')) {
+    if (matchesPath(pathname, '/api/auth')) {
       return response;
     }
 
