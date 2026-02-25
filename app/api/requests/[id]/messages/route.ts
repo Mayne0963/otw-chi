@@ -4,6 +4,8 @@ import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import { isRequestChatOpen, isRequestParticipant } from '@/lib/request-chat';
 
+export const runtime = 'nodejs';
+
 const MAX_MESSAGE_LENGTH = 1000;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;

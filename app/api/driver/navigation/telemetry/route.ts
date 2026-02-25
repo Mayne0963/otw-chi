@@ -3,6 +3,8 @@ import { getNeonSession } from "@/lib/auth/server";
 import { getPrisma } from "@/lib/db";
 import { z } from "zod";
 
+export const runtime = "nodejs";
+
 const telemetrySchema = z.object({
   lat: z.number(),
   lng: z.number(),

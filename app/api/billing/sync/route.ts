@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 import { MembershipStatus } from "@prisma/client";
 
+export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
 
 const statusMap: Record<string, MembershipStatus> = {

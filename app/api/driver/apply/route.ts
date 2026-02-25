@@ -3,6 +3,8 @@ import { getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 
+export const runtime = 'nodejs';
+
 const applicationSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email(),

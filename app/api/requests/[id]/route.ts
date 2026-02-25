@@ -8,6 +8,8 @@ import {
   purgeExpiredPickupPassForRequest,
 } from '@/lib/pickup-pass';
 
+export const runtime = 'nodejs';
+
 const pickupCodeTypeSchema = z
   .union([z.enum(['QR', 'BARCODE', 'PIN', 'CONFIRMATION']), z.literal('')])
   .optional()

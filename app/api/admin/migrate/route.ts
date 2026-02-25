@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 
+export const runtime = 'nodejs';
+
 export async function POST(_request: Request) {
   try {
     // Check authentication

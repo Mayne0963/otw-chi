@@ -168,6 +168,7 @@ export default function OrderPage() {
 
       const createResponse = await fetch('/api/requests', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -186,13 +187,20 @@ export default function OrderPage() {
         }),
       });
 
-      const createPayload = (await createResponse.json().catch(() => ({}))) as {
+      const createPayload = (await createResponse.json().catch(() => null)) as {
         id?: string;
         error?: string;
-      };
+        message?: string;
+      } | null;
 
-      if (!createResponse.ok || !createPayload.id) {
-        throw new Error(createPayload.error || 'Unable to create request');
+      if (!createResponse.ok) {
+        throw new Error(
+          createPayload?.error || createPayload?.message || 'Unable to create request',
+        );
+      }
+
+      if (!createPayload?.id) {
+        throw new Error('Unable to create request');
       }
 
       const deliveryRequestId = createPayload.id;

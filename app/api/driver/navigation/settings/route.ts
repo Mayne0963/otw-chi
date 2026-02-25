@@ -3,6 +3,8 @@ import { getNeonSession } from "@/lib/auth/server";
 import { getPrisma } from "@/lib/db";
 import { z } from "zod";
 
+export const runtime = "nodejs";
+
 const settingsSchema = z.object({
   voiceEnabled: z.boolean().optional(),
   voiceLocale: z.enum(["en-US", "es-US"]).optional(),

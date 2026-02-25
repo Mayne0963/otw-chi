@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from '@/lib/admin-discount';
 
+export const runtime = 'nodejs';
+
 const previewSchema = z.object({
   subtotalCents: z.number().int().nonnegative(),
   deliveryFeeCents: z.number().int().nonnegative(),

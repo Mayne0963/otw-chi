@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 
+export const runtime = 'nodejs';
+
 const ServiceType = {
   FOOD: 'FOOD',
   STORE: 'STORE',
@@ -37,14 +39,14 @@ export async function POST(req: Request) {
     const neonAuthUserId = session?.userId || session?.user?.id;
     
     if (!neonAuthUserId) {
-        return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const prisma = getPrisma();
     const user = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
     
     if (!user) {
-        return new NextResponse('User not found', { status: 404 });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const body = await req.json();
@@ -85,7 +87,21 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ id: request.id });
   } catch (error) {
-    console.error('Create request error:', error);
-    return new NextResponse('Invalid request', { status: 400 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: 'Invalid request',
+          details: error.issues,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    console.error('Create request error:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

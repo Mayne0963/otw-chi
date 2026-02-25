@@ -19,6 +19,8 @@ import {
   uploadPrivateFile,
 } from '@/lib/storage';
 
+export const runtime = 'nodejs';
+
 const ALLOWED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
 const MIME_EXTENSION_MAP: Record<string, string> = {
