@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, Loader2 } from 'lucide-react';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
+import { downscaleImage } from '@/lib/image/downscale';
 
 const PICKUP_CODE_TYPES = [
   { value: '', label: 'None' },
@@ -57,6 +58,7 @@ export default function OrderPage() {
   const [pickupCodeText, setPickupCodeText] = useState('');
   const [pickupPassFile, setPickupPassFile] = useState<File | null>(null);
   const [pickupPassPreviewUrl, setPickupPassPreviewUrl] = useState<string | null>(null);
+  const [isOptimizingPickupPass, setIsOptimizingPickupPass] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -175,6 +177,31 @@ export default function OrderPage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePickupPassFileSelection = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.files?.[0] ?? null;
+    event.target.value = '';
+
+    if (!selected) {
+      setPickupPassFile(null);
+      return;
+    }
+
+    setIsOptimizingPickupPass(true);
+    try {
+      const optimized = await downscaleImage(selected, { maxWidth: 1200, quality: 0.75 });
+      setPickupPassFile(optimized);
+    } catch {
+      setPickupPassFile(selected);
+      toast({
+        title: 'Unable to optimize image',
+        description: 'Using original image file.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsOptimizingPickupPass(false);
     }
   };
 
@@ -339,9 +366,15 @@ export default function OrderPage() {
                   <Input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
-                    onChange={(event) => setPickupPassFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) => {
+                      void handlePickupPassFileSelection(event);
+                    }}
+                    disabled={isOptimizingPickupPass}
                     className="bg-black/30 text-white file:mr-3 file:rounded file:border file:border-white/20 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
                   />
+                  {isOptimizingPickupPass ? (
+                    <p className="text-xs text-white/60">Optimizing image...</p>
+                  ) : null}
                 </div>
 
                 {pickupPassPreviewUrl ? (
@@ -370,7 +403,7 @@ export default function OrderPage() {
               <OtwButton
                 type="submit"
                 variant="gold"
-                disabled={isSubmitting || isLoading || !isSignedIn}
+                disabled={isSubmitting || isLoading || !isSignedIn || isOptimizingPickupPass}
               >
                 {isSubmitting ? (
                   <><Loader2 className="h-4 w-4 animate-spin" />Submitting...</>

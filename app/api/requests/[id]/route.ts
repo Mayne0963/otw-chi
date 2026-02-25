@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
+import {
+  isPickupPassExpired,
+  purgeExpiredPickupPassForRequest,
+} from '@/lib/pickup-pass';
 
 const pickupCodeTypeSchema = z
   .union([z.enum(['QR', 'BARCODE', 'PIN', 'CONFIRMATION']), z.literal('')])
@@ -61,6 +65,9 @@ export async function GET(
 
     const request = await prisma.deliveryRequest.findUnique({
       where: { id },
+      omit: {
+        pickupPassBase64: true,
+      },
       include: {
         assignedDriver: {
           include: { user: true }
@@ -81,7 +88,30 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json(request);
+    let pickupPassBase64: string | null = null;
+    let pickupPassMimeType: string | null = null;
+    const now = new Date();
+
+    if (isPickupPassExpired(request.pickupPassExpiresAt, now)) {
+      await purgeExpiredPickupPassForRequest(prisma, request.id, now);
+    } else {
+      const pickupPassFallback = await prisma.deliveryRequest.findUnique({
+        where: { id: request.id },
+        select: {
+          pickupPassBase64: true,
+          pickupPassMimeType: true,
+        },
+      });
+
+      pickupPassBase64 = pickupPassFallback?.pickupPassBase64 ?? null;
+      pickupPassMimeType = pickupPassFallback?.pickupPassMimeType ?? null;
+    }
+
+    return NextResponse.json({
+      ...request,
+      pickupPassBase64,
+      pickupPassMimeType,
+    });
   } catch (error) {
     console.error('Get request details error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

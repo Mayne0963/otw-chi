@@ -7,6 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { serverFeatureFlags } from '@/lib/featureFlags';
+import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import { closeRequestChat } from '@/lib/request-chat';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
@@ -50,15 +51,50 @@ async function refundRequestAction(formData: FormData) {
 
 async function getRequest(id: string) {
   const prisma = getPrisma();
-  return prisma.deliveryRequest.findUnique({
+  const request = await prisma.deliveryRequest.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      createdAt: true,
+      status: true,
+      serviceType: true,
+      serviceMilesFinal: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+      deliveryFeeCents: true,
+      deliveryFeePaid: true,
+      couponCode: true,
+      notes: true,
+      assignedDriverId: true,
+      orderReference: true,
+      pickupInstructions: true,
+      dropoffInstructions: true,
+      pickupCodeType: true,
+      pickupCodeText: true,
+      pickupPassImageUrl: true,
+      pickupPassMimeType: true,
+      pickupPassUploadedAt: true,
+      pickupPassExpiresAt: true,
       user: { select: { name: true, email: true } },
       assignedDriver: {
-        include: { user: { select: { name: true, email: true } } }
+        select: {
+          id: true,
+          user: { select: { name: true, email: true } },
+        },
       },
-    }
+    },
   });
+
+  if (request) {
+    const purgedCount = await purgeExpiredPickupPassForRequest(prisma, request.id);
+    if (purgedCount > 0) {
+      request.pickupPassMimeType = null;
+      request.pickupPassUploadedAt = null;
+      request.pickupPassExpiresAt = null;
+    }
+  }
+
+  return request;
 }
 
 export default async function AdminRequestDetailPage({
@@ -285,7 +321,7 @@ export default async function AdminRequestDetailPage({
               initialPickupPassExpired={
                 request.pickupPassExpiresAt ? request.pickupPassExpiresAt <= new Date() : false
               }
-              initialHasPickupPass={Boolean(request.pickupPassImageUrl)}
+              initialHasPickupPass={Boolean(request.pickupPassImageUrl || request.pickupPassMimeType)}
             />
 
             {serverFeatureFlags.chat && request.assignedDriverId && (

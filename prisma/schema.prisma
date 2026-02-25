@@ -363,6 +363,8 @@ model DeliveryRequest {
   pickupCodeType      String?
   pickupCodeText      String?
   pickupPassImageUrl  String?
+  pickupPassBase64    String?   @db.Text
+  pickupPassMimeType  String?
   pickupPassUploadedAt DateTime?
   pickupPassExpiresAt  DateTime?
   chatEnabled         Boolean  @default(true)

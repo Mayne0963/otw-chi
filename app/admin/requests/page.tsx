@@ -58,14 +58,22 @@ async function getRequestsData() {
         orderBy: { createdAt: 'desc' },
         take: 50,
         where: { status: { not: 'DRAFT' } },
-        include: {
+        select: {
+          id: true,
+          status: true,
+          serviceType: true,
+          pickupAddress: true,
+          dropoffAddress: true,
+          createdAt: true,
+          deliveryFeePaid: true,
           assignedDriver: {
-            include: {
+            select: {
+              id: true,
               user: { select: { name: true, email: true } }
-            }
+            },
           },
           user: { select: { name: true, email: true } }
-        }
+        },
       })
     ]);
 

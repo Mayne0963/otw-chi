@@ -249,6 +249,9 @@ function AdminStatsBody({ stats }: { stats: any }) {
               <OtwButton as="a" href="/admin/settings" variant="ghost" className="text-xs px-2 py-1 h-auto text-center justify-center bg-white/10 hover:bg-white/20">
                 Settings
               </OtwButton>
+              <OtwButton as="a" href="/admin/system/storage" variant="ghost" className="text-xs px-2 py-1 h-auto text-center justify-center bg-white/10 hover:bg-white/20">
+                Storage
+              </OtwButton>
             </div>
           </div>
         </OtwCard>

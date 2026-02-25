@@ -213,7 +213,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 initialPickupPassUploadedAt={request.pickupPassUploadedAt?.toISOString() ?? null}
                 initialPickupPassExpiresAt={request.pickupPassExpiresAt?.toISOString() ?? null}
                 initialPickupPassExpired={pickupPassExpired}
-                initialHasPickupPass={Boolean(request.pickupPassImageUrl)}
+                initialHasPickupPass={Boolean(request.pickupPassImageUrl || request.pickupPassMimeType)}
               />
 
               {serverFeatureFlags.chat && (

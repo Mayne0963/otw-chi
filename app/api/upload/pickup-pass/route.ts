@@ -4,14 +4,17 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import {
+  PICKUP_PASS_EXPIRY_DAYS,
+  PICKUP_PASS_MAX_BYTES_BASE64,
+  PICKUP_PASS_MAX_BYTES_STORAGE,
+  toPickupPassDataUrl,
+} from '@/lib/pickup-pass';
+import {
   getDefaultStorageBucket,
   getSignedUrlForObjectRef,
   isStorageConfigured,
   uploadPrivateFile,
 } from '@/lib/storage';
-
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const PICKUP_PASS_EXPIRY_DAYS = 14;
 
 const ALLOWED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
@@ -30,10 +33,7 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  if (!isStorageConfigured()) {
-    return NextResponse.json({ error: 'Storage is not configured' }, { status: 500 });
-  }
+  const storageConfigured = isStorageConfigured();
 
   const formData = await req.formData();
   const deliveryRequestId = String(formData.get('deliveryRequestId') ?? '').trim();
@@ -47,8 +47,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'File is empty' }, { status: 400 });
   }
 
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: 'File size exceeds 5MB' }, { status: 400 });
+  const maxUploadBytes = storageConfigured
+    ? PICKUP_PASS_MAX_BYTES_STORAGE
+    : PICKUP_PASS_MAX_BYTES_BASE64;
+
+  if (file.size > maxUploadBytes) {
+    return NextResponse.json(
+      { error: 'Image too large. Please upload a smaller screenshot.' },
+      { status: 400 },
+    );
   }
 
   if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
@@ -75,37 +82,62 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const extension = MIME_EXTENSION_MAP[file.type] ?? 'bin';
-  const objectKey = `pickup-passes/${deliveryRequest.id}/${randomUUID()}.${extension}`;
-  const objectRef = await uploadPrivateFile(
-    objectKey,
-    Buffer.from(await file.arrayBuffer()),
-    file.type,
-    getDefaultStorageBucket(),
-  );
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
 
   const now = new Date();
   const expiresAt = new Date(now);
   expiresAt.setDate(expiresAt.getDate() + PICKUP_PASS_EXPIRY_DAYS);
 
-  await prisma.deliveryRequest.update({
-    where: { id: deliveryRequest.id },
-    data: {
-      pickupPassImageUrl: objectRef,
-      pickupPassUploadedAt: now,
-      pickupPassExpiresAt: expiresAt,
-    },
-  });
+  let pickupPassUrl: string | null = null;
+  let pickupPassImageUrl: string | null = null;
 
-  const signedUrl = await getSignedUrlForObjectRef(objectRef, 900);
+  if (storageConfigured) {
+    const extension = MIME_EXTENSION_MAP[file.type] ?? 'bin';
+    const objectKey = `pickup-passes/${deliveryRequest.id}/${randomUUID()}.${extension}`;
+    const objectRef = await uploadPrivateFile(
+      objectKey,
+      fileBuffer,
+      file.type,
+      getDefaultStorageBucket(),
+    );
+
+    pickupPassImageUrl = objectRef;
+    pickupPassUrl = await getSignedUrlForObjectRef(objectRef, 900);
+
+    await prisma.deliveryRequest.update({
+      where: { id: deliveryRequest.id },
+      data: {
+        pickupPassImageUrl: objectRef,
+        pickupPassBase64: null,
+        pickupPassMimeType: null,
+        pickupPassUploadedAt: now,
+        pickupPassExpiresAt: expiresAt,
+      },
+    });
+  } else {
+    const base64 = fileBuffer.toString('base64');
+    pickupPassUrl = toPickupPassDataUrl(base64, file.type);
+
+    await prisma.deliveryRequest.update({
+      where: { id: deliveryRequest.id },
+      data: {
+        pickupPassImageUrl: null,
+        pickupPassBase64: base64,
+        pickupPassMimeType: file.type,
+        pickupPassUploadedAt: now,
+        pickupPassExpiresAt: expiresAt,
+      },
+    });
+  }
 
   return NextResponse.json({
     ok: true,
     deliveryRequestId: deliveryRequest.id,
-    pickupPassImageUrl: objectRef,
+    pickupPassImageUrl,
     pickupPassUploadedAt: now.toISOString(),
     pickupPassExpiresAt: expiresAt.toISOString(),
-    pickupPassUrl: signedUrl,
+    pickupPassUrl,
+    storageMode: storageConfigured ? 'object' : 'base64',
   });
 }
 
@@ -154,6 +186,8 @@ export async function DELETE(req: Request) {
     where: { id: deliveryRequest.id },
     data: {
       pickupPassImageUrl: null,
+      pickupPassBase64: null,
+      pickupPassMimeType: null,
       pickupPassUploadedAt: null,
       pickupPassExpiresAt: null,
     },

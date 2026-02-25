@@ -53,11 +53,24 @@ export async function getAvailableJobs() {
       },
     },
     orderBy: { createdAt: 'desc' },
-    include: {
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+      serviceType: true,
+      createdAt: true,
+      paymentRequired: true,
+      overageBillingMode: true,
+      overageMiles: true,
+      overageStatus: true,
       user: {
-        select: { name: true }
-      }
-    }
+        select: {
+          name: true,
+        },
+      },
+    },
   });
 
   return jobs;

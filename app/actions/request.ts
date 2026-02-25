@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest } from '@/lib/delivery-submit';
+import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import { closeRequestChat } from '@/lib/request-chat';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -20,6 +21,11 @@ export async function cancelOrderAction(orderId: string) {
   // Try to find as DeliveryRequest first
   const deliveryRequest = await prisma.deliveryRequest.findUnique({
     where: { id: orderId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+    },
   });
 
   if (deliveryRequest) {
@@ -227,6 +233,17 @@ export async function getUserRequests() {
   const orders = await prisma.deliveryRequest.findMany({
     where: { userId: user.id, status: { not: DeliveryRequestStatus.DRAFT } },
     orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      serviceType: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+      status: true,
+      deliveryFeeCents: true,
+      discountCents: true,
+      tipCents: true,
+      createdAt: true,
+    },
   });
 
   const computeOrderTotalCents = (order: (typeof orders)[number]) => {
@@ -259,6 +276,9 @@ export async function getRequest(id: string) {
   const prisma = getPrisma();
   const request = await prisma.deliveryRequest.findUnique({
     where: { id },
+    omit: {
+      pickupPassBase64: true,
+    },
     include: {
       assignedDriver: {
         include: { user: true }
@@ -276,6 +296,13 @@ export async function getRequest(id: string) {
 
   if (!isCustomer && !isAssignedDriver && !isAdmin) {
     return null;
+  }
+
+  const purgedCount = await purgeExpiredPickupPassForRequest(prisma, request.id);
+  if (purgedCount > 0) {
+    request.pickupPassMimeType = null;
+    request.pickupPassUploadedAt = null;
+    request.pickupPassExpiresAt = null;
   }
 
   return request;

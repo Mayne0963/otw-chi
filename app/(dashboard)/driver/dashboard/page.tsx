@@ -194,7 +194,18 @@ export default async function DriverDashboardPage() {
         assignedDriverId: driverId,
         status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] }
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      status: true,
+      serviceType: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+      notes: true,
+      lastKnownLat: true,
+      lastKnownLng: true,
+      lastKnownAt: true,
+    },
   });
 
   const availableRequests =
@@ -215,6 +226,17 @@ export default async function DriverDashboardPage() {
             },
           },
           orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            serviceType: true,
+            pickupAddress: true,
+            dropoffAddress: true,
+            serviceMilesFinal: true,
+            estimatedMinutes: true,
+            quoteBreakdown: true,
+            scheduledStart: true,
+            createdAt: true,
+          },
         });
 
   const prioritizedAvailableRequests = [...availableRequests].sort((a, b) => {

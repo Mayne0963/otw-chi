@@ -9,6 +9,7 @@ import { acceptJobAction, updateJobStatusAction } from '@/app/actions/driver';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import { unstable_noStore as noStore } from 'next/cache';
 import { serverFeatureFlags } from '@/lib/featureFlags';
+import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
 
@@ -42,7 +43,39 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     );
   }
 
-  const req = await prisma.deliveryRequest.findUnique({ where: { id }, include: { user: true } });
+  const req = await prisma.deliveryRequest.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      userId: true,
+      assignedDriverId: true,
+      status: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+      notes: true,
+      serviceType: true,
+      paymentRequired: true,
+      overageBillingMode: true,
+      overageMiles: true,
+      overageStatus: true,
+      orderReference: true,
+      pickupInstructions: true,
+      dropoffInstructions: true,
+      pickupCodeType: true,
+      pickupCodeText: true,
+      pickupPassImageUrl: true,
+      pickupPassMimeType: true,
+      pickupPassUploadedAt: true,
+      pickupPassExpiresAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
   if (!req) {
     return (
       <OtwPageShell>
@@ -75,6 +108,13 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
         <OtwEmptyState title="Job Unavailable" subtitle="Return to available jobs." actionHref="/driver/jobs" actionLabel="Back to Jobs" />
       </OtwPageShell>
     );
+  }
+
+  const purgedCount = await purgeExpiredPickupPassForRequest(prisma, req.id);
+  if (purgedCount > 0) {
+    req.pickupPassMimeType = null;
+    req.pickupPassUploadedAt = null;
+    req.pickupPassExpiresAt = null;
   }
 
   const canAccept =
@@ -139,7 +179,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
                 initialPickupPassExpired={
                   req.pickupPassExpiresAt ? req.pickupPassExpiresAt <= new Date() : false
                 }
-                initialHasPickupPass={Boolean(req.pickupPassImageUrl)}
+                initialHasPickupPass={Boolean(req.pickupPassImageUrl || req.pickupPassMimeType)}
               />
             </div>
           ) : (

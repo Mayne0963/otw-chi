@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
+import {
+  isPickupPassExpired,
+  purgeExpiredPickupPassForRequest,
+  toPickupPassDataUrl,
+} from '@/lib/pickup-pass';
 import { isRequestParticipant } from '@/lib/request-chat';
 import { getSignedUrlForObjectRef } from '@/lib/storage';
 
@@ -30,6 +35,8 @@ export async function GET(
       chatEnabled: true,
       chatClosedAt: true,
       pickupPassImageUrl: true,
+      pickupPassBase64: true,
+      pickupPassMimeType: true,
       pickupPassExpiresAt: true,
       assignedDriver: {
         select: {
@@ -47,21 +54,36 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  if (!request.pickupPassImageUrl) {
+  if (!request.pickupPassImageUrl && !request.pickupPassBase64) {
     return NextResponse.json({ error: 'Pickup pass not found' }, { status: 404 });
   }
 
-  if (request.pickupPassExpiresAt && new Date() > request.pickupPassExpiresAt) {
+  const now = new Date();
+  if (isPickupPassExpired(request.pickupPassExpiresAt, now)) {
+    if (request.pickupPassBase64) {
+      await purgeExpiredPickupPassForRequest(prisma, request.id, now);
+    }
     return NextResponse.json({ error: 'Pickup pass has expired' }, { status: 410 });
   }
 
-  const signedUrl = await getSignedUrlForObjectRef(request.pickupPassImageUrl, 900);
-  if (!signedUrl) {
+  if (request.pickupPassImageUrl) {
+    const signedUrl = await getSignedUrlForObjectRef(request.pickupPassImageUrl, 900);
+    if (!signedUrl) {
+      return NextResponse.json({ error: 'Pickup pass is unavailable' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      pickupPassUrl: signedUrl,
+      pickupPassExpiresAt: request.pickupPassExpiresAt,
+    });
+  }
+
+  if (!request.pickupPassBase64) {
     return NextResponse.json({ error: 'Pickup pass is unavailable' }, { status: 404 });
   }
 
   return NextResponse.json({
-    pickupPassUrl: signedUrl,
+    pickupPassUrl: toPickupPassDataUrl(request.pickupPassBase64, request.pickupPassMimeType),
     pickupPassExpiresAt: request.pickupPassExpiresAt,
   });
 }

@@ -36,10 +36,19 @@ async function getRequestData(id: string) {
   const prisma = getPrisma();
   const request = await prisma.deliveryRequest.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      notes: true,
+      assignedDriverId: true,
+      userId: true,
+      paymentRequired: true,
+      overageBillingMode: true,
+      overageMiles: true,
+      overageStatus: true,
       user: { select: { name: true, email: true } },
-      assignedDriver: { include: { user: { select: { name: true, email: true } } } }
-    }
+      assignedDriver: { select: { user: { select: { name: true, email: true } } } },
+    },
   });
 
   const drivers = await prisma.driverProfile.findMany({

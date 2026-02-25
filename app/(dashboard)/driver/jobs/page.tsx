@@ -39,11 +39,23 @@ export default async function DriverJobsPage() {
     where: { assignedDriverId: driver.id, status: { in: ['ASSIGNED', 'PICKED_UP'] } },
     orderBy: { createdAt: 'desc' },
     take: 25,
+    select: {
+      id: true,
+      status: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+    },
   });
   const completed = await prisma.deliveryRequest.findMany({
     where: { assignedDriverId: driver.id, status: { in: ['DELIVERED'] } },
     orderBy: { createdAt: 'desc' },
     take: 25,
+    select: {
+      id: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+      deliveryFeeCents: true,
+    },
   });
   
   return (

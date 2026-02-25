@@ -37,11 +37,15 @@ async function getCustomerRequests(customerId: string) {
     where: { userId: customerId },
     orderBy: { createdAt: 'desc' },
     take: 50,
-    include: {
+    select: {
+      id: true,
+      createdAt: true,
+      status: true,
+      serviceType: true,
       assignedDriver: {
-        include: { user: { select: { name: true } } }
-      }
-    }
+        select: { user: { select: { name: true } } }
+      },
+    },
   });
 
   // Merge and sort

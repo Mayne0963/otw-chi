@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { downscaleImage } from '@/lib/image/downscale';
 import { formatDate } from '@/lib/utils';
 
 type PickupVerificationPanelProps = {
@@ -65,6 +66,7 @@ export default function PickupVerificationPanel({
   const [pickupPassExpiresAt, setPickupPassExpiresAt] = useState<string | null>(initialPickupPassExpiresAt);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isOptimizingUpload, setIsOptimizingUpload] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isLoadingPassLink, setIsLoadingPassLink] = useState(false);
@@ -191,7 +193,7 @@ export default function PickupVerificationPanel({
   };
 
   const uploadPickupPass = async () => {
-    if (!canEdit || !pickupPassFeatureEnabled || !uploadFile) {
+    if (!canEdit || !pickupPassFeatureEnabled || !uploadFile || isOptimizingUpload) {
       return;
     }
 
@@ -291,6 +293,30 @@ export default function PickupVerificationPanel({
       setError(openError instanceof Error ? openError.message : 'Unable to open pickup pass');
     } finally {
       setIsLoadingPassLink(false);
+    }
+  };
+
+  const handleUploadFileSelection = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.files?.[0] ?? null;
+    event.target.value = '';
+
+    if (!selected) {
+      setUploadFile(null);
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsOptimizingUpload(true);
+
+    try {
+      const optimized = await downscaleImage(selected, { maxWidth: 1200, quality: 0.75 });
+      setUploadFile(optimized);
+    } catch {
+      setUploadFile(selected);
+      setError('Unable to optimize image. Original file selected.');
+    } finally {
+      setIsOptimizingUpload(false);
     }
   };
 
@@ -425,8 +451,10 @@ export default function PickupVerificationPanel({
                 <Input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
-                  disabled={isUploading || isRemoving}
+                  onChange={(event) => {
+                    void handleUploadFileSelection(event);
+                  }}
+                  disabled={isUploading || isRemoving || isOptimizingUpload}
                   className="max-w-sm bg-black/30 text-white file:mr-3 file:rounded file:border file:border-white/20 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
                 />
                 <Button
@@ -434,7 +462,7 @@ export default function PickupVerificationPanel({
                   variant="outline"
                   size="sm"
                   onClick={uploadPickupPass}
-                  disabled={isUploading || isRemoving || !uploadFile}
+                  disabled={isUploading || isRemoving || isOptimizingUpload || !uploadFile}
                 >
                   {isUploading ? 'Uploading...' : 'Upload Pass'}
                 </Button>
@@ -454,17 +482,21 @@ export default function PickupVerificationPanel({
             )}
 
             {canEdit && (hasPickupPass || uploadFile) ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={removePickupPass}
-                disabled={isRemoving || isUploading}
-              >
-                {isRemoving ? 'Removing...' : 'Remove Pass'}
-              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={removePickupPass}
+                  disabled={isRemoving || isUploading || isOptimizingUpload}
+                >
+                  {isRemoving ? 'Removing...' : 'Remove Pass'}
+                </Button>
             ) : null}
           </div>
+
+          {isOptimizingUpload ? (
+            <p className="text-xs text-white/60">Optimizing image...</p>
+          ) : null}
         </div>
       )}
 

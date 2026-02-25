@@ -3,6 +3,7 @@ import { Route as RouteIcon, ArrowLeft, Clock, MapPin } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/roles";
 import { getPrisma } from "@/lib/db";
 import { validateAddress } from "@/lib/geocoding";
+import { purgeExpiredPickupPassForRequest } from "@/lib/pickup-pass";
 import TrackMapWrapper from "@/components/otw/TrackMapWrapper";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
 import OtwSectionHeader from "@/components/ui/otw/OtwSectionHeader";
@@ -31,7 +32,28 @@ export default async function TrackDetailPage({
   const prisma = getPrisma();
   const record = await prisma.deliveryRequest.findUnique({
     where: { id },
-    include: { assignedDriver: { include: { user: true } } },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      pickupAddress: true,
+      dropoffAddress: true,
+      createdAt: true,
+      lastKnownLat: true,
+      lastKnownLng: true,
+      lastKnownAt: true,
+      assignedDriver: {
+        select: {
+          id: true,
+          userId: true,
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
   });
   if (!record) {
     return (
@@ -62,6 +84,8 @@ export default async function TrackDetailPage({
       </OtwPageShell>
     );
   }
+
+  await purgeExpiredPickupPassForRequest(prisma, record.id);
 
   const pickupText = record.pickupAddress;
   const dropoffText = record.dropoffAddress;
