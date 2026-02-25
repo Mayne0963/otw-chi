@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, Loader2 } from 'lucide-react';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
@@ -56,6 +56,7 @@ export default function OrderPage() {
   const [pickupCodeType, setPickupCodeType] = useState('');
   const [pickupCodeText, setPickupCodeText] = useState('');
   const [pickupPassFile, setPickupPassFile] = useState<File | null>(null);
+  const [pickupPassPreviewUrl, setPickupPassPreviewUrl] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,6 +68,20 @@ export default function OrderPage() {
     () => (dropoffAddress ? formatAddressLines(dropoffAddress) : null),
     [dropoffAddress],
   );
+
+  useEffect(() => {
+    if (!pickupPassFile) {
+      setPickupPassPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(pickupPassFile);
+    setPickupPassPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [pickupPassFile]);
 
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -236,7 +251,7 @@ export default function OrderPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Order Reference</label>
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Order Name / Confirmation Number</label>
                 <Input
                   value={orderReference}
                   onChange={(event) => setOrderReference(event.target.value)}
@@ -244,6 +259,9 @@ export default function OrderPage() {
                   className="bg-black/20 text-white"
                   maxLength={120}
                 />
+                <p className="text-xs text-white/55">
+                  Example: Pickup under Carlton or Order #4582
+                </p>
               </div>
             </div>
 
@@ -325,6 +343,26 @@ export default function OrderPage() {
                     className="bg-black/30 text-white file:mr-3 file:rounded file:border file:border-white/20 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
                   />
                 </div>
+
+                {pickupPassPreviewUrl ? (
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                    <div className="text-xs text-white/60">Preview</div>
+                    <img
+                      src={pickupPassPreviewUrl}
+                      alt="Pickup pass preview"
+                      className="mt-2 max-h-56 w-auto rounded border border-white/10"
+                    />
+                    <div className="mt-2">
+                      <OtwButton
+                        type="button"
+                        variant="outline"
+                        onClick={() => setPickupPassFile(null)}
+                      >
+                        Remove Screenshot
+                      </OtwButton>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

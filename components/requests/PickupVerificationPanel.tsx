@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
@@ -30,6 +30,12 @@ const PICKUP_CODE_TYPES = [
   { value: 'CONFIRMATION', label: 'Confirmation' },
 ];
 
+type PickupPassResponse = {
+  pickupPassUrl?: string;
+  pickupPassExpiresAt?: string | null;
+  error?: string;
+};
+
 export default function PickupVerificationPanel({
   requestId,
   canEdit,
@@ -51,6 +57,8 @@ export default function PickupVerificationPanel({
   const [pickupCodeText, setPickupCodeText] = useState(initialPickupCodeText ?? '');
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
+  const [pickupPassPreviewUrl, setPickupPassPreviewUrl] = useState<string | null>(null);
   const [hasPickupPass, setHasPickupPass] = useState(initialHasPickupPass);
   const [pickupPassExpired, setPickupPassExpired] = useState(initialPickupPassExpired);
   const [pickupPassUploadedAt, setPickupPassUploadedAt] = useState<string | null>(initialPickupPassUploadedAt);
@@ -58,6 +66,7 @@ export default function PickupVerificationPanel({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [isLoadingPassLink, setIsLoadingPassLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -79,6 +88,66 @@ export default function PickupVerificationPanel({
 
     return 'Pickup pass uploaded.';
   }, [hasPickupPass, pickupPassExpired, pickupPassExpiresAt]);
+
+  useEffect(() => {
+    if (!uploadFile) {
+      setUploadPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(uploadFile);
+    setUploadPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [uploadFile]);
+
+  const fetchPickupPassUrl = useCallback(async () => {
+    const response = await fetch(`/api/requests/${requestId}/pickup-pass`, {
+      method: 'GET',
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as PickupPassResponse | null;
+      throw new Error(payload?.error ?? 'Unable to open pickup pass');
+    }
+
+    const payload = (await response.json()) as PickupPassResponse;
+    if (!payload.pickupPassUrl) {
+      throw new Error('Pickup pass URL unavailable');
+    }
+
+    if (payload.pickupPassExpiresAt) {
+      setPickupPassExpiresAt(payload.pickupPassExpiresAt);
+    }
+
+    return payload.pickupPassUrl;
+  }, [requestId]);
+
+  useEffect(() => {
+    if (!hasPassAndNotExpired || pickupPassPreviewUrl) {
+      return;
+    }
+
+    let active = true;
+    void fetchPickupPassUrl()
+      .then((url) => {
+        if (active) {
+          setPickupPassPreviewUrl(url);
+        }
+      })
+      .catch((fetchError) => {
+        if (fetchError instanceof Error && /expired/i.test(fetchError.message)) {
+          setPickupPassExpired(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [fetchPickupPassUrl, hasPassAndNotExpired, pickupPassPreviewUrl]);
 
   const saveDetails = async () => {
     if (!canEdit) {
@@ -148,6 +217,7 @@ export default function PickupVerificationPanel({
       const payload = (await response.json()) as {
         pickupPassUploadedAt?: string;
         pickupPassExpiresAt?: string;
+        pickupPassUrl?: string | null;
       };
 
       setUploadFile(null);
@@ -155,6 +225,7 @@ export default function PickupVerificationPanel({
       setPickupPassExpired(false);
       setPickupPassUploadedAt(payload.pickupPassUploadedAt ?? null);
       setPickupPassExpiresAt(payload.pickupPassExpiresAt ?? null);
+      setPickupPassPreviewUrl(payload.pickupPassUrl ?? null);
       setSuccess('Pickup pass uploaded.');
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Unable to upload pickup pass');
@@ -163,31 +234,56 @@ export default function PickupVerificationPanel({
     }
   };
 
+  const removePickupPass = async () => {
+    if (!canEdit || !pickupPassFeatureEnabled || (!hasPickupPass && !uploadFile)) {
+      return;
+    }
+
+    if (uploadFile && !hasPickupPass) {
+      setUploadFile(null);
+      return;
+    }
+
+    setIsRemoving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/upload/pickup-pass', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ deliveryRequestId: requestId }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? 'Unable to remove pickup pass');
+      }
+
+      setUploadFile(null);
+      setHasPickupPass(false);
+      setPickupPassExpired(false);
+      setPickupPassUploadedAt(null);
+      setPickupPassExpiresAt(null);
+      setPickupPassPreviewUrl(null);
+      setSuccess('Pickup pass removed.');
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'Unable to remove pickup pass');
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
   const openPickupPass = async () => {
     setIsLoadingPassLink(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/requests/${requestId}/pickup-pass`, {
-        method: 'GET',
-        cache: 'no-store',
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error ?? 'Unable to open pickup pass');
-      }
-
-      const payload = (await response.json()) as { pickupPassUrl?: string; pickupPassExpiresAt?: string | null };
-      if (!payload.pickupPassUrl) {
-        throw new Error('Pickup pass URL unavailable');
-      }
-
-      if (payload.pickupPassExpiresAt) {
-        setPickupPassExpiresAt(payload.pickupPassExpiresAt);
-      }
-
-      window.open(payload.pickupPassUrl, '_blank', 'noopener,noreferrer');
+      const signedUrl = await fetchPickupPassUrl();
+      setPickupPassPreviewUrl(signedUrl);
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
     } catch (openError) {
       if (openError instanceof Error && /expired/i.test(openError.message)) {
         setPickupPassExpired(true);
@@ -209,15 +305,18 @@ export default function PickupVerificationPanel({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-xs font-medium text-white/70">Order Reference</label>
+          <label className="text-xs font-medium text-white/70">Order Name / Confirmation Number</label>
           <Input
             value={orderReference}
             onChange={(event) => setOrderReference(event.target.value)}
             disabled={!canEdit || isSaving}
-            placeholder="Order #12345"
+            placeholder="Pickup under Carlton / Order #12345"
             maxLength={120}
             className="bg-black/30 text-white"
           />
+          <p className="text-xs text-white/55">
+            Example: Pickup under Carlton or Order #4582
+          </p>
         </div>
 
         <div className="space-y-1.5 sm:col-span-2">
@@ -298,6 +397,28 @@ export default function PickupVerificationPanel({
             ) : null}
           </div>
 
+          {uploadPreviewUrl ? (
+            <div className="rounded-md border border-white/10 bg-black/30 p-3">
+              <div className="text-xs text-white/60">Selected screenshot preview</div>
+              <img
+                src={uploadPreviewUrl}
+                alt="Selected pickup pass"
+                className="mt-2 max-h-56 w-auto rounded border border-white/10"
+              />
+            </div>
+          ) : null}
+
+          {hasPassAndNotExpired && pickupPassPreviewUrl ? (
+            <div className="rounded-md border border-white/10 bg-black/30 p-3">
+              <div className="text-xs text-white/60">Saved pickup pass preview</div>
+              <img
+                src={pickupPassPreviewUrl}
+                alt="Pickup pass"
+                className="mt-2 max-h-56 w-auto rounded border border-white/10"
+              />
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && (
               <>
@@ -305,7 +426,7 @@ export default function PickupVerificationPanel({
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
-                  disabled={isUploading}
+                  disabled={isUploading || isRemoving}
                   className="max-w-sm bg-black/30 text-white file:mr-3 file:rounded file:border file:border-white/20 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
                 />
                 <Button
@@ -313,7 +434,7 @@ export default function PickupVerificationPanel({
                   variant="outline"
                   size="sm"
                   onClick={uploadPickupPass}
-                  disabled={isUploading || !uploadFile}
+                  disabled={isUploading || isRemoving || !uploadFile}
                 >
                   {isUploading ? 'Uploading...' : 'Upload Pass'}
                 </Button>
@@ -326,11 +447,23 @@ export default function PickupVerificationPanel({
                 variant="secondary"
                 size="sm"
                 onClick={openPickupPass}
-                disabled={isLoadingPassLink}
+                disabled={isLoadingPassLink || isRemoving}
               >
                 {isLoadingPassLink ? 'Opening...' : 'View Pickup Pass'}
               </Button>
             )}
+
+            {canEdit && (hasPickupPass || uploadFile) ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={removePickupPass}
+                disabled={isRemoving || isUploading}
+              >
+                {isRemoving ? 'Removing...' : 'Remove Pass'}
+              </Button>
+            ) : null}
           </div>
         </div>
       )}

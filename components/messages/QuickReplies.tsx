@@ -10,14 +10,13 @@ type QuickRepliesProps = {
 
 const PRESETS_BY_ROLE: Record<RequestChatRole, string[]> = {
   CUSTOMER: [
-    "I'm here / Gate code is ____",
-    'Pickup is under ____',
-    'Please leave at door',
+    'Gate code is ____',
+    'Pickup under ____',
+    'Leave at door',
   ],
   DRIVER: [
     'On my way',
     'Arrived',
-    'Merchant says 10 minutes',
     'Need more info',
   ],
   ADMIN: [

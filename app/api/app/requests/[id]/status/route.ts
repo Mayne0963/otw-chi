@@ -126,7 +126,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       });
     }
 
-    if (to === DeliveryRequestStatus.DELIVERED && !request.chatClosedAt) {
+    if (
+      (to === DeliveryRequestStatus.DELIVERED || to === DeliveryRequestStatus.CANCELED) &&
+      !request.chatClosedAt
+    ) {
       const fallbackSenderUserId = request.assignedDriver?.userId ?? request.userId;
       const senderUserId = actor?.id ?? fallbackSenderUserId;
       const senderRole = actor?.role

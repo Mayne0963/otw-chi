@@ -6,6 +6,11 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
+import { getCurrentUser } from '@/lib/auth/roles';
+import {
+  createSystemRequestMessage,
+  DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+} from '@/lib/request-chat';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { revalidatePath } from 'next/cache';
@@ -247,6 +252,10 @@ function RequestsErrorState({ error }: { error: unknown }) {
 export async function assignDriverAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
+  const actor = await getCurrentUser();
+  if (!actor) {
+    throw new Error('Unauthorized');
+  }
   const id = String(formData.get('id') ?? '');
   const driverProfileId = String(formData.get('driverProfileId') ?? '');
   
@@ -302,18 +311,36 @@ export async function assignDriverAction(formData: FormData) {
         throw new Error('Driver already has an active request');
       }
 
-      await prisma.deliveryRequest.update({
-        where: { id },
-        data: { 
-          assignedDriverId: driverProfile.id,
-          status: deliveryRequest.status === 'REQUESTED' ? 'ASSIGNED' : undefined
-        }
-      });
+      const shouldOpenChat = deliveryRequest.status === 'REQUESTED';
+      await prisma.$transaction(async (tx) => {
+        await tx.deliveryRequest.update({
+          where: { id },
+          data: {
+            assignedDriverId: driverProfile.id,
+            status: shouldOpenChat ? 'ASSIGNED' : undefined,
+            ...(shouldOpenChat
+              ? {
+                  chatEnabled: true,
+                  chatClosedAt: null,
+                }
+              : {}),
+          },
+        });
 
-      await prisma.driverAssignment.create({
-        data: {
-          deliveryRequestId: id,
-          driverId: driverProfile.id
+        await tx.driverAssignment.create({
+          data: {
+            deliveryRequestId: id,
+            driverId: driverProfile.id,
+          },
+        });
+
+        if (shouldOpenChat) {
+          await createSystemRequestMessage(tx, {
+            deliveryRequestId: id,
+            senderUserId: actor.id,
+            senderRole: actor.role,
+            messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+          });
         }
       });
     } else {

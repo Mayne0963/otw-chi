@@ -106,8 +106,69 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     deliveryRequestId: deliveryRequest.id,
+    pickupPassImageUrl: objectRef,
     pickupPassUploadedAt: now.toISOString(),
     pickupPassExpiresAt: expiresAt.toISOString(),
     pickupPassUrl: signedUrl,
+  });
+}
+
+export async function DELETE(req: Request) {
+  if (!serverFeatureFlags.pickupPass) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (user.role !== 'CUSTOMER' && user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  let deliveryRequestId = '';
+  try {
+    const body = await req.json();
+    deliveryRequestId = String(body?.deliveryRequestId ?? '').trim();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  if (!deliveryRequestId) {
+    return NextResponse.json({ error: 'Missing deliveryRequestId' }, { status: 400 });
+  }
+
+  const prisma = getPrisma();
+  const deliveryRequest = await prisma.deliveryRequest.findUnique({
+    where: { id: deliveryRequestId },
+    select: {
+      id: true,
+      userId: true,
+    },
+  });
+
+  if (!deliveryRequest) {
+    return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+  }
+
+  const isOwner = deliveryRequest.userId === user.id;
+  const isAdmin = user.role === 'ADMIN';
+  if (!isOwner && !isAdmin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  await prisma.deliveryRequest.update({
+    where: { id: deliveryRequest.id },
+    data: {
+      pickupPassImageUrl: null,
+      pickupPassUploadedAt: null,
+      pickupPassExpiresAt: null,
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    deliveryRequestId: deliveryRequest.id,
   });
 }

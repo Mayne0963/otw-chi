@@ -6,6 +6,12 @@ import type { DeliveryRequestStatus } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import { requireRole } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/roles';
+import {
+  closeRequestChat,
+  createSystemRequestMessage,
+  DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+} from '@/lib/request-chat';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -46,6 +52,10 @@ async function getRequestData(id: string) {
 export async function updateRequestAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
+  const actor = await getCurrentUser();
+  if (!actor) {
+    throw new Error('Unauthorized');
+  }
 
   const id = String(formData.get('id') ?? '').trim();
   const statusInput = String(formData.get('status') ?? '').trim();
@@ -124,7 +134,7 @@ export async function updateRequestAction(formData: FormData) {
     data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
     data.notes = notesInput.length > 0 ? notesInput : null;
 
-    await prisma.deliveryRequest.update({
+    const updatedRequest = await prisma.deliveryRequest.update({
       where: { id },
       data
     });
@@ -137,6 +147,35 @@ export async function updateRequestAction(formData: FormData) {
                 driverId: data.assignedDriverId
             }
         });
+    }
+
+    const nextStatus = (updatedRequest.status ?? dr.status) as DeliveryRequestStatus;
+    const transitionedIntoAssigned =
+      nextStatus === 'ASSIGNED' && (dr.status !== 'ASSIGNED' || dr.assignedDriverId !== updatedRequest.assignedDriverId);
+
+    if (transitionedIntoAssigned) {
+      await prisma.deliveryRequest.update({
+        where: { id },
+        data: {
+          chatEnabled: true,
+          chatClosedAt: null,
+        },
+      });
+
+      await createSystemRequestMessage(prisma, {
+        deliveryRequestId: id,
+        senderUserId: actor.id,
+        senderRole: actor.role,
+        messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+      });
+    }
+
+    if (nextStatus === 'DELIVERED' || nextStatus === 'CANCELED') {
+      await closeRequestChat(prisma, {
+        deliveryRequestId: id,
+        senderUserId: actor.id,
+        senderRole: actor.role,
+      });
     }
   }
 

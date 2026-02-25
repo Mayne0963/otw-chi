@@ -7,6 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { serverFeatureFlags } from '@/lib/featureFlags';
+import { closeRequestChat } from '@/lib/request-chat';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,13 +19,25 @@ async function refundRequestAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
   const id = String(formData.get('id'));
+  const adminUser = await getCurrentUser();
+  if (!adminUser) {
+    throw new Error('Unauthorized');
+  }
 
   const prisma = getPrisma();
 
   try {
-    await prisma.deliveryRequest.update({
-      where: { id },
-      data: { status: 'CANCELED' },
+    await prisma.$transaction(async (tx) => {
+      await tx.deliveryRequest.update({
+        where: { id },
+        data: { status: 'CANCELED' },
+      });
+
+      await closeRequestChat(tx, {
+        deliveryRequestId: id,
+        senderUserId: adminUser.id,
+        senderRole: adminUser.role,
+      });
     });
   } catch (error) {
     console.error('Failed to cancel request:', error);

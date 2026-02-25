@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest } from '@/lib/delivery-submit';
+import { closeRequestChat } from '@/lib/request-chat';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -36,6 +37,11 @@ export async function cancelOrderAction(orderId: string) {
     }
 
     await cancelDeliveryRequest(orderId, user.id);
+    await closeRequestChat(prisma, {
+      deliveryRequestId: orderId,
+      senderUserId: user.id,
+      senderRole: user.role,
+    });
     revalidatePath(`/order/${orderId}`);
     revalidatePath(`/track/${orderId}`);
     revalidatePath('/dashboard');

@@ -1,7 +1,7 @@
 import { DeliveryRequestStatus, Prisma, PrismaClient, Role } from '@prisma/client';
 
 export const DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE = 'Driver assigned. Chat is open.';
-export const DELIVERED_CHAT_CLOSED_MESSAGE = 'Delivered. Chat is now closed.';
+export const DELIVERED_CHAT_CLOSED_MESSAGE = 'Request closed. Chat is now read-only.';
 
 export type ChatGateRequest = {
   id: string;
