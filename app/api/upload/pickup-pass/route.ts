@@ -4,7 +4,10 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import {
+  getPickupPassBase64CircuitStatus,
   PICKUP_PASS_EXPIRY_DAYS,
+  PICKUP_PASS_BASE64_DISABLE_BYTES,
+  PICKUP_PASS_BASE64_WARNING_BYTES,
   PICKUP_PASS_MAX_BYTES_BASE64,
   PICKUP_PASS_MAX_BYTES_STORAGE,
   toPickupPassDataUrl,
@@ -80,6 +83,43 @@ export async function POST(req: Request) {
 
   if (!isOwner && !isAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (!storageConfigured) {
+    const circuitStatus = await getPickupPassBase64CircuitStatus(prisma, true);
+
+    if (circuitStatus.totalBytes >= PICKUP_PASS_BASE64_WARNING_BYTES) {
+      console.warn('[pickup-pass-upload] base64 usage warning', {
+        totalBytes: circuitStatus.totalBytes,
+        warningBytes: circuitStatus.warningBytes,
+        disableBytes: circuitStatus.disableBytes,
+        emergencyBytes: circuitStatus.emergencyBytes,
+        overrideEnabled: circuitStatus.overrideEnabled,
+      });
+    }
+
+    if (
+      circuitStatus.overrideEnabled &&
+      circuitStatus.totalBytes >= PICKUP_PASS_BASE64_WARNING_BYTES
+    ) {
+      console.warn('[pickup-pass-upload] OTW_BASE64_UPLOAD_OVERRIDE is enabled', {
+        totalBytes: circuitStatus.totalBytes,
+        disableBytes: circuitStatus.disableBytes,
+      });
+    }
+
+    if (!circuitStatus.uploadsAllowed) {
+      return NextResponse.json(
+        {
+          error: 'PICKUP_PASS_UPLOADS_PAUSED',
+          message:
+            'Pickup pass uploads are temporarily paused while we upgrade storage. Please paste your pickup code instead.',
+          totalBytes: circuitStatus.totalBytes,
+          thresholdBytes: PICKUP_PASS_BASE64_DISABLE_BYTES,
+        },
+        { status: 503 },
+      );
+    }
   }
 
   const fileBuffer = Buffer.from(await file.arrayBuffer());

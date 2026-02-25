@@ -5,6 +5,8 @@ import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { getPickupPassBase64CircuitStatus } from '@/lib/pickup-pass';
+import { isStorageConfigured } from '@/lib/storage';
 import { Suspense } from 'react';
 
 // Loading component for better UX
@@ -100,6 +102,8 @@ async function getAdminStats() {
     const avgDailyRequests = Math.round(totalRequests / 30); // Rough estimate
     const driverUtilization = totalDrivers > 0 ? Math.round((activeDrivers / totalDrivers) * 100) : 0;
     const weeklyGrowth = weeklyRequests - (monthlyRequests - weeklyRequests);
+    const base64Mode = !isStorageConfigured();
+    const base64Circuit = await getPickupPassBase64CircuitStatus(prisma, base64Mode).catch(() => null);
 
     return {
       requestsToday,
@@ -113,7 +117,10 @@ async function getAdminStats() {
       monthlyRequests,
       avgDailyRequests,
       driverUtilization,
-      weeklyGrowth
+      weeklyGrowth,
+      base64Mode,
+      base64Pressure: base64Circuit?.pressure ?? 'healthy',
+      base64UploadsAllowed: base64Circuit?.uploadsAllowed ?? true,
     };
   } catch (error) {
     console.error('[AdminOverview] Failed to fetch statistics:', error);
@@ -124,6 +131,26 @@ async function getAdminStats() {
 function AdminStatsBody({ stats }: { stats: any }) {
   return (
     <div className="space-y-6">
+      {stats.base64Mode && stats.base64Pressure === 'warning' ? (
+        <OtwCard className="border border-yellow-400/30 bg-yellow-500/10 p-4">
+          <div className="text-sm font-semibold text-yellow-200">Storage warning</div>
+          <p className="mt-1 text-xs text-yellow-100/90">
+            Base64 fallback storage is nearing limit. Switch to S3/R2 in
+            <span className="mx-1 font-semibold">/admin/system/storage</span>
+            before uploads pause.
+          </p>
+        </OtwCard>
+      ) : null}
+
+      {stats.base64Mode && !stats.base64UploadsAllowed ? (
+        <OtwCard className="border border-orange-400/30 bg-orange-500/10 p-4">
+          <div className="text-sm font-semibold text-orange-200">Pickup-pass uploads paused</div>
+          <p className="mt-1 text-xs text-orange-100/90">
+            New base64 uploads are paused. Configure `STORAGE_PROVIDER` for S3/R2 to restore uploads.
+          </p>
+        </OtwCard>
+      ) : null}
+
       {/* Primary KPIs */}
       <div className="grid md:grid-cols-4 gap-4">
         <OtwCard className="relative overflow-hidden">

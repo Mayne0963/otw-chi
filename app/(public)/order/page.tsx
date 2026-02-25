@@ -26,6 +26,11 @@ const PICKUP_CODE_TYPES = [
 
 type ServiceType = 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE';
 
+type Base64StatusResponse = {
+  base64Mode?: boolean;
+  uploadsAllowed?: boolean;
+};
+
 function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
   const earthRadiusMiles = 3959;
@@ -59,8 +64,12 @@ export default function OrderPage() {
   const [pickupPassFile, setPickupPassFile] = useState<File | null>(null);
   const [pickupPassPreviewUrl, setPickupPassPreviewUrl] = useState<string | null>(null);
   const [isOptimizingPickupPass, setIsOptimizingPickupPass] = useState(false);
+  const [isCheckingUploadStatus, setIsCheckingUploadStatus] = useState(false);
+  const [base64Mode, setBase64Mode] = useState(false);
+  const [uploadsAllowed, setUploadsAllowed] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const uploadsPaused = pickupPassEnabled && base64Mode && !uploadsAllowed;
 
   const pickupLines = useMemo(
     () => (pickupAddress ? formatAddressLines(pickupAddress) : null),
@@ -84,6 +93,51 @@ export default function OrderPage() {
       URL.revokeObjectURL(objectUrl);
     };
   }, [pickupPassFile]);
+
+  useEffect(() => {
+    if (!pickupPassEnabled) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+    setIsCheckingUploadStatus(true);
+
+    void fetch('/api/storage/base64-status', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Unable to load base64 upload status');
+        }
+        const payload = (await response.json()) as Base64StatusResponse;
+        if (!isActive) {
+          return;
+        }
+
+        setBase64Mode(Boolean(payload.base64Mode));
+        setUploadsAllowed(payload.uploadsAllowed !== false);
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
+        setBase64Mode(false);
+        setUploadsAllowed(true);
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsCheckingUploadStatus(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [pickupPassEnabled]);
 
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -144,22 +198,37 @@ export default function OrderPage() {
       const deliveryRequestId = createPayload.id;
 
       if (pickupPassEnabled && pickupPassFile) {
-        const uploadForm = new FormData();
-        uploadForm.set('deliveryRequestId', deliveryRequestId);
-        uploadForm.set('file', pickupPassFile);
-
-        const uploadResponse = await fetch('/api/upload/pickup-pass', {
-          method: 'POST',
-          body: uploadForm,
-        });
-
-        if (!uploadResponse.ok) {
-          const uploadPayload = (await uploadResponse.json().catch(() => ({}))) as { error?: string };
+        if (uploadsPaused) {
           toast({
-            title: 'Request created, pickup pass failed',
-            description: uploadPayload.error || 'You can upload the pickup pass from request details.',
+            title: 'Pickup pass upload paused',
+            description:
+              'Uploads are temporarily paused. Please paste your pickup code or confirmation number.',
             variant: 'destructive',
           });
+        } else {
+          const uploadForm = new FormData();
+          uploadForm.set('deliveryRequestId', deliveryRequestId);
+          uploadForm.set('file', pickupPassFile);
+
+          const uploadResponse = await fetch('/api/upload/pickup-pass', {
+            method: 'POST',
+            body: uploadForm,
+          });
+
+          if (!uploadResponse.ok) {
+            const uploadPayload = (await uploadResponse.json().catch(() => ({}))) as {
+              error?: string;
+              message?: string;
+            };
+            toast({
+              title: 'Request created, pickup pass failed',
+              description:
+                uploadPayload.message ||
+                uploadPayload.error ||
+                'You can upload the pickup pass from request details.',
+              variant: 'destructive',
+            });
+          }
         }
       }
 
@@ -369,9 +438,17 @@ export default function OrderPage() {
                     onChange={(event) => {
                       void handlePickupPassFileSelection(event);
                     }}
-                    disabled={isOptimizingPickupPass}
+                    disabled={isOptimizingPickupPass || uploadsPaused}
                     className="bg-black/30 text-white file:mr-3 file:rounded file:border file:border-white/20 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
                   />
+                  {isCheckingUploadStatus ? (
+                    <p className="text-xs text-white/60">Checking upload status...</p>
+                  ) : null}
+                  {uploadsPaused ? (
+                    <p className="text-xs text-yellow-300">
+                      Uploads are temporarily paused. Please paste your pickup code or confirmation number.
+                    </p>
+                  ) : null}
                   {isOptimizingPickupPass ? (
                     <p className="text-xs text-white/60">Optimizing image...</p>
                   ) : null}

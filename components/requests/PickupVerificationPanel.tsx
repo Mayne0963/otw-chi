@@ -37,6 +37,11 @@ type PickupPassResponse = {
   error?: string;
 };
 
+type Base64StatusResponse = {
+  base64Mode?: boolean;
+  uploadsAllowed?: boolean;
+};
+
 export default function PickupVerificationPanel({
   requestId,
   canEdit,
@@ -70,10 +75,14 @@ export default function PickupVerificationPanel({
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isLoadingPassLink, setIsLoadingPassLink] = useState(false);
+  const [isCheckingUploadStatus, setIsCheckingUploadStatus] = useState(false);
+  const [base64Mode, setBase64Mode] = useState(false);
+  const [uploadsAllowed, setUploadsAllowed] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const hasPassAndNotExpired = hasPickupPass && !pickupPassExpired;
+  const uploadsPaused = pickupPassFeatureEnabled && base64Mode && !uploadsAllowed;
 
   const pickupPassStatusLabel = useMemo(() => {
     if (!hasPickupPass) {
@@ -104,6 +113,51 @@ export default function PickupVerificationPanel({
       URL.revokeObjectURL(objectUrl);
     };
   }, [uploadFile]);
+
+  useEffect(() => {
+    if (!pickupPassFeatureEnabled || !canEdit) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+    setIsCheckingUploadStatus(true);
+
+    void fetch('/api/storage/base64-status', {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Unable to load base64 upload status');
+        }
+        const payload = (await response.json()) as Base64StatusResponse;
+        if (!isActive) {
+          return;
+        }
+
+        setBase64Mode(Boolean(payload.base64Mode));
+        setUploadsAllowed(payload.uploadsAllowed !== false);
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
+        setBase64Mode(false);
+        setUploadsAllowed(true);
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsCheckingUploadStatus(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [canEdit, pickupPassFeatureEnabled]);
 
   const fetchPickupPassUrl = useCallback(async () => {
     const response = await fetch(`/api/requests/${requestId}/pickup-pass`, {
@@ -197,6 +251,13 @@ export default function PickupVerificationPanel({
       return;
     }
 
+    if (uploadsPaused) {
+      setError(
+        'Uploads are temporarily paused. Please paste your pickup code or confirmation number.',
+      );
+      return;
+    }
+
     setIsUploading(true);
     setError(null);
     setSuccess(null);
@@ -212,8 +273,11 @@ export default function PickupVerificationPanel({
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error ?? 'Unable to upload pickup pass');
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          message?: string;
+        } | null;
+        throw new Error(payload?.message ?? payload?.error ?? 'Unable to upload pickup pass');
       }
 
       const payload = (await response.json()) as {
@@ -454,7 +518,7 @@ export default function PickupVerificationPanel({
                   onChange={(event) => {
                     void handleUploadFileSelection(event);
                   }}
-                  disabled={isUploading || isRemoving || isOptimizingUpload}
+                  disabled={isUploading || isRemoving || isOptimizingUpload || uploadsPaused}
                   className="max-w-sm bg-black/30 text-white file:mr-3 file:rounded file:border file:border-white/20 file:bg-white/10 file:px-2 file:py-1 file:text-xs"
                 />
                 <Button
@@ -462,7 +526,7 @@ export default function PickupVerificationPanel({
                   variant="outline"
                   size="sm"
                   onClick={uploadPickupPass}
-                  disabled={isUploading || isRemoving || isOptimizingUpload || !uploadFile}
+                  disabled={isUploading || isRemoving || isOptimizingUpload || uploadsPaused || !uploadFile}
                 >
                   {isUploading ? 'Uploading...' : 'Upload Pass'}
                 </Button>
@@ -493,6 +557,16 @@ export default function PickupVerificationPanel({
                 </Button>
             ) : null}
           </div>
+
+          {isCheckingUploadStatus ? (
+            <p className="text-xs text-white/60">Checking upload status...</p>
+          ) : null}
+
+          {uploadsPaused ? (
+            <p className="text-xs text-yellow-300">
+              Uploads are temporarily paused. Please paste your pickup code or confirmation number.
+            </p>
+          ) : null}
 
           {isOptimizingUpload ? (
             <p className="text-xs text-white/60">Optimizing image...</p>

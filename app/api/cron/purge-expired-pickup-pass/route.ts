@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
-import { purgeExpiredPickupPassBase64 } from '@/lib/pickup-pass';
+import { getPickupPassBase64CircuitStatus, purgeExpiredPickupPassBase64 } from '@/lib/pickup-pass';
+import { isStorageConfigured } from '@/lib/storage';
 
 const CRON_SECRET = process.env.OTW_CRON_SECRET ?? '';
 
@@ -34,10 +35,15 @@ async function runPurge(req: Request) {
 
   const prisma = getPrisma();
   const clearedCount = await purgeExpiredPickupPassBase64(prisma);
+  const circuitStatus = await getPickupPassBase64CircuitStatus(prisma, !isStorageConfigured());
 
   return NextResponse.json({
     ok: true,
     clearedCount,
+    base64Mode: circuitStatus.base64Mode,
+    uploadsAllowed: circuitStatus.uploadsAllowed,
+    totalBytes: circuitStatus.totalBytes,
+    thresholdBytes: circuitStatus.disableBytes,
     clearedAt: new Date().toISOString(),
   });
 }

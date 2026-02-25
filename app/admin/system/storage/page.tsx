@@ -4,11 +4,14 @@ import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { requireRole } from '@/lib/auth';
 import { getPickupPassBase64UsageMetrics } from '@/lib/admin/base64-usage';
+import {
+  isBase64UploadOverrideEnabled,
+  PICKUP_PASS_BASE64_DISABLE_BYTES,
+  PICKUP_PASS_BASE64_EMERGENCY_BYTES,
+  PICKUP_PASS_BASE64_WARNING_BYTES,
+} from '@/lib/pickup-pass';
+import { isStorageConfigured } from '@/lib/storage';
 import { formatDate } from '@/lib/utils';
-
-const WARNING_THRESHOLD_BYTES = 250 * 1024 * 1024;
-const SWITCH_THRESHOLD_BYTES = 500 * 1024 * 1024;
-const EMERGENCY_THRESHOLD_BYTES = 1024 * 1024 * 1024;
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024 * 1024) {
@@ -19,21 +22,21 @@ function formatBytes(bytes: number): string {
 }
 
 function getThresholdState(totalBytes: number) {
-  if (totalBytes >= EMERGENCY_THRESHOLD_BYTES) {
+  if (totalBytes >= PICKUP_PASS_BASE64_EMERGENCY_BYTES) {
     return {
       label: 'Emergency',
       className: 'text-red-300',
     };
   }
 
-  if (totalBytes >= SWITCH_THRESHOLD_BYTES) {
+  if (totalBytes >= PICKUP_PASS_BASE64_DISABLE_BYTES) {
     return {
-      label: 'Must switch at 500MB',
+      label: 'Uploads paused at 500MB',
       className: 'text-orange-300',
     };
   }
 
-  if (totalBytes >= WARNING_THRESHOLD_BYTES) {
+  if (totalBytes >= PICKUP_PASS_BASE64_WARNING_BYTES) {
     return {
       label: 'Warning at 250MB',
       className: 'text-yellow-300',
@@ -50,6 +53,17 @@ export default async function AdminStorageSystemPage() {
   await requireRole(['ADMIN']);
   const metrics = await getPickupPassBase64UsageMetrics();
   const thresholdState = getThresholdState(metrics.totalBytes);
+  const base64Mode = !isStorageConfigured();
+  const overrideEnabled = isBase64UploadOverrideEnabled();
+  const inWarningBand = metrics.totalBytes >= PICKUP_PASS_BASE64_WARNING_BYTES;
+  const uploadsPaused =
+    base64Mode &&
+    !overrideEnabled &&
+    metrics.totalBytes >= PICKUP_PASS_BASE64_DISABLE_BYTES;
+  const emergencyMode =
+    base64Mode &&
+    !overrideEnabled &&
+    metrics.totalBytes >= PICKUP_PASS_BASE64_EMERGENCY_BYTES;
 
   return (
     <OtwPageShell>
@@ -57,6 +71,52 @@ export default async function AdminStorageSystemPage() {
         title="Storage Monitor"
         subtitle="Base64 pickup-pass usage and safety thresholds."
       />
+
+      {!base64Mode ? (
+        <OtwCard className="mt-4 border border-green-400/30 bg-green-500/10 p-4">
+          <div className="text-sm font-semibold text-green-200">Object storage is configured</div>
+          <p className="mt-1 text-xs text-green-100/90">
+            Circuit breaker is bypassed because uploads use S3/R2 instead of database base64 fallback.
+          </p>
+        </OtwCard>
+      ) : null}
+
+      {base64Mode && inWarningBand && !uploadsPaused ? (
+        <OtwCard className="mt-4 border border-yellow-400/30 bg-yellow-500/10 p-4">
+          <div className="text-sm font-semibold text-yellow-200">Warning: base64 storage is rising</div>
+          <p className="mt-1 text-xs text-yellow-100/90">
+            Usage is above 250MB. Configure `STORAGE_PROVIDER` and S3/R2 credentials before uploads pause at 500MB.
+          </p>
+        </OtwCard>
+      ) : null}
+
+      {base64Mode && uploadsPaused && !emergencyMode ? (
+        <OtwCard className="mt-4 border border-orange-400/30 bg-orange-500/10 p-4">
+          <div className="text-sm font-semibold text-orange-200">Uploads paused</div>
+          <p className="mt-1 text-xs text-orange-100/90">
+            Base64 usage reached 500MB. New pickup-pass uploads are paused. Configure `STORAGE_PROVIDER` (S3/R2)
+            and redeploy to resume uploads.
+          </p>
+        </OtwCard>
+      ) : null}
+
+      {emergencyMode ? (
+        <OtwCard className="mt-4 border border-red-400/30 bg-red-500/10 p-4">
+          <div className="text-sm font-semibold text-red-200">Emergency: storage pressure critical</div>
+          <p className="mt-1 text-xs text-red-100/90">
+            Base64 usage is at or above 1GB. Keep uploads paused and switch to object storage immediately.
+          </p>
+        </OtwCard>
+      ) : null}
+
+      {base64Mode && overrideEnabled ? (
+        <OtwCard className="mt-4 border border-blue-400/30 bg-blue-500/10 p-4">
+          <div className="text-sm font-semibold text-blue-200">Override enabled</div>
+          <p className="mt-1 text-xs text-blue-100/90">
+            `OTW_BASE64_UPLOAD_OVERRIDE=true` is active. Uploads are allowed even above pause thresholds.
+          </p>
+        </OtwCard>
+      ) : null}
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <OtwCard className="p-5 sm:p-6">
@@ -104,7 +164,7 @@ export default async function AdminStorageSystemPage() {
           <div className="text-sm text-white/70">Thresholds</div>
           <ul className="mt-2 space-y-1 text-sm text-white/80">
             <li>Warning: 250MB</li>
-            <li>Must switch: 500MB</li>
+            <li>Uploads paused: 500MB</li>
             <li>Emergency: 1GB</li>
           </ul>
           <div className="mt-4">
