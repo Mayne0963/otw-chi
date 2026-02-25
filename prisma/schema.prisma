@@ -174,6 +174,7 @@ model User {
   serviceMilesWallet ServiceMilesWallet?
   founderServiceLogs FounderServiceLog[]
   auditLogs          AuditLog[]
+  sentMessages       RequestMessage[]
 }
 
 model DriverApplication {
@@ -355,10 +356,23 @@ model DeliveryRequest {
   receiptAudits        ReceiptAudit[]
   orderConfirmation    OrderConfirmation?
 
+  // New fields for prepaid pickup
+  orderReference      String?
+  pickupInstructions  String?
+  dropoffInstructions String?
+  pickupCodeType      String?
+  pickupCodeText      String?
+  pickupPassImageUrl  String?
+  pickupPassUploadedAt DateTime?
+  pickupPassExpiresAt  DateTime?
+  chatEnabled         Boolean  @default(true)
+  chatClosedAt        DateTime?
+
   // Lock fields
   receiptVerificationId String?  // latest linked receipt
   confirmationId      String? // linked confirmation record
   isLocked            Boolean      @default(false)
+  messages            RequestMessage[]
   lockedAt            DateTime?
   lockReason          String?
   refundPolicy        RefundPolicy @default(AUTO_ALLOWED)
@@ -667,6 +681,8 @@ model StripeWebhookEvent {
   stripeEventId String   @unique
   type          String
   createdAt     DateTime @default(now())
+  processedAt   DateTime?
+  error         String?
 }
 
 model DriverTimeLog {
@@ -814,4 +830,20 @@ model ReceiptAudit {
 
   @@index([deliveryRequestId])
   @@index([createdAt])
+}
+
+model RequestMessage {
+  id                String   @id @default(cuid())
+  deliveryRequestId String
+  senderUserId      String
+  senderRole        Role
+  messageText       String
+  createdAt         DateTime @default(now())
+  isSystem          Boolean  @default(false)
+
+  deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id])
+  sender            User            @relation(fields: [senderUserId], references: [id])
+
+  @@index([deliveryRequestId, createdAt])
+  @@index([senderUserId])
 }

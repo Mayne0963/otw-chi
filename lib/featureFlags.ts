@@ -7,6 +7,8 @@ const rawFlags = {
   adminZones: process.env.NEXT_PUBLIC_FEATURE_ADMIN_ZONES === 'true',
   pos: process.env.NEXT_PUBLIC_FEATURE_POS === 'true',
   billing: process.env.NEXT_PUBLIC_FEATURE_BILLING === 'true',
+  pickupPass: process.env.NEXT_PUBLIC_FEATURE_PICKUP_PASS === 'true',
+  chat: process.env.NEXT_PUBLIC_FEATURE_CHAT === 'true',
 };
 
 const expansionFlags = {
@@ -17,12 +19,19 @@ const expansionFlags = {
   billing: isOtwModeCore ? false : rawFlags.billing,
 };
 
+const coreFlags = {
+  pickupPass: rawFlags.pickupPass,
+  chat: rawFlags.chat,
+};
+
 export const serverFeatureFlags = {
+  ...coreFlags,
   ...expansionFlags,
   // Add any server-only flags here
 };
 
 export const clientFeatureFlags = {
+  ...coreFlags,
   ...expansionFlags,
 };
 
