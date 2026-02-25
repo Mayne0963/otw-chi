@@ -25,7 +25,6 @@ const isPublicRoute = (pathname: string) => {
     '/design-system',
     '/api/stripe/webhook',
     '/api/client-error',
-    '/api/receipt/verify',
   ];
   if (publicPaths.includes(pathname)) return true;
   if (matchesPath(pathname, '/sign-in')) return true;
@@ -125,6 +124,17 @@ function isBlockedFeaturePath(pathname: string): boolean {
     (matchesPath(pathname, '/billing') || matchesPath(pathname, '/admin/billing')) &&
     !capabilities.canSeeBilling
   ) {
+    return true;
+  }
+
+  const isReceiptPath =
+    matchesPath(pathname, '/receipt') ||
+    matchesPath(pathname, '/verify') ||
+    matchesPath(pathname, '/veryfi') ||
+    matchesPath(pathname, '/api/receipt') ||
+    matchesPath(pathname, '/api/veryfi') ||
+    matchesPath(pathname, '/api/admin/receipts');
+  if (isReceiptPath && !serverFeatureFlags.receipts) {
     return true;
   }
 

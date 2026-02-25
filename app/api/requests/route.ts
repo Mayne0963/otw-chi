@@ -17,8 +17,13 @@ const requestSchema = z.object({
   dropoff: z.string().min(5),
   serviceType: z.enum(['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE']),
   notes: z.string().optional(),
-  costEstimate: z.number().int().positive(),
+  costEstimate: z.number().int().positive().optional(),
   milesEstimate: z.number().positive(),
+  orderReference: z.string().max(120).optional(),
+  pickupInstructions: z.string().max(2000).optional(),
+  dropoffInstructions: z.string().max(2000).optional(),
+  pickupCodeType: z.string().max(32).optional(),
+  pickupCodeText: z.string().max(255).optional(),
 });
 
 export async function POST(req: Request) {
@@ -63,6 +68,11 @@ export async function POST(req: Request) {
         dropoffAddress: data.dropoff,
         serviceType: data.serviceType as ServiceType,
         notes: data.notes,
+        orderReference: data.orderReference?.trim() || null,
+        pickupInstructions: data.pickupInstructions?.trim() || null,
+        dropoffInstructions: data.dropoffInstructions?.trim() || null,
+        pickupCodeType: data.pickupCodeType?.trim() || null,
+        pickupCodeText: data.pickupCodeText?.trim() || null,
         status: 'REQUESTED',
         deliveryFeeCents: pricing.totalCents,
         serviceMilesFinal: milesEstimate,

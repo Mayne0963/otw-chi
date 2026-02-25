@@ -15,12 +15,6 @@ type DisputeRow = {
   disputedItems: Array<{ itemKey?: string; name?: string; qtyDisputed?: number; reason?: string; details?: string }>;
   resolutionNotes: string | null;
   refundAmount: string | null;
-  receiptVerification: {
-    id: string;
-    status: string;
-    riskScore: number;
-    totalAmount: string | null;
-  } | null;
 };
 
 type Props = {
@@ -135,17 +129,10 @@ export default function DisputeResolutionTable({ disputes }: Props) {
             </div>
 
             <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-              <div className="text-xs uppercase tracking-wide text-white/60">Receipt Proof</div>
-              {dispute.receiptVerification ? (
-                <div className="mt-2 text-sm text-white/80 space-y-1">
-                  <div>Verification: {dispute.receiptVerification.id}</div>
-                  <div>Status: {dispute.receiptVerification.status}</div>
-                  <div>Risk Score: {dispute.receiptVerification.riskScore}</div>
-                  <div>Total: {dispute.receiptVerification.totalAmount ?? '—'}</div>
-                </div>
-              ) : (
-                <div className="mt-2 text-sm text-white/60">No linked receipt verification.</div>
-              )}
+              <div className="text-xs uppercase tracking-wide text-white/60">Resolution</div>
+              <div className="mt-2 text-sm text-white/70">
+                Review dispute details, then approve, deny, or request more info.
+              </div>
               {dispute.resolutionNotes && (
                 <div className="mt-2 text-xs text-white/70">Resolution: {dispute.resolutionNotes}</div>
               )}

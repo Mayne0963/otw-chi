@@ -26,16 +26,6 @@ export default async function AdminDisputesPage({
       disputeStatus: selectedStatus ? selectedStatus : { in: [...statusOptions] },
     },
     orderBy: { createdAt: 'desc' },
-    include: {
-      receiptVerification: {
-        select: {
-          id: true,
-          status: true,
-          riskScore: true,
-          totalAmount: true,
-        },
-      },
-    },
     take: 200,
   });
 
@@ -53,23 +43,13 @@ export default async function AdminDisputesPage({
       : [],
     resolutionNotes: dispute.resolutionNotes,
     refundAmount: dispute.refundAmount ? dispute.refundAmount.toFixed(2) : null,
-    receiptVerification: dispute.receiptVerification
-      ? {
-          id: dispute.receiptVerification.id,
-          status: dispute.receiptVerification.status,
-          riskScore: dispute.receiptVerification.riskScore,
-          totalAmount: dispute.receiptVerification.totalAmount
-            ? dispute.receiptVerification.totalAmount.toFixed(2)
-            : null,
-        }
-      : null,
   }));
 
   return (
     <OtwPageShell>
       <OtwSectionHeader
         title="Dispute Review"
-        subtitle="Review item-specific disputes, linked receipt proof, and resolve outcomes."
+        subtitle="Review item-specific disputes and resolve outcomes."
       />
 
       <OtwCard className="mt-4">

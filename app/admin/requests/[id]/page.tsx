@@ -243,14 +243,6 @@ export default async function AdminRequestDetailPage({
                   )}
                 </div>
               </div>
-              {request.receiptSubtotalCents && (
-                 <div className="p-4 rounded-lg bg-white/5">
-                  <div className="text-xs text-white/50">Receipt Subtotal</div>
-                  <div className="mt-2 text-sm text-white">
-                    ${(request.receiptSubtotalCents / 100).toFixed(2)}
-                  </div>
-                </div>
-              )}
                <div className="p-4 rounded-lg bg-white/5">
                 <div className="text-xs text-white/50">Coupon</div>
                 <div className="mt-2 text-sm text-white">

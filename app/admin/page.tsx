@@ -5,22 +5,7 @@ import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
-import { parseReceiptSummaryRange } from '@/lib/admin/receiptsExport';
 import { Suspense } from 'react';
-
-function formatCurrency(value: number | null | undefined): string {
-  return `$${Number(value ?? 0).toFixed(2)}`;
-}
-
-type ReceiptsSummary = {
-  totalReceipts: number;
-  approvedCount: number;
-  flaggedCount: number;
-  rejectedCount: number;
-  avgProofScore: number;
-  lockedCount: number;
-  totalApprovedRevenue: number;
-};
 
 // Loading component for better UX
 function AdminOverviewLoading() {
@@ -136,66 +121,7 @@ async function getAdminStats() {
   }
 }
 
-async function getReceiptsSummary(): Promise<ReceiptsSummary | null> {
-  const prisma = getPrisma();
-
-  try {
-    const parsedRange = parseReceiptSummaryRange(new URLSearchParams());
-    if (!parsedRange.value) return null;
-
-    const { startAt, endAt } = parsedRange.value;
-    const where = {
-      createdAt: {
-        gte: startAt,
-        lte: endAt,
-      },
-    } as const;
-
-    const [statusGroups, avgAggregate, totalCount, lockedCount, totalApprovedRevenue] =
-      await Promise.all([
-        prisma.receiptVerification.groupBy({
-          by: ['status'],
-          where,
-          _count: { _all: true },
-        }),
-        prisma.receiptVerification.aggregate({
-          where,
-          _avg: { proofScore: true },
-        }),
-        prisma.receiptVerification.count({ where }),
-        prisma.receiptVerification.count({ where: { ...where, locked: true } }),
-        prisma.receiptVerification.aggregate({
-          where: { ...where, status: 'APPROVED' },
-          _sum: { extractedTotal: true },
-        }),
-      ]);
-
-    const countsByStatus: Record<string, number> = {
-      APPROVED: 0,
-      FLAGGED: 0,
-      REJECTED: 0,
-      PENDING: 0,
-    };
-    for (const group of statusGroups) {
-      countsByStatus[group.status] = group._count._all;
-    }
-
-    return {
-      totalReceipts: totalCount,
-      approvedCount: countsByStatus.APPROVED ?? 0,
-      flaggedCount: countsByStatus.FLAGGED ?? 0,
-      rejectedCount: countsByStatus.REJECTED ?? 0,
-      avgProofScore: avgAggregate._avg.proofScore ?? 0,
-      lockedCount: lockedCount,
-      totalApprovedRevenue: totalApprovedRevenue._sum.extractedTotal ?? 0,
-    };
-  } catch (error) {
-    console.error('[AdminOverview] Failed to load receipts summary:', error);
-    return null;
-  }
-}
-
-function AdminStatsBody({ stats, summary }: { stats: any, summary: ReceiptsSummary | null }) {
+function AdminStatsBody({ stats }: { stats: any }) {
   return (
     <div className="space-y-6">
       {/* Primary KPIs */}
@@ -327,56 +253,6 @@ function AdminStatsBody({ stats, summary }: { stats: any, summary: ReceiptsSumma
           </div>
         </OtwCard>
       </div>
-
-      {summary && (
-        <div className="mt-6" data-testid="admin-summary-widget">
-          <OtwSectionHeader title="Receipts Summary" subtitle="Overview of receipt verification stats." />
-          <div className="mt-3 grid md:grid-cols-4 gap-4">
-            <OtwCard>
-              <div className="text-sm font-medium text-muted-foreground">Total Receipts</div>
-              <div className="mt-2">
-                <OtwStatPill label="Count" value={String(summary.totalReceipts)} />
-              </div>
-            </OtwCard>
-            <OtwCard>
-              <div className="text-sm font-medium text-muted-foreground">Approved</div>
-              <div className="mt-2">
-                <OtwStatPill label="Count" value={String(summary.approvedCount)} tone="success" />
-              </div>
-            </OtwCard>
-            <OtwCard>
-              <div className="text-sm font-medium text-muted-foreground">Flagged</div>
-              <div className="mt-2">
-                <OtwStatPill label="Count" value={String(summary.flaggedCount)} tone="info" />
-              </div>
-            </OtwCard>
-            <OtwCard>
-              <div className="text-sm font-medium text-muted-foreground">Rejected</div>
-              <div className="mt-2">
-                <OtwStatPill label="Count" value={String(summary.rejectedCount)} tone="danger" />
-              </div>
-            </OtwCard>
-            <OtwCard>
-              <div className="text-sm font-medium text-muted-foreground">Avg. Proof Score</div>
-              <div className="mt-2">
-                <OtwStatPill label="Score" value={String(summary.avgProofScore.toFixed(2))} />
-              </div>
-            </OtwCard>
-            <OtwCard>
-              <div className="text-sm font-medium text-muted-foreground">Locked</div>
-              <div className="mt-2">
-                <OtwStatPill label="Count" value={String(summary.lockedCount)} />
-              </div>
-            </OtwCard>
-            <OtwCard>
-              <div className="text-sm font-medium text-muted-foreground">Approved Revenue</div>
-              <div className="mt-2">
-                <OtwStatPill label="Total" value={formatCurrency(summary.totalApprovedRevenue)} />
-              </div>
-            </OtwCard>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -403,11 +279,9 @@ function AdminStatsErrorState({ error }: { error: unknown }) {
 async function AdminStats() {
   let stats: any = null;
   let error: unknown = null;
-  let summary: ReceiptsSummary | null = null;
 
   try {
     stats = await getAdminStats();
-    summary = await getReceiptsSummary();
   } catch (err) {
     error = err;
   }
@@ -416,7 +290,7 @@ async function AdminStats() {
     return <AdminStatsErrorState error={error} />;
   }
 
-  return <AdminStatsBody stats={stats} summary={summary} />;
+  return <AdminStatsBody stats={stats} />;
 }
 
 export default async function AdminPage() {

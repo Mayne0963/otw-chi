@@ -7,6 +7,7 @@ const rawFlags = {
   adminZones: process.env.NEXT_PUBLIC_FEATURE_ADMIN_ZONES === 'true',
   pos: process.env.NEXT_PUBLIC_FEATURE_POS === 'true',
   billing: process.env.NEXT_PUBLIC_FEATURE_BILLING === 'true',
+  receipts: process.env.NEXT_PUBLIC_FEATURE_RECEIPTS === 'true',
   pickupPass: process.env.NEXT_PUBLIC_FEATURE_PICKUP_PASS === 'true',
   chat: process.env.NEXT_PUBLIC_FEATURE_CHAT === 'true',
 };
@@ -20,6 +21,7 @@ const expansionFlags = {
 };
 
 const coreFlags = {
+  receipts: isOtwModeCore ? false : rawFlags.receipts,
   pickupPass: rawFlags.pickupPass,
   chat: rawFlags.chat,
 };

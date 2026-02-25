@@ -5,7 +5,6 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest } from '@/lib/delivery-submit';
-import { computeBillableTotalAfterDiscountCents } from '@/lib/order-pricing';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -223,18 +222,11 @@ export async function getUserRequests() {
   });
 
   const computeOrderTotalCents = (order: (typeof orders)[number]) => {
-    const total = computeBillableTotalAfterDiscountCents({
-      serviceType: order.serviceType,
-      deliveryFeeCents: order.deliveryFeeCents,
-      discountCents: order.discountCents,
-      receiptSubtotalCents: order.receiptSubtotalCents,
-      receiptItems: Array.isArray(order.receiptItems)
-        ? (order.receiptItems as Array<{ price?: number; quantity?: number }>)
-        : undefined,
-      receiptImageData: order.receiptImageData,
-      quoteBreakdown: order.quoteBreakdown,
-    });
-    return Number.isFinite(total) && total > 0 ? total : null;
+    const deliveryFee = typeof order.deliveryFeeCents === 'number' ? order.deliveryFeeCents : 0;
+    const discount = typeof order.discountCents === 'number' ? order.discountCents : 0;
+    const tip = typeof order.tipCents === 'number' ? order.tipCents : 0;
+    const total = Math.max(0, deliveryFee - discount + tip);
+    return total > 0 ? total : null;
   };
 
   const mapped = orders.map((order) => ({
