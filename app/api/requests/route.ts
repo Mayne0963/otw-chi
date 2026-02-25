@@ -12,6 +12,10 @@ const ServiceType = {
   CONCIERGE: 'CONCIERGE',
 } as const;
 type ServiceType = typeof ServiceType[keyof typeof ServiceType];
+const pickupCodeTypeSchema = z.union([
+  z.enum(['QR', 'BARCODE', 'PIN', 'CONFIRMATION']),
+  z.literal(''),
+]);
 const requestSchema = z.object({
   pickup: z.string().min(5),
   dropoff: z.string().min(5),
@@ -22,7 +26,7 @@ const requestSchema = z.object({
   orderReference: z.string().max(120).optional(),
   pickupInstructions: z.string().max(2000).optional(),
   dropoffInstructions: z.string().max(2000).optional(),
-  pickupCodeType: z.string().max(32).optional(),
+  pickupCodeType: pickupCodeTypeSchema.optional(),
   pickupCodeText: z.string().max(255).optional(),
 });
 

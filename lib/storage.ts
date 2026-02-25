@@ -29,6 +29,16 @@ function requireEnvValue(name: string): string {
   return value;
 }
 
+function getOptionalEnvValue(name: string): string | null {
+  const value = process.env[name];
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function getS3Client(): S3Client {
   getStorageProvider();
 
@@ -39,6 +49,8 @@ function getS3Client(): S3Client {
   const region = requireEnvValue('S3_REGION');
   const accessKeyId = requireEnvValue('S3_ACCESS_KEY');
   const secretAccessKey = requireEnvValue('S3_SECRET_KEY');
+  const endpoint = getOptionalEnvValue('S3_ENDPOINT');
+  const forcePathStyle = getOptionalEnvValue('S3_FORCE_PATH_STYLE')?.toLowerCase() === 'true';
 
   cachedS3Client = new S3Client({
     region,
@@ -46,6 +58,8 @@ function getS3Client(): S3Client {
       accessKeyId,
       secretAccessKey,
     },
+    ...(endpoint ? { endpoint } : {}),
+    ...(forcePathStyle ? { forcePathStyle: true } : {}),
   });
 
   return cachedS3Client;

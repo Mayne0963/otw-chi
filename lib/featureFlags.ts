@@ -1,15 +1,32 @@
+const isOtwModeCore = String(process.env.OTW_MODE ?? '').trim().toLowerCase() === 'core';
 
-const isOtwModeCore = process.env.OTW_MODE === 'core';
+function parseFlag(name: string, defaultValue = false): boolean {
+  const raw = process.env[name];
+  if (raw === undefined) {
+    return defaultValue;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'false') {
+    return false;
+  }
+
+  return defaultValue;
+}
 
 const rawFlags = {
-  franchise: process.env.NEXT_PUBLIC_FEATURE_FRANCHISE === 'true',
-  nip: process.env.NEXT_PUBLIC_FEATURE_NIP === 'true',
-  adminZones: process.env.NEXT_PUBLIC_FEATURE_ADMIN_ZONES === 'true',
-  pos: process.env.NEXT_PUBLIC_FEATURE_POS === 'true',
-  billing: process.env.NEXT_PUBLIC_FEATURE_BILLING === 'true',
-  receipts: process.env.NEXT_PUBLIC_FEATURE_RECEIPTS === 'true',
-  pickupPass: process.env.NEXT_PUBLIC_FEATURE_PICKUP_PASS === 'true',
-  chat: process.env.NEXT_PUBLIC_FEATURE_CHAT === 'true',
+  franchise: parseFlag('NEXT_PUBLIC_FEATURE_FRANCHISE', false),
+  nip: parseFlag('NEXT_PUBLIC_FEATURE_NIP', false),
+  adminZones: parseFlag('NEXT_PUBLIC_FEATURE_ADMIN_ZONES', false),
+  pos: parseFlag('NEXT_PUBLIC_FEATURE_POS', false),
+  billing: parseFlag('NEXT_PUBLIC_FEATURE_BILLING', false),
+  receipts: parseFlag('NEXT_PUBLIC_FEATURE_RECEIPTS', false),
+  // Core MVP defaults to enabled unless explicitly set to false.
+  pickupPass: parseFlag('NEXT_PUBLIC_FEATURE_PICKUP_PASS', true),
+  chat: parseFlag('NEXT_PUBLIC_FEATURE_CHAT', true),
 };
 
 const expansionFlags = {

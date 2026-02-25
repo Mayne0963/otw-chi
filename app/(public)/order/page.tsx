@@ -43,7 +43,7 @@ export default function OrderPage() {
   const { toast } = useToast();
   const { user, isSignedIn, isLoading } = useCurrentUser();
 
-  const pickupPassEnabled = process.env.NEXT_PUBLIC_FEATURE_PICKUP_PASS === 'true';
+  const pickupPassEnabled = process.env.NEXT_PUBLIC_FEATURE_PICKUP_PASS !== 'false';
 
   const [pickupAddress, setPickupAddress] = useState<GeocodedAddress | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState<GeocodedAddress | null>(null);
@@ -249,20 +249,6 @@ export default function OrderPage() {
                   <option value="CONCIERGE">Concierge</option>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Order Name / Confirmation Number</label>
-                <Input
-                  value={orderReference}
-                  onChange={(event) => setOrderReference(event.target.value)}
-                  placeholder="Pickup under Carlton / Order #1234"
-                  className="bg-black/20 text-white"
-                  maxLength={120}
-                />
-                <p className="text-xs text-white/55">
-                  Example: Pickup under Carlton or Order #4582
-                </p>
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -305,6 +291,20 @@ export default function OrderPage() {
                   <p className="mt-1 text-xs text-white/65">
                     If the merchant provides a QR code, barcode, PIN, or confirmation screen, you can add it here.
                     This is used only for pickup and is not a receipt.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-white/60">Order Name / Confirmation Number</label>
+                  <Input
+                    value={orderReference}
+                    onChange={(event) => setOrderReference(event.target.value)}
+                    placeholder="Pickup under Carlton / Order #1234"
+                    className="bg-black/30 text-white"
+                    maxLength={120}
+                  />
+                  <p className="text-xs text-white/55">
+                    Example: Pickup under Carlton or Order #4582
                   </p>
                 </div>
 

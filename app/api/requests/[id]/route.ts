@@ -5,9 +5,7 @@ import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 
 const pickupCodeTypeSchema = z
-  .string()
-  .trim()
-  .max(32)
+  .union([z.enum(['QR', 'BARCODE', 'PIN', 'CONFIRMATION']), z.literal('')])
   .optional()
   .nullable();
 

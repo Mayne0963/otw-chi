@@ -43,6 +43,8 @@ export async function cancelOrderAction(orderId: string) {
       senderRole: user.role,
     });
     revalidatePath(`/order/${orderId}`);
+    revalidatePath(`/requests/${orderId}`);
+    revalidatePath('/requests');
     revalidatePath(`/track/${orderId}`);
     revalidatePath('/dashboard');
     return { success: true };
@@ -213,7 +215,7 @@ export async function createRequestAction(formData: FormData) {
   revalidatePath('/requests');
   revalidatePath('/dashboard');
   
-  redirect(`/track/${created.id}`);
+  redirect(`/requests/${created.id}`);
 }
 
 export async function getUserRequests() {
@@ -244,7 +246,7 @@ export async function getUserRequests() {
     status: order.status === DeliveryRequestStatus.CANCELED ? 'CANCELLED' : order.status,
     costCents: computeOrderTotalCents(order),
     createdAt: order.createdAt,
-    href: `/track/${order.id}`,
+    href: `/requests/${order.id}`,
   })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   return mapped;

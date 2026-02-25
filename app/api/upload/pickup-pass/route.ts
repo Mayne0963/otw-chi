@@ -31,10 +31,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (user.role !== 'CUSTOMER' && user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
   if (!isStorageConfigured()) {
     return NextResponse.json({ error: 'Storage is not configured' }, { status: 500 });
   }
@@ -121,10 +117,6 @@ export async function DELETE(req: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (user.role !== 'CUSTOMER' && user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   let deliveryRequestId = '';
