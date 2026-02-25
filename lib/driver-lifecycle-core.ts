@@ -1,7 +1,12 @@
-import { DeliveryRequestStatus, DriverEarningStatus } from '@prisma/client';
+import { DeliveryRequestStatus, DriverEarningStatus, Role } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { calculateDriverPayCents } from './driver-pay';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from './driver-assignment';
+import {
+  createSystemRequestMessage,
+  DELIVERED_CHAT_CLOSED_MESSAGE,
+  DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+} from './request-chat';
 
 type PrismaLikeClient = {
   $transaction: <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) => Promise<T>;
@@ -81,7 +86,16 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
         status: DeliveryRequestStatus.ASSIGNED,
         assignedDriverId: driverId,
         assignedAt: now,
+        chatEnabled: true,
+        chatClosedAt: null,
       },
+    });
+
+    await createSystemRequestMessage(tx, {
+      deliveryRequestId: updatedRequest.id,
+      senderUserId: driverProfile.userId,
+      senderRole: Role.DRIVER,
+      messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
     });
 
     const existingOpenLog = await tx.driverTimeLog.findFirst({
@@ -298,8 +312,19 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       data: {
         status: DeliveryRequestStatus.DELIVERED,
         completedAt: now,
+        chatEnabled: false,
+        chatClosedAt: request.chatClosedAt ?? now,
       },
     });
+
+    if (!request.chatClosedAt) {
+      await createSystemRequestMessage(tx, {
+        deliveryRequestId: updatedRequest.id,
+        senderUserId: driver.userId,
+        senderRole: Role.DRIVER,
+        messageText: DELIVERED_CHAT_CLOSED_MESSAGE,
+      });
+    }
 
     const rawMetrics = (driver.performanceMetrics ?? {}) as Record<string, unknown>;
     const completedJobs = typeof rawMetrics.completedJobs === 'number' ? rawMetrics.completedJobs : 0;

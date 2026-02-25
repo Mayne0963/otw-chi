@@ -8,6 +8,9 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { acceptJobAction, updateJobStatusAction } from '@/app/actions/driver';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import { unstable_noStore as noStore } from 'next/cache';
+import { serverFeatureFlags } from '@/lib/featureFlags';
+import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
+import RequestChat from '@/components/messages/RequestChat';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -51,6 +54,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
 
   const isAssignedToMe = !!driver && req.assignedDriverId === driver.id;
   const isUnassigned = req.assignedDriverId === null;
+  const canViewPickupArtifacts = isAdmin || isAssignedToMe;
   const hasOtherActiveJob = !!driver && !!(await prisma.deliveryRequest.findFirst({
     where: {
       assignedDriverId: driver.id,
@@ -111,13 +115,55 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
                 {req.status === 'PICKED_UP' && (
                   <form action={updateJobStatusAction} data-testid="driver-complete-delivery-form">
                     <input type="hidden" name="id" value={req.id} />
-                    <input type="hidden" name="status" value="COMPLETED" />
+                    <input type="hidden" name="status" value="DELIVERED" />
                     <OtwButton type="submit" variant="gold" data-testid="driver-complete-delivery-button">Delivered</OtwButton>
                   </form>
                 )}
               </>
             )}
           </div>
+
+          {canViewPickupArtifacts ? (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <PickupVerificationPanel
+                requestId={req.id}
+                canEdit={false}
+                pickupPassFeatureEnabled={serverFeatureFlags.pickupPass}
+                initialOrderReference={req.orderReference}
+                initialPickupInstructions={req.pickupInstructions}
+                initialDropoffInstructions={req.dropoffInstructions}
+                initialPickupCodeType={req.pickupCodeType}
+                initialPickupCodeText={req.pickupCodeText}
+                initialPickupPassUploadedAt={req.pickupPassUploadedAt?.toISOString() ?? null}
+                initialPickupPassExpiresAt={req.pickupPassExpiresAt?.toISOString() ?? null}
+                initialPickupPassExpired={
+                  req.pickupPassExpiresAt ? req.pickupPassExpiresAt <= new Date() : false
+                }
+                initialHasPickupPass={Boolean(req.pickupPassImageUrl)}
+              />
+            </div>
+          ) : (
+            <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/65">
+              Pickup verification details unlock after this request is assigned to you.
+            </div>
+          )}
+
+          {serverFeatureFlags.chat && (
+            req.assignedDriverId && canViewPickupArtifacts ? (
+              <div className="mt-4">
+                <RequestChat
+                  requestId={req.id}
+                  currentUserId={user.id}
+                  currentUserRole={user.role}
+                  readOnly={isAdmin}
+                />
+              </div>
+            ) : (
+              <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/65">
+                Chat opens once a driver is assigned.
+              </div>
+            )
+          )}
         </OtwCard>
         
         <OtwCard className="md:col-span-2">

@@ -9,7 +9,9 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { redirect } from 'next/navigation';
 import TrackMapWrapper from '@/components/otw/TrackMapWrapper';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
-import ReceiptUpload from '@/components/receipt-upload';
+import { serverFeatureFlags } from '@/lib/featureFlags';
+import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
+import RequestChat from '@/components/messages/RequestChat';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +74,10 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         },
       ]
     : [];
+  const now = new Date();
+  const pickupPassExpired = request.pickupPassExpiresAt ? request.pickupPassExpiresAt <= now : false;
+  const chatAvailable = serverFeatureFlags.chat && Boolean(request.assignedDriverId);
+  const canEditPickupDetails = isOwner || isAdmin;
 
   return (
     <OtwPageShell>
@@ -152,7 +158,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                     <div className="ml-3">
                       <h3 className="text-sm font-medium text-green-400">Order Locked ✅</h3>
                       <div className="mt-2 text-sm text-green-300">
-                        <p>Receipt + Confirmation recorded. This order is protected from automatic refunds.</p>
+                        <p>Order confirmation recorded. This request is protected from automatic refunds.</p>
                         {request.lockedAt && (
                           <p className="mt-1 text-xs text-green-400/80">
                             Locked on {formatDate(request.lockedAt)}
@@ -195,8 +201,35 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 </div>
               )}
 
-              {isOwner && request.status === 'DELIVERED' && !request.isLocked && (
-                <ReceiptUpload deliveryRequestId={request.id} />
+              <PickupVerificationPanel
+                requestId={request.id}
+                canEdit={canEditPickupDetails}
+                pickupPassFeatureEnabled={serverFeatureFlags.pickupPass}
+                initialOrderReference={request.orderReference}
+                initialPickupInstructions={request.pickupInstructions}
+                initialDropoffInstructions={request.dropoffInstructions}
+                initialPickupCodeType={request.pickupCodeType}
+                initialPickupCodeText={request.pickupCodeText}
+                initialPickupPassUploadedAt={request.pickupPassUploadedAt?.toISOString() ?? null}
+                initialPickupPassExpiresAt={request.pickupPassExpiresAt?.toISOString() ?? null}
+                initialPickupPassExpired={pickupPassExpired}
+                initialHasPickupPass={Boolean(request.pickupPassImageUrl)}
+              />
+
+              {serverFeatureFlags.chat && (
+                chatAvailable ? (
+                  <RequestChat
+                    requestId={request.id}
+                    currentUserId={user.id}
+                    currentUserRole={user.role}
+                    readOnly={isAdmin}
+                    className="border-white/15"
+                  />
+                ) : (
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/65">
+                    Chat opens once a driver is assigned.
+                  </div>
+                )
               )}
 
               {isOwner && request.isLocked && (

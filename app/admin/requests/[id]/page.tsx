@@ -5,6 +5,10 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/roles';
+import { serverFeatureFlags } from '@/lib/featureFlags';
+import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
+import RequestChat from '@/components/messages/RequestChat';
 import { formatDistanceToNow } from 'date-fns';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
@@ -52,6 +56,10 @@ export default async function AdminRequestDetailPage({
   searchParams?: { id?: string };
 }) {
   await requireRole(['ADMIN']);
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    redirect('/sign-in');
+  }
 
   const resolvedParams = await Promise.resolve(params);
   const resolvedSearchParams = await Promise.resolve(searchParams);
@@ -256,6 +264,32 @@ export default async function AdminRequestDetailPage({
                 <div className="text-xs text-white/50">Notes</div>
                 <div className="mt-2 text-sm text-white/80">{request.notes}</div>
               </div>
+            )}
+
+            <PickupVerificationPanel
+              requestId={request.id}
+              canEdit={false}
+              pickupPassFeatureEnabled={serverFeatureFlags.pickupPass}
+              initialOrderReference={request.orderReference}
+              initialPickupInstructions={request.pickupInstructions}
+              initialDropoffInstructions={request.dropoffInstructions}
+              initialPickupCodeType={request.pickupCodeType}
+              initialPickupCodeText={request.pickupCodeText}
+              initialPickupPassUploadedAt={request.pickupPassUploadedAt?.toISOString() ?? null}
+              initialPickupPassExpiresAt={request.pickupPassExpiresAt?.toISOString() ?? null}
+              initialPickupPassExpired={
+                request.pickupPassExpiresAt ? request.pickupPassExpiresAt <= new Date() : false
+              }
+              initialHasPickupPass={Boolean(request.pickupPassImageUrl)}
+            />
+
+            {serverFeatureFlags.chat && request.assignedDriverId && (
+              <RequestChat
+                requestId={request.id}
+                currentUserId={currentUser.id}
+                currentUserRole={currentUser.role}
+                readOnly
+              />
             )}
           </div>
         )}

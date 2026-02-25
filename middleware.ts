@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth/server';
 import { getServerCapabilities } from '@/lib/capabilities';
+import { serverFeatureFlags } from '@/lib/featureFlags';
 
 function matchesPath(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -126,12 +127,31 @@ function isBlockedFeaturePath(pathname: string): boolean {
   ) {
     return true;
   }
+
+  const isPickupPassPath =
+    matchesPath(pathname, '/api/upload/pickup-pass') ||
+    (matchesPath(pathname, '/api/requests') && pathname.includes('/pickup-pass'));
+  if (isPickupPassPath && !serverFeatureFlags.pickupPass) {
+    return true;
+  }
+
+  const isChatPath =
+    matchesPath(pathname, '/api/requests') &&
+    (pathname.includes('/messages') || pathname.includes('/messages/read'));
+  if (isChatPath && !serverFeatureFlags.chat) {
+    return true;
+  }
+
   return false;
 }
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (isBlockedFeaturePath(pathname)) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const notFoundUrl = req.nextUrl.clone();
     notFoundUrl.pathname = '/404';
     notFoundUrl.search = '';
@@ -305,6 +325,10 @@ export async function middleware(req: NextRequest) {
         Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
     }
   }
+
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
 
   return response;
 }

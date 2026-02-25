@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
+import {
+  createSystemRequestMessage,
+  DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+} from '@/lib/request-chat';
 
 export async function POST(req: Request) {
   try {
@@ -79,12 +83,29 @@ export async function POST(req: Request) {
       );
     }
 
-    const updated = await prisma.deliveryRequest.update({
-      where: { id: request.id },
-      data: { assignedDriverId: driverProfile.id, status: 'ASSIGNED' },
-    });
-    await prisma.driverAssignment.create({
-      data: { deliveryRequestId: request.id, driverId: driverProfile.id },
+    const updated = await prisma.$transaction(async (tx) => {
+      const assigned = await tx.deliveryRequest.update({
+        where: { id: request.id },
+        data: {
+          assignedDriverId: driverProfile.id,
+          status: 'ASSIGNED',
+          chatEnabled: true,
+          chatClosedAt: null,
+        },
+      });
+
+      await tx.driverAssignment.create({
+        data: { deliveryRequestId: request.id, driverId: driverProfile.id },
+      });
+
+      await createSystemRequestMessage(tx, {
+        deliveryRequestId: assigned.id,
+        senderUserId: user.id,
+        senderRole: user.role,
+        messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+      });
+
+      return assigned;
     });
     return NextResponse.json({ success: true, request: updated });
   } catch (e) {

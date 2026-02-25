@@ -6,8 +6,13 @@ import { DeliveryRequestStatus } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
-import { calculateBasePriceCents, calculateDriverPayoutCents } from '@/lib/pricing';
+import { calculateDriverPayoutCents } from '@/lib/pricing';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
+import {
+  closeRequestChat,
+  createSystemRequestMessage,
+  DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+} from '@/lib/request-chat';
 
 export async function getAvailableJobs() {
   const user = await getCurrentUser();
@@ -101,12 +106,25 @@ export async function acceptJob(requestId: string) {
      throw new Error('Job is already assigned');
   }
 
-  const updated = await prisma.deliveryRequest.update({
-    where: { id: requestId },
-    data: {
-      status: 'ASSIGNED',
-      assignedDriverId: driverProfile.id,
-    },
+  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const assigned = await tx.deliveryRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'ASSIGNED',
+        assignedDriverId: driverProfile.id,
+        chatEnabled: true,
+        chatClosedAt: null,
+      },
+    });
+
+    await createSystemRequestMessage(tx, {
+      deliveryRequestId: assigned.id,
+      senderUserId: user.id,
+      senderRole: user.role,
+      messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+    });
+
+    return assigned;
   });
 
   revalidatePath('/driver/jobs');
@@ -132,25 +150,13 @@ export async function updateJobStatus(requestId: string, status: DeliveryRequest
 
   const job = await prisma.deliveryRequest.findUnique({
     where: { id: requestId },
-    include: {
-      receiptVerifications: {
-        select: { status: true },
-      },
-    },
   });
 
   if (!job || job.assignedDriverId !== driverProfile.id) {
     throw new Error('You are not assigned to this job');
   }
 
-  // Check receipt verification before allowing delivery completion
   if (status === 'DELIVERED' && job.status !== 'DELIVERED') {
-    const hasReceiptVerification = job.receiptVerifications.some(
-      verification => verification.status === 'APPROVED'
-    );
-    if (!hasReceiptVerification) {
-      throw new Error('Receipt verification required before completing delivery');
-    }
     return completeJob(requestId);
   }
 
@@ -196,6 +202,12 @@ export async function completeJob(requestId: string) {
     data: {
       status: 'DELIVERED',
     },
+  });
+
+  await closeRequestChat(prisma, {
+    deliveryRequestId: requestId,
+    senderUserId: user.id,
+    senderRole: user.role,
   });
 
   const basePriceCents = job.deliveryFeeCents || 0;
