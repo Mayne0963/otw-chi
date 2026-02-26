@@ -30,6 +30,11 @@ const checkoutSchema = z
   })
   .strict();
 
+function isStripeInvalidRequestError(error: unknown): boolean {
+  const maybeStripeError = error as { type?: string } | undefined;
+  return maybeStripeError?.type === 'StripeInvalidRequestError';
+}
+
 export async function POST(req: Request) {
   try {
     const sessionData = await getNeonSession();
@@ -59,40 +64,80 @@ export async function POST(req: Request) {
     const email = extractNeonAuthEmail(sessionData);
     const sessionUser = ((sessionData as { user?: { name?: string } } | null)?.user ?? {});
 
-    let resolvedPriceId: string | undefined = priceId;
-    let resolvedPlanId: string | undefined;
+    const planRecordById = planId
+      ? await prisma.membershipPlan.findUnique({
+          where: { id: planId },
+        })
+      : null;
+    const planRecordByCode = plan
+      ? await prisma.membershipPlan.findFirst({
+          where: { name: { equals: PLAN_NAME_BY_CODE[plan], mode: 'insensitive' } },
+        })
+      : null;
 
-    if (!resolvedPriceId && planId) {
-      const planRecord = await prisma.membershipPlan.findUnique({
-        where: { id: planId },
-      });
-      resolvedPriceId = planRecord?.stripePriceId ?? undefined;
-      resolvedPlanId = planRecord?.id ?? undefined;
-    }
+    let resolvedPlanId: string | undefined = planRecordById?.id ?? planRecordByCode?.id ?? undefined;
 
+    const candidatePriceIds = new Set<string>();
+    const addCandidatePriceId = (value?: string | null) => {
+      if (!value) return;
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      candidatePriceIds.add(trimmed);
+    };
+
+    addCandidatePriceId(priceId);
+    addCandidatePriceId(planRecordById?.stripePriceId);
+    addCandidatePriceId(planRecordByCode?.stripePriceId);
     if (plan) {
-      const planRecord = await prisma.membershipPlan.findFirst({
-        where: { name: { equals: PLAN_NAME_BY_CODE[plan], mode: 'insensitive' } },
-      });
-      resolvedPlanId = resolvedPlanId ?? (planRecord?.id ?? undefined);
-
-      if (!resolvedPriceId) {
-        resolvedPriceId = PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS] ?? undefined;
-      }
-      if (!resolvedPriceId) {
-        resolvedPriceId = planRecord?.stripePriceId ?? undefined;
-      }
+      addCandidatePriceId(PLAN_PRICE_IDS[plan as keyof typeof PLAN_PRICE_IDS]);
     }
 
-    if (!resolvedPlanId && resolvedPriceId) {
+    if (!resolvedPlanId && priceId) {
       const planRecord = await prisma.membershipPlan.findFirst({
-        where: { stripePriceId: resolvedPriceId },
+        where: { stripePriceId: priceId },
       });
       resolvedPlanId = planRecord?.id ?? undefined;
+    }
+
+    if (candidatePriceIds.size === 0) {
+      return NextResponse.json(
+        {
+          error: 'Checkout is not configured for this plan',
+          code: 'CHECKOUT_PRICE_NOT_CONFIGURED',
+        },
+        { status: 400 }
+      );
+    }
+
+    const stripe = getStripe();
+
+    let resolvedPriceId: string | undefined;
+    for (const candidatePriceId of candidatePriceIds) {
+      try {
+        const candidatePrice = await stripe.prices.retrieve(candidatePriceId);
+        if (!candidatePrice.active) continue;
+        if (candidatePrice.type !== 'recurring' || !candidatePrice.recurring) continue;
+        resolvedPriceId = candidatePrice.id;
+        break;
+      } catch (error) {
+        if (isStripeInvalidRequestError(error)) continue;
+        throw error;
+      }
     }
 
     if (!resolvedPriceId) {
-      return NextResponse.json({ error: 'Plan not found or configured' }, { status: 400 });
+      console.error('[STRIPE_CHECKOUT_PRICE_LOOKUP_FAILED]', {
+        plan,
+        planId,
+        candidatePriceIds: Array.from(candidatePriceIds),
+      });
+      return NextResponse.json(
+        {
+          error: 'Plan checkout is temporarily unavailable. Please contact support.',
+          code: 'CHECKOUT_PRICE_INVALID',
+        },
+        { status: 400 }
+      );
     }
 
     let dbUser = await prisma.user.findUnique({
@@ -141,8 +186,6 @@ export async function POST(req: Request) {
 
     let stripeCustomerId = dbUser.membership?.stripeCustomerId;
 
-    const stripe = getStripe();
-
     if (!stripeCustomerId) {
       if (!dbUser.email) {
         return NextResponse.json({ error: 'Missing user email' }, { status: 400 });
@@ -184,12 +227,6 @@ export async function POST(req: Request) {
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
-        ...(dbUser.role === 'ADMIN'
-          ? {
-              allow_promotion_codes: true,
-              payment_method_collection: 'if_required',
-            }
-          : {}),
         line_items: [
           {
             price: resolvedPriceId,
@@ -217,14 +254,16 @@ export async function POST(req: Request) {
       });
     } catch (error) {
       console.error('[STRIPE_CHECKOUT_CREATE_SESSION]', error);
-      const maybeStripeError = error as { type?: string; message?: string };
-      const isInvalidRequest = maybeStripeError?.type === 'StripeInvalidRequestError';
-      const message =
-        process.env.NODE_ENV === 'production'
-          ? 'Failed to create checkout session'
-          : maybeStripeError?.message || 'Failed to create checkout session';
+      const maybeStripeError = error as { type?: string; message?: string; code?: string };
+      const isInvalidRequest = isStripeInvalidRequestError(error);
+      const message = maybeStripeError?.message || 'Failed to create checkout session';
       return NextResponse.json(
-        { error: message },
+        {
+          error: isInvalidRequest
+            ? 'Checkout could not be started for this plan. Please contact support.'
+            : message,
+          code: isInvalidRequest ? maybeStripeError?.code || 'STRIPE_INVALID_REQUEST' : 'STRIPE_CHECKOUT_FAILED',
+        },
         { status: isInvalidRequest ? 400 : 500 }
       );
     }
