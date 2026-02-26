@@ -62,7 +62,7 @@ export interface SubmitDeliveryRequestResult {
   overageClientSecret: string | null;
 }
 
-async function ensureOveragePaymentIntent(
+export async function ensureOveragePaymentIntentForRequest(
   requestId: string
 ): Promise<{ paymentIntentId: string; clientSecret: string }> {
   const request = await prisma.deliveryRequest.findUnique({
@@ -442,7 +442,7 @@ export async function submitDeliveryRequest(
     txResult.request.overageMiles > 0 &&
     txResult.request.overageCents > 0
   ) {
-    const intent = await ensureOveragePaymentIntent(txResult.request.id);
+    const intent = await ensureOveragePaymentIntentForRequest(txResult.request.id);
     overagePaymentIntentId = intent.paymentIntentId;
     overageClientSecret = intent.clientSecret;
     txResult.request = await prisma.deliveryRequest.findUniqueOrThrow({

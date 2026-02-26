@@ -4,7 +4,7 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
-import { cancelDeliveryRequest } from '@/lib/delivery-submit';
+import { cancelDeliveryRequest, submitDeliveryRequest } from '@/lib/delivery-submit';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
   shouldRequireDeliveryFeePayment,
@@ -171,6 +171,7 @@ export async function createRequestAction(formData: FormData) {
   }
 
   const milesEstimate = Math.max(1, Math.round(miles));
+  const travelMinutesFromMiles = Math.max(5, Math.round(Math.max(0.1, miles) * 5));
 
   // Get membership benefits
   const sub = await getActiveSubscription(user.id);
@@ -197,23 +198,56 @@ export async function createRequestAction(formData: FormData) {
   // Award NIP based on membership multiplier
   const nipEarned = Math.round(finalPriceDollars * membershipBenefits.nipMultiplier);
 
-  const created = await prisma.deliveryRequest.create({
-    data: {
-      userId: user.id,
-      pickupAddress: pickup,
-      dropoffAddress: dropoff,
-      serviceType,
-      notes: notes || null,
-      status: DeliveryRequestStatus.REQUESTED,
-      serviceMilesFinal: milesEstimate,
-      deliveryFeeCents: pricing.totalCents, // Store in cents
-      deliveryFeePaid,
-      paymentRequired,
-      overageBillingMode: billingMode,
-    },
+  const hasActivePlan = Boolean(sub?.plan);
+
+  const created = hasActivePlan
+    ? await submitDeliveryRequest({
+        userId: user.id,
+        serviceType,
+        pickupAddress: pickup,
+        dropoffAddress: dropoff,
+        notes: notes || undefined,
+        scheduledStart: new Date(Date.now() + 30 * 60 * 1000),
+        travelMinutes: travelMinutesFromMiles,
+        waitMinutes: 0,
+        sitAndWait: false,
+        numberOfStops: 1,
+        returnOrExchange: false,
+        cashHandling: false,
+        peakHours: false,
+        payWithMiles: true,
+      }).then((result) => result.request)
+    : await prisma.deliveryRequest.create({
+        data: {
+          userId: user.id,
+          pickupAddress: pickup,
+          dropoffAddress: dropoff,
+          serviceType,
+          notes: notes || null,
+          status: DeliveryRequestStatus.REQUESTED,
+          serviceMilesFinal: milesEstimate,
+          deliveryFeeCents: pricing.totalCents, // Store in cents
+          deliveryFeePaid,
+          paymentRequired,
+          overageBillingMode: billingMode,
+        },
+      });
+
+  let effectivePaymentRequired = hasActivePlan
+    ? Boolean(created.paymentRequired)
+    : paymentRequired;
+
+  const deliveryPaymentRequired = shouldRequireDeliveryFeePayment({
+    deliveryFeeCents: created.deliveryFeeCents,
+    deliveryFeePaid: created.deliveryFeePaid,
+    billingMode: created.overageBillingMode,
   });
 
-  if (paymentRequired) {
+  if (deliveryPaymentRequired) {
+    effectivePaymentRequired = true;
+  }
+
+  if (deliveryPaymentRequired) {
     try {
       await ensureDeliveryFeePaymentIntentForRequest(created.id);
     } catch (paymentError) {
@@ -247,7 +281,7 @@ export async function createRequestAction(formData: FormData) {
   revalidatePath('/requests');
   revalidatePath('/dashboard');
   
-  redirect(paymentRequired ? `/pay/${created.id}` : `/requests/${created.id}`);
+  redirect(effectivePaymentRequired ? `/pay/${created.id}` : `/requests/${created.id}`);
 }
 
 export async function getUserRequests() {

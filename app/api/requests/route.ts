@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { OverageBillingMode } from '@prisma/client';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
+import { submitDeliveryRequest } from '@/lib/delivery-submit';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
   shouldRequireDeliveryFeePayment,
@@ -19,6 +20,9 @@ const ServiceType = {
   CONCIERGE: 'CONCIERGE',
 } as const;
 type ServiceType = typeof ServiceType[keyof typeof ServiceType];
+const ESTIMATED_MINUTES_PER_MILE = 5;
+const DEFAULT_SCHEDULED_LEAD_MINUTES = 30;
+
 const pickupCodeTypeSchema = z.union([
   z.enum(['QR', 'BARCODE', 'PIN', 'CONFIRMATION']),
   z.literal(''),
@@ -36,6 +40,11 @@ const requestSchema = z.object({
   pickupCodeType: pickupCodeTypeSchema.optional(),
   pickupCodeText: z.string().max(255).optional(),
 });
+
+function normalizeOptionalString(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
 
 export async function POST(req: Request) {
   try {
@@ -57,6 +66,7 @@ export async function POST(req: Request) {
     const data = requestSchema.parse(body);
     const miles = Number(data.milesEstimate);
     const milesEstimate = Math.max(0, Math.round(miles));
+
     let activeSubscription = null;
     let benefits = getMembershipBenefits(null);
     try {
@@ -66,6 +76,80 @@ export async function POST(req: Request) {
       benefits = getMembershipBenefits(null);
       activeSubscription = null;
     }
+
+    const hasActivePlan = Boolean(activeSubscription?.plan);
+
+    if (hasActivePlan) {
+      const travelMinutes = Math.max(5, Math.round(Math.max(0.1, miles) * ESTIMATED_MINUTES_PER_MILE));
+      const scheduledStart = new Date(Date.now() + DEFAULT_SCHEDULED_LEAD_MINUTES * 60 * 1000);
+
+      const result = await submitDeliveryRequest({
+        userId: user.id,
+        serviceType: data.serviceType,
+        pickupAddress: data.pickup,
+        dropoffAddress: data.dropoff,
+        notes: data.notes,
+        scheduledStart,
+        travelMinutes,
+        waitMinutes: 0,
+        sitAndWait: false,
+        numberOfStops: 1,
+        returnOrExchange: false,
+        cashHandling: false,
+        peakHours: false,
+        payWithMiles: true,
+      });
+
+      await prisma.deliveryRequest.update({
+        where: { id: result.request.id },
+        data: {
+          orderReference: normalizeOptionalString(data.orderReference),
+          pickupInstructions: normalizeOptionalString(data.pickupInstructions),
+          dropoffInstructions: normalizeOptionalString(data.dropoffInstructions),
+          pickupCodeType: normalizeOptionalString(data.pickupCodeType),
+          pickupCodeText: normalizeOptionalString(data.pickupCodeText),
+        },
+      });
+
+      const deliveryPaymentRequired = shouldRequireDeliveryFeePayment({
+        deliveryFeeCents: result.request.deliveryFeeCents,
+        deliveryFeePaid: result.request.deliveryFeePaid,
+        billingMode: result.request.overageBillingMode,
+      });
+
+      let deliveryPaymentIntentId: string | null = result.request.deliveryPaymentIntentId ?? null;
+      let deliveryClientSecret: string | null = null;
+
+      if (deliveryPaymentRequired) {
+        try {
+          const intent = await ensureDeliveryFeePaymentIntentForRequest(result.request.id);
+          deliveryPaymentIntentId = intent.paymentIntentId;
+          deliveryClientSecret = intent.clientSecret;
+        } catch (intentError) {
+          console.error('[CREATE_REQUEST_DELIVERY_PAYMENT_INTENT]', {
+            requestId: result.request.id,
+            message: intentError instanceof Error ? intentError.message : intentError,
+          });
+        }
+      }
+
+      const paymentRequired = result.paymentRequired || deliveryPaymentRequired;
+
+      return NextResponse.json({
+        id: result.request.id,
+        paymentRequired,
+        deliveryPaymentRequired,
+        deliveryFeeCents: result.request.deliveryFeeCents,
+        deliveryClientSecret,
+        deliveryPaymentIntentId,
+        overageMiles: result.overageMiles,
+        overageCents: result.overageCents,
+        overageBillingMode: result.overageBillingMode,
+        overagePaymentIntentId: result.overagePaymentIntentId,
+        overageClientSecret: result.overageClientSecret,
+      });
+    }
+
     const pricing = calculatePriceBreakdownCents({
       miles,
       serviceType: data.serviceType,
@@ -121,8 +205,14 @@ export async function POST(req: Request) {
     return NextResponse.json({
       id: request.id,
       paymentRequired,
+      deliveryPaymentRequired: paymentRequired,
       deliveryClientSecret,
       deliveryPaymentIntentId,
+      overageMiles: request.overageMiles,
+      overageCents: request.overageCents,
+      overageBillingMode: request.overageBillingMode,
+      overagePaymentIntentId: request.overagePaymentIntentId,
+      overageClientSecret: null,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

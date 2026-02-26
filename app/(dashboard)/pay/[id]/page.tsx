@@ -3,10 +3,12 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import DeliveryFeePaymentPanel from '@/components/stripe/DeliveryFeePaymentPanel';
+import OveragePaymentPanel from '@/components/stripe/OveragePaymentPanel';
 import { formatCurrency } from '@/lib/utils';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { shouldRequireDeliveryFeePayment } from '@/lib/delivery-payment';
+import { OverageBillingMode, OverageStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +33,10 @@ export default async function DeliveryFeePaymentPage({
       deliveryFeeCents: true,
       deliveryFeePaid: true,
       overageBillingMode: true,
+      overageStatus: true,
+      overageMiles: true,
+      overageCents: true,
+      paymentRequired: true,
     },
   });
 
@@ -45,23 +51,32 @@ export default async function DeliveryFeePaymentPage({
     redirect('/requests');
   }
 
-  const amountCents = Number.isFinite(request.deliveryFeeCents)
+  const deliveryAmountCents = Number.isFinite(request.deliveryFeeCents)
     ? Math.max(0, Math.round(Number(request.deliveryFeeCents)))
     : 0;
 
-  if (amountCents <= 0 || request.deliveryFeePaid) {
-    redirect(`/requests/${request.id}`);
-  }
-
-  const requiresPayment = shouldRequireDeliveryFeePayment({
+  const requiresDeliveryPayment = shouldRequireDeliveryFeePayment({
     deliveryFeeCents: request.deliveryFeeCents,
     deliveryFeePaid: request.deliveryFeePaid,
     billingMode: request.overageBillingMode,
   });
 
-  if (!requiresPayment) {
+  const overageAmountCents = Number.isFinite(request.overageCents)
+    ? Math.max(0, Math.round(Number(request.overageCents)))
+    : 0;
+
+  const requiresOveragePayment =
+    request.paymentRequired &&
+    request.overageBillingMode === OverageBillingMode.INSTANT &&
+    request.overageStatus !== OverageStatus.PAID &&
+    request.overageMiles > 0 &&
+    overageAmountCents > 0;
+
+  if (!requiresDeliveryPayment && !requiresOveragePayment) {
     redirect(`/requests/${request.id}`);
   }
+
+  const amountCents = requiresDeliveryPayment ? deliveryAmountCents : overageAmountCents;
 
   return (
     <OtwPageShell>
@@ -72,7 +87,11 @@ export default async function DeliveryFeePaymentPage({
 
       <div className="mx-auto mt-6 w-full max-w-2xl">
         <OtwCard className="p-6">
-          <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+          {requiresDeliveryPayment ? (
+            <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+          ) : (
+            <OveragePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+          )}
         </OtwCard>
       </div>
     </OtwPageShell>
