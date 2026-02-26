@@ -53,9 +53,12 @@ const isPublicRoute = (pathname: string) => {
   if (matchesPath(pathname, '/api/orders')) return true;
   if (matchesPath(pathname, '/api/orders/draft')) return true;
   if (matchesPath(pathname, '/api/orders/search')) return true;
+  if (matchesPath(pathname, '/api/app-version')) return true;
   if (matchesPath(pathname, '/api/storage')) return true;
   if (matchesPath(pathname, '/api/cron')) return true;
-  if (matchesPath(pathname, '/api/requests'))
+  // Allow request APIs to bypass edge auth and enforce auth in route handlers (Node runtime)
+  if (matchesPath(pathname, '/api/requests')) return true;
+  // Tracking URLs are public
   if (pathname.includes('/tracking')) return true;
   return false;
 };
@@ -245,6 +248,22 @@ export async function middleware(req: NextRequest) {
     response = bypassResponse;
   }
 
+  // Request APIs can be falsely classified as unauthenticated by edge middleware.
+  // Let these requests reach Node route handlers, which enforce auth reliably.
+  if (
+    matchesPath(pathname, '/api/requests') &&
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.get('location')?.includes('/sign-in')
+  ) {
+    const bypassResponse = NextResponse.next();
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      bypassResponse.headers.set('set-cookie', setCookie);
+    }
+    response = bypassResponse;
+  }
+
   // Public-route server actions can be falsely classified as unauthenticated by edge auth.
   // Let the server action handler enforce auth instead of forcing a sign-in redirect.
   if (
@@ -294,6 +313,7 @@ export async function middleware(req: NextRequest) {
   // Return a 401 so client fetch calls can handle auth state explicitly.
   if (
     isApiRoute &&
+    !isPublicRoute(pathname) &&
     response.status >= 300 &&
     response.status < 400 &&
     response.headers.get('location')?.includes('/sign-in')
