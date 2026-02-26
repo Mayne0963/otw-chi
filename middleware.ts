@@ -8,6 +8,39 @@ function matchesPath(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+const NEON_AUTH_COOKIE_PREFIX = '__Secure-neon-auth';
+const LEGACY_AUTH_COOKIE_PREFIXES = ['__clerk', '__Secure-clerk', '__Host-clerk'];
+const LEGACY_AUTH_COOKIE_NAMES = new Set([
+  '__session',
+  '__client_uat',
+  '__clerk_db_jwt',
+  '__clerk_handshake',
+  '__clerk_redirect_count',
+  '__clerk_redirect_url',
+  '__clerk_invitation_token',
+  '__clerk_telemetry',
+  '__clerk_last_active_token',
+]);
+
+function getRequestCookieNames(req: NextRequest): string[] {
+  const cookieHeader = req.headers.get('cookie');
+  if (!cookieHeader) return [];
+
+  return cookieHeader
+    .split(';')
+    .map((entry) => entry.trim().split('=')[0]?.trim())
+    .filter((name): name is string => Boolean(name));
+}
+
+function getLegacyAuthCookiesToClear(req: NextRequest): string[] {
+  const names = getRequestCookieNames(req);
+  return names.filter((name) => {
+    if (name.startsWith(NEON_AUTH_COOKIE_PREFIX)) return false;
+    if (LEGACY_AUTH_COOKIE_NAMES.has(name)) return true;
+    return LEGACY_AUTH_COOKIE_PREFIXES.some((prefix) => name.startsWith(prefix));
+  });
+}
+
 const isPublicRoute = (pathname: string) => {
   const publicPaths = [
     '/',
@@ -165,18 +198,50 @@ function isBlockedFeaturePath(pathname: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const isApiRoute = pathname.startsWith('/api');
+  const legacyAuthCookiesToClear = getLegacyAuthCookiesToClear(req);
+
+  const finalizeResponse = (res: NextResponse): NextResponse => {
+    if (legacyAuthCookiesToClear.length > 0) {
+      const secure = req.nextUrl.protocol === 'https:';
+      for (const cookieName of legacyAuthCookiesToClear) {
+        res.cookies.set({
+          name: cookieName,
+          value: '',
+          path: '/',
+          maxAge: 0,
+          expires: new Date(0),
+          sameSite: 'lax',
+          ...(secure ? { secure: true } : {}),
+        });
+      }
+    }
+
+    if (isApiRoute) {
+      const origin = req.headers.get('origin');
+      const corsHeaders = buildCorsHeaders(origin, req.headers);
+      if (corsHeaders) {
+        Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+      }
+    }
+
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+    return res;
+  };
+
   if (isBlockedFeaturePath(pathname)) {
     if (pathname.startsWith('/api')) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      return finalizeResponse(NextResponse.json({ error: 'Not found' }, { status: 404 }));
     }
 
     const notFoundUrl = req.nextUrl.clone();
     notFoundUrl.pathname = '/404';
     notFoundUrl.search = '';
-    return NextResponse.rewrite(notFoundUrl);
+    return finalizeResponse(NextResponse.rewrite(notFoundUrl));
   }
 
-  const isApiRoute = pathname.startsWith('/api');
   const isServerActionRequest =
     req.method === 'POST' && req.headers.has('next-action');
   const isDriverServerActionRequest =
@@ -195,10 +260,10 @@ export async function middleware(req: NextRequest) {
     const corsHeaders = buildCorsHeaders(origin, req.headers);
 
     if (req.method === 'OPTIONS') {
-      return new NextResponse(null, {
+      return finalizeResponse(new NextResponse(null, {
         status: 204,
         headers: corsHeaders ?? undefined,
-      });
+      }));
     }
 
     // Continue to auth middleware for API routes, but we'll attach CORS headers later
@@ -305,7 +370,7 @@ export async function middleware(req: NextRequest) {
         actionRedirect.headers.set('set-cookie', setCookie);
       }
 
-      return actionRedirect;
+      return finalizeResponse(actionRedirect);
     }
   }
 
@@ -319,12 +384,7 @@ export async function middleware(req: NextRequest) {
     response.headers.get('location')?.includes('/sign-in')
   ) {
     const unauthorized = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const origin = req.headers.get('origin');
-    const corsHeaders = buildCorsHeaders(origin, req.headers);
-    if (corsHeaders) {
-      Object.entries(corsHeaders).forEach(([k, v]) => unauthorized.headers.set(k, v));
-    }
-    return unauthorized;
+    return finalizeResponse(unauthorized);
   }
 
   // Handle Public Routes:
@@ -339,7 +399,7 @@ export async function middleware(req: NextRequest) {
   if (shouldBypassPublicAuth) {
     // Do not suppress redirects for auth API routes (like callbacks)
     if (matchesPath(pathname, '/api/auth')) {
-      return response;
+      return finalizeResponse(response);
     }
 
     const newResponse = NextResponse.next();
@@ -352,20 +412,7 @@ export async function middleware(req: NextRequest) {
     response = newResponse;
   }
 
-  // Re-attach CORS headers if it was an API request
-  if (isApiRoute) {
-    const origin = req.headers.get('origin');
-    const corsHeaders = buildCorsHeaders(origin, req.headers);
-    if (corsHeaders) {
-        Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
-    }
-  }
-
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  return response;
+  return finalizeResponse(response);
 }
 
 export const config = {
