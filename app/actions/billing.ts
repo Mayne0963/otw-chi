@@ -8,6 +8,20 @@ import {
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+
+async function resolveAppUrlFromRequestHeaders(): Promise<string> {
+  const headerList = await headers();
+  const origin = headerList.get('origin');
+  if (origin) return origin;
+
+  const forwardedHost = headerList.get('x-forwarded-host') ?? headerList.get('host');
+  if (!forwardedHost) return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  const forwardedProto = headerList.get('x-forwarded-proto');
+  const proto = forwardedProto === 'http' ? 'http' : 'https';
+  return `${proto}://${forwardedHost}`;
+}
 
 export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' | 'ELITE' | 'BLACK') {
   const neonSession = await getNeonSession();
@@ -94,7 +108,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
     throw new Error(`Price ID not found for plan: ${planCode}`);
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = await resolveAppUrlFromRequestHeaders();
 
   // 4. Create Checkout Session
   const stripe = getStripe();
@@ -152,7 +166,7 @@ export async function createCustomerPortal() {
         throw new Error('No billing account found');
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = await resolveAppUrlFromRequestHeaders();
 
     const stripe = getStripe();
     const session = await stripe.billingPortal.sessions.create({

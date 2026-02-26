@@ -35,6 +35,18 @@ function isStripeInvalidRequestError(error: unknown): boolean {
   return maybeStripeError?.type === 'StripeInvalidRequestError';
 }
 
+function resolveRequestOrigin(req: Request): string | null {
+  const origin = req.headers.get('origin');
+  if (origin) return origin;
+
+  const forwardedHost = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  if (!forwardedHost) return null;
+
+  const forwardedProto = req.headers.get('x-forwarded-proto');
+  const proto = forwardedProto === 'http' ? 'http' : 'https';
+  return `${proto}://${forwardedHost}`;
+}
+
 export async function POST(req: Request) {
   try {
     const sessionData = await getNeonSession();
@@ -218,8 +230,8 @@ export async function POST(req: Request) {
       });
     }
 
-    const origin = req.headers.get('origin');
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin || 'http://localhost:3000';
+    const requestOrigin = resolveRequestOrigin(req);
+    const appUrl = requestOrigin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     let checkoutSession;
     try {

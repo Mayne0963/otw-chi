@@ -105,7 +105,11 @@ const isPublicRoute = (pathname: string) => {
   return false;
 };
 
-const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
+const buildCorsHeaders = (
+  origin: string | null,
+  requestHeaders: Headers,
+  requestOrigin: string,
+) => {
   if (!origin) return null;
 
   const allowedOrigins = new Set<string>();
@@ -119,6 +123,7 @@ const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
   };
 
   addOrigin(process.env.NEXT_PUBLIC_APP_URL);
+  addOrigin(requestOrigin);
 
   if (process.env.VERCEL_URL) {
     addOrigin(`https://${process.env.VERCEL_URL}`);
@@ -226,7 +231,7 @@ export async function middleware(req: NextRequest) {
 
     if (isApiRoute) {
       const origin = req.headers.get('origin');
-      const corsHeaders = buildCorsHeaders(origin, req.headers);
+      const corsHeaders = buildCorsHeaders(origin, req.headers, req.nextUrl.origin);
       if (corsHeaders) {
         Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
       }
@@ -264,7 +269,7 @@ export async function middleware(req: NextRequest) {
   // Handle CORS for API routes
   if (isApiRoute) {
     const origin = req.headers.get('origin');
-    const corsHeaders = buildCorsHeaders(origin, req.headers);
+    const corsHeaders = buildCorsHeaders(origin, req.headers, req.nextUrl.origin);
 
     if (req.method === 'OPTIONS') {
       return finalizeResponse(new NextResponse(null, {

@@ -8,6 +8,18 @@ import { validatePromoCode, calculateDiscount, redeemPromoCode } from "@/lib/pro
 
 export const runtime = "nodejs";
 
+function resolveRequestOrigin(req: Request): string | null {
+  const origin = req.headers.get("origin");
+  if (origin) return origin;
+
+  const forwardedHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (!forwardedHost) return null;
+
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const proto = forwardedProto === "http" ? "http" : "https";
+  return `${proto}://${forwardedHost}`;
+}
+
 export async function POST(req: Request) {
   try {
     const neonSession = await getNeonSession();
@@ -45,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     const stripe = getStripe();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = resolveRequestOrigin(req) || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     const baseTotal = deliveryFeeCents + subtotalCents + (tipCents ?? 0);
     if (baseTotal <= 0) {
