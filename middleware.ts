@@ -170,10 +170,7 @@ function isBlockedFeaturePath(pathname: string): boolean {
   ) {
     return true;
   }
-  if (
-    (matchesPath(pathname, '/billing') || matchesPath(pathname, '/admin/billing')) &&
-    !capabilities.canSeeBilling
-  ) {
+  if (matchesPath(pathname, '/admin/billing') && !capabilities.canSeeBilling) {
     return true;
   }
 

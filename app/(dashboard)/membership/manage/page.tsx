@@ -8,12 +8,20 @@ import { getActiveSubscription } from '@/lib/membership';
 import { createCustomerPortal } from '@/app/actions/billing';
 import { getPrisma } from '@/lib/db';
 import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
+import { BillingSync } from '@/app/(dashboard)/billing/BillingSync';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MembershipManagePage() {
+export default async function MembershipManagePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string; canceled?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) return <div>Please sign in</div>;
+  const { success, canceled } = await searchParams;
+  const checkoutSuccess = success === '1' || success === 'true';
+  const checkoutCanceled = canceled === '1' || canceled === 'true';
 
   const sub = await getActiveSubscription(user.id);
   const stripeReady =
@@ -42,7 +50,18 @@ export default async function MembershipManagePage() {
 
   return (
     <OtwPageShell>
+      <BillingSync success={checkoutSuccess} />
       <OtwSectionHeader title="Manage Membership" subtitle="Your plan and billing." />
+      {checkoutSuccess && (
+        <div className="mt-4 rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-500">
+          Subscription successful. Activating your membership now.
+        </div>
+      )}
+      {checkoutCanceled && (
+        <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
+          Subscription checkout was canceled.
+        </div>
+      )}
       
       {sub ? (
         <Card className="mt-3 p-5 sm:p-6">

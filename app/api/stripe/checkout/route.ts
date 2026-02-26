@@ -252,8 +252,8 @@ export async function POST(req: Request) {
             planName: plan ? PLAN_NAME_BY_CODE[plan] : '',
           },
         },
-        success_url: `${appUrl}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl}/billing?canceled=true`,
+        success_url: `${appUrl}/membership/manage?success=1&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/membership/manage?canceled=1`,
       });
     } catch (error) {
       console.error('[STRIPE_CHECKOUT_CREATE_SESSION]', error);
