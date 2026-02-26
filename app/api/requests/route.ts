@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNeonSession } from '@/lib/auth/server';
+import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
@@ -35,8 +35,7 @@ const requestSchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await getNeonSession();
-    // @ts-ignore
-    const neonAuthUserId = session?.userId || session?.user?.id;
+    const neonAuthUserId = extractNeonAuthUserId(session);
     
     if (!neonAuthUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

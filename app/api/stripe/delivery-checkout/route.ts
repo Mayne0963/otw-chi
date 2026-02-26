@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { getNeonSession } from "@/lib/auth/server";
+import { extractNeonAuthEmail, extractNeonAuthUserId, getNeonSession } from "@/lib/auth/server";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
 import { ADMIN_FREE_COUPON_CODE, isAdminFreeCoupon } from "@/lib/admin-discount";
@@ -11,10 +11,8 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     const neonSession = await getNeonSession();
-    // @ts-ignore
-    const userId = neonSession?.userId || neonSession?.user?.id;
-    // @ts-ignore
-    const userEmail = neonSession?.user?.email;
+    const userId = extractNeonAuthUserId(neonSession);
+    const userEmail = extractNeonAuthEmail(neonSession);
 
     if (!userId || !userEmail) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

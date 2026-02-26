@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNeonSession } from '@/lib/auth/server';
+import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 
@@ -18,8 +18,7 @@ const applicationSchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await getNeonSession();
-    // @ts-ignore
-    const userId = session?.userId || session?.user?.id;
+    const userId = extractNeonAuthUserId(session);
     
     const prisma = getPrisma();
     

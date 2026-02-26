@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getNeonSession } from '@/lib/auth/server';
+import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import {
@@ -51,8 +51,7 @@ export async function GET(
   try {
     const { id } = await params;
     const session = await getNeonSession();
-    // @ts-ignore
-    const userId = session?.userId || session?.user?.id;
+    const userId = extractNeonAuthUserId(session);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -127,8 +126,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const session = await getNeonSession();
-    // @ts-ignore
-    const neonAuthUserId = session?.userId || session?.user?.id;
+    const neonAuthUserId = extractNeonAuthUserId(session);
 
     if (!neonAuthUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getNeonSession } from '@/lib/auth/server';
+import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -8,8 +8,7 @@ export async function POST(_request: Request) {
   try {
     // Check authentication
     const session = await getNeonSession();
-    // @ts-ignore
-    const userId = session?.userId || session?.user?.id;
+    const userId = extractNeonAuthUserId(session);
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

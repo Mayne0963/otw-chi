@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getNeonSession } from "@/lib/auth/server";
+import { extractNeonAuthUserId, getNeonSession } from "@/lib/auth/server";
 import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -7,8 +7,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     const neonSession = await getNeonSession();
-    // @ts-ignore
-    const userId = neonSession?.userId || neonSession?.user?.id;
+    const userId = extractNeonAuthUserId(neonSession);
     
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });

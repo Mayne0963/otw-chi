@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getNeonSession } from "@/lib/auth/server";
+import { extractNeonAuthEmail, extractNeonAuthUserId, getNeonSession } from "@/lib/auth/server";
 import { getPrisma } from "@/lib/db";
 import { z } from "zod";
 
@@ -20,8 +20,7 @@ const telemetrySchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await getNeonSession();
-    // @ts-ignore
-    const userId = session?.userId || session?.user?.id;
+    const userId = extractNeonAuthUserId(session);
     
     if (!userId) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
@@ -35,8 +34,7 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      // @ts-ignore
-      const email = session?.user?.email;
+      const email = extractNeonAuthEmail(session);
       if (!email) {
         return NextResponse.json({ success: false, error: "Missing user email" }, { status: 400 });
       }
