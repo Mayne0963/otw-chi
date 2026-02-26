@@ -55,7 +55,8 @@ const isPublicRoute = (pathname: string) => {
   if (matchesPath(pathname, '/api/orders/search')) return true;
   if (matchesPath(pathname, '/api/storage')) return true;
   if (matchesPath(pathname, '/api/cron')) return true;
-  if (matchesPath(pathname, '/api/requests') && pathname.includes('/tracking')) return true;
+  if (matchesPath(pathname, '/api/requests'))
+  if (pathname.includes('/tracking')) return true;
   return false;
 };
 
