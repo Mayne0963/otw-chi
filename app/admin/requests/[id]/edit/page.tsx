@@ -102,6 +102,8 @@ export async function updateRequestAction(formData: FormData) {
       status?: any;
       assignedDriverId?: string | null;
       notes?: string | null;
+      chatEnabled?: boolean;
+      chatClosedAt?: Date | null;
     } = {};
 
     if (statusOptions.includes(statusInput as RequestStatusOption)) {
@@ -151,34 +153,42 @@ export async function updateRequestAction(formData: FormData) {
     data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
     data.notes = notesInput.length > 0 ? notesInput : null;
 
+    const nextAssignedDriverId = data.assignedDriverId ?? dr.assignedDriverId ?? null;
+    const nextStatusCandidate = (data.status ?? dr.status) as DeliveryRequestStatus;
+
+    if (nextStatusCandidate === 'ASSIGNED' && !nextAssignedDriverId) {
+      throw new Error('Assigned status requires an assigned driver');
+    }
+
+    const assignmentChanged =
+      Boolean(nextAssignedDriverId) && nextAssignedDriverId !== dr.assignedDriverId;
+    const shouldReopenChat =
+      (assignmentChanged || (nextStatusCandidate === 'ASSIGNED' && Boolean(nextAssignedDriverId))) &&
+      nextStatusCandidate !== 'DELIVERED' &&
+      nextStatusCandidate !== 'CANCELED';
+
+    if (shouldReopenChat) {
+      data.chatEnabled = true;
+      data.chatClosedAt = null;
+    }
+
     const updatedRequest = await prisma.deliveryRequest.update({
       where: { id },
       data
     });
     
     // Update driver assignment relation if driver changed
-    if (data.assignedDriverId && data.assignedDriverId !== dr.assignedDriverId) {
+    if (assignmentChanged && nextAssignedDriverId) {
         await prisma.driverAssignment.create({
             data: {
                 deliveryRequestId: id,
-                driverId: data.assignedDriverId
+                driverId: nextAssignedDriverId
             }
         });
     }
 
     const nextStatus = (updatedRequest.status ?? dr.status) as DeliveryRequestStatus;
-    const transitionedIntoAssigned =
-      nextStatus === 'ASSIGNED' && (dr.status !== 'ASSIGNED' || dr.assignedDriverId !== updatedRequest.assignedDriverId);
-
-    if (transitionedIntoAssigned) {
-      await prisma.deliveryRequest.update({
-        where: { id },
-        data: {
-          chatEnabled: true,
-          chatClosedAt: null,
-        },
-      });
-
+    if (assignmentChanged && nextStatus !== 'DELIVERED' && nextStatus !== 'CANCELED') {
       await createSystemRequestMessage(prisma, {
         deliveryRequestId: id,
         senderUserId: actor.id,

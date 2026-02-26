@@ -281,6 +281,7 @@ export async function assignDriverAction(formData: FormData) {
     const deliveryRequest = await prisma.deliveryRequest.findUnique({ 
       where: { id },
       select: {
+        assignedDriverId: true,
         status: true,
         userId: true,
         paymentRequired: true,
@@ -325,14 +326,16 @@ export async function assignDriverAction(formData: FormData) {
         throw new Error('Driver already has an active request');
       }
 
-      const shouldOpenChat = deliveryRequest.status === 'REQUESTED';
+      const assignmentChanged = deliveryRequest.assignedDriverId !== driverProfile.id;
+      const canKeepChatOpen =
+        deliveryRequest.status !== 'DELIVERED' && deliveryRequest.status !== 'CANCELED';
       await prisma.$transaction(async (tx) => {
         await tx.deliveryRequest.update({
           where: { id },
           data: {
             assignedDriverId: driverProfile.id,
-            status: shouldOpenChat ? 'ASSIGNED' : undefined,
-            ...(shouldOpenChat
+            status: deliveryRequest.status === 'REQUESTED' ? 'ASSIGNED' : undefined,
+            ...(canKeepChatOpen
               ? {
                   chatEnabled: true,
                   chatClosedAt: null,
@@ -341,14 +344,16 @@ export async function assignDriverAction(formData: FormData) {
           },
         });
 
-        await tx.driverAssignment.create({
-          data: {
-            deliveryRequestId: id,
-            driverId: driverProfile.id,
-          },
-        });
+        if (assignmentChanged) {
+          await tx.driverAssignment.create({
+            data: {
+              deliveryRequestId: id,
+              driverId: driverProfile.id,
+            },
+          });
+        }
 
-        if (shouldOpenChat) {
+        if (assignmentChanged && canKeepChatOpen) {
           await createSystemRequestMessage(tx, {
             deliveryRequestId: id,
             senderUserId: actor.id,

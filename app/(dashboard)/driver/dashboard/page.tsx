@@ -15,6 +15,8 @@ import { calculateDriverPayCents } from '@/lib/driver-pay';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { haversineDistanceKm } from '@/lib/otw/otwGeo';
 import { acceptDeliveryRequest, completeDeliveryRequest, markDriverArrived, markDriverDepartedPickup } from '@/lib/driver-lifecycle';
+import { serverFeatureFlags } from '@/lib/featureFlags';
+import RequestChat from '@/components/messages/RequestChat';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -347,6 +349,30 @@ export default async function DriverDashboardPage() {
                     )}
                 </div>
             </Card>
+            {serverFeatureFlags.chat && (
+              <Card className="mt-4 p-5 sm:p-6">
+                <div className="p-4 border-b border-white/10">
+                  <h3 className="text-lg font-medium text-white">Active Job Chat</h3>
+                  <p className="mt-1 text-sm text-white/60">
+                    Message the customer while navigating your current route.
+                  </p>
+                </div>
+                <div className="p-4">
+                  {activeRequest ? (
+                    <RequestChat
+                      requestId={activeRequest.id}
+                      currentUserId={user.id}
+                      currentUserRole={user.role}
+                      readOnly={user.role === 'ADMIN'}
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+                      No active job selected.
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
         </section>
         
         {/* Active Jobs */}

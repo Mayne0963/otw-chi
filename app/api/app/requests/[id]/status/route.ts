@@ -69,6 +69,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!canTransition(from, to)) {
       return NextResponse.json({ success: false, error: `Invalid transition ${from} -> ${to}` }, { status: 400 });
     }
+    if (to === DeliveryRequestStatus.ASSIGNED && !request.assignedDriverId) {
+      return NextResponse.json(
+        { success: false, error: 'Assigned status requires an assigned driver' },
+        { status: 400 }
+      );
+    }
     if (to === DeliveryRequestStatus.ASSIGNED && isDispatchBlockedByPayment(request)) {
       return NextResponse.json(
         { success: false, error: DISPATCH_PAYMENT_REQUIRED_ERROR },

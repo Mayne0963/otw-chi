@@ -59,6 +59,7 @@ export default function RequestChat({
       const response = await fetch(`/api/requests/${requestId}/messages?limit=100`, {
         method: 'GET',
         cache: 'no-store',
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -107,6 +108,7 @@ export default function RequestChat({
     try {
       const response = await fetch(`/api/requests/${requestId}/messages`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
