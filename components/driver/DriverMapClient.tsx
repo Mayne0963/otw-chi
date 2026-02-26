@@ -530,7 +530,8 @@ const DriverMapClient = () => {
     if (typeof window === "undefined") return;
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", { scope: "/driver/" })
+        .then((registration) => registration.update().catch(() => undefined))
         .catch((err) => console.error("SW registration failed", err));
     }
   }, []);

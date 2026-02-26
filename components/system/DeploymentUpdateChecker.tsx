@@ -43,7 +43,17 @@ function shouldSkipReloadForVersion(version: string): boolean {
 async function refreshServiceWorkersAndCaches(): Promise<void> {
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map((registration) => registration.update().catch(() => undefined)));
+    await Promise.all(
+      registrations.map(async (registration) => {
+        const scopeUrl = new URL(registration.scope);
+        const isLegacyRootScope = scopeUrl.pathname === '/';
+        if (isLegacyRootScope) {
+          await registration.unregister().catch(() => undefined);
+          return;
+        }
+        await registration.update().catch(() => undefined);
+      })
+    );
   }
 
   if (typeof caches !== 'undefined') {
