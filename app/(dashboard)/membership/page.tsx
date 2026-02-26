@@ -116,7 +116,8 @@ export default async function MembershipPage() {
             {consumerPlans.map((plan) => {
               const record = planMap.get(plan.name);
               const isCurrent = Boolean(currentPlanName && plan.name === currentPlanName);
-              const disabled = isCurrent || !stripeReady || !consumerPriceIds[plan.code];
+              const hasCheckoutPrice = Boolean(consumerPriceIds[plan.code] || record?.stripePriceId);
+              const disabled = isCurrent || !stripeReady || !hasCheckoutPrice;
 
               return (
                 <OtwCard
@@ -150,6 +151,7 @@ export default async function MembershipPage() {
                       <PlanCheckoutButton
                         plan={plan.code}
                         planId={record?.id}
+                        priceId={record?.stripePriceId ?? consumerPriceIds[plan.code]}
                         className={`w-full ${isCurrent ? 'opacity-50 cursor-default' : ''}`}
                         disabled={disabled}
                       >

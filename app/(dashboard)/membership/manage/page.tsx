@@ -69,7 +69,8 @@ export default async function MembershipManagePage() {
           <div className="grid md:grid-cols-3 gap-4">
             {consumerPlans.map((plan) => {
               const record = planMap.get(plan.name);
-              const disabled = !stripeReady || !consumerPriceIds[plan.code];
+              const hasCheckoutPrice = Boolean(consumerPriceIds[plan.code] || record?.stripePriceId);
+              const disabled = !stripeReady || !hasCheckoutPrice;
               return (
                 <Card key={plan.code} className="p-5 sm:p-6">
                   <div className="text-xl font-bold">{plan.name}</div>
@@ -78,6 +79,7 @@ export default async function MembershipManagePage() {
                     <PlanCheckoutButton
                       plan={plan.code}
                       planId={record?.id}
+                      priceId={record?.stripePriceId ?? consumerPriceIds[plan.code]}
                       disabled={disabled}
                       className="w-full"
                     >

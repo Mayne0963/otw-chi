@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
-import { getCurrentUser } from '@/lib/auth/roles';
+import { extractNeonAuthEmail, extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 
 export const runtime = 'nodejs';
 
@@ -32,8 +32,9 @@ const checkoutSchema = z
 
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const sessionData = await getNeonSession();
+    const neonAuthUserId = extractNeonAuthUserId(sessionData);
+    if (!neonAuthUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -55,6 +56,8 @@ export async function POST(req: Request) {
 
     const { planId, priceId, plan } = parsed.data;
     const prisma = getPrisma();
+    const email = extractNeonAuthEmail(sessionData);
+    const sessionUser = ((sessionData as { user?: { name?: string } } | null)?.user ?? {});
 
     let resolvedPriceId: string | undefined = priceId;
     let resolvedPlanId: string | undefined;
@@ -91,15 +94,49 @@ export async function POST(req: Request) {
     if (!resolvedPriceId) {
       return NextResponse.json({ error: 'Plan not found or configured' }, { status: 400 });
     }
-    
-    // Check if user already has a stripe customer ID
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
+
+    let dbUser = await prisma.user.findUnique({
+      where: { neonAuthId: neonAuthUserId },
       include: { membership: true },
     });
 
     if (!dbUser) {
-        return NextResponse.json({ error: 'User not found in DB' }, { status: 404 });
+      if (!email) {
+        return NextResponse.json({ error: 'Missing user email' }, { status: 400 });
+      }
+
+      const existingUser = await prisma.user.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
+        include: { membership: true },
+      });
+
+      if (existingUser) {
+        dbUser = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            neonAuthId: neonAuthUserId,
+            email,
+            ...(sessionUser.name ? { name: sessionUser.name } : {}),
+          },
+          include: { membership: true },
+        });
+      } else {
+        const createdUser = await prisma.user.create({
+          data: {
+            neonAuthId: neonAuthUserId,
+            email,
+            name: sessionUser.name || email.split('@')[0] || 'User',
+            role: 'CUSTOMER',
+          },
+          include: { membership: true },
+        });
+        dbUser = createdUser;
+        prisma.customerProfile.create({ data: { userId: createdUser.id } }).catch(console.error);
+      }
+    }
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found in DB' }, { status: 404 });
     }
 
     let stripeCustomerId = dbUser.membership?.stripeCustomerId;
@@ -141,15 +178,13 @@ export async function POST(req: Request) {
     const origin = req.headers.get('origin');
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || origin || 'http://localhost:3000';
 
-    const neonAuthUserId = dbUser.neonAuthId;
-
-    let session;
+    let checkoutSession;
     try {
-      session = await stripe.checkout.sessions.create({
+      checkoutSession = await stripe.checkout.sessions.create({
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
-        ...(user.role === 'ADMIN'
+        ...(dbUser.role === 'ADMIN'
           ? {
               allow_promotion_codes: true,
               payment_method_collection: 'if_required',
@@ -194,7 +229,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
     console.error('[STRIPE_CHECKOUT]', error);
     const message = error instanceof Error ? error.message : 'Internal Error';

@@ -120,7 +120,8 @@ export default async function PricingPage() {
       <div className="grid gap-6 md:grid-cols-3">
         {consumerPlans.map((plan) => {
           const record = planMap.get(plan.name);
-          const planDisabled = !stripeReady || !consumerPriceIds[plan.code];
+          const hasCheckoutPrice = Boolean(consumerPriceIds[plan.code] || record?.stripePriceId);
+          const planDisabled = !stripeReady || !hasCheckoutPrice;
           return (
             <OtwCard key={plan.code} className="relative flex flex-col">
               <div className="p-6 flex-1 flex flex-col">
@@ -161,6 +162,7 @@ export default async function PricingPage() {
                   <PlanCheckoutButton
                     plan={plan.code}
                     planId={record?.id}
+                    priceId={record?.stripePriceId ?? consumerPriceIds[plan.code]}
                     disabled={planDisabled}
                     className="w-full"
                   >
