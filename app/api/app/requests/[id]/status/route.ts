@@ -4,6 +4,10 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import {
+  DISPATCH_PAYMENT_REQUIRED_ERROR,
+  isDispatchBlockedByPayment,
+} from '@/lib/request-payment';
+import {
   createSystemRequestMessage,
   DELIVERED_CHAT_CLOSED_MESSAGE,
   DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
@@ -42,6 +46,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         assignedDriverId: true,
         status: true,
         paymentRequired: true,
+        deliveryFeePaid: true,
+        deliveryFeeCents: true,
         overageBillingMode: true,
         overageMiles: true,
         overageStatus: true,
@@ -63,10 +69,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!canTransition(from, to)) {
       return NextResponse.json({ success: false, error: `Invalid transition ${from} -> ${to}` }, { status: 400 });
     }
-    if (to === DeliveryRequestStatus.ASSIGNED && request.paymentRequired) {
+    if (to === DeliveryRequestStatus.ASSIGNED && isDispatchBlockedByPayment(request)) {
       return NextResponse.json(
-        { success: false, error: 'Request cannot be dispatched until payment is completed' },
-        { status: 400 }
+        { success: false, error: DISPATCH_PAYMENT_REQUIRED_ERROR },
+        { status: 409 }
       );
     }
     if (

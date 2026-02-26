@@ -10,11 +10,18 @@ import { useToast } from "@/components/ui/use-toast";
 interface PaymentFormProps {
   clientSecret: string;
   amount: number;
+  returnPath?: string;
   onSuccess: (paymentIntentId: string) => void;
   onError?: (error: string) => void;
 }
 
-function PaymentForm({ clientSecret: _clientSecret, amount, onSuccess, onError }: PaymentFormProps) {
+function PaymentForm({
+  clientSecret: _clientSecret,
+  amount,
+  returnPath,
+  onSuccess,
+  onError,
+}: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -30,10 +37,16 @@ function PaymentForm({ clientSecret: _clientSecret, amount, onSuccess, onError }
     setProcessing(true);
 
     try {
+      const resolvedReturnUrl = returnPath
+        ? (returnPath.startsWith('http')
+            ? returnPath
+            : `${window.location.origin}${returnPath.startsWith('/') ? returnPath : `/${returnPath}`}`)
+        : `${window.location.origin}/order?payment=success`;
+
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/order?payment=success`,
+          return_url: resolvedReturnUrl,
         },
         redirect: "if_required",
       });
@@ -91,6 +104,7 @@ interface StripePaymentFormProps {
   couponCode?: string;
   tipCents?: number;
   initialClientSecret?: string;
+  returnPath?: string;
   onSuccess: (paymentIntentId: string) => void;
   onError?: (error: string) => void;
 }
@@ -100,6 +114,7 @@ export default function StripePaymentForm({
   couponCode,
   tipCents,
   initialClientSecret,
+  returnPath,
   onSuccess,
   onError,
 }: StripePaymentFormProps) {
@@ -238,6 +253,7 @@ export default function StripePaymentForm({
       <PaymentForm
         clientSecret={clientSecret}
         amount={amountCents}
+        returnPath={returnPath}
         onSuccess={onSuccess}
         onError={onError}
       />

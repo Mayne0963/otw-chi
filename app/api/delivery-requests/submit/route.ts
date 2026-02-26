@@ -4,6 +4,12 @@ import { ServiceType } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { submitDeliveryRequest } from '@/lib/delivery-submit';
 import { verifyServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
+import {
+  ensureDeliveryFeePaymentIntentForRequest,
+  shouldRequireDeliveryFeePayment,
+} from '@/lib/delivery-payment';
+
+export const runtime = 'nodejs';
 
 const submitSchema = z.object({
   serviceType: z.nativeEnum(ServiceType),
@@ -109,10 +115,41 @@ export async function POST(req: Request) {
       quotedAt,
     });
 
+    const deliveryPaymentRequired = shouldRequireDeliveryFeePayment({
+      deliveryFeeCents: result.request.deliveryFeeCents,
+      deliveryFeePaid: result.request.deliveryFeePaid,
+      billingMode: result.request.overageBillingMode,
+    });
+
+    let deliveryPaymentIntentId = result.request.deliveryPaymentIntentId ?? null;
+    let deliveryClientSecret: string | null = null;
+
+    if (deliveryPaymentRequired) {
+      try {
+        const intent = await ensureDeliveryFeePaymentIntentForRequest(result.request.id);
+        deliveryPaymentIntentId = intent.paymentIntentId;
+        deliveryClientSecret = intent.clientSecret;
+      } catch (deliveryIntentError) {
+        console.error('[delivery-requests/submit] Failed to initialize delivery payment intent', {
+          requestId: result.request.id,
+          message:
+            deliveryIntentError instanceof Error
+              ? deliveryIntentError.message
+              : deliveryIntentError,
+        });
+      }
+    }
+
+    const paymentRequired = result.paymentRequired || deliveryPaymentRequired;
+
     return NextResponse.json(
       {
         id: result.request.id,
-        paymentRequired: result.paymentRequired,
+        paymentRequired,
+        deliveryPaymentRequired,
+        deliveryFeeCents: result.request.deliveryFeeCents,
+        deliveryPaymentIntentId,
+        deliveryClientSecret,
         overageMiles: result.overageMiles,
         overageCents: result.overageCents,
         overageBillingMode: result.overageBillingMode,

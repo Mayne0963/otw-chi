@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server';
 import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
+import { OverageBillingMode } from '@prisma/client';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
+import {
+  ensureDeliveryFeePaymentIntentForRequest,
+  shouldRequireDeliveryFeePayment,
+} from '@/lib/delivery-payment';
 
 export const runtime = 'nodejs';
 
@@ -52,12 +57,14 @@ export async function POST(req: Request) {
     const data = requestSchema.parse(body);
     const miles = Number(data.milesEstimate);
     const milesEstimate = Math.max(0, Math.round(miles));
+    let activeSubscription = null;
     let benefits = getMembershipBenefits(null);
     try {
-      const sub = await getActiveSubscription(user.id);
-      benefits = getMembershipBenefits(getPlanCodeFromSubscription(sub));
+      activeSubscription = await getActiveSubscription(user.id);
+      benefits = getMembershipBenefits(getPlanCodeFromSubscription(activeSubscription));
     } catch {
       benefits = getMembershipBenefits(null);
+      activeSubscription = null;
     }
     const pricing = calculatePriceBreakdownCents({
       miles,
@@ -65,6 +72,14 @@ export async function POST(req: Request) {
       discount: benefits.discount,
       waiveServiceFee: benefits.waiveServiceFee,
     });
+    const billingMode = activeSubscription?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
+    const paymentRequired = shouldRequireDeliveryFeePayment({
+      deliveryFeeCents: pricing.totalCents,
+      deliveryFeePaid: false,
+      billingMode,
+    });
+    const hasBillableDeliveryFee = pricing.totalCents > 0;
+    const deliveryFeePaid = hasBillableDeliveryFee ? false : true;
 
     const request = await prisma.deliveryRequest.create({
       data: {
@@ -80,11 +95,35 @@ export async function POST(req: Request) {
         pickupCodeText: data.pickupCodeText?.trim() || null,
         status: 'REQUESTED',
         deliveryFeeCents: pricing.totalCents,
+        deliveryFeePaid,
+        paymentRequired,
+        overageBillingMode: billingMode,
         serviceMilesFinal: milesEstimate,
       },
     });
 
-    return NextResponse.json({ id: request.id });
+    let deliveryClientSecret: string | null = null;
+    let deliveryPaymentIntentId: string | null = request.deliveryPaymentIntentId ?? null;
+
+    if (paymentRequired) {
+      try {
+        const paymentIntent = await ensureDeliveryFeePaymentIntentForRequest(request.id);
+        deliveryClientSecret = paymentIntent.clientSecret;
+        deliveryPaymentIntentId = paymentIntent.paymentIntentId;
+      } catch (intentError) {
+        console.error('[CREATE_REQUEST_DELIVERY_PAYMENT_INTENT]', {
+          requestId: request.id,
+          message: intentError instanceof Error ? intentError.message : intentError,
+        });
+      }
+    }
+
+    return NextResponse.json({
+      id: request.id,
+      paymentRequired,
+      deliveryClientSecret,
+      deliveryPaymentIntentId,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

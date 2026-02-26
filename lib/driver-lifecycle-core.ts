@@ -3,6 +3,10 @@ import type { Prisma } from '@prisma/client';
 import { calculateDriverPayCents } from './driver-pay';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from './driver-assignment';
 import {
+  DISPATCH_PAYMENT_REQUIRED_ERROR,
+  isDispatchBlockedByPayment,
+} from './request-payment';
+import {
   createSystemRequestMessage,
   DELIVERED_CHAT_CLOSED_MESSAGE,
   DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
@@ -22,6 +26,8 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
         quoteBreakdown: true,
         userId: true,
         paymentRequired: true,
+        deliveryFeePaid: true,
+        deliveryFeeCents: true,
         overageBillingMode: true,
         overageMiles: true,
         overageStatus: true,
@@ -37,8 +43,8 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
     if (request.status !== DeliveryRequestStatus.REQUESTED) {
       throw new Error('Request is not available for acceptance');
     }
-    if (request.paymentRequired) {
-      throw new Error('Request cannot be dispatched until payment is completed');
+    if (isDispatchBlockedByPayment(request)) {
+      throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
     }
     if (
       request.overageBillingMode === 'INSTANT' &&

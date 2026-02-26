@@ -6,6 +6,10 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
+import {
+  DISPATCH_PAYMENT_REQUIRED_ERROR,
+  isDispatchBlockedByPayment,
+} from '@/lib/request-payment';
 import { getCurrentUser } from '@/lib/auth/roles';
 import {
   createSystemRequestMessage,
@@ -280,6 +284,8 @@ export async function assignDriverAction(formData: FormData) {
         status: true,
         userId: true,
         paymentRequired: true,
+        deliveryFeePaid: true,
+        deliveryFeeCents: true,
         overageBillingMode: true,
         overageMiles: true,
         overageStatus: true,
@@ -291,8 +297,8 @@ export async function assignDriverAction(formData: FormData) {
     });
     
     if (deliveryRequest) {
-      if (deliveryRequest.paymentRequired) {
-        throw new Error('Request cannot be dispatched until payment is completed');
+      if (isDispatchBlockedByPayment(deliveryRequest)) {
+        throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
       }
       if (
         deliveryRequest.overageBillingMode === 'INSTANT' &&

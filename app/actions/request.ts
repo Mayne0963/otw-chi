@@ -5,12 +5,16 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest } from '@/lib/delivery-submit';
+import {
+  ensureDeliveryFeePaymentIntentForRequest,
+  shouldRequireDeliveryFeePayment,
+} from '@/lib/delivery-payment';
 import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import { closeRequestChat } from '@/lib/request-chat';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { DeliveryRequestStatus, ServiceType } from '@prisma/client';
+import { DeliveryRequestStatus, OverageBillingMode, ServiceType } from '@prisma/client';
 
 export async function cancelOrderAction(orderId: string) {
   const user = await getCurrentUser();
@@ -172,6 +176,7 @@ export async function createRequestAction(formData: FormData) {
   const sub = await getActiveSubscription(user.id);
   const planCode = getPlanCodeFromSubscription(sub);
   const membershipBenefits = getMembershipBenefits(planCode);
+  const billingMode = sub?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
 
   // Calculate cost with membership discount
   const pricing = calculatePriceBreakdownCents({
@@ -181,6 +186,13 @@ export async function createRequestAction(formData: FormData) {
     waiveServiceFee: membershipBenefits.waiveServiceFee,
   });
   const finalPriceDollars = pricing.discountedBaseCents / 100;
+  const paymentRequired = shouldRequireDeliveryFeePayment({
+    deliveryFeeCents: pricing.totalCents,
+    deliveryFeePaid: false,
+    billingMode,
+  });
+  const hasBillableDeliveryFee = pricing.totalCents > 0;
+  const deliveryFeePaid = hasBillableDeliveryFee ? false : true;
 
   // Award NIP based on membership multiplier
   const nipEarned = Math.round(finalPriceDollars * membershipBenefits.nipMultiplier);
@@ -195,8 +207,22 @@ export async function createRequestAction(formData: FormData) {
       status: DeliveryRequestStatus.REQUESTED,
       serviceMilesFinal: milesEstimate,
       deliveryFeeCents: pricing.totalCents, // Store in cents
+      deliveryFeePaid,
+      paymentRequired,
+      overageBillingMode: billingMode,
     },
   });
+
+  if (paymentRequired) {
+    try {
+      await ensureDeliveryFeePaymentIntentForRequest(created.id);
+    } catch (paymentError) {
+      console.error('[createRequestAction] Failed to initialize delivery payment intent', {
+        requestId: created.id,
+        error: paymentError instanceof Error ? paymentError.message : paymentError,
+      });
+    }
+  }
   
   // Award NIP to user
   try {
@@ -221,7 +247,7 @@ export async function createRequestAction(formData: FormData) {
   revalidatePath('/requests');
   revalidatePath('/dashboard');
   
-  redirect(`/requests/${created.id}`);
+  redirect(paymentRequired ? `/pay/${created.id}` : `/requests/${created.id}`);
 }
 
 export async function getUserRequests() {

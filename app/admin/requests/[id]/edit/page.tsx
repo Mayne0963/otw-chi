@@ -5,6 +5,10 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import type { DeliveryRequestStatus } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
+import {
+  DISPATCH_PAYMENT_REQUIRED_ERROR,
+  isDispatchBlockedByPayment,
+} from '@/lib/request-payment';
 import { requireRole } from '@/lib/auth';
 import { getCurrentUser } from '@/lib/auth/roles';
 import {
@@ -43,6 +47,8 @@ async function getRequestData(id: string) {
       assignedDriverId: true,
       userId: true,
       paymentRequired: true,
+      deliveryFeePaid: true,
+      deliveryFeeCents: true,
       overageBillingMode: true,
       overageMiles: true,
       overageStatus: true,
@@ -83,6 +89,8 @@ export async function updateRequestAction(formData: FormData) {
       assignedDriverId: true,
       userId: true,
       paymentRequired: true,
+      deliveryFeePaid: true,
+      deliveryFeeCents: true,
       overageBillingMode: true,
       overageMiles: true,
       overageStatus: true,
@@ -104,8 +112,8 @@ export async function updateRequestAction(formData: FormData) {
     }
 
     if (driverIdInput.length > 0) {
-      if (dr.paymentRequired) {
-        throw new Error('Request cannot be dispatched until payment is completed');
+      if (isDispatchBlockedByPayment(dr)) {
+        throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
       }
       if (
         dr.overageBillingMode === 'INSTANT' &&

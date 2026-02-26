@@ -217,6 +217,12 @@ export default async function DriverDashboardPage() {
             assignedDriverId: null,
             userId: { not: user.id },
             paymentRequired: false,
+            OR: [
+              { overageBillingMode: 'INVOICE' },
+              { deliveryFeePaid: true },
+              { deliveryFeeCents: null },
+              { deliveryFeeCents: { lte: 0 } },
+            ],
             NOT: {
               AND: [
                 { overageBillingMode: 'INSTANT' },

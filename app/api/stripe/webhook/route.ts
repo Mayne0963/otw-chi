@@ -394,6 +394,74 @@ export async function POST(req: Request) {
             },
           });
         }
+      } else if (metadata.purpose === 'delivery_fee') {
+        const deliveryRequestId = metadata.deliveryRequestId ? String(metadata.deliveryRequestId) : null;
+        const userId = metadata.userId ? String(metadata.userId) : null;
+
+        if (deliveryRequestId && userId) {
+          const deliveryRequest = await prisma.deliveryRequest.findFirst({
+            where: {
+              id: deliveryRequestId,
+              userId,
+            },
+            select: {
+              id: true,
+              deliveryFeePaid: true,
+              paymentRequired: true,
+              deliveryPaymentIntentId: true,
+            },
+          });
+
+          if (deliveryRequest) {
+            if (
+              !deliveryRequest.deliveryFeePaid ||
+              deliveryRequest.paymentRequired ||
+              deliveryRequest.deliveryPaymentIntentId !== paymentIntent.id
+            ) {
+              await prisma.deliveryRequest.update({
+                where: { id: deliveryRequest.id },
+                data: {
+                  deliveryFeePaid: true,
+                  paymentRequired: false,
+                  deliveryPaymentIntentId: paymentIntent.id,
+                },
+              });
+            }
+
+            await createStripePaymentTransaction({
+              userId,
+              amountCents: paymentIntent.amount_received || paymentIntent.amount || 0,
+              orderId: deliveryRequestId,
+              metadata: {
+                purpose: 'delivery_fee',
+                deliveryRequestId,
+                stripePaymentIntentId: paymentIntent.id,
+              },
+            });
+          }
+        }
+      }
+    } else if (event.type === 'payment_intent.payment_failed') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      const metadata = paymentIntent.metadata ?? {};
+
+      if (metadata.purpose === 'delivery_fee') {
+        const deliveryRequestId = metadata.deliveryRequestId ? String(metadata.deliveryRequestId) : null;
+        const userId = metadata.userId ? String(metadata.userId) : null;
+
+        if (deliveryRequestId && userId) {
+          await prisma.deliveryRequest.updateMany({
+            where: {
+              id: deliveryRequestId,
+              userId,
+            },
+            data: {
+              paymentRequired: true,
+              deliveryFeePaid: false,
+              deliveryPaymentIntentId: paymentIntent.id,
+            },
+          });
+        }
       }
     } else if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;

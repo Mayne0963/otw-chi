@@ -7,6 +7,7 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { acceptJobAction, updateJobStatusAction } from '@/app/actions/driver';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
+import { isDispatchBlockedByPayment } from '@/lib/request-payment';
 import { unstable_noStore as noStore } from 'next/cache';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
@@ -55,6 +56,8 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
       notes: true,
       serviceType: true,
       paymentRequired: true,
+      deliveryFeePaid: true,
+      deliveryFeeCents: true,
       overageBillingMode: true,
       overageMiles: true,
       overageStatus: true,
@@ -121,7 +124,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     !!driver &&
     req.status === 'REQUESTED' &&
     !req.assignedDriverId &&
-    !req.paymentRequired &&
+    !isDispatchBlockedByPayment(req) &&
     !(req.overageBillingMode === 'INSTANT' && req.overageMiles > 0 && req.overageStatus !== 'PAID') &&
     req.userId !== user.id &&
     !hasOtherActiveJob;

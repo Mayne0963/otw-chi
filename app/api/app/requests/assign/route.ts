@@ -3,6 +3,10 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import {
+  DISPATCH_PAYMENT_REQUIRED_ERROR,
+  isDispatchBlockedByPayment,
+} from '@/lib/request-payment';
+import {
   createSystemRequestMessage,
   DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
 } from '@/lib/request-chat';
@@ -29,6 +33,8 @@ export async function POST(req: Request) {
           id: true,
           userId: true,
           paymentRequired: true,
+          deliveryFeePaid: true,
+          deliveryFeeCents: true,
           overageBillingMode: true,
           overageMiles: true,
           overageStatus: true,
@@ -43,10 +49,10 @@ export async function POST(req: Request) {
     if (!request) {
       return NextResponse.json({ success: false, error: 'Request not found' }, { status: 404 });
     }
-    if (request.paymentRequired) {
+    if (isDispatchBlockedByPayment(request)) {
       return NextResponse.json(
-        { success: false, error: 'Request cannot be dispatched until payment is completed' },
-        { status: 400 }
+        { success: false, error: DISPATCH_PAYMENT_REQUIRED_ERROR },
+        { status: 409 }
       );
     }
     if (

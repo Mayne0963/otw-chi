@@ -189,6 +189,9 @@ export default function OrderPage() {
 
       const createPayload = (await createResponse.json().catch(() => null)) as {
         id?: string;
+        paymentRequired?: boolean;
+        deliveryClientSecret?: string | null;
+        deliveryPaymentIntentId?: string | null;
         error?: string;
         message?: string;
       } | null;
@@ -241,11 +244,13 @@ export default function OrderPage() {
       }
 
       toast({
-        title: 'Request submitted',
-        description: 'Your delivery request has been created.',
+        title: createPayload.paymentRequired ? 'Request created' : 'Request submitted',
+        description: createPayload.paymentRequired
+          ? 'Complete payment to unlock dispatch for this request.'
+          : 'Your delivery request has been created.',
       });
 
-      router.push(`/requests/${deliveryRequestId}`);
+      router.push(createPayload.paymentRequired ? `/pay/${deliveryRequestId}` : `/requests/${deliveryRequestId}`);
     } catch (error) {
       toast({
         title: 'Unable to submit request',

@@ -9,6 +9,10 @@ import { revalidatePath } from 'next/cache';
 import { calculateDriverPayoutCents } from '@/lib/pricing';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import {
+  DISPATCH_PAYMENT_REQUIRED_ERROR,
+  isDispatchBlockedByPayment,
+} from '@/lib/request-payment';
+import {
   closeRequestChat,
   createSystemRequestMessage,
   DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
@@ -44,6 +48,12 @@ export async function getAvailableJobs() {
       status: 'REQUESTED',
       userId: { not: user.id },
       paymentRequired: false,
+      OR: [
+        { overageBillingMode: 'INVOICE' },
+        { deliveryFeePaid: true },
+        { deliveryFeeCents: null },
+        { deliveryFeeCents: { lte: 0 } },
+      ],
       NOT: {
         AND: [
           { overageBillingMode: 'INSTANT' },
@@ -62,6 +72,8 @@ export async function getAvailableJobs() {
       serviceType: true,
       createdAt: true,
       paymentRequired: true,
+      deliveryFeePaid: true,
+      deliveryFeeCents: true,
       overageBillingMode: true,
       overageMiles: true,
       overageStatus: true,
@@ -89,13 +101,25 @@ export async function acceptJob(requestId: string) {
 
   const job = await prisma.deliveryRequest.findUnique({
     where: { id: requestId },
+    select: {
+      id: true,
+      status: true,
+      paymentRequired: true,
+      deliveryFeePaid: true,
+      deliveryFeeCents: true,
+      overageBillingMode: true,
+      overageMiles: true,
+      overageStatus: true,
+      userId: true,
+      assignedDriverId: true,
+    },
   });
 
   if (!job || job.status !== 'REQUESTED') {
     throw new Error('Job is no longer available');
   }
-  if (job.paymentRequired) {
-    throw new Error('Job is awaiting overage payment');
+  if (isDispatchBlockedByPayment(job)) {
+    throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
   }
   if (job.overageBillingMode === 'INSTANT' && job.overageMiles > 0 && job.overageStatus !== 'PAID') {
     throw new Error('Job overage payment is not settled');

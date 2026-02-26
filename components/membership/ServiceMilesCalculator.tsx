@@ -49,6 +49,10 @@ type PreferredDriversResponse = {
 type SubmitResponse = {
   id: string;
   paymentRequired?: boolean;
+  deliveryPaymentRequired?: boolean;
+  deliveryFeeCents?: number | null;
+  deliveryClientSecret?: string | null;
+  deliveryPaymentIntentId?: string | null;
   overageMiles?: number;
   overageCents?: number;
   overageClientSecret?: string | null;
@@ -300,6 +304,14 @@ export function ServiceMilesCalculator() {
         throw new Error(typeof data?.error === 'string' ? data.error : 'Submit failed');
       }
       if (!data.id) throw new Error('Missing request id');
+      if (data.deliveryPaymentRequired) {
+        toast({
+          title: 'Payment required',
+          description: 'Complete payment to unlock dispatch for this request.',
+        });
+        router.push(`/pay/${data.id}`);
+        return;
+      }
       if (data.paymentRequired) {
         if (!data.overageClientSecret || typeof data.overageCents !== 'number') {
           throw new Error('Overage payment is required but missing payment details');
