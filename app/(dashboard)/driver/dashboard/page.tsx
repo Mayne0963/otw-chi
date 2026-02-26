@@ -363,7 +363,6 @@ export default async function DriverDashboardPage() {
                       requestId={activeRequest.id}
                       currentUserId={user.id}
                       currentUserRole={user.role}
-                      readOnly={user.role === 'ADMIN'}
                     />
                   ) : (
                     <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-white/60">

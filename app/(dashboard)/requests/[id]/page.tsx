@@ -236,7 +236,6 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                     requestId={request.id}
                     currentUserId={user.id}
                     currentUserRole={user.role}
-                    {...(isAdmin ? { readOnly: true } : {})}
                     className="border-white/15"
                   />
                 ) : (
