@@ -81,7 +81,9 @@ const buildCorsHeaders = (origin: string | null, requestHeaders: Headers) => {
 
   // Local development convenience.
   allowedOrigins.add('http://localhost:3000');
+  allowedOrigins.add('http://localhost:3001');
   allowedOrigins.add('http://127.0.0.1:3000');
+  allowedOrigins.add('http://127.0.0.1:3001');
 
   if (!allowedOrigins.has(origin)) return null;
 
