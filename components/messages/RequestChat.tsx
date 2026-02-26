@@ -63,6 +63,15 @@ export default function RequestChat({
 
   const endRef = useRef<HTMLDivElement | null>(null);
   const isCustomerView = currentUserRole === 'CUSTOMER';
+  const effectiveReadOnly = readOnly && currentUserRole !== 'CUSTOMER';
+
+  useEffect(() => {
+    if (readOnly && currentUserRole === 'CUSTOMER') {
+      console.warn('[RequestChat] readOnly=true was passed for CUSTOMER; falling back to editable mode.', {
+        requestId,
+      });
+    }
+  }, [currentUserRole, readOnly, requestId]);
 
   const fetchMessages = useCallback(async (silent = false) => {
     if (!silent) {
@@ -120,7 +129,7 @@ export default function RequestChat({
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const canSend = useMemo(() => !readOnly && chatOpen, [chatOpen, readOnly]);
+  const canSend = useMemo(() => !effectiveReadOnly && chatOpen, [chatOpen, effectiveReadOnly]);
   const chatStatusMessage = useMemo(() => {
     if (chatOpen) {
       return 'Chat is open.';
@@ -251,7 +260,7 @@ export default function RequestChat({
 
       {error ? <p className="mt-3 text-xs text-red-300">{error}</p> : null}
 
-      {!readOnly && (
+      {!effectiveReadOnly && (
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
           {isCustomerView ? (
             <div
