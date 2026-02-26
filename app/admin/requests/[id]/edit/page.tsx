@@ -172,38 +172,39 @@ export async function updateRequestAction(formData: FormData) {
       data.chatClosedAt = null;
     }
 
-    const updatedRequest = await prisma.deliveryRequest.update({
-      where: { id },
-      data
-    });
-    
-    // Update driver assignment relation if driver changed
-    if (assignmentChanged && nextAssignedDriverId) {
-        await prisma.driverAssignment.create({
-            data: {
-                deliveryRequestId: id,
-                driverId: nextAssignedDriverId
-            }
+    await prisma.$transaction(async (tx) => {
+      const updatedRequest = await tx.deliveryRequest.update({
+        where: { id },
+        data,
+      });
+
+      if (assignmentChanged && nextAssignedDriverId) {
+        await tx.driverAssignment.create({
+          data: {
+            deliveryRequestId: id,
+            driverId: nextAssignedDriverId,
+          },
         });
-    }
+      }
 
-    const nextStatus = (updatedRequest.status ?? dr.status) as DeliveryRequestStatus;
-    if (assignmentChanged && nextStatus !== 'DELIVERED' && nextStatus !== 'CANCELED') {
-      await createSystemRequestMessage(prisma, {
-        deliveryRequestId: id,
-        senderUserId: actor.id,
-        senderRole: actor.role,
-        messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
-      });
-    }
+      const nextStatus = (updatedRequest.status ?? dr.status) as DeliveryRequestStatus;
+      if (assignmentChanged && nextStatus !== 'DELIVERED' && nextStatus !== 'CANCELED') {
+        await createSystemRequestMessage(tx, {
+          deliveryRequestId: id,
+          senderUserId: actor.id,
+          senderRole: actor.role,
+          messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+        });
+      }
 
-    if (nextStatus === 'DELIVERED' || nextStatus === 'CANCELED') {
-      await closeRequestChat(prisma, {
-        deliveryRequestId: id,
-        senderUserId: actor.id,
-        senderRole: actor.role,
-      });
-    }
+      if (nextStatus === 'DELIVERED' || nextStatus === 'CANCELED') {
+        await closeRequestChat(tx, {
+          deliveryRequestId: id,
+          senderUserId: actor.id,
+          senderRole: actor.role,
+        });
+      }
+    });
   }
 
   revalidatePath('/admin/requests');

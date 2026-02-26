@@ -12,11 +12,33 @@ const MAX_LIMIT = 100;
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+type ChatGateReason = {
+  assignedDriverId: string | null;
+  chatEnabled: boolean;
+  chatClosedAt: string | null;
+  status: string;
+};
+
+function getChatGateReason(request: {
+  assignedDriverId: string | null;
+  chatEnabled: boolean;
+  chatClosedAt: Date | null;
+  status: string;
+}): ChatGateReason {
+  return {
+    assignedDriverId: request.assignedDriverId,
+    chatEnabled: request.chatEnabled,
+    chatClosedAt: request.chatClosedAt?.toISOString() ?? null,
+    status: request.status,
+  };
+}
+
 function buildChatPostLogContext(args: {
   requestId: string;
   userId: string | null;
   role: string | null;
   request?: {
+    userId: string;
     assignedDriverId: string | null;
     chatEnabled: boolean;
     chatClosedAt: Date | null;
@@ -27,6 +49,7 @@ function buildChatPostLogContext(args: {
     requestId: args.requestId,
     userId: args.userId,
     role: args.role,
+    requestUserId: args.request?.userId ?? null,
     assignedDriverId: args.request?.assignedDriverId ?? null,
     chatEnabled: args.request?.chatEnabled ?? null,
     chatClosedAt: args.request?.chatClosedAt?.toISOString() ?? null,
@@ -74,10 +97,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
   if (!isRequestParticipant(request, { id: user.id, role: user.role })) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  if (!request.assignedDriverId && user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Chat opens once a driver is assigned' }, { status: 403 });
   }
 
   const url = new URL(req.url);
@@ -132,10 +151,18 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     ? selected[selected.length - 1]?.createdAt.toISOString() ?? null
     : null;
 
+  const chatOpen = isRequestChatOpen(request);
+  const reason = chatOpen ? null : getChatGateReason(request);
+
   return NextResponse.json({
     messages,
     nextCursor,
-    chatOpen: isRequestChatOpen(request),
+    chatOpen,
+    reason,
+    chatStatus: {
+      chatOpen,
+      reason,
+    },
     chatClosedAt: request.chatClosedAt,
     requestStatus: request.status,
   });
@@ -174,6 +201,19 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Request not found' }, { status: 404 });
   }
 
+  if (user.role === 'CUSTOMER' && request.userId !== user.id) {
+    console.warn(
+      '[request-chat] POST denied: customer_not_owner',
+      buildChatPostLogContext({
+        requestId: id,
+        userId: user.id,
+        role: user.role,
+        request,
+      }),
+    );
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   if (!isRequestParticipant(request, { id: user.id, role: user.role })) {
     console.warn(
       '[request-chat] POST denied: forbidden_participant',
@@ -188,6 +228,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   }
 
   if (!isRequestChatOpen(request)) {
+    const reason = getChatGateReason(request);
     console.warn(
       '[request-chat] POST denied: chat_closed',
       buildChatPostLogContext({
@@ -197,7 +238,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         request,
       }),
     );
-    return NextResponse.json({ error: 'Chat is closed for this request' }, { status: 403 });
+    return NextResponse.json({ error: 'Chat is closed', reason }, { status: 409 });
   }
 
   let messageText = '';

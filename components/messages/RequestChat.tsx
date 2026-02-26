@@ -21,9 +21,21 @@ type RequestChatMessage = {
   createdAt: string;
 };
 
+type ChatGateReason = {
+  assignedDriverId: string | null;
+  chatEnabled: boolean;
+  chatClosedAt: string | null;
+  status: string;
+};
+
 type ChatResponse = {
   messages: RequestChatMessage[];
   chatOpen: boolean;
+  reason?: ChatGateReason | null;
+  chatStatus?: {
+    chatOpen: boolean;
+    reason?: ChatGateReason | null;
+  };
 };
 
 type RequestChatProps = {
@@ -44,11 +56,13 @@ export default function RequestChat({
   const [messages, setMessages] = useState<RequestChatMessage[]>([]);
   const [draftMessage, setDraftMessage] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatReason, setChatReason] = useState<ChatGateReason | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const endRef = useRef<HTMLDivElement | null>(null);
+  const isCustomerView = currentUserRole === 'CUSTOMER';
 
   const fetchMessages = useCallback(async (silent = false) => {
     if (!silent) {
@@ -63,13 +77,25 @@ export default function RequestChat({
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          reason?: ChatGateReason | null;
+        } | null;
+        if (payload?.reason) {
+          setChatOpen(false);
+          setChatReason(payload.reason);
+        }
         throw new Error(payload?.error ?? 'Unable to load messages');
       }
 
       const payload = (await response.json()) as ChatResponse;
+      const resolvedChatStatus = payload.chatStatus ?? {
+        chatOpen: Boolean(payload.chatOpen),
+        reason: payload.reason ?? null,
+      };
       setMessages(Array.isArray(payload.messages) ? payload.messages : []);
-      setChatOpen(Boolean(payload.chatOpen));
+      setChatOpen(Boolean(resolvedChatStatus.chatOpen));
+      setChatReason(resolvedChatStatus.reason ?? null);
       setError(null);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : 'Unable to load messages');
@@ -95,6 +121,29 @@ export default function RequestChat({
   }, [messages]);
 
   const canSend = useMemo(() => !readOnly && chatOpen, [chatOpen, readOnly]);
+  const chatStatusMessage = useMemo(() => {
+    if (chatOpen) {
+      return 'Chat is open.';
+    }
+
+    const status = chatReason?.status;
+    if (!chatReason?.assignedDriverId) {
+      return 'Chat is closed until a driver is assigned.';
+    }
+    if (status === 'DELIVERED') {
+      return 'Chat closed (Delivered).';
+    }
+    if (status === 'CANCELED') {
+      return 'Chat closed (Canceled).';
+    }
+    if (chatReason?.chatClosedAt) {
+      return 'Chat is closed.';
+    }
+    if (chatReason && !chatReason.chatEnabled) {
+      return 'Chat is currently unavailable.';
+    }
+    return 'Chat is closed.';
+  }, [chatOpen, chatReason]);
 
   const submitMessage = useCallback(async () => {
     const trimmed = draftMessage.trim();
@@ -116,11 +165,15 @@ export default function RequestChat({
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          reason?: ChatGateReason | null;
+        } | null;
         const message = payload?.error ?? 'Unable to send message';
 
-        if (response.status === 403) {
+        if (response.status === 409) {
           setChatOpen(false);
+          setChatReason(payload?.reason ?? null);
         }
 
         throw new Error(message);
@@ -200,6 +253,19 @@ export default function RequestChat({
 
       {!readOnly && (
         <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+          {isCustomerView ? (
+            <div
+              className={cn(
+                'rounded-md border px-3 py-2 text-xs',
+                chatOpen
+                  ? 'border-green-500/30 bg-green-500/10 text-green-300'
+                  : 'border-white/10 bg-white/5 text-white/65',
+              )}
+            >
+              {chatStatusMessage}
+            </div>
+          ) : null}
+
           <QuickReplies
             role={currentUserRole}
             disabled={!canSend || isSending}
