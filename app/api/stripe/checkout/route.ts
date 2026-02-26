@@ -227,6 +227,9 @@ export async function POST(req: Request) {
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
+        // Always collect a payment method so checkout still shows card entry
+        // when a 100% promo code discounts the current invoice to $0.
+        payment_method_collection: 'always',
         ...(dbUser.role === 'ADMIN' ? { allow_promotion_codes: true } : {}),
         line_items: [
           {
