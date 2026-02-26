@@ -227,6 +227,7 @@ export async function POST(req: Request) {
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
+        ...(dbUser.role === 'ADMIN' ? { allow_promotion_codes: true } : {}),
         line_items: [
           {
             price: resolvedPriceId,
