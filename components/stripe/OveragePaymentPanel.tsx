@@ -27,8 +27,9 @@ export default function OveragePaymentPanel({
   const router = useRouter();
   const { toast } = useToast();
 
+  const [showCardForm, setShowCardForm] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadClientSecret = useCallback(async () => {
@@ -81,8 +82,22 @@ export default function OveragePaymentPanel({
   }, [deliveryRequestId, router, toast]);
 
   useEffect(() => {
+    if (!showCardForm) return;
     void loadClientSecret();
-  }, [loadClientSecret]);
+  }, [loadClientSecret, showCardForm]);
+
+  if (!showCardForm) {
+    return (
+      <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-4">
+        <div className="text-sm text-white/75">
+          Prefer card payment? Continue to secure Stripe checkout.
+        </div>
+        <Button type="button" variant="outline" onClick={() => setShowCardForm(true)}>
+          Pay with Card
+        </Button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

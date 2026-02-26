@@ -122,11 +122,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 </div>
               </div>
 
-              {isOwner && request.paymentRequired && !request.deliveryFeePaid ? (
+              {isOwner && request.paymentRequired ? (
                 <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
                   <div className="text-sm font-medium text-amber-200">Payment required before dispatch</div>
                   <p className="mt-1 text-xs text-amber-100/90">
-                    Complete payment to make this request eligible for driver assignment.
+                    {request.deliveryFeePaid
+                      ? 'Service Miles were applied. Complete the remaining overage payment to unlock dispatch.'
+                      : 'Complete payment to make this request eligible for driver assignment.'}
                   </p>
                   <div className="mt-3">
                     <OtwButton as="a" href={`/pay/${request.id}`} variant="gold" size="sm">

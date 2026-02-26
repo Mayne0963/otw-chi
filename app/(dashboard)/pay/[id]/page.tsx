@@ -4,6 +4,7 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import DeliveryFeePaymentPanel from '@/components/stripe/DeliveryFeePaymentPanel';
 import OveragePaymentPanel from '@/components/stripe/OveragePaymentPanel';
+import PayWithServiceMilesButton from '@/components/stripe/PayWithServiceMilesButton';
 import { formatCurrency } from '@/lib/utils';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
@@ -90,7 +91,20 @@ export default async function DeliveryFeePaymentPage({
           {requiresDeliveryPayment ? (
             <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
           ) : (
-            <OveragePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+            <div className="space-y-4">
+              <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">
+                <p className="text-sm text-white/85">
+                  You can settle this overage with Service Miles instead of card payment.
+                </p>
+                <div className="mt-3">
+                  <PayWithServiceMilesButton
+                    deliveryRequestId={request.id}
+                    requiredMiles={request.overageMiles}
+                  />
+                </div>
+              </div>
+              <OveragePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+            </div>
           )}
         </OtwCard>
       </div>
