@@ -48,14 +48,9 @@ export default async function SettingsPage() {
 
 export async function saveSettings(formData: FormData) {
   'use server';
-  const { getNeonSession } = await import('@/lib/auth/server');
-  const session = await getNeonSession();
-  // @ts-ignore
-  const userId = session?.userId || session?.user?.id;
-  if (!userId) return;
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return;
   const prisma = getPrisma();
-  const user = await prisma.user.findFirst({ where: { neonAuthId: userId } });
-  if (!user) return;
   
   const phone = String(formData.get('phone') ?? '');
   const defaultPickup = String(formData.get('defaultPickup') ?? '');
@@ -66,16 +61,16 @@ export async function saveSettings(formData: FormData) {
     const dobDate = new Date(String(dobRaw));
     if (!isNaN(dobDate.getTime())) {
        await prisma.user.update({
-         where: { id: user.id },
+         where: { id: currentUser.id },
          data: { dob: dobDate }
        });
     }
   }
 
   await prisma.customerProfile.upsert({
-    where: { userId: user.id },
+    where: { userId: currentUser.id },
     update: { phone: phone || null, defaultPickup: defaultPickup || null, defaultDropoff: defaultDropoff || null },
-    create: { userId: user.id, phone: phone || null, defaultPickup: defaultPickup || null, defaultDropoff: defaultDropoff || null },
+    create: { userId: currentUser.id, phone: phone || null, defaultPickup: defaultPickup || null, defaultDropoff: defaultDropoff || null },
   });
   
   // Revalidate to show updated data

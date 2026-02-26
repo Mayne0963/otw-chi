@@ -1,14 +1,17 @@
 'use server';
 
-import { getNeonSession } from '@/lib/auth/server';
+import {
+  extractNeonAuthEmail,
+  extractNeonAuthUserId,
+  getNeonSession,
+} from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { redirect } from 'next/navigation';
 
 export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' | 'ELITE' | 'BLACK') {
   const neonSession = await getNeonSession();
-  // @ts-ignore
-  const userId = neonSession?.userId || neonSession?.user?.id;
+  const userId = extractNeonAuthUserId(neonSession);
   
   if (!userId) {
     throw new Error('Unauthorized');
@@ -24,9 +27,9 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
 
   if (!user) {
     // Sync user from Neon Session
-    // @ts-ignore
-    const neonUser = neonSession?.user || {};
-    const email = neonUser.email;
+    const neonUser =
+      ((neonSession as { user?: { name?: string } } | null)?.user ?? {});
+    const email = extractNeonAuthEmail(neonSession);
     
     if (!email) throw new Error('No email found in session');
 
@@ -135,8 +138,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
 
 export async function createCustomerPortal() {
     const neonSession = await getNeonSession();
-    // @ts-ignore
-    const userId = neonSession?.userId || neonSession?.user?.id;
+    const userId = extractNeonAuthUserId(neonSession);
 
     if (!userId) throw new Error('Unauthorized');
 

@@ -39,21 +39,15 @@ export default async function DriverProfilePage() {
 
 export async function saveDriverProfile(formData: FormData) {
   'use server';
-  const { getNeonSession } = await import('@/lib/auth/server');
-  const session = await getNeonSession();
-  // @ts-ignore
-  const userId = session?.userId || session?.user?.id;
-  if (!userId) return;
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return;
 
   const displayName = String(formData.get('displayName') ?? '').trim();
   if (!displayName) return;
 
   const prisma = getPrisma();
-  const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
-  if (!user) return;
-
   await prisma.user.update({
-    where: { id: user.id },
+    where: { id: currentUser.id },
     data: { name: displayName },
   });
 

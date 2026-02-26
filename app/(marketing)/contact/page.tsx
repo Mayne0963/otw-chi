@@ -45,10 +45,7 @@ export default async function ContactPage() {
 
 export async function submitContactMessage(formData: FormData) {
   'use server';
-  const { getNeonSession } = await import('@/lib/auth/server');
-  const session = await getNeonSession();
-  // @ts-ignore
-  const userId = session?.userId || session?.user?.id;
+  const currentUser = await getCurrentUser();
 
   const payload = {
     email: String(formData.get('email') ?? '').trim(),
@@ -63,11 +60,7 @@ export async function submitContactMessage(formData: FormData) {
   if (!parsed.success) return;
 
   const prisma = getPrisma();
-  let dbUserId: string | null = null;
-  if (userId) {
-    const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
-    dbUserId = user?.id ?? null;
-  }
+  const dbUserId = currentUser?.id ?? null;
 
   await prisma.contactMessage.create({
     data: {

@@ -57,14 +57,9 @@ export default async function SupportPage() {
 
 export async function createTicketAction(formData: FormData) {
   'use server';
-  const { getNeonSession } = await import('@/lib/auth/server');
-  const session = await getNeonSession();
-  // @ts-ignore
-  const userId = session?.userId || session?.user?.id;
-  if (!userId) return;
-  const prisma = getPrisma();
-  const user = await prisma.user.findFirst({ where: { neonAuthId: userId } });
+  const user = await getCurrentUser();
   if (!user) return;
+  const prisma = getPrisma();
   const subject = String(formData.get('subject') ?? '');
   const message = String(formData.get('message') ?? '');
   if (!subject || !message) return;

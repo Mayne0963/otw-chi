@@ -79,11 +79,8 @@ export async function submitFranchiseApplication(formData: FormData) {
     return;
   }
 
-  const { getNeonSession } = await import('@/lib/auth/server');
-  const session = await getNeonSession();
-  // @ts-ignore
-  const userId = session?.userId || session?.user?.id;
-  if (!userId) return;
+  const user = await getCurrentUser();
+  if (!user) return;
 
   const payload = {
     fullName: String(formData.get('fullName') ?? '').trim(),
@@ -102,9 +99,6 @@ export async function submitFranchiseApplication(formData: FormData) {
   if (!parsed.success) return;
 
   const prisma = getPrisma();
-  const user = await prisma.user.findUnique({ where: { neonAuthId: userId } });
-  if (!user) return;
-
   await prisma.franchiseApplication.create({
     data: {
       userId: user.id,
