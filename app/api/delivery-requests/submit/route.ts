@@ -160,7 +160,19 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Server error';
-    const status = /Unauthorized|not found/i.test(message) ? 401 : 400;
+    const normalizedMessage = message.toLowerCase();
+    let status = 400;
+
+    if (normalizedMessage.includes('unauthorized')) {
+      status = 401;
+    } else if (normalizedMessage.includes('forbidden')) {
+      status = 403;
+    } else if (normalizedMessage.includes('not found')) {
+      status = 404;
+    } else if (normalizedMessage.includes('expired')) {
+      status = 409;
+    }
+
     return NextResponse.json({ error: message }, { status });
   }
 }

@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPickupPassBase64UsageMetrics } from '@/lib/admin/base64-usage';

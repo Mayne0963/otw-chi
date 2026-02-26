@@ -32,6 +32,11 @@ function getRequestCookieNames(req: NextRequest): string[] {
     .filter((name): name is string => Boolean(name));
 }
 
+function hasNeonAuthCookie(req: NextRequest): boolean {
+  const names = getRequestCookieNames(req);
+  return names.some((name) => name.startsWith(NEON_AUTH_COOKIE_PREFIX));
+}
+
 function getLegacyAuthCookiesToClear(req: NextRequest): string[] {
   const names = getRequestCookieNames(req);
   return names.filter((name) => {
@@ -89,6 +94,10 @@ const isPublicRoute = (pathname: string) => {
   if (matchesPath(pathname, '/api/app-version')) return true;
   if (matchesPath(pathname, '/api/storage')) return true;
   if (matchesPath(pathname, '/api/cron')) return true;
+  if (matchesPath(pathname, '/api/route')) return true;
+  if (matchesPath(pathname, '/api/optimize-stops')) return true;
+  if (matchesPath(pathname, '/api/reference')) return true;
+  if (matchesPath(pathname, '/api/ai')) return true;
   // Allow request APIs to bypass edge auth and enforce auth in route handlers (Node runtime)
   if (matchesPath(pathname, '/api/requests')) return true;
   // Tracking URLs are public
@@ -200,6 +209,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApiRoute = pathname.startsWith('/api');
   const legacyAuthCookiesToClear = getLegacyAuthCookiesToClear(req);
+  const requestHasNeonAuthCookie = hasNeonAuthCookie(req);
 
   const finalizeResponse = (res: NextResponse): NextResponse => {
     if (legacyAuthCookiesToClear.length > 0) {
@@ -320,6 +330,30 @@ export async function middleware(req: NextRequest) {
     response.status >= 300 &&
     response.status < 400 &&
     response.headers.get('location')?.includes('/sign-in')
+  ) {
+    const bypassResponse = NextResponse.next();
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      bypassResponse.headers.set('set-cookie', setCookie);
+    }
+    response = bypassResponse;
+  }
+
+  // API routes with a Neon auth cookie should be handled by route handlers even if
+  // edge middleware cannot resolve the session and returns sign-in redirect/401/403.
+  if (
+    isApiRoute &&
+    !isPublicRoute(pathname) &&
+    requestHasNeonAuthCookie &&
+    (
+      response.status === 401 ||
+      response.status === 403 ||
+      (
+        response.status >= 300 &&
+        response.status < 400 &&
+        response.headers.get('location')?.includes('/sign-in')
+      )
+    )
   ) {
     const bypassResponse = NextResponse.next();
     const setCookie = response.headers.get('set-cookie');

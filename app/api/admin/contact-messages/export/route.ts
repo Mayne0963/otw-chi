@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 

@@ -10,12 +10,12 @@ export async function POST(req: Request) {
     const userId = extractNeonAuthUserId(neonSession);
     
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { sessionId } = await req.json();
     if (!sessionId || typeof sessionId !== "string") {
-      return new NextResponse("Invalid session", { status: 400 });
+      return NextResponse.json({ error: "Invalid session" }, { status: 400 });
     }
 
     const stripe = getStripe();
@@ -40,6 +40,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("[STRIPE_DELIVERY_VERIFY]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

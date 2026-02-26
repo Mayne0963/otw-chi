@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import { NextResponse, NextRequest } from 'next/server';
 import { DeliveryRequestStatus, Role } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
