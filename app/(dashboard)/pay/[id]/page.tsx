@@ -13,6 +13,32 @@ import { OverageBillingMode, OverageStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
+function resolveDeliveryFeeMilesRequired(params: {
+  serviceMilesFinal: number | null;
+  deliveryFeeCents: number | null;
+  overageRateCentsPerMile: number | null;
+}) {
+  const milesFromQuote = Number.isFinite(params.serviceMilesFinal)
+    ? Math.max(0, Math.round(Number(params.serviceMilesFinal)))
+    : 0;
+  if (milesFromQuote > 0) {
+    return milesFromQuote;
+  }
+
+  const deliveryFeeCents = Number.isFinite(params.deliveryFeeCents)
+    ? Math.max(0, Math.round(Number(params.deliveryFeeCents)))
+    : 0;
+  const rateCentsPerMile = Number.isFinite(params.overageRateCentsPerMile)
+    ? Math.max(1, Math.round(Number(params.overageRateCentsPerMile)))
+    : 0;
+
+  if (deliveryFeeCents <= 0 || rateCentsPerMile <= 0) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil(deliveryFeeCents / rateCentsPerMile));
+}
+
 export default async function DeliveryFeePaymentPage({
   params,
 }: {
@@ -38,6 +64,20 @@ export default async function DeliveryFeePaymentPage({
       overageMiles: true,
       overageCents: true,
       paymentRequired: true,
+      serviceMilesFinal: true,
+      user: {
+        select: {
+          membership: {
+            select: {
+              plan: {
+                select: {
+                  overageRateCentsPerMile: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -78,6 +118,11 @@ export default async function DeliveryFeePaymentPage({
   }
 
   const amountCents = requiresDeliveryPayment ? deliveryAmountCents : overageAmountCents;
+  const deliveryFeeMilesRequired = resolveDeliveryFeeMilesRequired({
+    serviceMilesFinal: request.serviceMilesFinal,
+    deliveryFeeCents: request.deliveryFeeCents,
+    overageRateCentsPerMile: request.user.membership?.plan?.overageRateCentsPerMile ?? null,
+  });
 
   return (
     <OtwPageShell>
@@ -89,7 +134,22 @@ export default async function DeliveryFeePaymentPage({
       <div className="mx-auto mt-6 w-full max-w-2xl">
         <OtwCard className="p-6">
           {requiresDeliveryPayment ? (
-            <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+            <div className="space-y-4">
+              {deliveryFeeMilesRequired > 0 ? (
+                <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">
+                  <p className="text-sm text-white/85">
+                    You can settle this delivery fee with Service Miles instead of card payment.
+                  </p>
+                  <div className="mt-3">
+                    <PayWithServiceMilesButton
+                      deliveryRequestId={request.id}
+                      requiredMiles={deliveryFeeMilesRequired}
+                    />
+                  </div>
+                </div>
+              ) : null}
+              <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">

@@ -3,10 +3,37 @@ import { OverageBillingMode, OverageStatus, ServiceMilesTransactionType } from '
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { UNLIMITED_SERVICE_MILES } from '@/lib/membership-miles';
+import { shouldRequireDeliveryFeePayment } from '@/lib/delivery-payment';
 
 export const runtime = 'nodejs';
 
 type RouteParams = { params: Promise<{ id: string }> };
+
+function resolveDeliveryFeeMilesRequired(params: {
+  serviceMilesFinal: number | null;
+  deliveryFeeCents: number | null;
+  overageRateCentsPerMile: number | null;
+}) {
+  const milesFromQuote = Number.isFinite(params.serviceMilesFinal)
+    ? Math.max(0, Math.round(Number(params.serviceMilesFinal)))
+    : 0;
+  if (milesFromQuote > 0) {
+    return milesFromQuote;
+  }
+
+  const deliveryFeeCents = Number.isFinite(params.deliveryFeeCents)
+    ? Math.max(0, Math.round(Number(params.deliveryFeeCents)))
+    : 0;
+  const rateCentsPerMile = Number.isFinite(params.overageRateCentsPerMile)
+    ? Math.max(1, Math.round(Number(params.overageRateCentsPerMile)))
+    : 0;
+
+  if (deliveryFeeCents <= 0 || rateCentsPerMile <= 0) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil(deliveryFeeCents / rateCentsPerMile));
+}
 
 export async function POST(_req: Request, { params }: RouteParams) {
   const user = await getCurrentUser();
@@ -24,10 +51,26 @@ export async function POST(_req: Request, { params }: RouteParams) {
         select: {
           id: true,
           userId: true,
+          deliveryFeeCents: true,
+          deliveryFeePaid: true,
           paymentRequired: true,
+          serviceMilesFinal: true,
           overageBillingMode: true,
           overageStatus: true,
           overageMiles: true,
+          user: {
+            select: {
+              membership: {
+                select: {
+                  plan: {
+                    select: {
+                      overageRateCentsPerMile: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -41,19 +84,20 @@ export async function POST(_req: Request, { params }: RouteParams) {
         return { error: 'Forbidden', status: 403 as const };
       }
 
-      if (!request.paymentRequired) {
-        return { alreadyPaid: true as const };
-      }
+      const requiresDeliveryFeePayment = shouldRequireDeliveryFeePayment({
+        deliveryFeeCents: request.deliveryFeeCents,
+        deliveryFeePaid: request.deliveryFeePaid,
+        billingMode: request.overageBillingMode,
+      });
 
-      if (
-        request.overageBillingMode !== OverageBillingMode.INSTANT ||
-        request.overageStatus === OverageStatus.PAID ||
-        request.overageMiles <= 0
-      ) {
-        return {
-          error: 'Service Miles payment is only available for instant overage balances',
-          status: 409 as const,
-        };
+      const requiresOveragePayment =
+        request.paymentRequired &&
+        request.overageBillingMode === OverageBillingMode.INSTANT &&
+        request.overageStatus !== OverageStatus.PAID &&
+        request.overageMiles > 0;
+
+      if (!requiresDeliveryFeePayment && !requiresOveragePayment) {
+        return { alreadyPaid: true as const };
       }
 
       const dbUser = await tx.user.findUnique({
@@ -90,7 +134,23 @@ export async function POST(_req: Request, { params }: RouteParams) {
       const unlimitedByWallet = wallet.balanceMiles === UNLIMITED_SERVICE_MILES;
       const unlimitedByPlan = dbUser.membership?.plan?.monthlyServiceMiles === UNLIMITED_SERVICE_MILES;
       const hasUnlimited = unlimitedByWallet || unlimitedByPlan;
-      const requiredMiles = Math.max(0, request.overageMiles);
+      const deliveryFeeMilesRequired = resolveDeliveryFeeMilesRequired({
+        serviceMilesFinal: request.serviceMilesFinal,
+        deliveryFeeCents: request.deliveryFeeCents,
+        overageRateCentsPerMile:
+          request.user.membership?.plan?.overageRateCentsPerMile ?? null,
+      });
+      const overageMilesRequired = Math.max(0, request.overageMiles);
+      const requiredMiles = requiresDeliveryFeePayment
+        ? deliveryFeeMilesRequired
+        : overageMilesRequired;
+
+      if (requiredMiles <= 0) {
+        return {
+          error: 'Service Miles payment is unavailable for this request',
+          status: 409 as const,
+        };
+      }
 
       if (!hasUnlimited && wallet.balanceMiles < requiredMiles) {
         return {
@@ -124,8 +184,9 @@ export async function POST(_req: Request, { params }: RouteParams) {
         }
       }
 
-      const idempotencyKey = `request:${request.id}:OVERAGE_MILES_SETTLE`;
-      const externalRef = `request:${request.id}:OVERAGE_MILES_SETTLE`;
+      const settlementScope = requiresDeliveryFeePayment ? 'DELIVERY_FEE' : 'OVERAGE';
+      const externalRef = `request:${request.id}:${settlementScope}:MILES_SETTLE`;
+      const idempotencyKey = externalRef;
 
       await tx.serviceMilesLedger.upsert({
         where: {
@@ -140,16 +201,26 @@ export async function POST(_req: Request, { params }: RouteParams) {
           idempotencyKey,
           externalRef,
           description: hasUnlimited
-            ? `Overage settled for request ${request.id} on unlimited Service Miles plan`
-            : `Overage settled using ${requiredMiles} Service Miles`,
+            ? `${requiresDeliveryFeePayment ? 'Delivery fee' : 'Overage'} settled for request ${request.id} on unlimited Service Miles plan`
+            : `${requiresDeliveryFeePayment ? 'Delivery fee' : 'Overage'} settled using ${requiredMiles} Service Miles`,
         },
       });
+
+      const nextPaymentRequired = requiresDeliveryFeePayment
+        ? requiresOveragePayment
+        : false;
 
       await tx.deliveryRequest.update({
         where: { id: request.id },
         data: {
-          paymentRequired: false,
-          overageStatus: OverageStatus.PAID,
+          paymentRequired: nextPaymentRequired,
+          ...(requiresDeliveryFeePayment
+            ? {
+                deliveryFeePaid: true,
+              }
+            : {
+                overageStatus: OverageStatus.PAID,
+              }),
         },
       });
 
@@ -160,6 +231,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
 
       return {
         success: true as const,
+        settledType: requiresDeliveryFeePayment ? ('DELIVERY_FEE' as const) : ('OVERAGE' as const),
         settledWithMiles: requiredMiles,
         remainingMiles: refreshedWallet?.balanceMiles ?? wallet.balanceMiles,
       };

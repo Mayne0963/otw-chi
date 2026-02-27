@@ -36,6 +36,9 @@ export default function PayWithServiceMilesButton({
         error?: string;
         requiredMiles?: number;
         availableMiles?: number;
+        settledType?: 'DELIVERY_FEE' | 'OVERAGE';
+        settledWithMiles?: number;
+        alreadyPaid?: boolean;
       } | null;
 
       if (!response.ok) {
@@ -56,9 +59,24 @@ export default function PayWithServiceMilesButton({
         return;
       }
 
+      if (payload?.alreadyPaid) {
+        toast({
+          title: 'Already settled',
+          description: 'This request is already paid.',
+        });
+        router.push(`/requests/${deliveryRequestId}`);
+        router.refresh();
+        return;
+      }
+
+      const settledMiles =
+        typeof payload?.settledWithMiles === 'number' ? payload.settledWithMiles : requiredMiles;
+      const settledLabel =
+        payload?.settledType === 'DELIVERY_FEE' ? 'delivery fee' : 'overage balance';
+
       toast({
         title: 'Paid with Service Miles',
-        description: `Used ${requiredMiles} Service Miles. Dispatch is now unlocked.`,
+        description: `Used ${settledMiles} Service Miles to settle your ${settledLabel}.`,
       });
       router.push(`/requests/${deliveryRequestId}`);
       router.refresh();
