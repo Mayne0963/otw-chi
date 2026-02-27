@@ -31,6 +31,23 @@ type Base64StatusResponse = {
   uploadsAllowed?: boolean;
 };
 
+type PaymentPreference = 'INSTANT' | 'MONTHLY';
+
+type ServiceMilesWalletResponse = {
+  plan?: {
+    name?: string | null;
+  } | null;
+};
+
+function canChooseMonthlyByPlanName(planName: string | null | undefined): boolean {
+  const normalized = planName?.toUpperCase().trim() ?? '';
+  return (
+    normalized === 'OTW ELITE' ||
+    normalized === 'OTW BLACK' ||
+    normalized.startsWith('OTW BUSINESS')
+  );
+}
+
 function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
   const earthRadiusMiles = 3959;
@@ -67,6 +84,9 @@ export default function OrderPage() {
   const [isCheckingUploadStatus, setIsCheckingUploadStatus] = useState(false);
   const [base64Mode, setBase64Mode] = useState(false);
   const [uploadsAllowed, setUploadsAllowed] = useState(true);
+  const [paymentPreference, setPaymentPreference] = useState<PaymentPreference>('INSTANT');
+  const [canChooseMonthlyPayments, setCanChooseMonthlyPayments] = useState(false);
+  const [isCheckingPaymentPolicy, setIsCheckingPaymentPolicy] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const uploadsPaused = pickupPassEnabled && base64Mode && !uploadsAllowed;
@@ -139,6 +159,58 @@ export default function OrderPage() {
     };
   }, [pickupPassEnabled]);
 
+  useEffect(() => {
+    if (!isSignedIn) {
+      setCanChooseMonthlyPayments(false);
+      setPaymentPreference('INSTANT');
+      setIsCheckingPaymentPolicy(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+    setIsCheckingPaymentPolicy(true);
+
+    void fetch('/api/service-miles/wallet', {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'include',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Unable to load payment policy');
+        }
+        const payload = (await response.json().catch(() => ({}))) as ServiceMilesWalletResponse;
+        if (!isActive) {
+          return;
+        }
+
+        const monthlyAllowed = canChooseMonthlyByPlanName(payload?.plan?.name);
+        setCanChooseMonthlyPayments(monthlyAllowed);
+        if (!monthlyAllowed) {
+          setPaymentPreference('INSTANT');
+        }
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
+        setCanChooseMonthlyPayments(false);
+        setPaymentPreference('INSTANT');
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsCheckingPaymentPolicy(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [isSignedIn]);
+
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -184,6 +256,7 @@ export default function OrderPage() {
           dropoffInstructions: dropoffInstructions.trim() || undefined,
           pickupCodeType: pickupCodeType || undefined,
           pickupCodeText: pickupCodeText.trim() || undefined,
+          paymentPreference: canChooseMonthlyPayments ? paymentPreference : 'INSTANT',
         }),
       });
 
@@ -358,6 +431,31 @@ export default function OrderPage() {
                   <option value="CONCIERGE">Concierge</option>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Payment Timing</label>
+              {isCheckingPaymentPolicy ? (
+                <p className="text-xs text-white/60">Checking your plan payment options...</p>
+              ) : canChooseMonthlyPayments ? (
+                <div className="space-y-2">
+                  <Select
+                    value={paymentPreference}
+                    onChange={(event) => setPaymentPreference(event.target.value as PaymentPreference)}
+                    className="bg-black/30 text-white"
+                  >
+                    <option value="INSTANT">Pay instantly (required before dispatch)</option>
+                    <option value="MONTHLY">Monthly billing (use service miles first)</option>
+                  </Select>
+                  <p className="text-xs text-white/55">
+                    Elite, Black, and Business plans can choose instant payment or monthly billing.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-white/65">
+                  Your current plan requires instant payment for each request.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

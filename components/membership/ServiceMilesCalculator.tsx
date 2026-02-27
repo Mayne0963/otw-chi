@@ -48,6 +48,7 @@ type PreferredDriversResponse = {
 
 type SubmitResponse = {
   id: string;
+  paymentPreference?: 'INSTANT' | 'MONTHLY';
   paymentRequired?: boolean;
   deliveryPaymentRequired?: boolean;
   deliveryFeeCents?: number | null;
@@ -57,6 +58,17 @@ type SubmitResponse = {
   overageCents?: number;
   overageClientSecret?: string | null;
 };
+
+type PaymentPreference = 'INSTANT' | 'MONTHLY';
+
+function canChooseMonthlyByPlanName(planName: string | null | undefined): boolean {
+  const normalized = planName?.toUpperCase().trim() ?? '';
+  return (
+    normalized === 'OTW ELITE' ||
+    normalized === 'OTW BLACK' ||
+    normalized.startsWith('OTW BUSINESS')
+  );
+}
 
 async function fetchRouteMinutes(origin: GeocodedAddress, destination: GeocodedAddress): Promise<number> {
   const originParam = `${origin.latitude},${origin.longitude}`;
@@ -115,6 +127,7 @@ export function ServiceMilesCalculator() {
     amountCents: number;
     clientSecret: string;
   } | null>(null);
+  const [paymentPreference, setPaymentPreference] = useState<PaymentPreference>('INSTANT');
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +163,17 @@ export function ServiceMilesCalculator() {
     const name = wallet?.plan?.name?.toUpperCase() ?? '';
     return name.includes('OTW ELITE') || name.includes('OTW BLACK');
   }, [wallet?.plan?.name]);
+
+  const canChooseMonthlyPayments = useMemo(
+    () => canChooseMonthlyByPlanName(wallet?.plan?.name),
+    [wallet?.plan?.name],
+  );
+
+  useEffect(() => {
+    if (!canChooseMonthlyPayments) {
+      setPaymentPreference('INSTANT');
+    }
+  }, [canChooseMonthlyPayments]);
 
   useEffect(() => {
     if (!eligibleForPriority) {
@@ -297,6 +321,7 @@ export function ServiceMilesCalculator() {
           lockToPreferred: eligibleForPriority ? lockToPreferred : undefined,
           idempotencyKey,
           quoteToken: quote.quoteToken,
+          paymentPreference: canChooseMonthlyPayments ? paymentPreference : 'INSTANT',
         }),
       });
       const data = (await res.json().catch(() => ({}))) as SubmitResponse & { error?: unknown };
@@ -531,6 +556,24 @@ export function ServiceMilesCalculator() {
             />
             Peak hours
           </label>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Payment Timing</div>
+          {canChooseMonthlyPayments ? (
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={paymentPreference}
+              onChange={(event) => setPaymentPreference(event.target.value as PaymentPreference)}
+            >
+              <option value="INSTANT">Pay instantly (required before dispatch)</option>
+              <option value="MONTHLY">Monthly billing (use service miles first)</option>
+            </select>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              Your current plan requires instant payment for each request.
+            </div>
+          )}
         </div>
 
         {eligibleForPriority ? (

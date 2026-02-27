@@ -3,7 +3,12 @@ import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 import { OverageBillingMode } from '@prisma/client';
-import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
+import {
+  getActiveSubscription,
+  getMembershipBenefits,
+  getPlanCodeFromSubscription,
+  resolveDeliveryRequestPaymentPreference,
+} from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { submitDeliveryRequest } from '@/lib/delivery-submit';
 import {
@@ -39,6 +44,7 @@ const requestSchema = z.object({
   dropoffInstructions: z.string().max(2000).optional(),
   pickupCodeType: pickupCodeTypeSchema.optional(),
   pickupCodeText: z.string().max(255).optional(),
+  paymentPreference: z.enum(['INSTANT', 'MONTHLY']).optional(),
 });
 
 function normalizeOptionalString(value: string | undefined) {
@@ -68,15 +74,24 @@ export async function POST(req: Request) {
     const milesEstimate = Math.max(0, Math.round(miles));
 
     let activeSubscription = null;
-    let benefits = getMembershipBenefits(null);
+    let planCode = getPlanCodeFromSubscription(null);
+    let benefits = getMembershipBenefits(planCode);
     try {
       activeSubscription = await getActiveSubscription(user.id);
-      benefits = getMembershipBenefits(getPlanCodeFromSubscription(activeSubscription));
+      planCode = getPlanCodeFromSubscription(activeSubscription);
+      benefits = getMembershipBenefits(planCode);
     } catch {
-      benefits = getMembershipBenefits(null);
+      planCode = getPlanCodeFromSubscription(null);
+      benefits = getMembershipBenefits(planCode);
       activeSubscription = null;
     }
 
+    const billingMode = activeSubscription?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
+    const paymentPreference = resolveDeliveryRequestPaymentPreference(
+      planCode,
+      data.paymentPreference,
+    );
+    const useMilesByDefault = paymentPreference === 'MONTHLY';
     const hasActivePlan = Boolean(activeSubscription?.plan);
     const pricing = calculatePriceBreakdownCents({
       miles,
@@ -103,7 +118,7 @@ export async function POST(req: Request) {
         returnOrExchange: false,
         cashHandling: false,
         peakHours: false,
-        payWithMiles: true,
+        payWithMiles: useMilesByDefault,
         deliveryFeeCents: pricing.totalCents,
       });
 
@@ -144,6 +159,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         id: result.request.id,
+        paymentPreference,
         paymentRequired,
         deliveryPaymentRequired,
         deliveryFeeCents: result.request.deliveryFeeCents,
@@ -157,7 +173,6 @@ export async function POST(req: Request) {
       });
     }
 
-    const billingMode = activeSubscription?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
     const paymentRequired = shouldRequireDeliveryFeePayment({
       deliveryFeeCents: pricing.totalCents,
       deliveryFeePaid: false,
@@ -205,6 +220,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       id: request.id,
+      paymentPreference,
       paymentRequired,
       deliveryPaymentRequired: paymentRequired,
       deliveryClientSecret,

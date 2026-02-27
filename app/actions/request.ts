@@ -2,7 +2,12 @@
 
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
-import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscription } from '@/lib/membership';
+import {
+  getActiveSubscription,
+  getMembershipBenefits,
+  getPlanCodeFromSubscription,
+  resolveDeliveryRequestPaymentPreference,
+} from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest, submitDeliveryRequest } from '@/lib/delivery-submit';
 import {
@@ -134,6 +139,9 @@ export async function createRequestAction(formData: FormData) {
   const dropoff = String(formData.get('dropoff') ?? '');
   const st = String(formData.get('serviceType') ?? 'FOOD').toUpperCase();
   const notes = String(formData.get('notes') ?? '');
+  const paymentPreferenceInput = String(formData.get('paymentPreference') ?? '')
+    .trim()
+    .toUpperCase();
   const parseNumber = (value: FormDataEntryValue | null) => {
     if (typeof value !== 'string') return Number.NaN;
     const trimmed = value.trim();
@@ -178,6 +186,10 @@ export async function createRequestAction(formData: FormData) {
   const planCode = getPlanCodeFromSubscription(sub);
   const membershipBenefits = getMembershipBenefits(planCode);
   const billingMode = sub?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
+  const paymentPreference = resolveDeliveryRequestPaymentPreference(
+    planCode,
+    paymentPreferenceInput === 'MONTHLY' ? 'MONTHLY' : paymentPreferenceInput === 'INSTANT' ? 'INSTANT' : undefined,
+  );
 
   // Calculate cost with membership discount
   const pricing = calculatePriceBreakdownCents({
@@ -215,7 +227,7 @@ export async function createRequestAction(formData: FormData) {
         returnOrExchange: false,
         cashHandling: false,
         peakHours: false,
-        payWithMiles: true,
+        payWithMiles: paymentPreference === 'MONTHLY',
         deliveryFeeCents: pricing.totalCents,
       }).then((result) => result.request)
     : await prisma.deliveryRequest.create({

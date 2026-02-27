@@ -31,6 +31,8 @@ export type MembershipPlanCode =
   | 'OTW_BUSINESS'
   | null;
 
+export type DeliveryRequestPaymentPreference = 'INSTANT' | 'MONTHLY';
+
 export function getPlanCodeFromSubscription(
   sub: (MembershipSubscription & { plan: MembershipPlan | null }) | null
 ): MembershipPlanCode {
@@ -59,4 +61,19 @@ export function getMembershipBenefits(planCode: MembershipPlanCode) {
     default:
       return { discount: 0, nipMultiplier: 1.0, waiveServiceFee: false };
   }
+}
+
+export function canChooseMonthlyDeliveryPayments(planCode: MembershipPlanCode): boolean {
+  return planCode === 'OTW_ELITE' || planCode === 'OTW_BLACK' || planCode === 'OTW_BUSINESS';
+}
+
+export function resolveDeliveryRequestPaymentPreference(
+  planCode: MembershipPlanCode,
+  requestedPreference: DeliveryRequestPaymentPreference | null | undefined,
+): DeliveryRequestPaymentPreference {
+  if (!canChooseMonthlyDeliveryPayments(planCode)) {
+    return 'INSTANT';
+  }
+
+  return requestedPreference === 'MONTHLY' ? 'MONTHLY' : 'INSTANT';
 }
