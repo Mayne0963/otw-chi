@@ -216,6 +216,7 @@ export async function createRequestAction(formData: FormData) {
         cashHandling: false,
         peakHours: false,
         payWithMiles: true,
+        deliveryFeeCents: pricing.totalCents,
       }).then((result) => result.request)
     : await prisma.deliveryRequest.create({
         data: {

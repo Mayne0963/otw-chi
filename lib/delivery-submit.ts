@@ -346,7 +346,7 @@ export async function submitDeliveryRequest(
           receiptLocation: input.receiptLocation ?? null,
           receiptItems: input.receiptItems ?? Prisma.JsonNull,
           receiptAuthenticityScore: input.receiptAuthenticityScore ?? null,
-          deliveryFeeCents: input.deliveryFeeCents ?? null,
+          deliveryFeeCents: input.deliveryFeeCents ?? 0,
           deliveryCheckoutSessionId: input.deliveryCheckoutSessionId ?? null,
           couponCode: input.couponCode ?? null,
           discountCents: input.discountCents ?? null,

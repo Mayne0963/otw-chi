@@ -117,7 +117,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <div className="space-y-1 text-right">
                   <div className="text-sm font-medium text-white/60">Cost</div>
                   <div className="text-xl font-bold text-white">
-                    {request.deliveryFeeCents ? formatCurrency(request.deliveryFeeCents / 100) : '-'}
+                    {typeof request.deliveryFeeCents === 'number'
+                      ? formatCurrency(request.deliveryFeeCents / 100)
+                      : '-'}
                   </div>
                 </div>
               </div>

@@ -78,6 +78,12 @@ export async function POST(req: Request) {
     }
 
     const hasActivePlan = Boolean(activeSubscription?.plan);
+    const pricing = calculatePriceBreakdownCents({
+      miles,
+      serviceType: data.serviceType,
+      discount: benefits.discount,
+      waiveServiceFee: benefits.waiveServiceFee,
+    });
 
     if (hasActivePlan) {
       const travelMinutes = Math.max(5, Math.round(Math.max(0.1, miles) * ESTIMATED_MINUTES_PER_MILE));
@@ -98,6 +104,7 @@ export async function POST(req: Request) {
         cashHandling: false,
         peakHours: false,
         payWithMiles: true,
+        deliveryFeeCents: pricing.totalCents,
       });
 
       await prisma.deliveryRequest.update({
@@ -150,12 +157,6 @@ export async function POST(req: Request) {
       });
     }
 
-    const pricing = calculatePriceBreakdownCents({
-      miles,
-      serviceType: data.serviceType,
-      discount: benefits.discount,
-      waiveServiceFee: benefits.waiveServiceFee,
-    });
     const billingMode = activeSubscription?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
     const paymentRequired = shouldRequireDeliveryFeePayment({
       deliveryFeeCents: pricing.totalCents,
