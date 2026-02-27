@@ -67,5 +67,24 @@ describe('calculateServiceMiles', () => {
     expect(out.quoteBreakdown.discount.hoursInAdvance).toBeGreaterThanOrEqual(72);
     expect(out.serviceMilesDiscount).toBeLessThanOrEqual(2);
   });
-});
 
+  it('applies higher base weighting for premium service types', () => {
+    const food = calculateServiceMiles({
+      travelMinutes: 20,
+      serviceType: ServiceType.FOOD,
+      scheduledStart: new Date('2026-02-10T12:00:00.000Z'),
+      quotedAt: new Date('2026-02-10T11:00:00.000Z'),
+    });
+    const concierge = calculateServiceMiles({
+      travelMinutes: 20,
+      serviceType: ServiceType.CONCIERGE,
+      scheduledStart: new Date('2026-02-10T12:00:00.000Z'),
+      quotedAt: new Date('2026-02-10T11:00:00.000Z'),
+    });
+
+    expect(concierge.quoteBreakdown.serviceType.multiplier).toBeGreaterThan(
+      food.quoteBreakdown.serviceType.multiplier
+    );
+    expect(concierge.serviceMilesFinal).toBeGreaterThan(food.serviceMilesFinal);
+  });
+});

@@ -2,6 +2,22 @@ import type { ServiceType } from '@prisma/client';
 
 export const SERVICE_MILE_MINUTES = 5;
 
+const SERVICE_TYPE_MULTIPLIER: Record<ServiceType, number> = {
+  FOOD: 1,
+  STORE: 1.1,
+  FRAGILE: 1.25,
+  CONCIERGE: 1.4,
+  RIDE: 1,
+};
+
+const SERVICE_TYPE_MIN_FINAL_MILES: Record<ServiceType, number> = {
+  FOOD: 1,
+  STORE: 1,
+  FRAGILE: 2,
+  CONCIERGE: 2,
+  RIDE: 1,
+};
+
 export const SERVICE_MILES_RULES = {
   multiStopMilesPerExtraStop: 4,
   cashHandlingMiles: 12,
@@ -36,6 +52,11 @@ export interface ServiceMilesQuote {
   serviceMilesDiscount: number;
   serviceMilesFinal: number;
   quoteBreakdown: {
+    serviceType: {
+      multiplier: number;
+      baseMilesBeforeMultiplier: number;
+      minimumFinalMiles: number;
+    };
     baseMiles: number;
     adders: {
       waitTime: number;
@@ -71,9 +92,15 @@ export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMil
 
   const estimatedMinutes = travelMinutes;
 
-  const baseMiles = Math.max(
+  const baseMilesBeforeMultiplier = Math.max(
     1,
     Math.ceil(Math.max(0, estimatedMinutes) / SERVICE_MILE_MINUTES)
+  );
+  const serviceTypeMultiplier = SERVICE_TYPE_MULTIPLIER[input.serviceType] ?? 1;
+  const minimumFinalMiles = SERVICE_TYPE_MIN_FINAL_MILES[input.serviceType] ?? 1;
+  const baseMiles = Math.max(
+    1,
+    Math.ceil(baseMilesBeforeMultiplier * serviceTypeMultiplier)
   );
 
   const waitAdder = Math.ceil(Math.max(0, waitMinutes) / SERVICE_MILE_MINUTES);
@@ -116,8 +143,8 @@ export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMil
 
   let finalMiles = subtotal - discountAmount;
 
-  if (finalMiles < 1) {
-    finalMiles = 1;
+  if (finalMiles < minimumFinalMiles) {
+    finalMiles = minimumFinalMiles;
   }
 
   return {
@@ -127,6 +154,11 @@ export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMil
     serviceMilesDiscount: discountAmount,
     serviceMilesFinal: finalMiles,
     quoteBreakdown: {
+      serviceType: {
+        multiplier: serviceTypeMultiplier,
+        baseMilesBeforeMultiplier,
+        minimumFinalMiles,
+      },
       baseMiles,
       adders: {
         waitTime: waitAdder,

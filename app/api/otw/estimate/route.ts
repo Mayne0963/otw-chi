@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const miles = Number(formData.get('miles')) || 1;
-    const durationMinutes = Number(formData.get('durationMinutes')) || Math.ceil(miles * 3);
+    const durationMinutes = Number(formData.get('durationMinutes')) || Math.ceil(miles * 5);
     const waitMinutes = Number(formData.get('waitMinutes')) || 10;
     const serviceType = String(formData.get('serviceType') ?? 'FOOD').toUpperCase();
 
