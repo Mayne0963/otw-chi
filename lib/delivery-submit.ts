@@ -323,6 +323,14 @@ export async function submitDeliveryRequest(
         input.lockToPreferred && input.preferredDriverId
           ? new Date(quotedAt.getTime() + 30 * 60 * 1000).toISOString()
           : null;
+      const deliveryFeeCents = Number.isFinite(input.deliveryFeeCents)
+        ? Math.max(0, Math.round(Number(input.deliveryFeeCents)))
+        : 0;
+      const hasBillableDeliveryFee = deliveryFeeCents > 0;
+      const deliveryFeePaid =
+        typeof input.deliveryFeePaid === 'boolean'
+          ? input.deliveryFeePaid
+          : !hasBillableDeliveryFee;
       const quoteBreakdown = {
         ...quote.quoteBreakdown,
         dispatchPreferences: {
@@ -347,7 +355,7 @@ export async function submitDeliveryRequest(
           receiptLocation: input.receiptLocation ?? null,
           receiptItems: input.receiptItems ?? Prisma.JsonNull,
           receiptAuthenticityScore: input.receiptAuthenticityScore ?? null,
-          deliveryFeeCents: input.deliveryFeeCents ?? 0,
+          deliveryFeeCents,
           deliveryCheckoutSessionId: input.deliveryCheckoutSessionId ?? null,
           couponCode: input.couponCode ?? null,
           discountCents: input.discountCents ?? null,
@@ -368,7 +376,7 @@ export async function submitDeliveryRequest(
           overageStatus,
           paymentRequired,
           quoteBreakdown: quoteBreakdown as Prisma.InputJsonValue,
-          deliveryFeePaid: input.deliveryFeePaid ?? payWithMiles,
+          deliveryFeePaid,
           receiptVerifiedAt: input.receiptItems ? new Date() : null,
 
           waitMinutes: input.waitMinutes ?? 10,
