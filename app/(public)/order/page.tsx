@@ -453,7 +453,7 @@ export default function OrderPage() {
                 </div>
               ) : (
                 <p className="text-xs text-white/65">
-                  Your current plan requires instant payment for each request.
+                  Your current plan uses Service Miles first and requires instant settlement when miles run out.
                 </p>
               )}
             </div>

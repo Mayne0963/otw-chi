@@ -190,6 +190,8 @@ export async function createRequestAction(formData: FormData) {
     planCode,
     paymentPreferenceInput === 'MONTHLY' ? 'MONTHLY' : paymentPreferenceInput === 'INSTANT' ? 'INSTANT' : undefined,
   );
+  const overageBillingModeOverride =
+    paymentPreference === 'MONTHLY' ? OverageBillingMode.INVOICE : OverageBillingMode.INSTANT;
 
   // Calculate cost with membership discount
   const pricing = calculatePriceBreakdownCents({
@@ -227,7 +229,8 @@ export async function createRequestAction(formData: FormData) {
         returnOrExchange: false,
         cashHandling: false,
         peakHours: false,
-        payWithMiles: paymentPreference === 'MONTHLY',
+        payWithMiles: true,
+        overageBillingModeOverride,
         deliveryFeeCents: pricing.totalCents,
       }).then((result) => result.request)
     : await prisma.deliveryRequest.create({

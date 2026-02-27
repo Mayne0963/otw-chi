@@ -571,7 +571,7 @@ export function ServiceMilesCalculator() {
             </select>
           ) : (
             <div className="text-sm text-muted-foreground">
-              Your current plan requires instant payment for each request.
+              Your current plan uses Service Miles first and requires instant settlement when miles run out.
             </div>
           )}
         </div>

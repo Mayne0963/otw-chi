@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ServiceType } from '@prisma/client';
+import { OverageBillingMode, ServiceType } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { submitDeliveryRequest } from '@/lib/delivery-submit';
 import { verifyServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
@@ -57,6 +57,8 @@ export async function POST(req: Request) {
       parsed.data.paymentPreference ??
       (parsed.data.payWithMiles === true ? 'MONTHLY' : parsed.data.payWithMiles === false ? 'INSTANT' : undefined);
     const paymentPreference = resolveDeliveryRequestPaymentPreference(planCode, requestedPreference);
+    const overageBillingModeOverride =
+      paymentPreference === 'MONTHLY' ? OverageBillingMode.INVOICE : OverageBillingMode.INSTANT;
 
     const scheduledStart = new Date(parsed.data.scheduledStart);
     if (Number.isNaN(scheduledStart.getTime())) {
@@ -124,7 +126,8 @@ export async function POST(req: Request) {
       preferredDriverId: preferredDriverId ?? undefined,
       lockToPreferred,
       idempotencyKey: parsed.data.idempotencyKey,
-      payWithMiles: paymentPreference === 'MONTHLY',
+      payWithMiles: true,
+      overageBillingModeOverride,
       quotedAt,
     });
 

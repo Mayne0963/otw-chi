@@ -91,7 +91,8 @@ export async function POST(req: Request) {
       planCode,
       data.paymentPreference,
     );
-    const useMilesByDefault = paymentPreference === 'MONTHLY';
+    const overageBillingModeOverride =
+      paymentPreference === 'MONTHLY' ? OverageBillingMode.INVOICE : OverageBillingMode.INSTANT;
     const hasActivePlan = Boolean(activeSubscription?.plan);
     const pricing = calculatePriceBreakdownCents({
       miles,
@@ -118,7 +119,8 @@ export async function POST(req: Request) {
         returnOrExchange: false,
         cashHandling: false,
         peakHours: false,
-        payWithMiles: useMilesByDefault,
+        payWithMiles: true,
+        overageBillingModeOverride,
         deliveryFeeCents: pricing.totalCents,
       });
 

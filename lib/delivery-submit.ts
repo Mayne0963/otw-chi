@@ -35,6 +35,7 @@ export interface SubmitDeliveryRequestInput {
   lockToPreferred?: boolean;
   idempotencyKey?: string;
   payWithMiles?: boolean;
+  overageBillingModeOverride?: OverageBillingMode;
 
   // New fields for full order support
   restaurantName?: string;
@@ -254,7 +255,7 @@ export async function submitDeliveryRequest(
       let invoicePeriodId: string | null = null;
 
       if (payWithMiles) {
-        overageBillingMode = plan.overageBillingMode;
+        overageBillingMode = input.overageBillingModeOverride ?? plan.overageBillingMode;
 
         const availableMiles = isUnlimited ? requiredMiles : Math.max(0, wallet.balanceMiles);
         const overage = computeOverage({
