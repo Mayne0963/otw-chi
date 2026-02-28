@@ -11,11 +11,11 @@ const SERVICE_TYPE_MULTIPLIER: Record<ServiceType, number> = {
 };
 
 const SERVICE_TYPE_MIN_FINAL_MILES: Record<ServiceType, number> = {
-  FOOD: 1,
-  STORE: 1,
-  FRAGILE: 2,
-  CONCIERGE: 2,
-  RIDE: 1,
+  FOOD: 2,
+  STORE: 2,
+  FRAGILE: 3,
+  CONCIERGE: 4,
+  RIDE: 2,
 };
 
 export const SERVICE_MILES_RULES = {

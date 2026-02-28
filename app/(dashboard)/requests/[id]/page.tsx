@@ -121,6 +121,11 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                       ? formatCurrency(request.deliveryFeeCents)
                       : '-'}
                   </div>
+                  {typeof request.serviceMilesPaid === 'number' && request.serviceMilesPaid > 0 ? (
+                    <div className="text-xs font-medium text-otwGold">
+                      + {request.serviceMilesPaid.toLocaleString()} Service Miles paid
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

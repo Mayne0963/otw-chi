@@ -29,7 +29,7 @@ const PRICING_TABLE = {
 
 type ServiceType = keyof typeof PRICING_TABLE;
 
-const DRIVER_PAYOUT_RATE = 0.8;
+const DRIVER_PAYOUT_RATE = 0.5;
 
 export function estimatePrice(params: {
   miles: number;

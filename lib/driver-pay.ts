@@ -14,6 +14,8 @@ const DEFAULT_5STAR_BONUS_CENTS: Record<DriverTier, number> = {
   CONCIERGE: 1000,
 };
 
+const DEFAULT_DRIVER_REVENUE_SHARE_RATE = 0.5;
+
 function normalizeCents(value: unknown) {
   if (typeof value === 'number') return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
   return 0;
@@ -23,6 +25,9 @@ export function calculateDriverPayCents(input: {
   driverTier: DriverTier;
   activeMinutes: number;
   tipsCents: number;
+  serviceMiles?: number;
+  deliveryFeeCents?: number;
+  revenueShareRate?: number;
   planName?: string | null;
   hourlyRateCents?: number;
   onTimeEligible?: boolean;
@@ -50,6 +55,12 @@ export function calculateDriverPayCents(input: {
   const hourlyRateCents = Math.max(0, Math.trunc(input.hourlyRateCents ?? 0)) || fallbackHourly;
 
   const hourlyPayCents = Math.ceil((activeMinutes * hourlyRateCents) / 60);
+  const serviceMiles = Math.max(0, Math.trunc(input.serviceMiles ?? 0));
+  const deliveryFeeCents = normalizeCents(input.deliveryFeeCents);
+  const revenueShareRate = Math.max(0, Math.min(1, input.revenueShareRate ?? DEFAULT_DRIVER_REVENUE_SHARE_RATE));
+  const revenueSharePayCents =
+    deliveryFeeCents > 0 ? Math.max(0, Math.round(deliveryFeeCents * revenueShareRate)) : 0;
+  const basePayCents = deliveryFeeCents > 0 ? revenueSharePayCents : hourlyPayCents;
 
   const fallback5StarBonusCents = DEFAULT_5STAR_BONUS_CENTS[input.driverTier] ?? 0;
   const bonus5StarCents = normalizeCents(input.bonus5StarCents) || fallback5StarBonusCents;
@@ -57,13 +68,14 @@ export function calculateDriverPayCents(input: {
   const performanceBonusCents = bonusPayCents;
   const speedBonusCents = 0;
 
-  const milePayCents = 0;
+  const milePayCents = basePayCents;
   const waitBonusCents = 0;
   const cashBonusCents = 0;
   const businessBonusCents = 0;
-  const rateCentsPerServiceMile = 0;
+  const rateCentsPerServiceMile =
+    serviceMiles > 0 ? Math.max(0, Math.round(basePayCents / serviceMiles)) : 0;
 
-  const totalPayCents = hourlyPayCents + bonusPayCents + speedBonusCents + tipsCents;
+  const totalPayCents = basePayCents + bonusPayCents + speedBonusCents + tipsCents;
 
   return {
     milePayCents,

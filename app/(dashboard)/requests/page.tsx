@@ -82,7 +82,18 @@ export default async function RequestsPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-white">
-                        {typeof request.costCents === 'number' ? formatCurrency(request.costCents) : '-'}
+                        {typeof request.costCents === 'number' ? (
+                          <div className="space-y-0.5">
+                            <div>{formatCurrency(request.costCents)}</div>
+                            {typeof request.serviceMilesPaid === 'number' && request.serviceMilesPaid > 0 ? (
+                              <div className="text-[11px] font-medium text-otwGold">
+                                + {request.serviceMilesPaid.toLocaleString()} SM
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
                       </TableCell>
                       <TableCell className="text-white/60 text-xs">
                         {formatDate(request.createdAt)}

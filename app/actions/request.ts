@@ -19,7 +19,12 @@ import { closeRequestChat } from '@/lib/request-chat';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { DeliveryRequestStatus, OverageBillingMode, ServiceType } from '@prisma/client';
+import {
+  DeliveryRequestStatus,
+  OverageBillingMode,
+  ServiceMilesTransactionType,
+  ServiceType,
+} from '@prisma/client';
 
 export async function cancelOrderAction(orderId: string) {
   const user = await getCurrentUser();
@@ -78,6 +83,7 @@ export type UserRequestListItem = {
   dropoff: string;
   status: DeliveryRequestStatus | 'CANCELLED';
   costCents: number | null;
+  serviceMilesPaid: number | null;
   createdAt: Date;
   href: string;
 };
@@ -322,6 +328,31 @@ export async function getUserRequests() {
     },
   });
 
+  const orderIds = orders.map((order) => order.id);
+  const serviceMilesPaidByRequestId = new Map<string, number>();
+
+  if (orderIds.length > 0) {
+    const deductedMiles = await prisma.serviceMilesLedger.groupBy({
+      by: ['deliveryRequestId'],
+      where: {
+        deliveryRequestId: { in: orderIds },
+        transactionType: ServiceMilesTransactionType.DEDUCT_REQUEST,
+        amount: { lt: 0 },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    for (const row of deductedMiles) {
+      if (!row.deliveryRequestId) continue;
+      const summed = typeof row._sum.amount === 'number' ? row._sum.amount : 0;
+      if (summed < 0) {
+        serviceMilesPaidByRequestId.set(row.deliveryRequestId, Math.abs(Math.trunc(summed)));
+      }
+    }
+  }
+
   const computeOrderTotalCents = (order: (typeof orders)[number]) => {
     const deliveryFee = typeof order.deliveryFeeCents === 'number' ? order.deliveryFeeCents : 0;
     const discount = typeof order.discountCents === 'number' ? order.discountCents : 0;
@@ -338,6 +369,7 @@ export async function getUserRequests() {
     dropoff: order.dropoffAddress,
     status: order.status === DeliveryRequestStatus.CANCELED ? 'CANCELLED' : order.status,
     costCents: computeOrderTotalCents(order),
+    serviceMilesPaid: serviceMilesPaidByRequestId.get(order.id) ?? null,
     createdAt: order.createdAt,
     href: `/requests/${order.id}`,
   })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -381,5 +413,24 @@ export async function getRequest(id: string) {
     request.pickupPassExpiresAt = null;
   }
 
-  return request;
+  const deductedMiles = await prisma.serviceMilesLedger.aggregate({
+    where: {
+      deliveryRequestId: request.id,
+      transactionType: ServiceMilesTransactionType.DEDUCT_REQUEST,
+      amount: { lt: 0 },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+
+  const serviceMilesPaid =
+    typeof deductedMiles._sum.amount === 'number' && deductedMiles._sum.amount < 0
+      ? Math.abs(Math.trunc(deductedMiles._sum.amount))
+      : null;
+
+  return {
+    ...request,
+    serviceMilesPaid,
+  };
 }

@@ -15,7 +15,7 @@ describe('calculateDriverPayCents', () => {
     });
 
     expect(result).toEqual({
-      milePayCents: 0,
+      milePayCents: 1800,
       waitBonusCents: 0,
       cashBonusCents: 0,
       businessBonusCents: 0,
@@ -69,7 +69,7 @@ describe('calculateDriverPayCents', () => {
     });
 
     expect(result).toEqual({
-      milePayCents: 0,
+      milePayCents: 1050,
       waitBonusCents: 0,
       cashBonusCents: 0,
       businessBonusCents: 0,
@@ -81,6 +81,34 @@ describe('calculateDriverPayCents', () => {
       totalPayCents: 1850,
       rateCentsPerServiceMile: 0,
       hourlyRateCents: 2100,
+    });
+  });
+
+  it('targets roughly 50% payout from delivery fee when provided', () => {
+    const result = calculateDriverPayCents({
+      driverTier: DriverTier.STANDARD,
+      activeMinutes: 15,
+      tipsCents: 0,
+      serviceMiles: 4,
+      deliveryFeeCents: 699,
+      bonusEligible: false,
+      onTimeEligible: false,
+      earlyEligible: false,
+    });
+
+    expect(result).toEqual({
+      milePayCents: 350,
+      waitBonusCents: 0,
+      cashBonusCents: 0,
+      businessBonusCents: 0,
+      bonusPayCents: 0,
+      performanceBonusCents: 0,
+      speedBonusCents: 0,
+      hourlyPayCents: 450,
+      tipsCents: 0,
+      totalPayCents: 350,
+      rateCentsPerServiceMile: 88,
+      hourlyRateCents: 1800,
     });
   });
 });

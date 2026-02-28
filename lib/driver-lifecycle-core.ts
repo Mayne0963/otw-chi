@@ -276,6 +276,8 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       driverTier: driver.tierLevel,
       activeMinutes,
       tipsCents,
+      serviceMiles,
+      deliveryFeeCents: request.deliveryFeeCents ?? undefined,
       bonusEligible,
       planName,
       hourlyRateCents: driver.hourlyRateCents > 0 ? driver.hourlyRateCents : undefined,

@@ -87,4 +87,23 @@ describe('calculateServiceMiles', () => {
     );
     expect(concierge.serviceMilesFinal).toBeGreaterThan(food.serviceMilesFinal);
   });
+
+  it('enforces updated minimum service mile floors by service type', () => {
+    const food = calculateServiceMiles({
+      travelMinutes: 0,
+      serviceType: ServiceType.FOOD,
+      scheduledStart: new Date('2026-02-10T12:00:00.000Z'),
+      quotedAt: new Date('2026-02-10T11:59:00.000Z'),
+    });
+
+    const concierge = calculateServiceMiles({
+      travelMinutes: 0,
+      serviceType: ServiceType.CONCIERGE,
+      scheduledStart: new Date('2026-02-10T12:00:00.000Z'),
+      quotedAt: new Date('2026-02-10T11:59:00.000Z'),
+    });
+
+    expect(food.serviceMilesFinal).toBe(2);
+    expect(concierge.serviceMilesFinal).toBe(4);
+  });
 });
