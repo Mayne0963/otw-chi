@@ -95,12 +95,16 @@ export default async function DeliveryFeePaymentPage({
   const deliveryAmountCents = Number.isFinite(request.deliveryFeeCents)
     ? Math.max(0, Math.round(Number(request.deliveryFeeCents)))
     : 0;
+  const hasOutstandingDeliveryFee = deliveryAmountCents > 0 && request.deliveryFeePaid !== true;
 
-  const requiresDeliveryPayment = shouldRequireDeliveryFeePayment({
-    deliveryFeeCents: request.deliveryFeeCents,
-    deliveryFeePaid: request.deliveryFeePaid,
-    billingMode: request.overageBillingMode,
-  });
+  const requiresDeliveryPayment =
+    hasOutstandingDeliveryFee &&
+    (request.paymentRequired ||
+      shouldRequireDeliveryFeePayment({
+        deliveryFeeCents: request.deliveryFeeCents,
+        deliveryFeePaid: request.deliveryFeePaid,
+        billingMode: request.overageBillingMode,
+      }));
 
   const overageAmountCents = Number.isFinite(request.overageCents)
     ? Math.max(0, Math.round(Number(request.overageCents)))
@@ -114,7 +118,7 @@ export default async function DeliveryFeePaymentPage({
     overageAmountCents > 0;
 
   if (!requiresDeliveryPayment && !requiresOveragePayment) {
-    redirect(`/requests/${request.id}`);
+    redirect(`/request/${request.id}`);
   }
 
   const amountCents = requiresDeliveryPayment ? deliveryAmountCents : overageAmountCents;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { OverageBillingMode, ServiceType } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth/roles';
+import { getPrisma } from '@/lib/db';
 import { submitDeliveryRequest } from '@/lib/delivery-submit';
 import { verifyServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
 import {
@@ -11,7 +12,6 @@ import {
 } from '@/lib/membership';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
-  shouldRequireDeliveryFeePayment,
 } from '@/lib/delivery-payment';
 
 export const runtime = 'nodejs';
@@ -131,11 +131,13 @@ export async function POST(req: Request) {
       quotedAt,
     });
 
-    const deliveryPaymentRequired = shouldRequireDeliveryFeePayment({
-      deliveryFeeCents: result.request.deliveryFeeCents,
-      deliveryFeePaid: result.request.deliveryFeePaid,
-      billingMode: result.request.overageBillingMode,
-    });
+    const deliveryFeeCents = Number.isFinite(result.request.deliveryFeeCents)
+      ? Math.max(0, Math.round(Number(result.request.deliveryFeeCents)))
+      : 0;
+    const deliveryPaymentRequired =
+      paymentPreference !== 'MONTHLY' &&
+      deliveryFeeCents > 0 &&
+      result.request.deliveryFeePaid !== true;
 
     let deliveryPaymentIntentId = result.request.deliveryPaymentIntentId ?? null;
     let deliveryClientSecret: string | null = null;
@@ -157,6 +159,14 @@ export async function POST(req: Request) {
     }
 
     const paymentRequired = result.paymentRequired || deliveryPaymentRequired;
+
+    if (result.request.paymentRequired !== paymentRequired) {
+      const prisma = getPrisma();
+      await prisma.deliveryRequest.update({
+        where: { id: result.request.id },
+        data: { paymentRequired },
+      });
+    }
 
     return NextResponse.json(
       {

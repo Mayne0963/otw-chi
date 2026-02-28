@@ -263,6 +263,7 @@ export default function OrderPage() {
       const createPayload = (await createResponse.json().catch(() => null)) as {
         id?: string;
         paymentRequired?: boolean;
+        deliveryPaymentRequired?: boolean;
         deliveryClientSecret?: string | null;
         deliveryPaymentIntentId?: string | null;
         error?: string;
@@ -280,6 +281,9 @@ export default function OrderPage() {
       }
 
       const deliveryRequestId = createPayload.id;
+      const requiresPayment = Boolean(
+        createPayload.paymentRequired || createPayload.deliveryPaymentRequired,
+      );
 
       if (pickupPassEnabled && pickupPassFile) {
         if (uploadsPaused) {
@@ -317,13 +321,13 @@ export default function OrderPage() {
       }
 
       toast({
-        title: createPayload.paymentRequired ? 'Request created' : 'Request submitted',
-        description: createPayload.paymentRequired
+        title: requiresPayment ? 'Request created' : 'Request submitted',
+        description: requiresPayment
           ? 'Complete payment to unlock dispatch for this request.'
           : 'Your delivery request has been created.',
       });
 
-      router.push(createPayload.paymentRequired ? `/pay/${deliveryRequestId}` : `/requests/${deliveryRequestId}`);
+      router.push(requiresPayment ? `/pay/${deliveryRequestId}` : `/request/${deliveryRequestId}`);
     } catch (error) {
       toast({
         title: 'Unable to submit request',

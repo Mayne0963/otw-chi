@@ -66,15 +66,21 @@ export async function POST(req: Request) {
       });
     }
 
-    if (!Number.isInteger(request.deliveryFeeCents) || (request.deliveryFeeCents ?? 0) <= 0) {
+    const amountCents = Number.isFinite(request.deliveryFeeCents)
+      ? Math.max(0, Math.round(Number(request.deliveryFeeCents)))
+      : 0;
+
+    if (amountCents <= 0) {
       return NextResponse.json({ error: 'Invalid delivery fee amount' }, { status: 400 });
     }
 
-    const requiresPayment = shouldRequireDeliveryFeePayment({
-      deliveryFeeCents: request.deliveryFeeCents,
-      deliveryFeePaid: request.deliveryFeePaid,
-      billingMode: request.overageBillingMode,
-    });
+    const requiresPayment =
+      request.paymentRequired ||
+      shouldRequireDeliveryFeePayment({
+        deliveryFeeCents: request.deliveryFeeCents,
+        deliveryFeePaid: request.deliveryFeePaid,
+        billingMode: request.overageBillingMode,
+      });
 
     if (!requiresPayment) {
       return NextResponse.json(

@@ -13,7 +13,6 @@ import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { submitDeliveryRequest } from '@/lib/delivery-submit';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
-  shouldRequireDeliveryFeePayment,
 } from '@/lib/delivery-payment';
 
 export const runtime = 'nodejs';
@@ -135,11 +134,13 @@ export async function POST(req: Request) {
         },
       });
 
-      const deliveryPaymentRequired = shouldRequireDeliveryFeePayment({
-        deliveryFeeCents: result.request.deliveryFeeCents,
-        deliveryFeePaid: result.request.deliveryFeePaid,
-        billingMode: result.request.overageBillingMode,
-      });
+      const deliveryFeeCents = Number.isFinite(result.request.deliveryFeeCents)
+        ? Math.max(0, Math.round(Number(result.request.deliveryFeeCents)))
+        : 0;
+      const deliveryPaymentRequired =
+        paymentPreference !== 'MONTHLY' &&
+        deliveryFeeCents > 0 &&
+        result.request.deliveryFeePaid !== true;
 
       let deliveryPaymentIntentId: string | null = result.request.deliveryPaymentIntentId ?? null;
       let deliveryClientSecret: string | null = null;
@@ -159,6 +160,13 @@ export async function POST(req: Request) {
 
       const paymentRequired = result.paymentRequired || deliveryPaymentRequired;
 
+      if (result.request.paymentRequired !== paymentRequired) {
+        await prisma.deliveryRequest.update({
+          where: { id: result.request.id },
+          data: { paymentRequired },
+        });
+      }
+
       return NextResponse.json({
         id: result.request.id,
         paymentPreference,
@@ -175,11 +183,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const paymentRequired = shouldRequireDeliveryFeePayment({
-      deliveryFeeCents: pricing.totalCents,
-      deliveryFeePaid: false,
-      billingMode,
-    });
+    const paymentRequired = paymentPreference !== 'MONTHLY' && pricing.totalCents > 0;
     const hasBillableDeliveryFee = pricing.totalCents > 0;
     const deliveryFeePaid = hasBillableDeliveryFee ? false : true;
 
@@ -225,6 +229,7 @@ export async function POST(req: Request) {
       paymentPreference,
       paymentRequired,
       deliveryPaymentRequired: paymentRequired,
+      deliveryFeeCents: request.deliveryFeeCents,
       deliveryClientSecret,
       deliveryPaymentIntentId,
       overageMiles: request.overageMiles,

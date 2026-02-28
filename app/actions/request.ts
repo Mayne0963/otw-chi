@@ -10,10 +10,7 @@ import {
 } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest, submitDeliveryRequest } from '@/lib/delivery-submit';
-import {
-  ensureDeliveryFeePaymentIntentForRequest,
-  shouldRequireDeliveryFeePayment,
-} from '@/lib/delivery-payment';
+import { ensureDeliveryFeePaymentIntentForRequest } from '@/lib/delivery-payment';
 import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import { closeRequestChat } from '@/lib/request-chat';
 import { revalidatePath } from 'next/cache';
@@ -207,11 +204,7 @@ export async function createRequestAction(formData: FormData) {
     waiveServiceFee: membershipBenefits.waiveServiceFee,
   });
   const finalPriceDollars = pricing.discountedBaseCents / 100;
-  const paymentRequired = shouldRequireDeliveryFeePayment({
-    deliveryFeeCents: pricing.totalCents,
-    deliveryFeePaid: false,
-    billingMode,
-  });
+  const paymentRequired = paymentPreference !== 'MONTHLY' && pricing.totalCents > 0;
   const hasBillableDeliveryFee = pricing.totalCents > 0;
   const deliveryFeePaid = hasBillableDeliveryFee ? false : true;
 
@@ -259,14 +252,25 @@ export async function createRequestAction(formData: FormData) {
     ? Boolean(created.paymentRequired)
     : paymentRequired;
 
-  const deliveryPaymentRequired = shouldRequireDeliveryFeePayment({
-    deliveryFeeCents: created.deliveryFeeCents,
-    deliveryFeePaid: created.deliveryFeePaid,
-    billingMode: created.overageBillingMode,
-  });
+  const createdDeliveryFeeCents = Number.isFinite(created.deliveryFeeCents)
+    ? Math.max(0, Math.round(Number(created.deliveryFeeCents)))
+    : 0;
+  const deliveryPaymentRequired =
+    paymentPreference !== 'MONTHLY' &&
+    createdDeliveryFeeCents > 0 &&
+    created.deliveryFeePaid !== true;
 
   if (deliveryPaymentRequired) {
     effectivePaymentRequired = true;
+  }
+
+  if (created.paymentRequired !== effectivePaymentRequired) {
+    await prisma.deliveryRequest.update({
+      where: { id: created.id },
+      data: {
+        paymentRequired: effectivePaymentRequired,
+      },
+    });
   }
 
   if (deliveryPaymentRequired) {
@@ -303,7 +307,7 @@ export async function createRequestAction(formData: FormData) {
   revalidatePath('/requests');
   revalidatePath('/dashboard');
   
-  redirect(effectivePaymentRequired ? `/pay/${created.id}` : `/requests/${created.id}`);
+  redirect(effectivePaymentRequired ? `/pay/${created.id}` : `/request/${created.id}`);
 }
 
 export async function getUserRequests() {

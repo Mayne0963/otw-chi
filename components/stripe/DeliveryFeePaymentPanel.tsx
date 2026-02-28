@@ -58,7 +58,7 @@ export default function DeliveryFeePaymentPanel({
           title: 'Already paid',
           description: 'This request has already been paid.',
         });
-        router.replace(`/requests/${deliveryRequestId}`);
+        router.replace(`/request/${deliveryRequestId}`);
         return;
       }
 
@@ -114,7 +114,7 @@ export default function DeliveryFeePaymentPanel({
           title: 'Payment successful',
           description: 'Your request is now ready for dispatch.',
         });
-        router.push(`/requests/${deliveryRequestId}`);
+        router.push(`/request/${deliveryRequestId}`);
       }}
       onError={(paymentError) => {
         toast({
