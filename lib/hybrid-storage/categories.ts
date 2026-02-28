@@ -12,7 +12,7 @@ export type CategorySpec = {
   key: HybridCategoryKey;
   realtime: boolean;
   description: string;
-  storage: "localStorage";
+  storage: "sessionStorage";
   policy: RefreshPolicy;
   conflict: ConflictStrategy;
 };
@@ -22,7 +22,7 @@ export const HYBRID_CATEGORIES: Record<HybridCategoryKey, CategorySpec> = {
     key: "membershipPlansPublic",
     realtime: false,
     description: "Public membership plan catalog used for UI display and reference.",
-    storage: "localStorage",
+    storage: "sessionStorage",
     policy: {
       ttlMs: 6 * 60 * 60 * 1000,
       maxStaleMs: 7 * 24 * 60 * 60 * 1000,
@@ -34,7 +34,7 @@ export const HYBRID_CATEGORIES: Record<HybridCategoryKey, CategorySpec> = {
     key: "citiesZones",
     realtime: false,
     description: "Cities and zones reference data for selectors and display.",
-    storage: "localStorage",
+    storage: "sessionStorage",
     policy: {
       ttlMs: 24 * 60 * 60 * 1000,
       maxStaleMs: 30 * 24 * 60 * 60 * 1000,

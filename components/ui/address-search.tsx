@@ -27,6 +27,23 @@ type LocationPreference = "allow" | "deny" | "unknown";
 
 const LOCATION_PREF_KEY = "otw-location-permission-pref-v1";
 
+const readPreferenceStorage = () => {
+  if (typeof window === "undefined") return null;
+  const sessionValue = window.sessionStorage.getItem(LOCATION_PREF_KEY);
+  if (sessionValue !== null) return sessionValue;
+  const legacyLocalValue = window.localStorage.getItem(LOCATION_PREF_KEY);
+  if (legacyLocalValue === null) return null;
+  window.sessionStorage.setItem(LOCATION_PREF_KEY, legacyLocalValue);
+  window.localStorage.removeItem(LOCATION_PREF_KEY);
+  return legacyLocalValue;
+};
+
+const writePreferenceStorage = (value: string) => {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(LOCATION_PREF_KEY, value);
+  window.localStorage.removeItem(LOCATION_PREF_KEY);
+};
+
 const getPlatformHint = (): "ios" | "android" | "other" => {
   if (typeof navigator === "undefined") return "other";
   const ua = navigator.userAgent || "";
@@ -36,9 +53,8 @@ const getPlatformHint = (): "ios" | "android" | "other" => {
 };
 
 const readPreference = (): LocationPreference => {
-  if (typeof window === "undefined") return "unknown";
   try {
-    const raw = window.localStorage.getItem(LOCATION_PREF_KEY);
+    const raw = readPreferenceStorage();
     if (!raw) return "unknown";
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object") return "unknown";
@@ -50,12 +66,8 @@ const readPreference = (): LocationPreference => {
 };
 
 const writePreference = (choice: Exclude<LocationPreference, "unknown">) => {
-  if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(
-      LOCATION_PREF_KEY,
-      JSON.stringify({ choice, updatedAt: new Date().toISOString() })
-    );
+    writePreferenceStorage(JSON.stringify({ choice, updatedAt: new Date().toISOString() }));
   } catch {
     // ignore
   }

@@ -40,6 +40,29 @@ function shouldSkipReloadForVersion(version: string): boolean {
   }
 }
 
+function readStoredVersion(): string | null {
+  try {
+    const sessionValue = window.sessionStorage.getItem(VERSION_STORAGE_KEY);
+    if (sessionValue) return sessionValue;
+    const legacyLocalValue = window.localStorage.getItem(VERSION_STORAGE_KEY);
+    if (!legacyLocalValue) return null;
+    window.sessionStorage.setItem(VERSION_STORAGE_KEY, legacyLocalValue);
+    window.localStorage.removeItem(VERSION_STORAGE_KEY);
+    return legacyLocalValue;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredVersion(version: string) {
+  try {
+    window.sessionStorage.setItem(VERSION_STORAGE_KEY, version);
+    window.localStorage.removeItem(VERSION_STORAGE_KEY);
+  } catch {
+    // ignore storage failures
+  }
+}
+
 async function refreshServiceWorkersAndCaches(): Promise<void> {
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
@@ -74,29 +97,16 @@ export default function DeploymentUpdateChecker() {
       const version = await fetchDeploymentVersion(controller.signal);
       if (!active || !version) return;
 
-      let previousVersion: string | null = null;
-      try {
-        previousVersion = window.localStorage.getItem(VERSION_STORAGE_KEY);
-      } catch {
-        previousVersion = null;
-      }
+      const previousVersion = readStoredVersion();
 
       if (!previousVersion) {
-        try {
-          window.localStorage.setItem(VERSION_STORAGE_KEY, version);
-        } catch {
-          // ignore storage failures
-        }
+        writeStoredVersion(version);
         return;
       }
 
       if (previousVersion === version) return;
 
-      try {
-        window.localStorage.setItem(VERSION_STORAGE_KEY, version);
-      } catch {
-        // ignore storage failures
-      }
+      writeStoredVersion(version);
 
       if (shouldSkipReloadForVersion(version)) return;
 

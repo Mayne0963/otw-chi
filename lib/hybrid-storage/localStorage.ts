@@ -17,6 +17,26 @@ function storageKey(key: HybridCategoryKey) {
   return `${STORAGE_PREFIX}${key}`;
 }
 
+function readStorageValue(key: string): string | null {
+  const sessionValue = window.sessionStorage.getItem(key);
+  if (sessionValue !== null) return sessionValue;
+  const legacyLocalValue = window.localStorage.getItem(key);
+  if (legacyLocalValue === null) return null;
+  window.sessionStorage.setItem(key, legacyLocalValue);
+  window.localStorage.removeItem(key);
+  return legacyLocalValue;
+}
+
+function writeStorageValue(key: string, value: string) {
+  window.sessionStorage.setItem(key, value);
+  window.localStorage.removeItem(key);
+}
+
+function removeStorageValue(key: string) {
+  window.sessionStorage.removeItem(key);
+  window.localStorage.removeItem(key);
+}
+
 function safeParseJson(value: string) {
   try {
     return JSON.parse(value) as unknown;
@@ -37,7 +57,7 @@ export type CacheReadResult<T> =
 export function readCacheEnvelopeResult<T>(key: HybridCategoryKey): CacheReadResult<T> {
   if (typeof window === "undefined") return { status: "missing", envelope: null };
   try {
-    const raw = window.localStorage.getItem(storageKey(key));
+    const raw = readStorageValue(storageKey(key));
     if (!raw) return { status: "missing", envelope: null };
     const parsed = safeParseJson(raw);
     if (!parsed || typeof parsed !== "object") return { status: "corrupt", envelope: null };
@@ -72,10 +92,10 @@ export function writeCacheEnvelope<T>(envelope: Omit<CacheEnvelope<T>, "schema" 
     ...envelope,
     checksum,
   };
-  window.localStorage.setItem(storageKey(envelope.key), JSON.stringify(full));
+  writeStorageValue(storageKey(envelope.key), JSON.stringify(full));
 }
 
 export function clearCacheEnvelope(key: HybridCategoryKey) {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(storageKey(key));
+  removeStorageValue(storageKey(key));
 }

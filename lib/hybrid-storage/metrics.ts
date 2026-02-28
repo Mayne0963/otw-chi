@@ -20,14 +20,29 @@ function safeParseJson(value: string) {
   }
 }
 
+function readMetricsStorageValue(): string | null {
+  const sessionValue = window.sessionStorage.getItem(METRICS_KEY);
+  if (sessionValue !== null) return sessionValue;
+  const legacyLocalValue = window.localStorage.getItem(METRICS_KEY);
+  if (legacyLocalValue === null) return null;
+  window.sessionStorage.setItem(METRICS_KEY, legacyLocalValue);
+  window.localStorage.removeItem(METRICS_KEY);
+  return legacyLocalValue;
+}
+
+function writeMetricsStorageValue(value: string) {
+  window.sessionStorage.setItem(METRICS_KEY, value);
+  window.localStorage.removeItem(METRICS_KEY);
+}
+
 export function recordHybridMetric(metric: HybridSyncMetric) {
   if (typeof window === "undefined") return;
   try {
-    const raw = window.localStorage.getItem(METRICS_KEY);
+    const raw = readMetricsStorageValue();
     const parsed = raw ? safeParseJson(raw) : null;
     const base = Array.isArray(parsed) ? (parsed as HybridSyncMetric[]) : [];
     const next = [...base, metric].slice(-200);
-    window.localStorage.setItem(METRICS_KEY, JSON.stringify(next));
+    writeMetricsStorageValue(JSON.stringify(next));
   } catch {
     return;
   }
@@ -36,7 +51,7 @@ export function recordHybridMetric(metric: HybridSyncMetric) {
 export function readHybridMetrics() {
   if (typeof window === "undefined") return [] as HybridSyncMetric[];
   try {
-    const raw = window.localStorage.getItem(METRICS_KEY);
+    const raw = readMetricsStorageValue();
     if (!raw) return [];
     const parsed = safeParseJson(raw);
     return Array.isArray(parsed) ? (parsed as HybridSyncMetric[]) : [];

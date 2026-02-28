@@ -90,9 +90,25 @@ const VOICE_DEDUPLICATE_WINDOW_MS = 15_000;
 
 const toRadians = (deg: number) => (deg * Math.PI) / 180;
 
-const readStoredVoiceEnabled = () => {
+const readStoredVoiceEnabledRaw = () => {
   if (typeof window === "undefined") return null;
-  const stored = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+  const sessionValue = window.sessionStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+  if (sessionValue !== null) return sessionValue;
+  const legacyLocalValue = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+  if (legacyLocalValue === null) return null;
+  window.sessionStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, legacyLocalValue);
+  window.localStorage.removeItem(VOICE_GUIDANCE_STORAGE_KEY);
+  return legacyLocalValue;
+};
+
+const writeStoredVoiceEnabled = (enabled: boolean) => {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(enabled));
+  window.localStorage.removeItem(VOICE_GUIDANCE_STORAGE_KEY);
+};
+
+const readStoredVoiceEnabled = () => {
+  const stored = readStoredVoiceEnabledRaw();
   if (stored === "true") return true;
   if (stored === "false") return false;
   return null;
@@ -541,7 +557,7 @@ const DriverLiveMap = ({
             detailLevel: data.settings.detailLevel || DEFAULT_SETTINGS.detailLevel,
           });
           if (typeof window !== "undefined" && typeof storedVoice !== "boolean") {
-            window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(nextVoiceEnabled));
+            writeStoredVoiceEnabled(nextVoiceEnabled);
           }
           return;
         }
@@ -555,7 +571,7 @@ const DriverLiveMap = ({
             voiceEnabled: nextVoiceEnabled,
           });
           if (typeof window !== "undefined" && typeof storedVoice !== "boolean") {
-            window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(nextVoiceEnabled));
+            writeStoredVoiceEnabled(nextVoiceEnabled);
           }
         }
       } catch (_error) {
@@ -570,7 +586,7 @@ const DriverLiveMap = ({
             voiceEnabled: nextVoiceEnabled,
           });
           if (typeof window !== "undefined" && typeof storedVoiceFallback !== "boolean") {
-            window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(nextVoiceEnabled));
+            writeStoredVoiceEnabled(nextVoiceEnabled);
           }
         }
       }
@@ -605,7 +621,7 @@ const DriverLiveMap = ({
     setNavSettings((prev) => {
       const next = { ...(prev ?? DEFAULT_SETTINGS), ...partial };
       if (typeof partial.voiceEnabled === "boolean" && typeof window !== "undefined") {
-        window.localStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, String(partial.voiceEnabled));
+        writeStoredVoiceEnabled(partial.voiceEnabled);
         if (partial.voiceEnabled) {
           unlockVoiceQueue();
         }

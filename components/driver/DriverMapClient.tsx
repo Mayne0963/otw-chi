@@ -140,6 +140,17 @@ type MapRefs = {
 
 const hereKey = process.env.NEXT_PUBLIC_HERE_MAPS_KEY;
 
+const readStoredVoiceGuidancePreference = () => {
+  if (typeof window === "undefined") return null;
+  const sessionValue = window.sessionStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+  if (sessionValue !== null) return sessionValue;
+  const legacyLocalValue = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+  if (legacyLocalValue === null) return null;
+  window.sessionStorage.setItem(VOICE_GUIDANCE_STORAGE_KEY, legacyLocalValue);
+  window.localStorage.removeItem(VOICE_GUIDANCE_STORAGE_KEY);
+  return legacyLocalValue;
+};
+
 const DriverMapClient = () => {
   const searchParams = useSearchParams();
   const jobId = searchParams.get("jobId");
@@ -183,8 +194,7 @@ const DriverMapClient = () => {
   // Removed unused stopList useMemo since stops is already state
 
   const shouldUseVoiceGuidance = useCallback(() => {
-    if (typeof window === "undefined") return false;
-    const stored = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+    const stored = readStoredVoiceGuidancePreference();
     if (stored === "false") return false;
     return true;
   }, []);
@@ -225,7 +235,7 @@ const DriverMapClient = () => {
     voiceQueueRef.current = queue;
     const lang = navigator.language || "en-US";
     queue.setDefaults({ lang, volume: 0.75 });
-    const stored = window.localStorage.getItem(VOICE_GUIDANCE_STORAGE_KEY);
+    const stored = readStoredVoiceGuidancePreference();
     queue.setEnabled(stored === "false" ? false : true);
     return () => queue.cancel();
   }, []);
