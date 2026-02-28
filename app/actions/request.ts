@@ -81,6 +81,7 @@ export type UserRequestListItem = {
   status: DeliveryRequestStatus | 'CANCELLED';
   costCents: number | null;
   serviceMilesPaid: number | null;
+  paidWithServiceMilesOnly: boolean;
   createdAt: Date;
   href: string;
 };
@@ -334,6 +335,8 @@ export async function getUserRequests() {
 
   const orderIds = orders.map((order) => order.id);
   const serviceMilesPaidByRequestId = new Map<string, number>();
+  const milesSettlementRequestIds = new Set<string>();
+  const stripePaidRequestIds = new Set<string>();
 
   if (orderIds.length > 0) {
     const deductedMiles = await prisma.serviceMilesLedger.groupBy({
@@ -355,6 +358,39 @@ export async function getUserRequests() {
         serviceMilesPaidByRequestId.set(row.deliveryRequestId, Math.abs(Math.trunc(summed)));
       }
     }
+
+    const milesSettlements = await prisma.serviceMilesLedger.findMany({
+      where: {
+        deliveryRequestId: { in: orderIds },
+        externalRef: {
+          contains: 'MILES_SETTLE',
+        },
+      },
+      select: {
+        deliveryRequestId: true,
+      },
+    });
+
+    for (const settlement of milesSettlements) {
+      if (!settlement.deliveryRequestId) continue;
+      milesSettlementRequestIds.add(settlement.deliveryRequestId);
+    }
+
+    const stripePayments = await prisma.paymentTransaction.findMany({
+      where: {
+        orderId: { in: orderIds },
+        provider: 'STRIPE',
+        status: 'SUCCEEDED',
+      },
+      select: {
+        orderId: true,
+      },
+    });
+
+    for (const payment of stripePayments) {
+      if (!payment.orderId) continue;
+      stripePaidRequestIds.add(payment.orderId);
+    }
   }
 
   const computeOrderTotalCents = (order: (typeof orders)[number]) => {
@@ -374,6 +410,8 @@ export async function getUserRequests() {
     status: order.status === DeliveryRequestStatus.CANCELED ? 'CANCELLED' : order.status,
     costCents: computeOrderTotalCents(order),
     serviceMilesPaid: serviceMilesPaidByRequestId.get(order.id) ?? null,
+    paidWithServiceMilesOnly:
+      milesSettlementRequestIds.has(order.id) && !stripePaidRequestIds.has(order.id),
     createdAt: order.createdAt,
     href: `/requests/${order.id}`,
   })).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -433,8 +471,33 @@ export async function getRequest(id: string) {
       ? Math.abs(Math.trunc(deductedMiles._sum.amount))
       : null;
 
+  const [milesSettlement, stripePayment] = await Promise.all([
+    prisma.serviceMilesLedger.findFirst({
+      where: {
+        deliveryRequestId: request.id,
+        externalRef: {
+          contains: 'MILES_SETTLE',
+        },
+      },
+      select: {
+        id: true,
+      },
+    }),
+    prisma.paymentTransaction.findFirst({
+      where: {
+        orderId: request.id,
+        provider: 'STRIPE',
+        status: 'SUCCEEDED',
+      },
+      select: {
+        id: true,
+      },
+    }),
+  ]);
+
   return {
     ...request,
     serviceMilesPaid,
+    paidWithServiceMilesOnly: Boolean(milesSettlement) && !stripePayment,
   };
 }

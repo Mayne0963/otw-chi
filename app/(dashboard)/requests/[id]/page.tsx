@@ -78,6 +78,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const pickupPassExpired = request.pickupPassExpiresAt ? request.pickupPassExpiresAt <= now : false;
   const chatAvailable = serverFeatureFlags.chat && Boolean(request.assignedDriverId);
   const canEditPickupDetails = isOwner || isAdmin;
+  const serviceMilesPaid =
+    typeof request.serviceMilesPaid === 'number' ? request.serviceMilesPaid : null;
+  const paidWithServiceMilesOnly =
+    request.paidWithServiceMilesOnly === true &&
+    serviceMilesPaid !== null &&
+    serviceMilesPaid > 0;
 
   return (
     <OtwPageShell>
@@ -117,13 +123,17 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <div className="space-y-1 text-right">
                   <div className="text-sm font-medium text-white/60">Cost</div>
                   <div className="text-xl font-bold text-white">
-                    {typeof request.deliveryFeeCents === 'number'
-                      ? formatCurrency(request.deliveryFeeCents)
-                      : '-'}
+                    {paidWithServiceMilesOnly
+                      ? `${serviceMilesPaid?.toLocaleString()} Service Miles`
+                      : typeof request.deliveryFeeCents === 'number'
+                        ? formatCurrency(request.deliveryFeeCents)
+                        : '-'}
                   </div>
-                  {typeof request.serviceMilesPaid === 'number' && request.serviceMilesPaid > 0 ? (
+                  {!paidWithServiceMilesOnly &&
+                  serviceMilesPaid !== null &&
+                  serviceMilesPaid > 0 ? (
                     <div className="text-xs font-medium text-otwGold">
-                      + {request.serviceMilesPaid.toLocaleString()} Service Miles paid
+                      + {serviceMilesPaid.toLocaleString()} Service Miles paid
                     </div>
                   ) : null}
                 </div>
