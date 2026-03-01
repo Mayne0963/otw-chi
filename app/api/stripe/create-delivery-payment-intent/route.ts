@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       : 0;
 
     if (amountCents <= 0) {
-      return NextResponse.json({ error: 'Invalid delivery fee amount' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
     const requiresPayment =
@@ -101,9 +101,11 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('[CREATE_DELIVERY_PAYMENT_INTENT_ERROR]', error);
+    const message = error instanceof Error ? error.message : 'Unknown Stripe error';
     return NextResponse.json(
       {
-        error: 'Failed to create delivery payment intent',
+        error: 'Stripe error',
+        details: message,
       },
       { status: 500 },
     );

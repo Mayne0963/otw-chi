@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -133,7 +134,7 @@ export default async function DeliveryFeePaymentPage({
     <OtwPageShell>
       <OtwSectionHeader
         title="Complete Payment"
-        subtitle="You’re confirming this delivery so your driver can be dispatched."
+        subtitle="Secure checkout powered by Stripe."
       />
 
       <div className="mx-auto mt-6 w-full max-w-2xl">
@@ -197,6 +198,15 @@ export default async function DeliveryFeePaymentPage({
               Secure checkout powered by Stripe. Your payment details are encrypted and never stored on
               OTW servers.
             </p>
+
+            <div>
+              <Link
+                href={`/request/${request.id}`}
+                className="inline-flex items-center justify-center rounded-md border border-white/20 px-3 py-1.5 text-xs font-semibold text-white/80 transition-all duration-300 hover:border-white/40 hover:text-white"
+              >
+                Back to Request
+              </Link>
+            </div>
 
             {requiresDeliveryPayment ? (
               <div className="space-y-4">

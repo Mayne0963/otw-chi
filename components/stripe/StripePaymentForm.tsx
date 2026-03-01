@@ -197,8 +197,9 @@ export default function StripePaymentForm({
     return (
       <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-center">
         <p className="text-red-600 dark:text-red-400">
-          Stripe is not configured. Please set <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>.
+          Stripe is not configured (missing publishable key).
         </p>
+        <p className="mt-1 text-xs text-red-500/80">Set <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in env.</p>
       </div>
     );
   }

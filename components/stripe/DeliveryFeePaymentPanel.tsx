@@ -13,6 +13,8 @@ type DeliveryIntentResponse = {
   paymentIntentId?: string | null;
   amountCents?: number;
   error?: string;
+  message?: string;
+  details?: unknown;
 };
 
 type DeliveryFeePaymentPanelProps = {
@@ -29,7 +31,7 @@ export default function DeliveryFeePaymentPanel({
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ status: number | null; message: string } | null>(null);
 
   const loadClientSecret = useCallback(async () => {
     setLoading(true);
@@ -50,7 +52,19 @@ export default function DeliveryFeePaymentPanel({
       const payload = (await res.json().catch(() => ({}))) as DeliveryIntentResponse;
 
       if (!res.ok) {
-        throw new Error(payload.error || 'Unable to initialize delivery payment');
+        const baseMessage = payload.error || payload.message || 'Unable to initialize delivery payment';
+        const details = typeof payload.details === 'string' && payload.details.trim().length > 0
+          ? payload.details.trim()
+          : null;
+        const message = details ? `${baseMessage} (${details})` : baseMessage;
+        const loadError = { status: res.status, message };
+        setError(loadError);
+        toast({
+          title: 'Payment setup failed',
+          description: `Error ${res.status}: ${message}`,
+          variant: 'destructive',
+        });
+        return;
       }
 
       if (payload.alreadyPaid) {
@@ -69,7 +83,7 @@ export default function DeliveryFeePaymentPanel({
       setClientSecret(payload.clientSecret);
     } catch (loadError) {
       const message = loadError instanceof Error ? loadError.message : 'Unable to initialize delivery payment';
-      setError(message);
+      setError({ status: null, message });
       toast({
         title: 'Payment setup failed',
         description: message,
@@ -94,12 +108,23 @@ export default function DeliveryFeePaymentPanel({
   }
 
   if (error || !clientSecret) {
+    const statusLabel = error?.status !== null && error?.status !== undefined ? String(error.status) : 'Unknown';
+    const errorMessage = error?.message ?? 'Unable to load payment form.';
+
     return (
       <div className="space-y-3 rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
-        <div>{error ?? 'Unable to load payment form.'}</div>
-        <Button type="button" variant="outline" onClick={() => void loadClientSecret()}>
-          Retry
-        </Button>
+        <div className="space-y-1">
+          <div className="font-semibold">Error {statusLabel}</div>
+          <div>{errorMessage}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" onClick={() => void loadClientSecret()}>
+            Retry
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => router.push(`/request/${deliveryRequestId}`)}>
+            Back to Request
+          </Button>
+        </div>
       </div>
     );
   }
