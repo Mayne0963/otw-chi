@@ -7,6 +7,7 @@ import { formatDate, formatCurrency } from '@/lib/utils';
 import { MapPin, User, ArrowLeft } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import TrackMapWrapper from '@/components/otw/TrackMapWrapper';
 import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 import { serverFeatureFlags } from '@/lib/featureFlags';
@@ -84,45 +85,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     request.paidWithServiceMilesOnly === true &&
     serviceMilesPaid !== null &&
     serviceMilesPaid > 0;
-  const deliveryFeePaid = request.deliveryFeePaid === true;
-  const paymentRequired = request.paymentRequired === true;
-  const hasDeliveryPaymentIntent =
-    typeof request.deliveryPaymentIntentId === 'string' && request.deliveryPaymentIntentId.length > 0;
-
-  type DeliveryPaymentStatusTone = 'required' | 'paid' | 'processing';
-  type DeliveryPaymentStatus = {
-    tone: DeliveryPaymentStatusTone;
-    label: string;
-    helper: string;
-    ctaLabel?: string;
-    ctaHref?: string;
-    refreshHref?: string;
-  };
-
-  let deliveryPaymentStatus: DeliveryPaymentStatus | null = null;
-
-  if (paymentRequired && !deliveryFeePaid) {
-    deliveryPaymentStatus = {
-      tone: 'required',
-      label: 'Payment Required',
-      helper: 'Complete payment to dispatch a driver.',
-      ctaLabel: 'Pay Now',
-      ctaHref: `/pay/${request.id}`,
-    };
-  } else if (!paymentRequired && deliveryFeePaid) {
-    deliveryPaymentStatus = {
-      tone: 'paid',
-      label: 'Paid',
-      helper: 'Payment confirmed. Your request is ready for dispatch.',
-    };
-  } else if (hasDeliveryPaymentIntent && !deliveryFeePaid) {
-    deliveryPaymentStatus = {
-      tone: 'processing',
-      label: 'Payment Processing',
-      helper: 'We’re confirming your payment. This usually takes a few seconds.',
-      refreshHref: `/request/${request.id}`,
-    };
-  }
+  const needsPayment = request.paymentRequired || !request.deliveryFeePaid;
 
   return (
     <OtwPageShell>
@@ -141,6 +104,38 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left Column: Details */}
         <div className="space-y-6 md:col-span-2">
+          {needsPayment ? (
+            <OtwCard className="border-otwGold/40 bg-black/30">
+              <div className="p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="inline-flex rounded bg-otwGold/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-otwGold">
+                      Payment Required
+                    </div>
+                    <p className="mt-2 text-sm text-white/85">Complete payment to dispatch a driver.</p>
+                  </div>
+                  <Link
+                    href={`/pay/${request.id}`}
+                    className="inline-flex items-center justify-center rounded-lg bg-otwGold px-4 py-2 text-sm font-semibold text-otwBlack transition-all duration-300 hover:bg-otwGold/90"
+                  >
+                    Pay Now
+                  </Link>
+                </div>
+              </div>
+            </OtwCard>
+          ) : (
+            <OtwCard className="border-green-500/30 bg-green-500/10">
+              <div className="p-3">
+                <div className="inline-flex rounded bg-green-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-green-300">
+                  Paid
+                </div>
+                <p className="mt-2 text-sm text-green-200/90">
+                  Payment confirmed. Your request is ready for dispatch.
+                </p>
+              </div>
+            </OtwCard>
+          )}
+
           <OtwCard>
             <div className="p-4 border-b border-white/10 mb-4">
                 <h3 className="text-lg font-medium text-white">Request Details</h3>
@@ -175,70 +170,27 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                       + {serviceMilesPaid.toLocaleString()} Service Miles paid
                     </div>
                   ) : null}
-                  {deliveryPaymentStatus ? (
-                    <div
-                      className={`mt-2 rounded-lg border p-2 text-left ${
-                        deliveryPaymentStatus.tone === 'required'
-                          ? 'border-amber-400/30 bg-amber-500/10'
-                          : deliveryPaymentStatus.tone === 'paid'
-                            ? 'border-green-500/30 bg-green-500/10'
-                            : 'border-otwGold/30 bg-otwGold/10'
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    <span
+                      className={`inline-flex rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                        needsPayment
+                          ? 'bg-amber-500/20 text-amber-200'
+                          : 'bg-green-500/20 text-green-300'
                       }`}
                     >
-                      <span
-                        className={`inline-flex rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
-                          deliveryPaymentStatus.tone === 'required'
-                            ? 'bg-amber-500/20 text-amber-200'
-                            : deliveryPaymentStatus.tone === 'paid'
-                              ? 'bg-green-500/20 text-green-300'
-                              : 'bg-otwGold/20 text-otwGold'
-                        }`}
+                      {needsPayment ? 'Payment Required' : 'Paid'}
+                    </span>
+                    {needsPayment ? (
+                      <Link
+                        href={`/pay/${request.id}`}
+                        className="inline-flex items-center justify-center rounded-md bg-otwGold px-3 py-1 text-[11px] font-semibold text-otwBlack transition-all duration-300 hover:bg-otwGold/90"
                       >
-                        {deliveryPaymentStatus.label}
-                      </span>
-                      <p
-                        className={`mt-1 text-xs ${
-                          deliveryPaymentStatus.tone === 'required'
-                            ? 'text-amber-100/90'
-                            : deliveryPaymentStatus.tone === 'paid'
-                              ? 'text-green-200/90'
-                              : 'text-white/80'
-                        }`}
-                      >
-                        {deliveryPaymentStatus.helper}
-                      </p>
-                      {deliveryPaymentStatus.ctaLabel && deliveryPaymentStatus.ctaHref ? (
-                        <div className="mt-2">
-                          <OtwButton as="a" href={deliveryPaymentStatus.ctaHref} variant="gold" size="sm">
-                            {deliveryPaymentStatus.ctaLabel}
-                          </OtwButton>
-                        </div>
-                      ) : null}
-                      {deliveryPaymentStatus.refreshHref ? (
-                        <div className="mt-2">
-                          <OtwButton as="a" href={deliveryPaymentStatus.refreshHref} variant="ghost" size="sm">
-                            Refresh Status
-                          </OtwButton>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {isOwner && request.paymentRequired && request.deliveryFeePaid ? (
-                <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
-                  <div className="text-sm font-medium text-amber-200">Overage payment required before dispatch</div>
-                  <p className="mt-1 text-xs text-amber-100/90">
-                    Service Miles were applied. Complete the remaining overage payment to unlock dispatch.
-                  </p>
-                  <div className="mt-3">
-                    <OtwButton as="a" href={`/pay/${request.id}`} variant="gold" size="sm">
-                      Pay Now
-                    </OtwButton>
+                        Pay Now
+                      </Link>
+                    ) : null}
                   </div>
                 </div>
-              ) : null}
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
