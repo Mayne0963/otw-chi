@@ -53,6 +53,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         overageBillingMode: true,
         overageMiles: true,
         overageStatus: true,
+        dispatchAt: true,
         chatClosedAt: true,
         assignedDriver: {
           select: {
@@ -80,6 +81,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (to === DeliveryRequestStatus.ASSIGNED && isDispatchBlockedByPayment(request)) {
       return NextResponse.json(
         { success: false, error: DISPATCH_PAYMENT_REQUIRED_ERROR },
+        { status: 409 }
+      );
+    }
+    if (to === DeliveryRequestStatus.ASSIGNED && request.dispatchAt && request.dispatchAt.getTime() > Date.now()) {
+      return NextResponse.json(
+        { success: false, error: 'Request is scheduled and not dispatchable yet' },
         { status: 409 }
       );
     }

@@ -40,6 +40,7 @@ export async function POST(req: Request) {
           overageBillingMode: true,
           overageMiles: true,
           overageStatus: true,
+          dispatchAt: true,
         },
       }),
       prisma.driverProfile.findUnique({
@@ -54,6 +55,12 @@ export async function POST(req: Request) {
     if (isDispatchBlockedByPayment(request)) {
       return NextResponse.json(
         { success: false, error: DISPATCH_PAYMENT_REQUIRED_ERROR },
+        { status: 409 }
+      );
+    }
+    if (request.dispatchAt && request.dispatchAt.getTime() > Date.now()) {
+      return NextResponse.json(
+        { success: false, error: 'Request is scheduled and not dispatchable yet' },
         { status: 409 }
       );
     }

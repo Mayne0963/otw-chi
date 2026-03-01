@@ -36,6 +36,10 @@ export async function getAvailableJobs() {
     where: {
       assignedDriverId: driverProfile.id,
       status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+      OR: [
+        { dispatchAt: null },
+        { dispatchAt: { lte: new Date() } },
+      ],
     },
     select: { id: true },
   });
@@ -51,6 +55,14 @@ export async function getAvailableJobs() {
       OR: [
         { deliveryFeePaid: true },
         { paymentRequired: false },
+      ],
+      AND: [
+        {
+          OR: [
+            { dispatchAt: null },
+            { dispatchAt: { lte: new Date() } },
+          ],
+        },
       ],
       NOT: {
         AND: [
@@ -110,6 +122,7 @@ export async function acceptJob(requestId: string) {
       overageStatus: true,
       userId: true,
       assignedDriverId: true,
+      dispatchAt: true,
     },
   });
 
@@ -118,6 +131,9 @@ export async function acceptJob(requestId: string) {
   }
   if (isDispatchBlockedByPayment(job)) {
     throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
+  }
+  if (job.dispatchAt && job.dispatchAt.getTime() > Date.now()) {
+    throw new Error('Request is scheduled and not dispatchable yet');
   }
   if (job.overageBillingMode === 'INSTANT' && job.overageMiles > 0 && job.overageStatus !== 'PAID') {
     throw new Error('Job overage payment is not settled');

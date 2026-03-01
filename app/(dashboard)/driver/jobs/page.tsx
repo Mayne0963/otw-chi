@@ -43,6 +43,14 @@ export default async function DriverJobsPage() {
         { deliveryFeePaid: true },
         { paymentRequired: false },
       ],
+      AND: [
+        {
+          OR: [
+            { dispatchAt: null },
+            { dispatchAt: { lte: new Date() } },
+          ],
+        },
+      ],
     },
     orderBy: { createdAt: 'desc' },
     take: 25,

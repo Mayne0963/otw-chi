@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { OverageBillingMode, ServiceType } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
-import { submitDeliveryRequest } from '@/lib/delivery-submit';
+import {
+  DEFAULT_SCHEDULE_WINDOW_MINUTES,
+  submitDeliveryRequest,
+} from '@/lib/delivery-submit';
 import { verifyServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
 import {
   getActiveSubscription,
@@ -36,6 +39,9 @@ const submitSchema = z.object({
   quoteToken: z.string().min(10).optional(),
   payWithMiles: z.boolean().optional(),
   paymentPreference: z.enum(['INSTANT', 'MONTHLY']).optional(),
+  isScheduled: z.boolean().optional(),
+  scheduledFor: z.string().datetime().optional(),
+  scheduleWindowMinutes: z.number().int().min(5).max(180).optional(),
 });
 
 export async function POST(req: Request) {
@@ -64,6 +70,21 @@ export async function POST(req: Request) {
     if (Number.isNaN(scheduledStart.getTime())) {
       return NextResponse.json({ error: 'Invalid scheduledStart' }, { status: 400 });
     }
+    const isScheduled = parsed.data.isScheduled === true;
+    let scheduledFor: Date | null = null;
+    if (isScheduled) {
+      const candidate = parsed.data.scheduledFor ? new Date(parsed.data.scheduledFor) : scheduledStart;
+      if (Number.isNaN(candidate.getTime())) {
+        return NextResponse.json({ error: 'Invalid scheduledFor' }, { status: 400 });
+      }
+      if (candidate.getTime() <= Date.now()) {
+        return NextResponse.json({ error: 'scheduledFor must be in the future' }, { status: 400 });
+      }
+      scheduledFor = candidate;
+    }
+    const scheduleWindowMinutes = Number.isFinite(parsed.data.scheduleWindowMinutes)
+      ? Math.min(180, Math.max(5, Math.round(Number(parsed.data.scheduleWindowMinutes))))
+      : DEFAULT_SCHEDULE_WINDOW_MINUTES;
 
     let quotedAt: Date | undefined;
     let prioritySlot = parsed.data.prioritySlot ?? false;
@@ -115,6 +136,9 @@ export async function POST(req: Request) {
       dropoffAddress: parsed.data.dropoffAddress,
       notes: parsed.data.notes,
       scheduledStart: scheduledStart,
+      scheduledFor,
+      isScheduled,
+      scheduleWindowMinutes,
       travelMinutes: parsed.data.travelMinutes,
       waitMinutes: parsed.data.waitMinutes,
       sitAndWait: parsed.data.sitAndWait,

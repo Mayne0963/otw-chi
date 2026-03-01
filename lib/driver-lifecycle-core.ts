@@ -31,6 +31,7 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
         overageBillingMode: true,
         overageMiles: true,
         overageStatus: true,
+        dispatchAt: true,
       },
     });
     const driverProfile = await tx.driverProfile.findUnique({
@@ -45,6 +46,9 @@ export async function acceptDeliveryRequest(requestId: string, driverId: string,
     }
     if (isDispatchBlockedByPayment(request)) {
       throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
+    }
+    if (request.dispatchAt && request.dispatchAt.getTime() > Date.now()) {
+      throw new Error('Request is scheduled and not dispatchable yet');
     }
     if (
       request.overageBillingMode === 'INSTANT' &&

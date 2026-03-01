@@ -61,6 +61,8 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
       overageBillingMode: true,
       overageMiles: true,
       overageStatus: true,
+      scheduledFor: true,
+      dispatchAt: true,
       orderReference: true,
       pickupInstructions: true,
       dropoffInstructions: true,
@@ -92,6 +94,8 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
   const isUnassigned = req.assignedDriverId === null;
   const canViewPickupArtifacts = isAdmin || isAssignedToMe;
   const isDispatchable = req.deliveryFeePaid === true || req.paymentRequired === false;
+  const now = new Date();
+  const isWithinDispatchWindow = !req.dispatchAt || req.dispatchAt.getTime() <= now.getTime();
   const hasOtherActiveJob = !!driver && !!(await prisma.deliveryRequest.findFirst({
     where: {
       assignedDriverId: driver.id,
@@ -108,6 +112,23 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
         <OtwEmptyState
           title="Not dispatchable yet"
           subtitle="This request will appear after payment is confirmed."
+          actionHref="/driver/jobs"
+          actionLabel="Back to Jobs"
+        />
+      </OtwPageShell>
+    );
+  }
+  if (!isWithinDispatchWindow && !isAdmin) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader title="Job Unavailable" subtitle="Scheduled dispatch window has not opened yet." />
+        <OtwEmptyState
+          title="Dispatch pending"
+          subtitle={
+            req.scheduledFor
+              ? `Available around ${new Date(req.scheduledFor).toLocaleString()}.`
+              : 'This request will appear when dispatch opens.'
+          }
           actionHref="/driver/jobs"
           actionLabel="Back to Jobs"
         />
@@ -139,6 +160,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     !!driver &&
     req.status === 'REQUESTED' &&
     !req.assignedDriverId &&
+    isWithinDispatchWindow &&
     !isDispatchBlockedByPayment(req) &&
     !(req.overageBillingMode === 'INSTANT' && req.overageMiles > 0 && req.overageStatus !== 'PAID') &&
     req.userId !== user.id &&

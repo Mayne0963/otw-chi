@@ -59,6 +59,10 @@ async function getRequest(id: string) {
       status: true,
       serviceType: true,
       serviceMilesFinal: true,
+      isScheduled: true,
+      scheduledFor: true,
+      scheduleWindowMinutes: true,
+      dispatchAt: true,
       pickupAddress: true,
       dropoffAddress: true,
       deliveryFeeCents: true,
@@ -231,6 +235,30 @@ export default async function AdminRequestDetailPage({
                   {typeof request.serviceMilesFinal === 'number'
                     ? `${request.serviceMilesFinal.toFixed(1)} mi`
                     : 'Not set'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-white/5">
+                <div className="text-xs text-white/50">Scheduling</div>
+                <div className="text-sm text-white">
+                  {request.isScheduled && request.scheduledFor ? 'Scheduled' : 'ASAP'}
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-white/5">
+                <div className="text-xs text-white/50">Scheduled For</div>
+                <div className="text-sm text-white">
+                  {request.scheduledFor ? new Date(request.scheduledFor).toLocaleString() : 'ASAP'}
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-white/5">
+                <div className="text-xs text-white/50">Dispatch At</div>
+                <div className="text-sm text-white">
+                  {request.dispatchAt ? new Date(request.dispatchAt).toLocaleString() : 'Immediate'}
+                </div>
+                <div className="text-[11px] text-white/50">
+                  Window: {request.scheduleWindowMinutes} min
                 </div>
               </div>
             </div>

@@ -199,6 +199,14 @@ export default async function DriverDashboardPage() {
           { deliveryFeePaid: true },
           { paymentRequired: false },
         ],
+        AND: [
+          {
+            OR: [
+              { dispatchAt: null },
+              { dispatchAt: { lte: new Date() } },
+            ],
+          },
+        ],
     },
     orderBy: { createdAt: 'desc' },
     select: {
@@ -225,6 +233,14 @@ export default async function DriverDashboardPage() {
             OR: [
               { deliveryFeePaid: true },
               { paymentRequired: false },
+            ],
+            AND: [
+              {
+                OR: [
+                  { dispatchAt: null },
+                  { dispatchAt: { lte: new Date() } },
+                ],
+              },
             ],
             NOT: {
               AND: [

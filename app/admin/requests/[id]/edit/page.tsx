@@ -49,6 +49,10 @@ async function getRequestData(id: string) {
       paymentRequired: true,
       deliveryFeePaid: true,
       deliveryFeeCents: true,
+      isScheduled: true,
+      scheduledFor: true,
+      scheduleWindowMinutes: true,
+      dispatchAt: true,
       overageBillingMode: true,
       overageMiles: true,
       overageStatus: true,
@@ -94,6 +98,7 @@ export async function updateRequestAction(formData: FormData) {
       overageBillingMode: true,
       overageMiles: true,
       overageStatus: true,
+      dispatchAt: true,
     }
   });
 
@@ -116,6 +121,9 @@ export async function updateRequestAction(formData: FormData) {
     if (driverIdInput.length > 0) {
       if (isDispatchBlockedByPayment(dr)) {
         throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
+      }
+      if (dr.dispatchAt && dr.dispatchAt.getTime() > Date.now()) {
+        throw new Error('Request is scheduled and not dispatchable yet');
       }
       if (
         dr.overageBillingMode === 'INSTANT' &&
@@ -307,6 +315,16 @@ export default async function AdminRequestEditPage({
               <label className="text-xs text-white/60">Request</label>
               <div className="mt-2 text-sm text-white">
                 {request.user.name || 'Guest'} ({request.user.email})
+              </div>
+              <div className="mt-1 text-xs text-white/60">
+                {request.isScheduled && request.scheduledFor
+                  ? `Scheduled for ${new Date(request.scheduledFor).toLocaleString()}`
+                  : 'ASAP request'}
+              </div>
+              <div className="text-xs text-white/50">
+                Dispatch at:{' '}
+                {request.dispatchAt ? new Date(request.dispatchAt).toLocaleString() : 'Immediate'} | Window:{' '}
+                {request.scheduleWindowMinutes} min
               </div>
             </div>
 

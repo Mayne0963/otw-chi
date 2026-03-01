@@ -22,6 +22,9 @@ export interface SubmitDeliveryRequestInput {
   dropoffAddress: string;
   notes?: string;
   scheduledStart: Date;
+  scheduledFor?: Date | null;
+  isScheduled?: boolean;
+  scheduleWindowMinutes?: number;
   travelMinutes: number;
   quotedAt?: Date;
   waitMinutes?: number;
@@ -61,6 +64,14 @@ export interface SubmitDeliveryRequestResult {
   overageBillingMode: OverageBillingMode | null;
   overagePaymentIntentId: string | null;
   overageClientSecret: string | null;
+}
+
+export const DEFAULT_SCHEDULE_WINDOW_MINUTES = 30;
+export const DEFAULT_DISPATCH_LEAD_MINUTES = 45;
+
+function normalizeScheduleWindowMinutes(value: number | null | undefined): number {
+  if (!Number.isFinite(value)) return DEFAULT_SCHEDULE_WINDOW_MINUTES;
+  return Math.min(180, Math.max(5, Math.round(Number(value))));
 }
 
 export async function ensureOveragePaymentIntentForRequest(
@@ -168,6 +179,16 @@ export async function submitDeliveryRequest(
 ): Promise<SubmitDeliveryRequestResult> {
   const { userId, serviceType, travelMinutes, scheduledStart, payWithMiles = true } = input;
 
+  const hasScheduledFor =
+    input.scheduledFor instanceof Date && !Number.isNaN(input.scheduledFor.getTime());
+  const isScheduled = Boolean(input.isScheduled && hasScheduledFor);
+  const scheduledFor = isScheduled ? new Date(input.scheduledFor!.getTime()) : null;
+  const effectiveScheduledStart = scheduledFor ?? scheduledStart;
+  const scheduleWindowMinutes = normalizeScheduleWindowMinutes(input.scheduleWindowMinutes);
+  const dispatchAt = scheduledFor
+    ? new Date(scheduledFor.getTime() - DEFAULT_DISPATCH_LEAD_MINUTES * 60 * 1000)
+    : null;
+
   const txResult = await prisma.$transaction(
     async (tx) => {
       const user = await tx.user.findUnique({
@@ -224,7 +245,7 @@ export async function submitDeliveryRequest(
       const quote = calculateServiceMiles({
         travelMinutes,
         serviceType,
-        scheduledStart,
+        scheduledStart: effectiveScheduledStart,
         quotedAt,
         waitMinutes: input.waitMinutes,
         sitAndWait: input.sitAndWait,
@@ -360,7 +381,11 @@ export async function submitDeliveryRequest(
           couponCode: input.couponCode ?? null,
           discountCents: input.discountCents ?? null,
           tipCents: input.tipCents ?? 0,
-          scheduledStart,
+          scheduledStart: effectiveScheduledStart,
+          scheduledFor,
+          isScheduled,
+          scheduleWindowMinutes,
+          dispatchAt,
           status: DeliveryRequestStatus.REQUESTED,
           idempotencyKey: input.idempotencyKey ?? null,
 

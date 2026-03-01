@@ -39,6 +39,9 @@ type ServiceMilesWalletResponse = {
   } | null;
 };
 
+const DEFAULT_SCHEDULE_WINDOW_MINUTES = 30;
+const DEFAULT_SCHEDULE_PRESET_MINUTES_AHEAD = 120;
+
 function canChooseMonthlyByPlanName(planName: string | null | undefined): boolean {
   const normalized = planName?.toUpperCase().trim() ?? '';
   return (
@@ -59,6 +62,26 @@ function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number):
     Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
   return Math.max(0.1, 2 * earthRadiusMiles * Math.asin(Math.min(1, Math.sqrt(a))));
+}
+
+function toLocalDateValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toLocalTimeValue(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function buildScheduledForIso(dateValue: string, timeValue: string): string | null {
+  if (!dateValue || !timeValue) return null;
+  const candidate = new Date(`${dateValue}T${timeValue}`);
+  if (Number.isNaN(candidate.getTime())) return null;
+  return candidate.toISOString();
 }
 
 export default function OrderPage() {
@@ -87,6 +110,9 @@ export default function OrderPage() {
   const [paymentPreference, setPaymentPreference] = useState<PaymentPreference>('INSTANT');
   const [canChooseMonthlyPayments, setCanChooseMonthlyPayments] = useState(false);
   const [isCheckingPaymentPolicy, setIsCheckingPaymentPolicy] = useState(false);
+  const [deliveryTiming, setDeliveryTiming] = useState<'ASAP' | 'SCHEDULED'>('ASAP');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const uploadsPaused = pickupPassEnabled && base64Mode && !uploadsAllowed;
@@ -211,6 +237,21 @@ export default function OrderPage() {
     };
   }, [isSignedIn]);
 
+  useEffect(() => {
+    if (deliveryTiming !== 'SCHEDULED') {
+      return;
+    }
+    if (scheduledDate && scheduledTime) {
+      return;
+    }
+
+    const seed = new Date(Date.now() + DEFAULT_SCHEDULE_PRESET_MINUTES_AHEAD * 60 * 1000);
+    const roundedMinutes = Math.ceil(seed.getMinutes() / 5) * 5;
+    seed.setMinutes(roundedMinutes, 0, 0);
+    setScheduledDate(toLocalDateValue(seed));
+    setScheduledTime(toLocalTimeValue(seed));
+  }, [deliveryTiming, scheduledDate, scheduledTime]);
+
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -226,6 +267,28 @@ export default function OrderPage() {
         variant: 'destructive',
       });
       return;
+    }
+
+    const isScheduled = deliveryTiming === 'SCHEDULED';
+    let scheduledForIso: string | null = null;
+    if (isScheduled) {
+      scheduledForIso = buildScheduledForIso(scheduledDate, scheduledTime);
+      if (!scheduledForIso) {
+        toast({
+          title: 'Schedule required',
+          description: 'Choose a valid date and time for your scheduled request.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (new Date(scheduledForIso).getTime() <= Date.now()) {
+        toast({
+          title: 'Schedule must be in the future',
+          description: 'Select a future date and time.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -257,6 +320,9 @@ export default function OrderPage() {
           pickupCodeType: pickupCodeType || undefined,
           pickupCodeText: pickupCodeText.trim() || undefined,
           paymentPreference: canChooseMonthlyPayments ? paymentPreference : 'INSTANT',
+          isScheduled,
+          scheduledFor: scheduledForIso ?? undefined,
+          scheduleWindowMinutes: DEFAULT_SCHEDULE_WINDOW_MINUTES,
         }),
       });
 
@@ -435,6 +501,45 @@ export default function OrderPage() {
                   <option value="CONCIERGE">Concierge</option>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">
+              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                Delivery Timing
+              </label>
+              <Select
+                value={deliveryTiming}
+                onChange={(event) => setDeliveryTiming(event.target.value as 'ASAP' | 'SCHEDULED')}
+                className="bg-black/30 text-white"
+              >
+                <option value="ASAP">ASAP</option>
+                <option value="SCHEDULED">Schedule for later</option>
+              </Select>
+              {deliveryTiming === 'SCHEDULED' ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-white/60">Date</label>
+                    <Input
+                      type="date"
+                      value={scheduledDate}
+                      min={toLocalDateValue(new Date())}
+                      onChange={(event) => setScheduledDate(event.target.value)}
+                      className="bg-black/30 text-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-white/60">Time</label>
+                    <Input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(event) => setScheduledTime(event.target.value)}
+                      className="bg-black/30 text-white"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-white/60">We will dispatch as soon as payment is complete.</p>
+              )}
             </div>
 
             <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">

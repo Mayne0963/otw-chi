@@ -327,6 +327,10 @@ model DeliveryRequest {
 
   // Service Miles & Logistics
   scheduledStart       DateTime?
+  scheduledFor        DateTime?
+  isScheduled         Boolean             @default(false)
+  scheduleWindowMinutes Int               @default(30)
+  dispatchAt          DateTime?
   assignedAt           DateTime?
   arrivedAt            DateTime?
   completedAt          DateTime?
@@ -382,6 +386,7 @@ model DeliveryRequest {
 
   @@index([userId])
   @@index([status])
+  @@index([dispatchAt])
   @@unique([userId, idempotencyKey])
 }
 

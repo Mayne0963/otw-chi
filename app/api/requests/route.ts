@@ -10,7 +10,11 @@ import {
   resolveDeliveryRequestPaymentPreference,
 } from '@/lib/membership';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
-import { submitDeliveryRequest } from '@/lib/delivery-submit';
+import {
+  DEFAULT_DISPATCH_LEAD_MINUTES,
+  DEFAULT_SCHEDULE_WINDOW_MINUTES,
+  submitDeliveryRequest,
+} from '@/lib/delivery-submit';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
@@ -44,6 +48,9 @@ const requestSchema = z.object({
   pickupCodeType: pickupCodeTypeSchema.optional(),
   pickupCodeText: z.string().max(255).optional(),
   paymentPreference: z.enum(['INSTANT', 'MONTHLY']).optional(),
+  isScheduled: z.boolean().optional(),
+  scheduledFor: z.string().datetime().optional(),
+  scheduleWindowMinutes: z.number().int().min(5).max(180).optional(),
 });
 
 function normalizeOptionalString(value: string | undefined) {
@@ -86,6 +93,31 @@ export async function POST(req: Request) {
     }
 
     const billingMode = activeSubscription?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
+    const isScheduled = data.isScheduled === true;
+    let scheduledFor: Date | null = null;
+
+    if (isScheduled) {
+      if (!data.scheduledFor) {
+        return NextResponse.json({ error: 'scheduledFor is required when isScheduled is true' }, { status: 400 });
+      }
+      const parsedScheduledFor = new Date(data.scheduledFor);
+      if (Number.isNaN(parsedScheduledFor.getTime())) {
+        return NextResponse.json({ error: 'Invalid scheduledFor' }, { status: 400 });
+      }
+      if (parsedScheduledFor.getTime() <= Date.now()) {
+        return NextResponse.json({ error: 'scheduledFor must be in the future' }, { status: 400 });
+      }
+      scheduledFor = parsedScheduledFor;
+    }
+
+    const scheduleWindowMinutes = Number.isFinite(data.scheduleWindowMinutes)
+      ? Math.min(180, Math.max(5, Math.round(Number(data.scheduleWindowMinutes))))
+      : DEFAULT_SCHEDULE_WINDOW_MINUTES;
+    const scheduledStart =
+      scheduledFor ?? new Date(Date.now() + DEFAULT_SCHEDULED_LEAD_MINUTES * 60 * 1000);
+    const dispatchAt = scheduledFor
+      ? new Date(scheduledFor.getTime() - DEFAULT_DISPATCH_LEAD_MINUTES * 60 * 1000)
+      : null;
     const paymentPreference = resolveDeliveryRequestPaymentPreference(
       planCode,
       data.paymentPreference,
@@ -102,7 +134,6 @@ export async function POST(req: Request) {
 
     if (hasActivePlan) {
       const travelMinutes = Math.max(5, Math.round(Math.max(0.1, miles) * ESTIMATED_MINUTES_PER_MILE));
-      const scheduledStart = new Date(Date.now() + DEFAULT_SCHEDULED_LEAD_MINUTES * 60 * 1000);
 
       const result = await submitDeliveryRequest({
         userId: user.id,
@@ -111,6 +142,9 @@ export async function POST(req: Request) {
         dropoffAddress: data.dropoff,
         notes: data.notes,
         scheduledStart,
+        scheduledFor,
+        isScheduled,
+        scheduleWindowMinutes,
         travelMinutes,
         waitMinutes: 0,
         sitAndWait: false,
@@ -205,6 +239,11 @@ export async function POST(req: Request) {
         paymentRequired,
         overageBillingMode: billingMode,
         serviceMilesFinal: milesEstimate,
+        scheduledStart,
+        scheduledFor,
+        isScheduled,
+        scheduleWindowMinutes,
+        dispatchAt,
       },
     });
 

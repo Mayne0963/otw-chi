@@ -70,6 +70,9 @@ async function getRequestsData() {
           dropoffAddress: true,
           createdAt: true,
           deliveryFeePaid: true,
+          isScheduled: true,
+          scheduledFor: true,
+          dispatchAt: true,
           assignedDriver: {
             select: {
               id: true,
@@ -172,6 +175,18 @@ function RequestsTable({ requests, drivers }: { requests: RequestRow[], drivers:
                       <div className="text-xs text-white/50">
                         {request.serviceType}
                       </div>
+                      {request.isScheduled && request.scheduledFor ? (
+                        <div className="mt-1 text-[11px] text-otwGold">
+                          Scheduled: {new Date(request.scheduledFor).toLocaleString()}
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-[11px] text-white/50">ASAP</div>
+                      )}
+                      {request.dispatchAt ? (
+                        <div className="text-[11px] text-white/50">
+                          Dispatch at: {new Date(request.dispatchAt).toLocaleString()}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
@@ -290,6 +305,7 @@ export async function assignDriverAction(formData: FormData) {
         overageBillingMode: true,
         overageMiles: true,
         overageStatus: true,
+        dispatchAt: true,
       }
     });
     const driverProfile = await prisma.driverProfile.findUnique({
@@ -300,6 +316,9 @@ export async function assignDriverAction(formData: FormData) {
     if (deliveryRequest) {
       if (isDispatchBlockedByPayment(deliveryRequest)) {
         throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
+      }
+      if (deliveryRequest.dispatchAt && deliveryRequest.dispatchAt.getTime() > Date.now()) {
+        throw new Error('Request is scheduled and not dispatchable yet');
       }
       if (
         deliveryRequest.overageBillingMode === 'INSTANT' &&
