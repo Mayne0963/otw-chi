@@ -46,13 +46,11 @@ export async function getAvailableJobs() {
   const jobs = await prisma.deliveryRequest.findMany({
     where: {
       status: 'REQUESTED',
+      assignedDriverId: null,
       userId: { not: user.id },
-      paymentRequired: false,
       OR: [
-        { overageBillingMode: 'INVOICE' },
         { deliveryFeePaid: true },
-        { deliveryFeeCents: null },
-        { deliveryFeeCents: { lte: 0 } },
+        { paymentRequired: false },
       ],
       NOT: {
         AND: [

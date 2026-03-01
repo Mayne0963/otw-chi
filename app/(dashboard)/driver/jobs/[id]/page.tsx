@@ -91,6 +91,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
   const isAssignedToMe = !!driver && req.assignedDriverId === driver.id;
   const isUnassigned = req.assignedDriverId === null;
   const canViewPickupArtifacts = isAdmin || isAssignedToMe;
+  const isDispatchable = req.deliveryFeePaid === true || req.paymentRequired === false;
   const hasOtherActiveJob = !!driver && !!(await prisma.deliveryRequest.findFirst({
     where: {
       assignedDriverId: driver.id,
@@ -99,6 +100,20 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     },
     select: { id: true },
   }));
+
+  if (!isDispatchable && !isAdmin) {
+    return (
+      <OtwPageShell>
+        <OtwSectionHeader title="Job Unavailable" subtitle="Payment pending for this request." />
+        <OtwEmptyState
+          title="Not dispatchable yet"
+          subtitle="This request will appear after payment is confirmed."
+          actionHref="/driver/jobs"
+          actionLabel="Back to Jobs"
+        />
+      </OtwPageShell>
+    );
+  }
   
   // Visibility Rule: 
   // 1. If assigned to me: Visible.

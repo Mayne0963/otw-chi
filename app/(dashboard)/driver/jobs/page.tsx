@@ -36,7 +36,14 @@ export default async function DriverJobsPage() {
   const available = await getAvailableJobs();
   
   const active = await prisma.deliveryRequest.findMany({
-    where: { assignedDriverId: driver.id, status: { in: ['ASSIGNED', 'PICKED_UP'] } },
+    where: {
+      assignedDriverId: driver.id,
+      status: { in: ['ASSIGNED', 'PICKED_UP'] },
+      OR: [
+        { deliveryFeePaid: true },
+        { paymentRequired: false },
+      ],
+    },
     orderBy: { createdAt: 'desc' },
     take: 25,
     select: {

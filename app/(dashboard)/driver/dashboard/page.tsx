@@ -194,7 +194,11 @@ export default async function DriverDashboardPage() {
   const assignedRequests = await prisma.deliveryRequest.findMany({
     where: { 
         assignedDriverId: driverId,
-        status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] }
+        status: { in: ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'] },
+        OR: [
+          { deliveryFeePaid: true },
+          { paymentRequired: false },
+        ],
     },
     orderBy: { createdAt: 'desc' },
     select: {
@@ -218,12 +222,9 @@ export default async function DriverDashboardPage() {
             status: 'REQUESTED',
             assignedDriverId: null,
             userId: { not: user.id },
-            paymentRequired: false,
             OR: [
-              { overageBillingMode: 'INVOICE' },
               { deliveryFeePaid: true },
-              { deliveryFeeCents: null },
-              { deliveryFeeCents: { lte: 0 } },
+              { paymentRequired: false },
             ],
             NOT: {
               AND: [
