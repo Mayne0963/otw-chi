@@ -122,6 +122,7 @@ export default async function DeliveryFeePaymentPage({
   }
 
   const amountCents = requiresDeliveryPayment ? deliveryAmountCents : overageAmountCents;
+  const chargeLabel = requiresDeliveryPayment ? 'Delivery Fee' : 'Overage Balance';
   const deliveryFeeMilesRequired = resolveDeliveryFeeMilesRequired({
     serviceMilesFinal: request.serviceMilesFinal,
     deliveryFeeCents: request.deliveryFeeCents,
@@ -132,44 +133,105 @@ export default async function DeliveryFeePaymentPage({
     <OtwPageShell>
       <OtwSectionHeader
         title="Complete Payment"
-        subtitle={`Pay ${formatCurrency(amountCents)} to unlock dispatch for request ${request.id.slice(-6).toUpperCase()}.`}
+        subtitle="You’re confirming this delivery so your driver can be dispatched."
       />
 
       <div className="mx-auto mt-6 w-full max-w-2xl">
         <OtwCard className="p-6">
-          {requiresDeliveryPayment ? (
-            <div className="space-y-4">
-              {deliveryFeeMilesRequired > 0 ? (
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-white">Complete Payment</h2>
+              <p className="text-sm text-white/80">
+                You’re confirming this delivery so your driver can be dispatched.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+              <h3 className="text-sm font-semibold text-otwGold">What you’re paying for</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-white/80">
+                <li>Driver dispatch and route execution for this request</li>
+                <li>Live tracking, coordination, and delivery support</li>
+                <li>
+                  {requiresDeliveryPayment
+                    ? 'Delivery fee settlement required before assignment'
+                    : 'Overage settlement required before assignment'}
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+              <h3 className="text-sm font-semibold text-otwGold">No hidden markups</h3>
+              <p className="mt-2 text-sm text-white/80">
+                OTW charges only the service total shown below. We do not add hidden markups to your
+                restaurant or store items.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-otwGold/40 bg-otwGold/10 p-4">
+              <h3 className="text-sm font-semibold text-otwGold">Price Breakdown</h3>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70">{chargeLabel}</span>
+                  <span className="font-medium text-white">{formatCurrency(amountCents)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-white/70">Hidden markups</span>
+                  <span className="font-medium text-white">{formatCurrency(0)}</span>
+                </div>
+              </div>
+              <div className="mt-4 flex items-end justify-between border-t border-otwGold/30 pt-3">
+                <span className="text-sm font-semibold uppercase tracking-wide text-white/80">Total</span>
+                <span className="text-2xl font-bold text-otwGold">{formatCurrency(amountCents)}</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
+              <h3 className="text-sm font-semibold text-amber-200">Pickup &amp; Delivery Only</h3>
+              <p className="mt-2 text-sm text-amber-100/90">
+                Please order and prepay directly with the restaurant or store first. OTW handles pickup
+                and delivery only.
+              </p>
+            </div>
+
+            <p className="text-xs text-white/65">
+              Secure checkout powered by Stripe. Your payment details are encrypted and never stored on
+              OTW servers.
+            </p>
+
+            {requiresDeliveryPayment ? (
+              <div className="space-y-4">
+                {deliveryFeeMilesRequired > 0 ? (
+                  <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">
+                    <p className="text-sm text-white/85">
+                      You can settle this delivery fee with Service Miles instead of card payment.
+                    </p>
+                    <div className="mt-3">
+                      <PayWithServiceMilesButton
+                        deliveryRequestId={request.id}
+                        requiredMiles={deliveryFeeMilesRequired}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+              </div>
+            ) : (
+              <div className="space-y-4">
                 <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">
                   <p className="text-sm text-white/85">
-                    You can settle this delivery fee with Service Miles instead of card payment.
+                    You can settle this overage with Service Miles instead of card payment.
                   </p>
                   <div className="mt-3">
                     <PayWithServiceMilesButton
                       deliveryRequestId={request.id}
-                      requiredMiles={deliveryFeeMilesRequired}
+                      requiredMiles={request.overageMiles}
                     />
                   </div>
                 </div>
-              ) : null}
-              <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">
-                <p className="text-sm text-white/85">
-                  You can settle this overage with Service Miles instead of card payment.
-                </p>
-                <div className="mt-3">
-                  <PayWithServiceMilesButton
-                    deliveryRequestId={request.id}
-                    requiredMiles={request.overageMiles}
-                  />
-                </div>
+                <OveragePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
               </div>
-              <OveragePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
-            </div>
-          )}
+            )}
+          </div>
         </OtwCard>
       </div>
     </OtwPageShell>
