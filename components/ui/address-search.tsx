@@ -518,7 +518,8 @@ export function AddressSearch({
                   <div className="text-xs text-muted-foreground">{lines.secondary}</div>
                 )}
                 <div className="text-xs text-secondary">
-                  ✓ {address.distanceFromFortWayne} miles from Fort Wayne
+                  ✓ {(address.distanceFromServiceArea ?? address.distanceFromFortWayne).toFixed(1)} miles from{' '}
+                  {address.serviceAreaName || 'service center'}
                 </div>
               </div>
             </button>
@@ -530,7 +531,7 @@ export function AddressSearch({
       {isOpen && !isLoading && query.trim().length >= 3 && results.length === 0 && (
         <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/70 bg-card/95 p-4 text-center text-sm text-muted-foreground shadow-otwElevated backdrop-blur">
           <AlertCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
-          <p>No addresses found within 25 miles of Fort Wayne.</p>
+          <p>No addresses found within our active service areas.</p>
           <p className="mt-1 text-xs">Please try a different address.</p>
         </div>
       )}

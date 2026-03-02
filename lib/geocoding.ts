@@ -3,10 +3,77 @@
  * Uses OpenStreetMap Nominatim API (free, no API key required)
  */
 
-// Fort Wayne, IN coordinates
-const FORT_WAYNE_LAT = 41.0793;
-const FORT_WAYNE_LNG = -85.1394;
-const SERVICE_RADIUS_MILES = 25;
+type ServiceArea = {
+  name: string;
+  queryBias: string;
+  latitude: number;
+  longitude: number;
+  radiusMiles: number;
+  viewbox: string;
+  locationAliases: string[];
+};
+
+const DEFAULT_SEARCH_LIMIT = 5;
+
+const SERVICE_AREAS: ServiceArea[] = [
+  {
+    name: 'Chicago',
+    queryBias: 'Chicago, IL',
+    latitude: 41.8781,
+    longitude: -87.6298,
+    radiusMiles: 30,
+    viewbox: '-88.15,42.05,-87.45,41.55',
+    locationAliases: [
+      'chicago',
+      'chicago il',
+      'chi town',
+      'downtown chicago',
+      'the loop',
+      'loop',
+      'west loop',
+      'south loop',
+      'river north',
+      'streeterville',
+      'lincoln park',
+      'wicker park',
+      'logan square',
+      'lakeview',
+      'old town',
+      'uptown',
+      'rogers park',
+      'hyde park',
+      'bronzeville',
+      'bridgeport',
+      'pilsen',
+      'chinatown',
+      'south side',
+      'west side',
+      'north side',
+      'near north side',
+      'near west side',
+      'englewood',
+    ],
+  },
+  {
+    name: 'Fort Wayne',
+    queryBias: 'Fort Wayne, IN',
+    latitude: 41.0793,
+    longitude: -85.1394,
+    radiusMiles: 25,
+    viewbox: '-85.5,41.3,-84.8,40.8',
+    locationAliases: [
+      'fort wayne',
+      'fort wayne in',
+      'downtown fort wayne',
+      'new haven in',
+      'allen county',
+      'north side fort wayne',
+      'south side fort wayne',
+      'west side fort wayne',
+      'east side fort wayne',
+    ],
+  },
+];
 
 function getAppOrigin(): string {
   if (typeof window !== 'undefined' && window.location?.origin) {
@@ -49,6 +116,8 @@ export interface GeocodedAddress {
   zipCode: string;
   latitude: number;
   longitude: number;
+  serviceAreaName: string;
+  distanceFromServiceArea: number;
   distanceFromFortWayne: number;
   isWithinServiceArea: boolean;
 }
@@ -107,9 +176,63 @@ function toRad(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
+function normalizeQuery(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function getServiceAreasForQuery(query: string): ServiceArea[] {
+  const normalized = normalizeQuery(query);
+  if (!normalized) return SERVICE_AREAS;
+
+  const matchedAreas = SERVICE_AREAS.filter((area) =>
+    area.locationAliases.some((alias) => normalized.includes(alias))
+  );
+
+  return matchedAreas.length > 0 ? matchedAreas : SERVICE_AREAS;
+}
+
+function getClosestServiceArea(latitude: number, longitude: number): {
+  area: ServiceArea;
+  distanceMiles: number;
+} {
+  let closestArea = SERVICE_AREAS[0];
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  for (const area of SERVICE_AREAS) {
+    const distance = calculateDistance(area.latitude, area.longitude, latitude, longitude);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestArea = area;
+    }
+  }
+
+  return {
+    area: closestArea,
+    distanceMiles: closestDistance,
+  };
+}
+
+function getSearchQueries(query: string): Array<{ searchText: string; area?: ServiceArea }> {
+  const trimmed = query.trim();
+  const areas = getServiceAreasForQuery(trimmed);
+  const normalized = normalizeQuery(trimmed);
+
+  const queries: Array<{ searchText: string; area?: ServiceArea }> = [{ searchText: trimmed }];
+
+  for (const area of areas) {
+    const alreadyScoped =
+      normalized.includes(normalizeQuery(area.name)) ||
+      normalized.includes(normalizeQuery(area.queryBias));
+    if (alreadyScoped) continue;
+    queries.push({ searchText: `${trimmed}, ${area.queryBias}`, area });
+  }
+
+  return queries;
+}
+
 /**
  * Search for addresses using OpenStreetMap Nominatim API
- * Biased towards Fort Wayne area
+ * with service-area-aware location name support.
  */
 export async function searchAddress(
   query: string
@@ -119,60 +242,50 @@ export async function searchAddress(
   }
 
   try {
-    // Add Fort Wayne, IN bias to the search
-    const searchQuery = query.includes('Fort Wayne')
-      ? query
-      : `${query}, Fort Wayne, IN`;
+    const dedupedResults = new Map<string, GeocodedAddress>();
+    const searchQueries = getSearchQueries(query);
 
-    // Use internal API proxy to avoid CORS issues
-    const url = getInternalApiUrl('/api/geocoding/search');
-    url.searchParams.append('q', searchQuery);
-    url.searchParams.append('format', 'json');
-    url.searchParams.append('addressdetails', '1');
-    url.searchParams.append('namedetails', '1');
-    url.searchParams.append('limit', '5');
-    url.searchParams.append('countrycodes', 'us');
-    // Bias results towards Fort Wayne area
-    url.searchParams.append('viewbox', '-85.5,41.3,-84.8,40.8');
-    url.searchParams.append('bounded', '0');
+    for (const search of searchQueries) {
+      const url = getInternalApiUrl('/api/geocoding/search');
+      url.searchParams.append('q', search.searchText);
+      url.searchParams.append('format', 'json');
+      url.searchParams.append('addressdetails', '1');
+      url.searchParams.append('namedetails', '1');
+      url.searchParams.append('limit', String(DEFAULT_SEARCH_LIMIT));
+      url.searchParams.append('countrycodes', 'us');
+      if (search.area) {
+        url.searchParams.append('viewbox', search.area.viewbox);
+        url.searchParams.append('bounded', '0');
+      }
 
-    const response = await fetch(url.toString());
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`Geocoding API error: ${response.status}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(`Geocoding API error: ${response.status}`);
-    }
+      const payload = (await response.json()) as unknown;
+      if (!Array.isArray(payload)) continue;
 
-    const payload = (await response.json()) as unknown;
-    if (!Array.isArray(payload)) return [];
-
-    return payload
-      .map((value): GeocodedAddress | null => {
-        if (!isRecord(value)) return null;
+      for (const value of payload) {
+        if (!isRecord(value)) continue;
 
         const latText = getString(value.lat);
         const lngText = getString(value.lon);
-        if (!latText || !lngText) return null;
+        if (!latText || !lngText) continue;
 
         const lat = Number.parseFloat(latText);
         const lng = Number.parseFloat(lngText);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 
-        const distance = calculateDistance(
-          FORT_WAYNE_LAT,
-          FORT_WAYNE_LNG,
-          lat,
-          lng
-        );
+        const nearest = getClosestServiceArea(lat, lng);
+        const isWithinServiceArea = nearest.distanceMiles <= nearest.area.radiusMiles;
+        if (!isWithinServiceArea) continue;
 
         const address = getRecord(value.address);
-        const namedetails = isRecord(value.namedetails)
-          ? value.namedetails
-          : undefined;
-
+        const namedetails = isRecord(value.namedetails) ? value.namedetails : undefined;
         const streetNumber = getString(address.house_number);
         const street = getString(address.road);
         const streetAddress = `${streetNumber} ${street}`.trim();
-
         const placeName =
           (namedetails && getString(namedetails.name)) ||
           getString(value.name) ||
@@ -186,8 +299,11 @@ export async function searchAddress(
           getString(address.craft) ||
           getString(address.man_made);
 
-        return {
-          formattedAddress: getString(value.display_name),
+        const roundedDistance = Math.round(nearest.distanceMiles * 10) / 10;
+        const formattedAddress = getString(value.display_name);
+        const dedupeKey = `${formattedAddress.toLowerCase()}|${lat.toFixed(6)}|${lng.toFixed(6)}`;
+        dedupedResults.set(dedupeKey, {
+          formattedAddress,
           placeName: placeName || undefined,
           streetAddress,
           city:
@@ -198,11 +314,21 @@ export async function searchAddress(
           zipCode: getString(address.postcode),
           latitude: lat,
           longitude: lng,
-          distanceFromFortWayne: Math.round(distance * 10) / 10,
-          isWithinServiceArea: distance <= SERVICE_RADIUS_MILES,
-        };
-      })
-      .filter((addr): addr is GeocodedAddress => Boolean(addr?.isWithinServiceArea));
+          serviceAreaName: nearest.area.name,
+          distanceFromServiceArea: roundedDistance,
+          distanceFromFortWayne: roundedDistance,
+          isWithinServiceArea: true,
+        });
+      }
+
+      if (dedupedResults.size >= DEFAULT_SEARCH_LIMIT) {
+        break;
+      }
+    }
+
+    return Array.from(dedupedResults.values())
+      .sort((a, b) => a.distanceFromServiceArea - b.distanceFromServiceArea)
+      .slice(0, DEFAULT_SEARCH_LIMIT);
   } catch (error) {
     console.error('Address search error:', error);
     throw new Error('Failed to search address. Please try again.');
@@ -244,13 +370,8 @@ export async function reverseGeocodeAddress(
     const record = payload as Record<string, unknown>;
     const displayName = typeof record.display_name === 'string' ? record.display_name : '';
 
-    const distance = calculateDistance(
-      FORT_WAYNE_LAT,
-      FORT_WAYNE_LNG,
-      latitude,
-      longitude
-    );
-    const isWithin = distance <= SERVICE_RADIUS_MILES;
+    const nearest = getClosestServiceArea(latitude, longitude);
+    const isWithin = nearest.distanceMiles <= nearest.area.radiusMiles;
     if (!isWithin) return null;
 
     const address =
@@ -285,7 +406,9 @@ export async function reverseGeocodeAddress(
       zipCode,
       latitude,
       longitude,
-      distanceFromFortWayne: Math.round(distance * 10) / 10,
+      serviceAreaName: nearest.area.name,
+      distanceFromServiceArea: Math.round(nearest.distanceMiles * 10) / 10,
+      distanceFromFortWayne: Math.round(nearest.distanceMiles * 10) / 10,
       isWithinServiceArea: true,
     };
   } catch (error) {
@@ -301,11 +424,6 @@ export function isWithinServiceArea(
   latitude: number,
   longitude: number
 ): boolean {
-  const distance = calculateDistance(
-    FORT_WAYNE_LAT,
-    FORT_WAYNE_LNG,
-    latitude,
-    longitude
-  );
-  return distance <= SERVICE_RADIUS_MILES;
+  const nearest = getClosestServiceArea(latitude, longitude);
+  return nearest.distanceMiles <= nearest.area.radiusMiles;
 }
