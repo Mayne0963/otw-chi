@@ -20,7 +20,7 @@ export default async function DriverEarningsPage() {
     );
   }
   
-  const { history } = await getDriverEarnings();
+  const { history, availableCents, paidOutCents, processingPayoutCents } = await getDriverEarnings();
   
   const now = new Date();
   const startOfWeek = new Date(now);
@@ -37,9 +37,7 @@ export default async function DriverEarningsPage() {
     .filter((e: { createdAt: Date }) => e.createdAt >= startOfMonth)
     .reduce((sum: number, e) => sum + (e.amountCents ?? 0), 0);
 
-  const availableTotal = history
-    .filter((e) => e.status === 'available')
-    .reduce((sum: number, e) => sum + (e.amountCents ?? 0), 0);
+  const availableTotal = availableCents;
 
   const prisma = getPrisma();
   const latestPayout = await prisma.driverPayout.findFirst({
@@ -64,13 +62,18 @@ export default async function DriverEarningsPage() {
         <Card className="p-5 sm:p-6">
           <div className="text-sm font-medium">Available Balance</div>
           <div className="mt-2"><OtwStatPill label="USD" value={`$${(availableTotal/100).toFixed(2)}`} tone="neutral" /></div>
+          <div className="mt-2 text-xs opacity-70">
+            Paid out: <span className="font-semibold">${(paidOutCents / 100).toFixed(2)}</span>
+          </div>
+          <div className="mt-1 text-xs opacity-70">
+            Processing: <span className="font-semibold">${(processingPayoutCents / 100).toFixed(2)}</span>
+          </div>
           {latestPayoutStatus && (
             <div className="mt-2 text-xs opacity-70">
               Latest payout: <span className="font-semibold">{latestPayoutStatus}</span>
             </div>
           )}
           <form action={requestPayoutAction} className="mt-2 flex gap-2">
-            <input type="hidden" name="availableCents" value={availableTotal} />
             <Button variant="outline" disabled={hasProcessingPayout || availableTotal <= 0}>Request Payout</Button>
           </form>
         </Card>

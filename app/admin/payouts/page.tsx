@@ -12,19 +12,31 @@ import { revalidatePath } from 'next/cache';
 async function processPayoutAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
-  const driverId = String(formData.get('driverId'));
+  const payoutId = String(formData.get('payoutId'));
+  if (!payoutId) return;
   
   const prisma = getPrisma();
-  
-  // Update earnings to paid
-  await prisma.driverEarnings.updateMany({
-    where: { 
-      driverId,
-      status: 'pending'
-    },
-    data: { status: 'paid' }
+
+  await prisma.$transaction(async (tx) => {
+    const payout = await tx.driverPayout.findUnique({
+      where: { id: payoutId },
+      select: { id: true, driverId: true, status: true },
+    });
+    if (!payout || payout.status !== 'processing') return;
+
+    // Mark the specific payout request as paid.
+    await tx.driverPayout.update({
+      where: { id: payoutId },
+      data: { status: 'paid' },
+    });
+
+    await tx.driverEarnings.updateMany({
+      where: { driverId: payout.driverId, status: 'pending' },
+      data: { status: 'paid' },
+    });
   });
 
+  revalidatePath('/driver/earnings');
   revalidatePath('/admin/payouts');
 }
 
@@ -60,27 +72,24 @@ async function getPayoutsData() {
       take: 100
     });
 
-    // Group pending earnings by driver
-    const pendingByDriver = await prisma.driverEarnings.groupBy({
-      by: ['driverId'],
-      where: { status: 'pending' },
-      _sum: { amount: true, tipCents: true },
-      _count: true
+    // Pending payouts come from explicit driver payout requests.
+    const pendingPayoutRequests = await prisma.driverPayout.findMany({
+      where: { status: 'processing' },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
     });
 
-    // Fetch driver details for these
-    const driverIds = pendingByDriver.map(p => p.driverId);
-    const drivers = await prisma.user.findMany({
-      where: { id: { in: driverIds } },
-      select: { id: true, name: true, email: true }
-    });
-
-    const pendingPayouts = pendingByDriver.map(p => ({
+    const pendingPayouts = pendingPayoutRequests.map((p) => ({
+      payoutId: p.id,
       driverId: p.driverId,
-      amount: p._sum.amount || 0,
-      tipCents: p._sum.tipCents || 0,
-      count: p._count,
-      driver: drivers.find(d => d.id === p.driverId)
+      amount: p.totalCents,
+      tipCents: 0,
+      count: 1,
+      createdAt: p.createdAt,
+      driver: p.user,
     }));
 
     const totalPending = pendingPayouts.reduce((acc, p) => acc + p.amount, 0);
@@ -201,13 +210,13 @@ function PayoutsContent({
                 <tr>
                   <th className="text-left px-4 py-3">Driver</th>
                   <th className="text-left px-4 py-3">Pending Amount</th>
-                  <th className="text-left px-4 py-3">Trips</th>
+                  <th className="text-left px-4 py-3">Requested</th>
                   <th className="text-left px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingPayouts.map((p) => (
-                  <tr key={p.driverId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <tr key={p.payoutId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="px-4 py-3">
                       <div>
                         <div className="font-medium">{p.driver?.name || 'Unknown Driver'}</div>
@@ -217,12 +226,14 @@ function PayoutsContent({
                     <td className="px-4 py-3 font-medium text-otwGold">
                       ${(p.amount / 100).toFixed(2)}
                     </td>
-                    <td className="px-4 py-3 text-white/70">{p.count}</td>
+                    <td className="px-4 py-3 text-white/70 text-xs">
+                      {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
+                    </td>
                     <td className="px-4 py-3">
                       <form action={processPayoutAction}>
-                        <input type="hidden" name="driverId" value={p.driverId} />
+                        <input type="hidden" name="payoutId" value={p.payoutId} />
                         <OtwButton type="submit" className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs w-full">
-                          Process Payout
+                          Mark Paid
                         </OtwButton>
                       </form>
                     </td>

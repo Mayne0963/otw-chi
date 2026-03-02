@@ -305,6 +305,7 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
           amount: { increment: totalPayCents },
           amountCents: { increment: totalPayCents },
           tipCents: { increment: tipsCents },
+          status: DriverEarningStatus.available,
         },
       });
     } else {
@@ -314,7 +315,7 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
           amount: totalPayCents,
           amountCents: totalPayCents,
           tipCents: tipsCents,
-          status: DriverEarningStatus.pending,
+          status: DriverEarningStatus.available,
         },
       });
     }
