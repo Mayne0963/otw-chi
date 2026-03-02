@@ -13,6 +13,17 @@ type ServiceArea = {
   locationAliases: string[];
 };
 
+type FeaturedLocation = {
+  placeName: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  latitude: number;
+  longitude: number;
+  aliases: string[];
+};
+
 const DEFAULT_SEARCH_LIMIT = 5;
 
 const SERVICE_AREAS: ServiceArea[] = [
@@ -77,6 +88,129 @@ const SERVICE_AREAS: ServiceArea[] = [
       'northwest fort wayne',
       'southeast fort wayne',
     ],
+  },
+];
+
+const FEATURED_FORT_WAYNE_LOCATIONS: FeaturedLocation[] = [
+  {
+    placeName: 'Parkview Field',
+    streetAddress: '1301 Ewing St',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46802',
+    latitude: 41.0676,
+    longitude: -85.1402,
+    aliases: ['tin caps stadium', 'baseball stadium'],
+  },
+  {
+    placeName: 'Electric Works',
+    streetAddress: '1620 Broadway',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46802',
+    latitude: 41.0711,
+    longitude: -85.1537,
+    aliases: ['union street market', 'west central'],
+  },
+  {
+    placeName: 'Promenade Park',
+    streetAddress: '202 W Superior St',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46802',
+    latitude: 41.0818,
+    longitude: -85.1438,
+    aliases: ['riverfront'],
+  },
+  {
+    placeName: 'Headwaters Park',
+    streetAddress: '333 S Clinton St',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46802',
+    latitude: 41.0831,
+    longitude: -85.1385,
+    aliases: ['festival plaza'],
+  },
+  {
+    placeName: "Fort Wayne Children's Zoo",
+    streetAddress: '3411 Sherman Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46808',
+    latitude: 41.1182,
+    longitude: -85.1651,
+    aliases: ['childrens zoo', 'zoo'],
+  },
+  {
+    placeName: 'Glenbrook Square',
+    streetAddress: '4201 Coldwater Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46805',
+    latitude: 41.1165,
+    longitude: -85.1389,
+    aliases: ['glenbrook mall', 'mall'],
+  },
+  {
+    placeName: 'Jefferson Pointe',
+    streetAddress: '4130 W Jefferson Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46804',
+    latitude: 41.072,
+    longitude: -85.1954,
+    aliases: ['shopping center'],
+  },
+  {
+    placeName: 'Allen County War Memorial Coliseum',
+    streetAddress: '4000 Parnell Ave',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46805',
+    latitude: 41.1096,
+    longitude: -85.1118,
+    aliases: ['war memorial coliseum', 'memorial coliseum', 'coliseum'],
+  },
+  {
+    placeName: 'Parkview Regional Medical Center',
+    streetAddress: '11109 Parkview Plaza Dr',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46845',
+    latitude: 41.1858,
+    longitude: -85.1005,
+    aliases: ['parkview regional', 'hospital'],
+  },
+  {
+    placeName: 'Lutheran Hospital',
+    streetAddress: '7950 W Jefferson Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46804',
+    latitude: 41.0607,
+    longitude: -85.2466,
+    aliases: ['lutheran health network', 'hospital'],
+  },
+  {
+    placeName: 'Purdue Fort Wayne',
+    streetAddress: '2101 E Coliseum Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46805',
+    latitude: 41.1183,
+    longitude: -85.1116,
+    aliases: ['pfw', 'ipfw', 'campus', 'college'],
+  },
+  {
+    placeName: 'Grand Wayne Convention Center',
+    streetAddress: '120 W Jefferson Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46802',
+    latitude: 41.079,
+    longitude: -85.1415,
+    aliases: ['grand wayne center', 'convention center', 'embassy theatre'],
   },
 ];
 
@@ -235,6 +369,47 @@ function getSearchQueries(query: string): Array<{ searchText: string; area?: Ser
   return queries;
 }
 
+function toFeaturedAddress(location: FeaturedLocation): GeocodedAddress {
+  const nearest = getClosestServiceArea(location.latitude, location.longitude);
+  const roundedDistance = Math.round(nearest.distanceMiles * 10) / 10;
+
+  return {
+    formattedAddress: `${location.placeName}, ${location.streetAddress}, ${location.city}, ${location.state} ${location.zipCode}`,
+    placeName: location.placeName,
+    streetAddress: location.streetAddress,
+    city: location.city,
+    state: location.state,
+    zipCode: location.zipCode,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    serviceAreaName: nearest.area.name,
+    distanceFromServiceArea: roundedDistance,
+    distanceFromFortWayne: roundedDistance,
+    isWithinServiceArea: true,
+  };
+}
+
+function getFeaturedLocationSuggestions(query: string): GeocodedAddress[] {
+  const normalized = normalizeQuery(query);
+
+  if (!normalized) {
+    return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+  }
+
+  const filtered = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
+    const haystack = normalizeQuery(
+      `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
+    );
+    return haystack.includes(normalized);
+  });
+
+  const matches = (filtered.length > 0 ? filtered : FEATURED_FORT_WAYNE_LOCATIONS).slice(
+    0,
+    DEFAULT_SEARCH_LIMIT
+  );
+  return matches.map(toFeaturedAddress);
+}
+
 /**
  * Search for addresses using OpenStreetMap Nominatim API
  * with service-area-aware location name support.
@@ -242,13 +417,13 @@ function getSearchQueries(query: string): Array<{ searchText: string; area?: Ser
 export async function searchAddress(
   query: string
 ): Promise<GeocodedAddress[]> {
-  if (!query || query.trim().length < 3) {
-    return [];
-  }
+  const trimmedQuery = query.trim();
+  const featuredSuggestions = getFeaturedLocationSuggestions(trimmedQuery);
+  if (!trimmedQuery) return featuredSuggestions;
 
   try {
     const dedupedResults = new Map<string, GeocodedAddress>();
-    const searchQueries = getSearchQueries(query);
+    const searchQueries = getSearchQueries(trimmedQuery);
 
     for (const search of searchQueries) {
       const url = getInternalApiUrl('/api/geocoding/search');
@@ -331,12 +506,22 @@ export async function searchAddress(
       }
     }
 
-    return Array.from(dedupedResults.values())
+    const resolvedResults = Array.from(dedupedResults.values())
       .sort((a, b) => a.distanceFromServiceArea - b.distanceFromServiceArea)
       .slice(0, DEFAULT_SEARCH_LIMIT);
+    if (resolvedResults.length >= DEFAULT_SEARCH_LIMIT) {
+      return resolvedResults;
+    }
+
+    const fallbackRemainder = featuredSuggestions.filter((featured) => {
+      const featuredKey = `${featured.formattedAddress.toLowerCase()}|${featured.latitude.toFixed(6)}|${featured.longitude.toFixed(6)}`;
+      return !dedupedResults.has(featuredKey);
+    });
+
+    return [...resolvedResults, ...fallbackRemainder].slice(0, DEFAULT_SEARCH_LIMIT);
   } catch (error) {
     console.error('Address search error:', error);
-    throw new Error('Failed to search address. Please try again.');
+    return featuredSuggestions;
   }
 }
 

@@ -126,18 +126,14 @@ export function AddressSearch({
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (query.trim().length < 3) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
+    const trimmedQuery = query.trim();
 
     searchTimeoutRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const addresses = await searchAddress(query);
+        const addresses = await searchAddress(trimmedQuery);
         setResults(addresses);
-        setIsOpen(addresses.length > 0);
+        setIsOpen(trimmedQuery.length > 0 && addresses.length > 0);
         setSelectedIndex(-1);
       } catch (error) {
         console.error("Address search failed:", error);
@@ -145,7 +141,7 @@ export function AddressSearch({
       } finally {
         setIsLoading(false);
       }
-    }, 500);
+    }, trimmedQuery.length > 0 ? 300 : 0);
 
     return () => {
       if (searchTimeoutRef.current) {
@@ -528,7 +524,7 @@ export function AddressSearch({
         </div>
       )}
 
-      {isOpen && !isLoading && query.trim().length >= 3 && results.length === 0 && (
+      {isOpen && !isLoading && query.trim().length >= 1 && results.length === 0 && (
         <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/70 bg-card/95 p-4 text-center text-sm text-muted-foreground shadow-otwElevated backdrop-blur">
           <AlertCircle className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
           <p>No addresses found within our active service areas.</p>
