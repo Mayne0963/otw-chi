@@ -443,6 +443,246 @@ const FEATURED_FORT_WAYNE_LOCATIONS: FeaturedLocation[] = [
     longitude: -85.0635,
     aliases: ['canterbury', 'apartment complex'],
   },
+  {
+    placeName: 'Costco Wholesale Fort Wayne',
+    streetAddress: '5110 Value Dr',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46808',
+    latitude: 41.124,
+    longitude: -85.2055,
+    aliases: ['costco', 'warehouse club', 'retail', 'job site'],
+  },
+  {
+    placeName: "Sam's Club Fort Wayne",
+    streetAddress: '6736 Lima Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46818',
+    latitude: 41.1408,
+    longitude: -85.1647,
+    aliases: ['sams club', 'warehouse club', 'retail', 'job site'],
+  },
+  {
+    placeName: 'Walmart Supercenter - Lima Rd',
+    streetAddress: '10105 Lima Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46818',
+    latitude: 41.173,
+    longitude: -85.1652,
+    aliases: ['walmart', 'supercenter', 'retail', 'store', 'job site'],
+  },
+  {
+    placeName: 'Walmart Supercenter - Maysville Rd',
+    streetAddress: '10420 Maysville Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46835',
+    latitude: 41.126,
+    longitude: -85.0084,
+    aliases: ['walmart', 'supercenter', 'retail', 'store', 'job site'],
+  },
+  {
+    placeName: 'Meijer - Lima Rd',
+    streetAddress: '6309 Lima Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46818',
+    latitude: 41.1362,
+    longitude: -85.1644,
+    aliases: ['meijer', 'grocery', 'retail', 'store', 'job site'],
+  },
+  {
+    placeName: 'Meijer - Maysville Rd',
+    streetAddress: '10301 Maysville Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46835',
+    latitude: 41.123,
+    longitude: -85.0076,
+    aliases: ['meijer', 'grocery', 'retail', 'store', 'job site'],
+  },
+  {
+    placeName: 'Target - Lima Rd',
+    streetAddress: '6030 Lima Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46818',
+    latitude: 41.132,
+    longitude: -85.1635,
+    aliases: ['target', 'retail', 'store', 'job site'],
+  },
+  {
+    placeName: "Lowe's Home Improvement - Apple Glen",
+    streetAddress: '1130 Apple Glen Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46804',
+    latitude: 41.0766,
+    longitude: -85.2336,
+    aliases: ['lowes', 'hardware', 'home improvement', 'retail', 'job site'],
+  },
+  {
+    placeName: 'The Home Depot - Lima Rd',
+    streetAddress: '6235 Lima Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46818',
+    latitude: 41.1367,
+    longitude: -85.1641,
+    aliases: ['home depot', 'hardware', 'home improvement', 'retail', 'job site'],
+  },
+  {
+    placeName: "Menards - Illinois Rd",
+    streetAddress: '6310 Illinois Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46804',
+    latitude: 41.0737,
+    longitude: -85.2237,
+    aliases: ['menards', 'hardware', 'home improvement', 'retail', 'job site'],
+  },
+  {
+    placeName: 'Chick-fil-A - Coliseum Blvd',
+    streetAddress: '411 W Coliseum Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46805',
+    latitude: 41.1186,
+    longitude: -85.1432,
+    aliases: ['chick fil a', 'restaurant', 'food', 'pickup'],
+  },
+  {
+    placeName: 'Chipotle Mexican Grill - Jefferson Pointe',
+    streetAddress: '4150 W Jefferson Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46804',
+    latitude: 41.0723,
+    longitude: -85.1963,
+    aliases: ['chipotle', 'restaurant', 'food', 'pickup'],
+  },
+  {
+    placeName: 'Texas Roadhouse - Fort Wayne',
+    streetAddress: '6411 W Jefferson Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46804',
+    latitude: 41.0629,
+    longitude: -85.2258,
+    aliases: ['texas roadhouse', 'restaurant', 'steakhouse', 'food', 'pickup'],
+  },
+  {
+    placeName: 'Olive Garden - Coliseum Blvd',
+    streetAddress: '315 E Coliseum Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46805',
+    latitude: 41.1174,
+    longitude: -85.1371,
+    aliases: ['olive garden', 'restaurant', 'italian', 'food', 'pickup'],
+  },
+  {
+    placeName: 'Buffalo Wild Wings - Coldwater Rd',
+    streetAddress: '5519 Coldwater Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46825',
+    latitude: 41.1282,
+    longitude: -85.1398,
+    aliases: ['buffalo wild wings', 'bww', 'restaurant', 'food', 'pickup'],
+  },
+  {
+    placeName: 'Panera Bread - Coldwater Rd',
+    streetAddress: '5250 Coldwater Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46825',
+    latitude: 41.1256,
+    longitude: -85.1395,
+    aliases: ['panera', 'restaurant', 'bakery', 'food', 'pickup'],
+  },
+  {
+    placeName: 'Dana Incorporated',
+    streetAddress: '3939 Technology Dr',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46808',
+    latitude: 41.1293,
+    longitude: -85.1707,
+    aliases: ['dana', 'dana hq', 'factory', 'manufacturing', 'job site'],
+  },
+  {
+    placeName: 'Do it Best Corp HQ',
+    streetAddress: '6502 Nelson Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46803',
+    latitude: 41.0629,
+    longitude: -85.0581,
+    aliases: ['do it best', 'corporate', 'warehouse', 'distribution', 'job site'],
+  },
+  {
+    placeName: 'Vera Bradley Distribution Center',
+    streetAddress: '12420 Stonebridge Rd',
+    city: 'Roanoke',
+    state: 'IN',
+    zipCode: '46783',
+    latitude: 40.9893,
+    longitude: -85.299,
+    aliases: ['vera bradley', 'distribution center', 'warehouse', 'job site'],
+  },
+  {
+    placeName: 'Fort Wayne Metals',
+    streetAddress: '9609 Ardmore Ave',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46809',
+    latitude: 41.0008,
+    longitude: -85.1684,
+    aliases: ['fort wayne metals', 'factory', 'manufacturing', 'industrial', 'job site'],
+  },
+  {
+    placeName: 'UPS Customer Center',
+    streetAddress: '5801 Industrial Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46825',
+    latitude: 41.131,
+    longitude: -85.1411,
+    aliases: ['ups', 'shipping', 'warehouse', 'logistics', 'job site'],
+  },
+  {
+    placeName: 'FedEx Ship Center',
+    streetAddress: '3801 Lower Huntington Rd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46809',
+    latitude: 40.9818,
+    longitude: -85.1934,
+    aliases: ['fedex', 'shipping', 'warehouse', 'logistics', 'job site'],
+  },
+  {
+    placeName: 'USPS Processing and Distribution Center',
+    streetAddress: '1501 S Clinton St',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46802',
+    latitude: 41.0615,
+    longitude: -85.1386,
+    aliases: ['usps', 'post office', 'mail distribution', 'logistics', 'job site'],
+  },
+  {
+    placeName: 'Aboite Center',
+    streetAddress: '4200 W Jefferson Blvd',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46804',
+    latitude: 41.0722,
+    longitude: -85.1986,
+    aliases: ['aboite', 'southwest', 'shopping center', 'retail', 'job site'],
+  },
 ];
 
 function getAppOrigin(): string {
@@ -550,6 +790,10 @@ function normalizeQuery(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function tokenizeQuery(value: string): string[] {
+  return normalizeQuery(value).split(' ').filter(Boolean);
+}
+
 function getServiceAreasForQuery(query: string): ServiceArea[] {
   const normalized = normalizeQuery(query);
   if (!normalized) return SERVICE_AREAS;
@@ -620,25 +864,55 @@ function toFeaturedAddress(location: FeaturedLocation): GeocodedAddress {
   };
 }
 
-function getFeaturedLocationSuggestions(query: string): GeocodedAddress[] {
-  const normalized = normalizeQuery(query);
+function getFeaturedLocationSuggestions(
+  query: string,
+  options?: { allowDefaultWhenNoMatch?: boolean }
+): GeocodedAddress[] {
+  const tokens = tokenizeQuery(query);
+  const allowDefaultWhenNoMatch = options?.allowDefaultWhenNoMatch !== false;
 
-  if (!normalized) {
+  if (tokens.length === 0) {
     return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
 
-  const filtered = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
+  const exactTokenMatches = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
     const haystack = normalizeQuery(
       `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
     );
-    return haystack.includes(normalized);
+    return tokens.every((token) => haystack.includes(token));
   });
 
-  const matches = (filtered.length > 0 ? filtered : FEATURED_FORT_WAYNE_LOCATIONS).slice(
-    0,
-    DEFAULT_SEARCH_LIMIT
-  );
-  return matches.map(toFeaturedAddress);
+  if (exactTokenMatches.length > 0) {
+    return exactTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+  }
+
+  const partialTokenMatches = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
+    const haystack = normalizeQuery(
+      `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
+    );
+    return tokens.some((token) => haystack.includes(token));
+  });
+
+  if (partialTokenMatches.length > 0) {
+    return partialTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+  }
+
+  if (!allowDefaultWhenNoMatch) return [];
+  return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+}
+
+function dedupeAddresses(addresses: GeocodedAddress[]): GeocodedAddress[] {
+  const seen = new Set<string>();
+  const deduped: GeocodedAddress[] = [];
+
+  for (const address of addresses) {
+    const key = `${address.formattedAddress.toLowerCase()}|${address.latitude.toFixed(6)}|${address.longitude.toFixed(6)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(address);
+  }
+
+  return deduped;
 }
 
 /**
@@ -649,8 +923,11 @@ export async function searchAddress(
   query: string
 ): Promise<GeocodedAddress[]> {
   const trimmedQuery = query.trim();
-  const featuredSuggestions = getFeaturedLocationSuggestions(trimmedQuery);
+  const featuredSuggestions = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: true });
+  const featuredMatches = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: false });
   if (!trimmedQuery) return featuredSuggestions;
+  if (trimmedQuery.length < 3) return featuredSuggestions;
+  const queryTokens = tokenizeQuery(trimmedQuery);
 
   try {
     const dedupedResults = new Map<string, GeocodedAddress>();
@@ -712,6 +989,14 @@ export async function searchAddress(
 
         const roundedDistance = Math.round(nearest.distanceMiles * 10) / 10;
         const formattedAddress = getString(value.display_name);
+        const searchableText = normalizeQuery(
+          `${formattedAddress} ${placeName || ''} ${streetAddress} ${
+            getString(address.city) || getString(address.town) || getString(address.village)
+          } ${getString(address.state)} ${getString(address.postcode)}`
+        );
+        if (queryTokens.length > 0 && !queryTokens.every((token) => searchableText.includes(token))) {
+          continue;
+        }
         const dedupeKey = `${formattedAddress.toLowerCase()}|${lat.toFixed(6)}|${lng.toFixed(6)}`;
         dedupedResults.set(dedupeKey, {
           formattedAddress,
@@ -740,16 +1025,12 @@ export async function searchAddress(
     const resolvedResults = Array.from(dedupedResults.values())
       .sort((a, b) => a.distanceFromServiceArea - b.distanceFromServiceArea)
       .slice(0, DEFAULT_SEARCH_LIMIT);
-    if (resolvedResults.length >= DEFAULT_SEARCH_LIMIT) {
-      return resolvedResults;
+    const prioritized = dedupeAddresses([...featuredMatches, ...resolvedResults]);
+    if (prioritized.length > 0) {
+      return prioritized.slice(0, DEFAULT_SEARCH_LIMIT);
     }
 
-    const fallbackRemainder = featuredSuggestions.filter((featured) => {
-      const featuredKey = `${featured.formattedAddress.toLowerCase()}|${featured.latitude.toFixed(6)}|${featured.longitude.toFixed(6)}`;
-      return !dedupedResults.has(featuredKey);
-    });
-
-    return [...resolvedResults, ...fallbackRemainder].slice(0, DEFAULT_SEARCH_LIMIT);
+    return featuredSuggestions;
   } catch (error) {
     console.error('Address search error:', error);
     return featuredSuggestions;

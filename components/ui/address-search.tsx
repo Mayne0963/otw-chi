@@ -94,6 +94,7 @@ export function AddressSearch({
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchRequestIdRef = useRef(0);
   const errorId = useId();
   const platformHint = getPlatformHint();
 
@@ -127,18 +128,22 @@ export function AddressSearch({
     }
 
     const trimmedQuery = query.trim();
+    const requestId = ++searchRequestIdRef.current;
 
     searchTimeoutRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
         const addresses = await searchAddress(trimmedQuery);
+        if (requestId !== searchRequestIdRef.current) return;
         setResults(addresses);
         setIsOpen(trimmedQuery.length > 0 && addresses.length > 0);
         setSelectedIndex(-1);
       } catch (error) {
+        if (requestId !== searchRequestIdRef.current) return;
         console.error("Address search failed:", error);
         setResults([]);
       } finally {
+        if (requestId !== searchRequestIdRef.current) return;
         setIsLoading(false);
       }
     }, trimmedQuery.length > 0 ? 300 : 0);
