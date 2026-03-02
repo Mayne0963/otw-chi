@@ -72,20 +72,6 @@ export default async function DashboardPage() {
       <OtwSectionHeader title="Dashboard" subtitle="Your OTW at-a-glance." />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        {/* Compliance Alert */}
-        {!user.dob && (
-          <div className="md:col-span-3">
-            <Card className="border-l-4 border-l-red-500 bg-red-900/10 border-t-0 border-r-0 border-b-0 p-4">
-              <div className="flex flex-col gap-2">
-                <div>
-                  <div className="font-bold text-red-200">Profile Incomplete</div>
-                  <div className="text-sm text-white/70">We need your Date of Birth to comply with age regulations.</div>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
-
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <LayoutDashboard className="h-4 w-4 text-otwGold" />
