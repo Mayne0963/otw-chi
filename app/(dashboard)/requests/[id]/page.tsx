@@ -13,6 +13,7 @@ import type { OtwDriverLocation } from '@/lib/otw/otwDriverLocation';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
+import RequestRatingPanel from '@/components/requests/RequestRatingPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -270,6 +271,14 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   </div>
                 </div>
               )}
+
+              {isOwner ? (
+                <RequestRatingPanel
+                  requestId={request.id}
+                  initialRating={typeof request.customerRating === 'number' ? request.customerRating : null}
+                  canRate
+                />
+              ) : null}
 
               <PickupVerificationPanel
                 requestId={request.id}
