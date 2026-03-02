@@ -18,7 +18,8 @@ import {
   DollarSign,
   Building2,
   Mail,
-  AlertTriangle
+  AlertTriangle,
+  LogOut
 } from "lucide-react"
 
 interface DashboardSidebarProps {
@@ -35,9 +36,9 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "My Requests", href: "/requests", icon: Package },
     { label: "Membership", href: "/membership/manage", icon: CreditCard },
     { label: "Service Miles", href: "/service-miles", icon: CreditCard },
-    { label: "Design Lab", href: "/design-lab", icon: LayoutDashboard },
     { label: "Support", href: "/support", icon: LifeBuoy },
     { label: "Settings", href: "/settings", icon: Settings },
+    { label: "Logout", href: "/logout", icon: LogOut },
   ]
   if (capabilities.canSeeNip) {
     commonRoutes.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
@@ -46,7 +47,6 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   const driverRoutes = [
     { label: "Driver Dashboard", href: "/driver/dashboard", icon: Truck },
     { label: "Driver Map", href: "/driver", icon: MapPin }, // Driver-only map entry
-    { label: "Jobs", href: "/driver/jobs", icon: MapPin },
     { label: "Earnings", href: "/driver/earnings", icon: DollarSign },
     { label: "Profile", href: "/driver/profile", icon: Settings },
     { label: "Founder Log", href: "/driver/founder-log", icon: Settings },
@@ -73,10 +73,10 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   }
 
   let routes = commonRoutes
-  if (role === 'DRIVER') {
+  if (role === 'DRIVER')  {
     routes = [...commonRoutes, ...driverRoutes]
   } else if (role === 'ADMIN') {
-    routes = [...commonRoutes, ...adminRoutes]
+    routes = [...commonRoutes, ...adminRoutes, ...driverRoutes]
   }
 
   return (
