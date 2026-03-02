@@ -138,6 +138,9 @@ const SERVICE_AREAS: ServiceArea[] = [
       'northcrest',
       'coliseum crossing',
       'apple glen',
+      'ruths chris',
+      'ruth s chris',
+      'ruth chris',
     ],
   },
 ];
@@ -602,6 +605,16 @@ const FEATURED_FORT_WAYNE_LOCATIONS: FeaturedLocation[] = [
     latitude: 41.1256,
     longitude: -85.1395,
     aliases: ['panera', 'restaurant', 'bakery', 'food', 'pickup'],
+  },
+  {
+    placeName: "Ruth's Chris Steak House",
+    streetAddress: '224 W Wayne St',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46802',
+    latitude: 41.0795,
+    longitude: -85.1421,
+    aliases: ['ruths chris', 'ruth s chris', 'ruth chris', 'steakhouse', 'restaurant', 'food'],
   },
   {
     placeName: 'Dana Incorporated',
@@ -1137,6 +1150,14 @@ function tokenizeQuery(value: string, options?: { minLength?: number }): string[
     .filter((token) => token.length >= minLength);
 }
 
+function getTokenVariants(token: string): string[] {
+  const variants = new Set<string>([token]);
+  if (token.endsWith('s') && token.length > 3) {
+    variants.add(token.slice(0, -1));
+  }
+  return Array.from(variants);
+}
+
 function getServiceAreasForQuery(query: string): ServiceArea[] {
   const normalized = normalizeQuery(query);
   if (!normalized) return SERVICE_AREAS;
@@ -1238,7 +1259,7 @@ function getFeaturedLocationSuggestions(
     const haystack = normalizeQuery(
       `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
     );
-    return tokens.every((token) => haystack.includes(token));
+    return tokens.every((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)));
   });
 
   if (exactTokenMatches.length > 0) {
@@ -1249,7 +1270,7 @@ function getFeaturedLocationSuggestions(
     const haystack = normalizeQuery(
       `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
     );
-    return tokens.some((token) => haystack.includes(token));
+    return tokens.some((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)));
   });
 
   if (partialTokenMatches.length > 0) {
@@ -1285,7 +1306,9 @@ export async function searchAddress(
   const featuredSuggestions = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: true });
   const featuredMatches = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: false });
   if (!trimmedQuery) return featuredSuggestions;
-  if (trimmedQuery.length < 3) return featuredSuggestions;
+  // For short queries, use known matches immediately. If there are no known matches,
+  // still attempt live Fort Wayne geocoding so new place names can resolve.
+  if (trimmedQuery.length < 3 && featuredMatches.length > 0) return featuredSuggestions;
   const queryTokens = tokenizeQuery(trimmedQuery, { minLength: 2 });
 
   try {
@@ -1353,7 +1376,12 @@ export async function searchAddress(
             getString(address.city) || getString(address.town) || getString(address.village)
           } ${getString(address.state)} ${getString(address.postcode)}`
         );
-        if (queryTokens.length > 0 && !queryTokens.every((token) => searchableText.includes(token))) {
+        if (
+          queryTokens.length > 0 &&
+          !queryTokens.every((token) =>
+            getTokenVariants(token).some((variant) => searchableText.includes(variant))
+          )
+        ) {
           continue;
         }
         const dedupeKey = `${formattedAddress.toLowerCase()}|${lat.toFixed(6)}|${lng.toFixed(6)}`;
