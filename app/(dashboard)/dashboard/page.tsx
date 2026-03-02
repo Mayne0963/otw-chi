@@ -76,16 +76,11 @@ export default async function DashboardPage() {
         {!user.dob && (
           <div className="md:col-span-3">
             <Card className="border-l-4 border-l-red-500 bg-red-900/10 border-t-0 border-r-0 border-b-0 p-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-col gap-2">
                 <div>
                   <div className="font-bold text-red-200">Profile Incomplete</div>
                   <div className="text-sm text-white/70">We need your Date of Birth to comply with age regulations.</div>
                 </div>
-                <Button asChild variant="red" size="sm">
-                  <Link href="/settings">
-                    Update Profile
-                  </Link>
-                </Button>
               </div>
             </Card>
           </div>
