@@ -1130,8 +1130,11 @@ function normalizeQuery(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function tokenizeQuery(value: string): string[] {
-  return normalizeQuery(value).split(' ').filter(Boolean);
+function tokenizeQuery(value: string, options?: { minLength?: number }): string[] {
+  const minLength = options?.minLength ?? 2;
+  return normalizeQuery(value)
+    .split(' ')
+    .filter((token) => token.length >= minLength);
 }
 
 function getServiceAreasForQuery(query: string): ServiceArea[] {
@@ -1208,10 +1211,26 @@ function getFeaturedLocationSuggestions(
   query: string,
   options?: { allowDefaultWhenNoMatch?: boolean }
 ): GeocodedAddress[] {
-  const tokens = tokenizeQuery(query);
+  const normalized = normalizeQuery(query);
+  const tokens = tokenizeQuery(query, { minLength: 2 });
   const allowDefaultWhenNoMatch = options?.allowDefaultWhenNoMatch !== false;
 
+  if (!normalized) {
+    return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+  }
   if (tokens.length === 0) {
+    const lightweightMatches = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
+      const haystack = normalizeQuery(
+        `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
+      );
+      return haystack.includes(normalized);
+    });
+
+    if (lightweightMatches.length > 0) {
+      return lightweightMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+    }
+
+    if (!allowDefaultWhenNoMatch) return [];
     return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
 
@@ -1267,7 +1286,7 @@ export async function searchAddress(
   const featuredMatches = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: false });
   if (!trimmedQuery) return featuredSuggestions;
   if (trimmedQuery.length < 3) return featuredSuggestions;
-  const queryTokens = tokenizeQuery(trimmedQuery);
+  const queryTokens = tokenizeQuery(trimmedQuery, { minLength: 2 });
 
   try {
     const dedupedResults = new Map<string, GeocodedAddress>();
