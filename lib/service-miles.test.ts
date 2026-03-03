@@ -12,7 +12,7 @@ describe('calculateServiceMiles', () => {
     });
 
     expect(out.serviceMilesBase).toBe(3);
-    expect(out.serviceMilesFinal).toBeGreaterThanOrEqual(1);
+    expect(out.serviceMilesFinal).toBeGreaterThanOrEqual(3);
   });
 
   it('adds wait time miles', () => {
@@ -88,7 +88,7 @@ describe('calculateServiceMiles', () => {
     expect(concierge.serviceMilesFinal).toBeGreaterThan(food.serviceMilesFinal);
   });
 
-  it('enforces updated minimum service mile floors by service type', () => {
+  it('enforces minimum service mile floors by service type', () => {
     const food = calculateServiceMiles({
       travelMinutes: 0,
       serviceType: ServiceType.FOOD,
@@ -103,7 +103,7 @@ describe('calculateServiceMiles', () => {
       quotedAt: new Date('2026-02-10T11:59:00.000Z'),
     });
 
-    expect(food.serviceMilesFinal).toBe(2);
+    expect(food.serviceMilesFinal).toBe(3);
     expect(concierge.serviceMilesFinal).toBe(4);
   });
 });

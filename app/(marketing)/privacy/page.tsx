@@ -2,84 +2,70 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 
+const PRIVACY_SECTIONS = [
+  {
+    title: '1. Information We Collect',
+    body: 'We collect account details (name, email, phone), request details (pickup/dropoff and notes), transaction data, and technical usage data needed to operate and secure the service.',
+  },
+  {
+    title: '2. How We Use Information',
+    body: 'We use personal information to provide delivery services, process payments, support customer requests, improve product performance, and prevent fraud or abuse.',
+  },
+  {
+    title: '3. Location Data',
+    body: 'When enabled, we use location data for routing, dispatch, and order tracking. Location data may be shared with the assigned driver and customer for active requests.',
+  },
+  {
+    title: '4. Payments',
+    body: 'Payment processing is handled by third-party providers such as Stripe. OTW does not store full payment card numbers on its servers.',
+  },
+  {
+    title: '5. Sharing of Information',
+    body: 'We do not sell personal data. We share data with service providers, delivery participants, and legal authorities only when required to provide services or comply with law.',
+  },
+  {
+    title: '6. Data Retention',
+    body: 'We retain information for as long as needed to provide services, maintain records, resolve disputes, enforce terms, and satisfy legal obligations.',
+  },
+  {
+    title: '7. Security',
+    body: 'We use administrative, technical, and organizational safeguards designed to protect personal information. No method of transmission or storage is guaranteed to be perfectly secure.',
+  },
+  {
+    title: '8. Your Rights and Choices',
+    body: 'Depending on your jurisdiction, you may request access, correction, deletion, or portability of your personal information. You may also opt out of certain communications.',
+  },
+  {
+    title: '9. Children\'s Privacy',
+    body: 'OTW is not directed to children under 13, and we do not knowingly collect personal information from children under 13.',
+  },
+  {
+    title: '10. Policy Updates',
+    body: 'We may update this policy periodically. Material updates become effective when posted on this page unless otherwise noted.',
+  },
+  {
+    title: '11. Contact',
+    body: 'For privacy requests or questions, contact privacy@ontheway.app.',
+  },
+] as const;
+
 export default function PrivacyPage() {
   return (
     <OtwPageShell>
-      <OtwSectionHeader title="Privacy Policy" subtitle="Effective Date: December 16, 2024" />
-      <Card className="mt-3 space-y-6 text-sm opacity-90 leading-relaxed p-5 sm:p-6">
-        <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg text-red-200">
-          <strong>LEGAL DISCLAIMER:</strong> This is a draft document for development purposes only. 
-          It has not been reviewed by legal counsel. Do not use in production without professional legal review.
-        </div>
+      <OtwSectionHeader title="Privacy Policy" subtitle="Effective Date: March 2, 2026" />
 
-        <section>
-          <h3 className="text-lg font-bold text-white mb-2">1. Information We Collect</h3>
-          <ul className="list-disc pl-5 space-y-1">
-            <li><strong>Identity Data:</strong> Name, email address, phone number.</li>
-            <li><strong>Location Data:</strong> Real-time geolocation data when the app is in use (for drivers and delivery tracking).</li>
-            <li><strong>Financial Data:</strong> Payment card details (processed securely via Stripe).</li>
-            <li><strong>Usage Data:</strong> Interaction with our services, device information, and log files.</li>
-          </ul>
-        </section>
+      <Card className="mt-3 p-5 sm:p-6 space-y-6 border-otwGold/30 bg-black/60 text-sm leading-relaxed">
+        <p className="text-muted-foreground">
+          This Privacy Policy explains how OTW collects, uses, stores, and shares
+          personal information when you use our platform.
+        </p>
 
-        <section>
-          <h3 className="text-lg font-bold text-white mb-2">2. How We Use Your Information</h3>
-          <p>We use your data to:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li>Provide and improve the OTW delivery service.</li>
-            <li>Process payments and manage driver payouts.</li>
-            <li>Ensure safety and prevent fraud.</li>
-            <li>Communicate with you regarding your orders or account.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3 className="text-lg font-bold text-white mb-2">3. Data Sharing</h3>
-          <p>
-            We do not sell your personal data. We share data only with:
-          </p>
-          <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li><strong>Service Providers:</strong> Stripe (payments), Neon (database & authentication).</li>
-            <li><strong>Drivers/Customers:</strong> Necessary contact and location info is shared between parties during an active request.</li>
-            <li><strong>Legal Authorities:</strong> When required by law or to protect safety.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3 className="text-lg font-bold text-white mb-2">4. Your Rights (GDPR & CCPA)</h3>
-          <p>
-            Depending on your location, you may have rights to:
-          </p>
-          <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li>Access the personal data we hold about you.</li>
-            <li>Request correction or deletion of your data.</li>
-            <li>Opt-out of certain data processing.</li>
-            <li>Receive your data in a portable format.</li>
-          </ul>
-          <p className="mt-2">To exercise these rights, contact: privacy@ontheway.app</p>
-        </section>
-
-        <section>
-          <h3 className="text-lg font-bold text-white mb-2">5. Data Retention</h3>
-          <p>
-            We retain your data for as long as your account is active or as needed to provide services, comply with legal obligations, and resolve disputes.
-          </p>
-        </section>
-
-        <section>
-          <h3 className="text-lg font-bold text-white mb-2">6. Children&apos;s Privacy</h3>
-          <p>
-            Our services are not directed to children under 13. We do not knowingly collect personal information from children under 13. 
-            If we become aware that a child under 13 has provided us with personal information, we will take steps to delete such information.
-          </p>
-        </section>
-
-        <section>
-          <h3 className="text-lg font-bold text-white mb-2">7. Changes to This Policy</h3>
-          <p>
-            We may update this privacy policy from time to time. We will notify you of any changes by posting the new privacy policy on this page.
-          </p>
-        </section>
+        {PRIVACY_SECTIONS.map((section) => (
+          <section key={section.title} className="space-y-2">
+            <h3 className="text-base sm:text-lg font-semibold text-white">{section.title}</h3>
+            <p className="text-muted-foreground">{section.body}</p>
+          </section>
+        ))}
       </Card>
     </OtwPageShell>
   );

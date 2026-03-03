@@ -11,11 +11,11 @@ const SERVICE_TYPE_MULTIPLIER: Record<ServiceType, number> = {
 };
 
 const SERVICE_TYPE_MIN_FINAL_MILES: Record<ServiceType, number> = {
-  FOOD: 2,
-  STORE: 2,
+  FOOD: 3,
+  STORE: 3,
   FRAGILE: 3,
   CONCIERGE: 4,
-  RIDE: 2,
+  RIDE: 3,
 };
 
 export const SERVICE_MILES_RULES = {
@@ -97,7 +97,7 @@ export function calculateServiceMiles(input: ServiceMilesQuoteInput): ServiceMil
     Math.ceil(Math.max(0, estimatedMinutes) / SERVICE_MILE_MINUTES)
   );
   const serviceTypeMultiplier = SERVICE_TYPE_MULTIPLIER[input.serviceType] ?? 1;
-  const minimumFinalMiles = SERVICE_TYPE_MIN_FINAL_MILES[input.serviceType] ?? 1;
+  const minimumFinalMiles = SERVICE_TYPE_MIN_FINAL_MILES[input.serviceType] ?? 3;
   const baseMiles = Math.max(
     1,
     Math.ceil(baseMilesBeforeMultiplier * serviceTypeMultiplier)
