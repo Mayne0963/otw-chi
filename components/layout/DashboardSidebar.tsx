@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { SignOutButton } from "@/components/auth/SignOutButton"
 import { getClientCapabilities } from "@/lib/capabilities"
 import { 
   LayoutDashboard, 
@@ -38,7 +39,6 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Service Miles", href: "/service-miles", icon: CreditCard },
     { label: "Support", href: "/support", icon: LifeBuoy },
     { label: "Settings", href: "/settings", icon: Settings },
-    { label: "Logout", href: "/logout", icon: LogOut },
   ]
   if (capabilities.canSeeNip) {
     commonRoutes.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
@@ -92,6 +92,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
             <Link
               key={route.href}
               href={route.href}
+              prefetch={false}
               onClick={onLinkClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -105,13 +106,21 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
             </Link>
           )
         })}
+        <SignOutButton
+          variant="ghost"
+          onClick={onLinkClick}
+          className="w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium text-otwOffWhite/70 hover:bg-white/5 hover:text-otwOffWhite"
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </SignOutButton>
       </nav>
       <div className="border-t border-white/10 p-4">
         <div className="rounded-lg bg-white/5 p-4">
           <p className="text-xs font-medium text-otwOffWhite">Need help?</p>
           <p className="text-xs text-white/50 mt-1">Contact support anytime.</p>
           <Button asChild variant="outline" size="sm" className="mt-3 w-full border-white/10 text-xs h-8">
-            <Link href="/support">Support</Link>
+            <Link href="/support" prefetch={false}>Support</Link>
           </Button>
         </div>
       </div>
