@@ -24,6 +24,7 @@ export default function RequestRatingPanel({
   const submitRating = (nextRating: number) => {
     if (!canRate || isPending) return;
 
+    const previousRating = rating;
     setError(null);
     setSuccess(null);
     setRating(nextRating);
@@ -54,6 +55,7 @@ export default function RequestRatingPanel({
         setSuccess('Rating saved. Thank you for your feedback.');
         router.refresh();
       } catch (err) {
+        setRating(previousRating);
         const message = err instanceof Error ? err.message : 'Failed to save rating';
         setError(message);
       }

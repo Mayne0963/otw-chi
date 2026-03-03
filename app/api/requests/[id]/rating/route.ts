@@ -74,6 +74,7 @@ async function recomputeDriverPerformanceMetrics(prisma: ReturnType<typeof getPr
     if (activeMinutes <= Math.max(1, estimatedMinutes - 5)) earlyCount += 1;
   }
 
+  const avgRating = ratingCount > 0 ? ratingSum / ratingCount : 0;
   const nextMetrics: Record<string, unknown> = {
     ...existingMetrics,
     completedJobs,
@@ -83,7 +84,7 @@ async function recomputeDriverPerformanceMetrics(prisma: ReturnType<typeof getPr
     earlyCount,
     ratingSum,
     ratingCount,
-    avgRatingRolling: ratingCount > 0 ? ratingSum / ratingCount : 0,
+    avgRatingRolling: avgRating,
     onTimeRateRolling: completedJobs > 0 ? onTimeCount / completedJobs : 0,
     cancelRateRolling,
     flagsCount: complaintCount,
@@ -93,6 +94,7 @@ async function recomputeDriverPerformanceMetrics(prisma: ReturnType<typeof getPr
   await prisma.driverProfile.update({
     where: { id: driverProfileId },
     data: {
+      rating: avgRating,
       performanceMetrics: nextMetrics as Prisma.InputJsonValue,
     },
   });

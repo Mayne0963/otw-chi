@@ -353,6 +353,7 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       typeof request.customerRating === 'number' && Number.isFinite(request.customerRating) ? request.customerRating : null;
     const nextRatingSum = ratingSum + (ratingValue ?? 0);
     const nextRatingCount = ratingCount + (ratingValue === null ? 0 : 1);
+    const nextAvgRating = nextRatingCount > 0 ? nextRatingSum / nextRatingCount : 0;
     const nextMetrics: Record<string, unknown> = {
       ...rawMetrics,
       completedJobs: completedJobs + 1,
@@ -362,7 +363,7 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
       earlyCount: earlyCount + (earlyEligible ? 1 : 0),
       ratingSum: nextRatingSum,
       ratingCount: nextRatingCount,
-      avgRatingRolling: nextRatingCount > 0 ? nextRatingSum / nextRatingCount : 0,
+      avgRatingRolling: nextAvgRating,
       onTimeRateRolling: completedJobs + 1 > 0 ? (onTimeCount + (onTimeEligible ? 1 : 0)) / (completedJobs + 1) : 0,
       cancelRateRolling,
       flagsCount: complaintCount + (request.complaintFlag ? 1 : 0),
@@ -370,6 +371,7 @@ export async function completeDeliveryRequest(requestId: string, driverId: strin
     await tx.driverProfile.update({
       where: { id: driverId },
       data: {
+        rating: nextAvgRating,
         performanceMetrics: nextMetrics as Prisma.InputJsonValue,
       },
     });
