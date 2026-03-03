@@ -14,6 +14,7 @@ import { serverFeatureFlags } from '@/lib/featureFlags';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
 import RequestRatingPanel from '@/components/requests/RequestRatingPanel';
+import { isDispatchBlockedByPayment } from '@/lib/request-payment';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +87,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     request.paidWithServiceMilesOnly === true &&
     serviceMilesPaid !== null &&
     serviceMilesPaid > 0;
-  const needsPayment = request.paymentRequired || !request.deliveryFeePaid;
+  const needsPayment = isDispatchBlockedByPayment({
+    paymentRequired: request.paymentRequired,
+    deliveryFeeCents:
+      typeof request.deliveryFeeCents === 'number' ? request.deliveryFeeCents : null,
+    deliveryFeePaid: request.deliveryFeePaid,
+    overageBillingMode: request.overageBillingMode,
+  });
 
   return (
     <OtwPageShell>
