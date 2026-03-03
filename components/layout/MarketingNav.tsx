@@ -126,6 +126,11 @@ export function MarketingNav() {
                         Drive
                       </Link>
                     </SheetClose>
+                    <SheetClose asChild>
+                      <Link href="/request" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
+                        Request a Service
+                      </Link>
+                    </SheetClose>
                     {capabilities.canSeeFranchise ? (
                       <SheetClose asChild>
                         <Link href="/franchise/apply" className="text-lg font-medium hover:text-secondary transition-colors duration-300">

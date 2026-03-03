@@ -42,13 +42,13 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-otwBlack text-otwOffWhite">
+    <div className="flex min-h-[100dvh] overflow-x-hidden bg-otwBlack text-otwOffWhite">
       <div className="hidden md:block">
         <DashboardSidebar role={role} />
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <DashboardHeader />
-        <main className="flex-1 overflow-y-auto p-6 pb-24 md:p-8 md:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 md:p-8 md:pb-8">
           {envIssues.length > 0 && (
             <div className="mb-4 rounded-lg border border-amber-200/30 bg-amber-200/10 px-4 py-3 text-sm text-amber-50">
               Missing env vars: {envIssues.join(", ")}. Add them in Vercel to enable all admin tools.

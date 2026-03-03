@@ -14,13 +14,13 @@ export default async function DashboardLayout({
   const role = user?.role || 'CUSTOMER'
 
   return (
-    <div className="flex h-screen bg-otwBlack text-otwOffWhite">
+    <div className="flex min-h-[100dvh] overflow-x-hidden bg-otwBlack text-otwOffWhite">
       <div className="hidden md:block">
         <DashboardSidebar role={role} />
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <DashboardHeader />
-        <main className="flex-1 overflow-y-auto p-6 pb-24 md:p-8 md:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 sm:pb-24 md:p-8 md:pb-8">
           <div className="otw-container">
             {children}
           </div>
