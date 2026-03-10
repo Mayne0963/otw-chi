@@ -258,9 +258,7 @@ export async function middleware(req: NextRequest) {
     req.method === 'POST' && req.headers.has('next-action');
   const isDriverServerActionRequest =
     isServerActionRequest &&
-    (pathname === '/driver/dashboard' ||
-      pathname === '/driver/jobs' ||
-      pathname.startsWith('/driver/jobs/'));
+    pathname.startsWith('/driver/');
   
   const isAdminServerActionRequest =
     isServerActionRequest &&
