@@ -5,8 +5,9 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
-import { acceptJobAction, getAvailableJobs } from '@/app/actions/driver';
+import { getAvailableJobs } from '@/app/actions/driver';
 import { unstable_noStore as noStore } from 'next/cache';
+import DriverAcceptJobButton from '@/components/driver/DriverAcceptJobButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -90,10 +91,7 @@ export default async function DriverJobsPage() {
                       <div className="font-semibold">{r.pickupAddress}</div>
                       <div className="text-xs opacity-70">to {r.dropoffAddress}</div>
                     </div>
-                    <form action={acceptJobAction} className="flex gap-2">
-                      <input type="hidden" name="id" value={r.id} />
-                      <OtwButton variant="outline" size="sm">Accept</OtwButton>
-                    </form>
+                    <DriverAcceptJobButton requestId={r.id} label="Accept" variant="outline" size="sm" />
                   </div>
                 </li>
               ))}

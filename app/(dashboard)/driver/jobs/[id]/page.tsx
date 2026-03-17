@@ -5,7 +5,7 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
-import { acceptJobAction, updateJobStatusAction } from '@/app/actions/driver';
+import { updateJobStatusAction } from '@/app/actions/driver';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
 import { isDispatchBlockedByPayment } from '@/lib/request-payment';
 import { unstable_noStore as noStore } from 'next/cache';
@@ -13,6 +13,7 @@ import { serverFeatureFlags } from '@/lib/featureFlags';
 import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
+import DriverAcceptJobButton from '@/components/driver/DriverAcceptJobButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -178,10 +179,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
           <div className="mt-1 text-sm opacity-80">Customer: {req.user?.name ?? req.user?.email}</div>
           <div className="mt-3 flex flex-wrap gap-2">
             {canAccept && (
-              <form action={acceptJobAction}>
-                <input type="hidden" name="id" value={req.id} />
-                <OtwButton type="submit" variant="outline">Accept</OtwButton>
-              </form>
+              <DriverAcceptJobButton requestId={req.id} label="Accept" variant="outline" />
             )}
             {isAssignedToMe && (
               <>

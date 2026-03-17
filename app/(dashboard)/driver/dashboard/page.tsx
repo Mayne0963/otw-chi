@@ -14,9 +14,10 @@ import { getPrisma } from '@/lib/db';
 import { calculateDriverPayCents } from '@/lib/driver-pay';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { haversineDistanceKm } from '@/lib/otw/otwGeo';
-import { acceptDeliveryRequest, completeDeliveryRequest, markDriverArrived, markDriverDepartedPickup } from '@/lib/driver-lifecycle';
+import { completeDeliveryRequest, markDriverArrived, markDriverDepartedPickup } from '@/lib/driver-lifecycle';
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import RequestChat from '@/components/messages/RequestChat';
+import DriverAcceptJobButton from '@/components/driver/DriverAcceptJobButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -61,28 +62,6 @@ async function geocodeAddressWithFallback(address: string) {
   }
 
   return null;
-}
-
-async function acceptRequest(formData: FormData) {
-  'use server';
-  const requestId = formData.get('requestId') as string;
-
-  if (!requestId) return;
-  const currentUser = await getCurrentUser();
-  if (!currentUser || (currentUser.role !== 'DRIVER' && currentUser.role !== 'ADMIN')) {
-    redirect('/sign-in');
-  }
-  const prisma = getPrisma();
-  const currentDriverProfile = await prisma.driverProfile.findUnique({
-    where: { userId: currentUser.id },
-  });
-  if (!currentDriverProfile) {
-    throw new Error('Driver profile not found.');
-  }
-
-  await acceptDeliveryRequest(requestId, currentDriverProfile.id);
-
-  revalidatePath('/driver/dashboard');
 }
 
 async function updateStatus(formData: FormData) {
@@ -545,12 +524,12 @@ export default async function DriverDashboardPage() {
                                 ) : null}
                             </div>
                             
-                              <form action={acceptRequest}>
-                                  <input type="hidden" name="requestId" value={req.id} />
-                                  <Button type="submit" className="w-full" variant="outline">
-                                      Accept Job
-                                  </Button>
-                              </form>
+                              <DriverAcceptJobButton
+                                requestId={req.id}
+                                label="Accept Job"
+                                className="w-full"
+                                variant="outline"
+                              />
                         </div>
                     </Card>
                   );
