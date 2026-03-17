@@ -26,10 +26,10 @@ function AdminRequestsLoading() {
   return (
     <OtwCard className="mt-3">
       <div className="animate-pulse">
-        <div className="h-4 bg-white/10 rounded w-1/4 mb-4"></div>
+        <div className="mb-4 h-4 w-1/4 rounded bg-muted/70" />
         <div className="space-y-3">
           {[1,2,3,4,5].map(i => (
-            <div key={i} className="h-16 bg-white/5 rounded"></div>
+            <div key={i} className="h-16 rounded bg-muted/50" />
           ))}
         </div>
       </div>
@@ -148,33 +148,33 @@ function RequestsTable({ requests, drivers }: { requests: RequestRow[], drivers:
     <OtwCard className="mt-3">
       <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
         <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-          <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-800">
+          <div className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
+            <table className="min-w-full divide-y divide-border/70">
+              <thead className="bg-muted/70">
                 <tr>
-                  <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-white sm:pl-6">Request</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-white">Status</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-white hidden sm:table-cell">Customer</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-white hidden lg:table-cell">Route</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-white hidden lg:table-cell">Zone</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-white hidden sm:table-cell">Driver</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-white hidden lg:table-cell">Created</th>
+                  <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-6">Request</th>
+                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Status</th>
+                  <th scope="col" className="hidden px-3 py-3.5 text-left text-sm font-semibold text-foreground sm:table-cell">Customer</th>
+                  <th scope="col" className="hidden px-3 py-3.5 text-left text-sm font-semibold text-foreground lg:table-cell">Route</th>
+                  <th scope="col" className="hidden px-3 py-3.5 text-left text-sm font-semibold text-foreground lg:table-cell">Zone</th>
+                  <th scope="col" className="hidden px-3 py-3.5 text-left text-sm font-semibold text-foreground sm:table-cell">Driver</th>
+                  <th scope="col" className="hidden px-3 py-3.5 text-left text-sm font-semibold text-foreground lg:table-cell">Created</th>
                   <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800 bg-gray-900">
+              <tbody className="divide-y divide-border/60 bg-card">
                 {requests.map((request) => (
                   <tr key={request.id}>
-                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-white sm:pl-6">
+                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-6">
                       <div className="font-medium text-xs flex items-center gap-2">
                         {request.id}
                         {request.deliveryFeePaid && (
                           <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">PAID</span>
                         )}
                       </div>
-                      <div className="text-xs text-white/50">
+                      <div className="text-xs text-muted-foreground">
                         {request.serviceType}
                       </div>
                       {request.isScheduled && request.scheduledFor ? (
@@ -182,43 +182,43 @@ function RequestsTable({ requests, drivers }: { requests: RequestRow[], drivers:
                           Scheduled: {new Date(request.scheduledFor).toLocaleString()}
                         </div>
                       ) : (
-                        <div className="mt-1 text-[11px] text-white/50">ASAP</div>
+                        <div className="mt-1 text-[11px] text-muted-foreground">ASAP</div>
                       )}
                       {request.dispatchAt ? (
-                        <div className="text-[11px] text-white/50">
+                        <div className="text-[11px] text-muted-foreground">
                           Dispatch at: {new Date(request.dispatchAt).toLocaleString()}
                         </div>
                       ) : null}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                    <td className="whitespace-nowrap px-3 py-4 text-sm text-foreground/80">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
                         {request.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="hidden sm:table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-foreground/80 sm:table-cell">
                       <div>
                         <div className="font-medium">{request.user.name || 'Guest'}</div>
-                        <div className="text-xs text-white/50">{request.user.email}</div>
+                        <div className="text-xs text-muted-foreground">{request.user.email}</div>
                       </div>
                     </td>
-                    <td className="hidden lg:table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-foreground/80 lg:table-cell">
                       <div className="text-xs">
                         <div className="truncate max-w-32" title={request.pickupAddress}>📍 {request.pickupAddress}</div>
                         <div className="truncate max-w-32" title={request.dropoffAddress}>🏠 {request.dropoffAddress}</div>
                       </div>
                     </td>
-                    <td className="hidden lg:table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-300">{'-'}</td>
-                    <td className="hidden sm:table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-foreground/80 lg:table-cell">{'-'}</td>
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-foreground/80 sm:table-cell">
                       {request.assignedDriver ? (
                         <div>
                           <div className="font-medium text-sm">{request.assignedDriver.user.name}</div>
-                          <div className="text-xs text-white/50">{request.assignedDriver.user.email}</div>
+                          <div className="text-xs text-muted-foreground">{request.assignedDriver.user.email}</div>
                         </div>
                       ) : (
-                        <span className="text-white/50 text-xs">Unassigned</span>
+                        <span className="text-xs text-muted-foreground">Unassigned</span>
                       )}
                     </td>
-                    <td className="hidden lg:table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-300">
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-foreground/80 lg:table-cell">
                       {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
                     </td>
                     <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
@@ -230,7 +230,7 @@ function RequestsTable({ requests, drivers }: { requests: RequestRow[], drivers:
                             <input type="hidden" name="id" value={request.id} />
                             <select 
                               name="driverProfileId" 
-                              className="text-xs rounded bg-otwBlack/40 border border-white/15 px-2 py-1"
+                              className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
                               defaultValue=""
                               required
                             >
@@ -263,7 +263,7 @@ function RequestsErrorState({ error }: { error: unknown }) {
   return (
     <OtwCard className="mt-3 p-8 text-center border-red-500/30 bg-red-500/10">
       <div className="text-red-400">Failed to load requests</div>
-      <div className="text-xs text-white/40 mt-2">
+      <div className="mt-2 text-xs text-muted-foreground">
         {error instanceof Error ? error.message : 'Unknown error occurred'}
       </div>
       <OtwButton 
