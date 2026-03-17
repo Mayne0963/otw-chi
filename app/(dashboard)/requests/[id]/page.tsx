@@ -15,6 +15,7 @@ import PickupVerificationPanel from '@/components/requests/PickupVerificationPan
 import RequestChat from '@/components/messages/RequestChat';
 import RequestRatingPanel from '@/components/requests/RequestRatingPanel';
 import { isDispatchBlockedByPayment } from '@/lib/request-payment';
+import CancelOrderButton from '@/components/order/CancelOrderButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +95,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     deliveryFeePaid: request.deliveryFeePaid,
     overageBillingMode: request.overageBillingMode,
   });
+  const canCancelAndRefund =
+    isOwner &&
+    ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status);
 
   return (
     <OtwPageShell>
@@ -285,6 +289,16 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   initialRating={typeof request.customerRating === 'number' ? request.customerRating : null}
                   canRate
                 />
+              ) : null}
+
+              {canCancelAndRefund ? (
+                <div className="space-y-2 rounded-lg border border-red-500/20 bg-red-500/10 p-4">
+                  <div className="text-sm font-medium text-red-200">Need to cancel?</div>
+                  <div className="text-xs text-red-100/80">
+                    Cancel this request and submit a refund request. You will be asked to confirm in a popup.
+                  </div>
+                  <CancelOrderButton orderId={request.id} />
+                </div>
               ) : null}
 
               <PickupVerificationPanel

@@ -11,15 +11,19 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
   const { toast } = useToast();
 
   const handleCancel = () => {
-    if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Cancel this request and submit a refund request? This action cannot be undone.'
+      )
+    ) {
         return;
     }
     startTransition(async () => {
       try {
         await cancelOrderAction(orderId);
         toast({
-          title: 'Order Cancelled',
-          description: 'Your order has been successfully cancelled.',
+          title: 'Cancellation Requested',
+          description: 'Your request was canceled and your refund request was submitted.',
           variant: 'default',
         });
       } catch (error) {
@@ -40,7 +44,7 @@ export default function CancelOrderButton({ orderId }: { orderId: string }) {
         className="w-full"
     >
       <XCircle className="h-4 w-4 mr-2" />
-      {isPending ? 'Cancelling...' : 'Cancel Order'}
+      {isPending ? 'Cancelling...' : 'Cancel and Request Refund'}
     </OtwButton>
   );
 }
