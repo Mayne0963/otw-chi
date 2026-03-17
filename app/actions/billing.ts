@@ -8,7 +8,7 @@ import {
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 
 async function resolveAppUrlFromRequestHeaders(): Promise<string> {
   const headerList = await headers();
@@ -151,7 +151,7 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
 }
 
 export async function createCustomerPortal() {
-    const neonSession = await getNeonSession();
+    const neonSession = await getNeonSession(cookies());
     const userId = extractNeonAuthUserId(neonSession);
 
     if (!userId) throw new Error('Unauthorized');
