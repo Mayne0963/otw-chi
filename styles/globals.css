@@ -67,7 +67,7 @@ body {
     --secondary-foreground: 0 0% 98%; /* White */
 
     --muted: 43 20% 94%; /* Warm gray */
-    --muted-foreground: 0 0% 30%; /* Darker gray */
+    --muted-foreground: 0 0% 24%; /* Darker gray for stronger contrast */
 
     --accent: 43 74% 66%;
     --accent-foreground: 0 0% 5%;
@@ -75,8 +75,8 @@ body {
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 43 15% 88%;
-    --input: 43 15% 88%;
+    --border: 43 16% 82%; /* Darker border for readability in light mode */
+    --input: 43 16% 82%;
     --ring: 43 96% 38%; /* Match Secondary */
 
     --radius: 0.9rem; /* 14px default radius */
@@ -237,6 +237,93 @@ body {
   input[type="checkbox"],
   input[type="radio"] {
     accent-color: hsl(var(--secondary));
+  }
+
+  /*
+    Light-mode compatibility bridge for legacy dark-only utility classes.
+    This preserves readability on pages/components still using text-white/bg-black
+    while we incrementally migrate to semantic tokens.
+  */
+  :root:not(.dark) .text-white {
+    color: hsl(var(--foreground)) !important;
+  }
+  :root:not(.dark) .text-white\/90 {
+    color: hsl(var(--foreground) / 0.9) !important;
+  }
+  :root:not(.dark) .text-white\/85 {
+    color: hsl(var(--foreground) / 0.85) !important;
+  }
+  :root:not(.dark) .text-white\/80 {
+    color: hsl(var(--foreground) / 0.8) !important;
+  }
+  :root:not(.dark) .text-white\/75 {
+    color: hsl(var(--foreground) / 0.75) !important;
+  }
+  :root:not(.dark) .text-white\/70 {
+    color: hsl(var(--foreground) / 0.7) !important;
+  }
+  :root:not(.dark) .text-white\/65 {
+    color: hsl(var(--foreground) / 0.65) !important;
+  }
+  :root:not(.dark) .text-white\/60 {
+    color: hsl(var(--foreground) / 0.6) !important;
+  }
+  :root:not(.dark) .text-white\/55 {
+    color: hsl(var(--foreground) / 0.55) !important;
+  }
+  :root:not(.dark) .text-white\/50 {
+    color: hsl(var(--foreground) / 0.5) !important;
+  }
+  :root:not(.dark) .text-white\/45 {
+    color: hsl(var(--foreground) / 0.45) !important;
+  }
+  :root:not(.dark) .text-white\/40 {
+    color: hsl(var(--foreground) / 0.4) !important;
+  }
+
+  :root:not(.dark) .bg-white\/5,
+  :root:not(.dark) .bg-black\/20 {
+    background-color: hsl(var(--foreground) / 0.05) !important;
+  }
+  :root:not(.dark) .bg-white\/10,
+  :root:not(.dark) .bg-black\/30 {
+    background-color: hsl(var(--foreground) / 0.08) !important;
+  }
+  :root:not(.dark) .bg-white\/15,
+  :root:not(.dark) .bg-black\/40 {
+    background-color: hsl(var(--foreground) / 0.12) !important;
+  }
+  :root:not(.dark) .bg-white\/20 {
+    background-color: hsl(var(--foreground) / 0.16) !important;
+  }
+  :root:not(.dark) .bg-white\/50 {
+    background-color: hsl(var(--foreground) / 0.28) !important;
+  }
+
+  :root:not(.dark) .border-white\/5 {
+    border-color: hsl(var(--foreground) / 0.14) !important;
+  }
+  :root:not(.dark) .border-white\/10 {
+    border-color: hsl(var(--foreground) / 0.18) !important;
+  }
+  :root:not(.dark) .border-white\/15 {
+    border-color: hsl(var(--foreground) / 0.22) !important;
+  }
+  :root:not(.dark) .border-white\/20 {
+    border-color: hsl(var(--foreground) / 0.28) !important;
+  }
+  :root:not(.dark) .border-white\/40 {
+    border-color: hsl(var(--foreground) / 0.4) !important;
+  }
+  :root:not(.dark) .border-white\/50 {
+    border-color: hsl(var(--foreground) / 0.5) !important;
+  }
+
+  :root:not(.dark) .file\:border-white\/20::file-selector-button {
+    border-color: hsl(var(--foreground) / 0.28) !important;
+  }
+  :root:not(.dark) .file\:bg-white\/10::file-selector-button {
+    background-color: hsl(var(--foreground) / 0.08) !important;
   }
 }
 
