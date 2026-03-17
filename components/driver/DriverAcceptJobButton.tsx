@@ -3,7 +3,7 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import OtwButton from '@/components/ui/otw/OtwButton';
-import { acceptJob } from '@/app/actions/driver';
+import { acceptJob, DRIVER_OWN_REQUEST_ERROR } from '@/app/actions/driver';
 
 type DriverAcceptJobButtonProps = {
   requestId: string;
@@ -12,8 +12,6 @@ type DriverAcceptJobButtonProps = {
   size?: 'sm' | 'md' | 'lg' | 'icon';
   className?: string;
 };
-
-const OWN_REQUEST_ERROR = 'Drivers cannot accept their own requests';
 
 export default function DriverAcceptJobButton({
   requestId,
@@ -27,22 +25,19 @@ export default function DriverAcceptJobButton({
 
   const handleAccept = () => {
     startTransition(async () => {
-      try {
-        await acceptJob(requestId);
-        router.refresh();
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : 'Unable to accept this request right now.';
+      const result = await acceptJob(requestId);
 
-        if (message.includes(OWN_REQUEST_ERROR)) {
+      if (!result.ok) {
+        if (result.code === 'OWN_REQUEST' || result.error.includes(DRIVER_OWN_REQUEST_ERROR)) {
           window.alert("You can't accept your own request.");
           return;
         }
 
-        window.alert(message);
+        window.alert(result.error || 'Unable to accept this request right now.');
+        return;
       }
+
+      router.refresh();
     });
   };
 

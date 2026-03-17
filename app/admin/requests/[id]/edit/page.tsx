@@ -2,6 +2,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import QueryPopupAlert from '@/components/ui/query-popup-alert';
 import type { DeliveryRequestStatus } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
@@ -68,6 +69,11 @@ async function getRequestData(id: string) {
   return { request, drivers };
 }
 
+function buildEditErrorPath(id: string, message: string) {
+  const params = new URLSearchParams({ id, editError: message });
+  return `/admin/requests/${id}/edit?${params.toString()}`;
+}
+
 export async function updateRequestAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
@@ -102,84 +108,87 @@ export async function updateRequestAction(formData: FormData) {
     }
   });
 
-  if (dr) {
-    const data: {
-      status?: any;
-      assignedDriverId?: string | null;
-      notes?: string | null;
-      chatEnabled?: boolean;
-      chatClosedAt?: Date | null;
-    } = {};
+  if (!dr) {
+    redirect(buildEditErrorPath(id, 'Request not found.'));
+  }
 
-    if (statusOptions.includes(statusInput as RequestStatusOption)) {
-       // Validate against DeliveryRequestStatus enum
-       if (['DRAFT', 'REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'CANCELED'].includes(statusInput)) {
-         data.status = statusInput;
-       }
+  const data: {
+    status?: DeliveryRequestStatus;
+    assignedDriverId?: string | null;
+    notes?: string | null;
+    chatEnabled?: boolean;
+    chatClosedAt?: Date | null;
+  } = {};
+
+  if (statusOptions.includes(statusInput as RequestStatusOption)) {
+    // Validate against DeliveryRequestStatus enum
+    if (['DRAFT', 'REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'CANCELED'].includes(statusInput)) {
+      data.status = statusInput as DeliveryRequestStatus;
     }
+  }
 
-    if (driverIdInput.length > 0) {
-      if (isDispatchBlockedByPayment(dr)) {
-        throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
-      }
-      if (dr.dispatchAt && dr.dispatchAt.getTime() > Date.now()) {
-        throw new Error('Request is scheduled and not dispatchable yet');
-      }
-      if (
-        dr.overageBillingMode === 'INSTANT' &&
-        dr.overageMiles > 0 &&
-        dr.overageStatus !== 'PAID'
-      ) {
-        throw new Error('Request overage payment is not settled yet');
-      }
-      const driverProfile = await prisma.driverProfile.findUnique({
-        where: { id: driverIdInput },
-        select: { id: true, userId: true },
+  if (driverIdInput.length > 0) {
+    if (isDispatchBlockedByPayment(dr)) {
+      redirect(buildEditErrorPath(id, DISPATCH_PAYMENT_REQUIRED_ERROR));
+    }
+    if (dr.dispatchAt && dr.dispatchAt.getTime() > Date.now()) {
+      redirect(buildEditErrorPath(id, 'Request is scheduled and not dispatchable yet'));
+    }
+    if (
+      dr.overageBillingMode === 'INSTANT' &&
+      dr.overageMiles > 0 &&
+      dr.overageStatus !== 'PAID'
+    ) {
+      redirect(buildEditErrorPath(id, 'Request overage payment is not settled yet'));
+    }
+    const driverProfile = await prisma.driverProfile.findUnique({
+      where: { id: driverIdInput },
+      select: { id: true, userId: true },
+    });
+    if (!driverProfile) {
+      redirect(buildEditErrorPath(id, 'Driver not found'));
+    }
+    if (driverProfile.userId === dr.userId) {
+      redirect(buildEditErrorPath(id, "You can't assign a driver to their own request."));
+    }
+    const nextStatus = (data.status ?? dr.status) as DeliveryRequestStatus;
+    if (DRIVER_ACTIVE_REQUEST_STATUSES.includes(nextStatus)) {
+      const activeRequest = await prisma.deliveryRequest.findFirst({
+        where: {
+          assignedDriverId: driverProfile.id,
+          status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+          id: { not: id },
+        },
+        select: { id: true },
       });
-      if (!driverProfile) {
-        throw new Error('Driver not found');
-      }
-      if (driverProfile.userId === dr.userId) {
-        throw new Error('Drivers cannot accept their own requests');
-      }
-      const nextStatus = (data.status ?? dr.status) as DeliveryRequestStatus;
-      if (DRIVER_ACTIVE_REQUEST_STATUSES.includes(nextStatus)) {
-        const activeRequest = await prisma.deliveryRequest.findFirst({
-          where: {
-            assignedDriverId: driverProfile.id,
-            status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
-            id: { not: id },
-          },
-          select: { id: true },
-        });
-        if (activeRequest) {
-          throw new Error('Driver already has an active request');
-        }
+      if (activeRequest) {
+        redirect(buildEditErrorPath(id, 'Driver already has an active request'));
       }
     }
+  }
 
-    data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
-    data.notes = notesInput.length > 0 ? notesInput : null;
+  data.assignedDriverId = driverIdInput.length > 0 ? driverIdInput : null;
+  data.notes = notesInput.length > 0 ? notesInput : null;
 
-    const nextAssignedDriverId = data.assignedDriverId ?? dr.assignedDriverId ?? null;
-    const nextStatusCandidate = (data.status ?? dr.status) as DeliveryRequestStatus;
+  const nextAssignedDriverId = data.assignedDriverId ?? dr.assignedDriverId ?? null;
+  const nextStatusCandidate = (data.status ?? dr.status) as DeliveryRequestStatus;
 
-    if (nextStatusCandidate === 'ASSIGNED' && !nextAssignedDriverId) {
-      throw new Error('Assigned status requires an assigned driver');
-    }
+  if (nextStatusCandidate === 'ASSIGNED' && !nextAssignedDriverId) {
+    redirect(buildEditErrorPath(id, 'Assigned status requires an assigned driver'));
+  }
 
-    const assignmentChanged =
-      Boolean(nextAssignedDriverId) && nextAssignedDriverId !== dr.assignedDriverId;
-    const shouldReopenChat =
-      (assignmentChanged || (nextStatusCandidate === 'ASSIGNED' && Boolean(nextAssignedDriverId))) &&
-      nextStatusCandidate !== 'DELIVERED' &&
-      nextStatusCandidate !== 'CANCELED';
+  const assignmentChanged = Boolean(nextAssignedDriverId) && nextAssignedDriverId !== dr.assignedDriverId;
+  const shouldReopenChat =
+    (assignmentChanged || (nextStatusCandidate === 'ASSIGNED' && Boolean(nextAssignedDriverId))) &&
+    nextStatusCandidate !== 'DELIVERED' &&
+    nextStatusCandidate !== 'CANCELED';
 
-    if (shouldReopenChat) {
-      data.chatEnabled = true;
-      data.chatClosedAt = null;
-    }
+  if (shouldReopenChat) {
+    data.chatEnabled = true;
+    data.chatClosedAt = null;
+  }
 
+  try {
     await prisma.$transaction(async (tx) => {
       const updatedRequest = await tx.deliveryRequest.update({
         where: { id },
@@ -213,6 +222,9 @@ export async function updateRequestAction(formData: FormData) {
         });
       }
     });
+  } catch (error) {
+    console.error('[updateRequestAction] Failed to update request:', error);
+    redirect(buildEditErrorPath(id, 'Unable to save changes right now. Please try again.'));
   }
 
   revalidatePath('/admin/requests');
@@ -226,12 +238,18 @@ export default async function AdminRequestEditPage({
   searchParams
 }: {
   params: { id: string };
-  searchParams?: { id?: string };
+  searchParams?: { id?: string | string[]; editError?: string | string[] };
 }) {
   await requireRole(['ADMIN']);
 
   const resolvedParams = await Promise.resolve(params);
   const resolvedSearchParams = await Promise.resolve(searchParams);
+  const editError =
+    typeof resolvedSearchParams?.editError === 'string'
+      ? resolvedSearchParams.editError
+      : Array.isArray(resolvedSearchParams?.editError)
+        ? resolvedSearchParams.editError[0]
+        : null;
   const headerList = await headers();
   const rawUrl =
     headerList.get('x-forwarded-path') ||
@@ -258,7 +276,14 @@ export default async function AdminRequestEditPage({
     }
   }
 
-  const resolvedId = resolvedParams?.id || resolvedSearchParams?.id || derivedId;
+  const searchId =
+    typeof resolvedSearchParams?.id === 'string'
+      ? resolvedSearchParams.id
+      : Array.isArray(resolvedSearchParams?.id)
+        ? resolvedSearchParams.id[0]
+        : '';
+
+  const resolvedId = resolvedParams?.id || searchId || derivedId;
 
   if (!resolvedId) {
     return (
@@ -281,6 +306,7 @@ export default async function AdminRequestEditPage({
 
   return (
     <OtwPageShell>
+      <QueryPopupAlert message={editError} clearParam="editError" />
       <OtwSectionHeader
         title="Edit Request"
         subtitle="Update assignment, status, and notes."

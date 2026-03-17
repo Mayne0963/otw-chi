@@ -21,6 +21,29 @@ import {
   DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
 } from '@/lib/request-chat';
 
+export const DRIVER_OWN_REQUEST_ERROR = 'Drivers cannot accept their own requests';
+
+export type AcceptJobResult =
+  | {
+      ok: true;
+      requestId: string;
+    }
+  | {
+      ok: false;
+      code:
+        | 'UNAUTHORIZED'
+        | 'DRIVER_NOT_FOUND'
+        | 'UNAVAILABLE'
+        | 'PAYMENT_REQUIRED'
+        | 'NOT_DISPATCHABLE'
+        | 'OVERAGE_UNPAID'
+        | 'OWN_REQUEST'
+        | 'DRIVER_BUSY'
+        | 'ALREADY_ASSIGNED'
+        | 'FAILED';
+      error: string;
+    };
+
 export async function getAvailableJobs() {
   const user = await getCurrentUser();
   if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) return [];
@@ -101,16 +124,28 @@ export async function getAvailableJobs() {
   return jobs;
 }
 
-export async function acceptJob(requestId: string) {
+export async function acceptJob(requestId: string): Promise<AcceptJobResult> {
   const user = await getCurrentUser();
-  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) throw new Error('Unauthorized');
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) {
+    return {
+      ok: false,
+      code: 'UNAUTHORIZED',
+      error: 'Unauthorized',
+    };
+  }
 
   const prisma = getPrisma();
   const driverProfile = await prisma.driverProfile.findUnique({
     where: { userId: user.id },
   });
 
-  if (!driverProfile) throw new Error('Driver profile not found');
+  if (!driverProfile) {
+    return {
+      ok: false,
+      code: 'DRIVER_NOT_FOUND',
+      error: 'Driver profile not found',
+    };
+  }
 
   const job = await prisma.deliveryRequest.findUnique({
     where: { id: requestId },
@@ -130,19 +165,39 @@ export async function acceptJob(requestId: string) {
   });
 
   if (!job || job.status !== 'REQUESTED') {
-    throw new Error('Job is no longer available');
+    return {
+      ok: false,
+      code: 'UNAVAILABLE',
+      error: 'Job is no longer available',
+    };
   }
   if (isDispatchBlockedByPayment(job)) {
-    throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
+    return {
+      ok: false,
+      code: 'PAYMENT_REQUIRED',
+      error: DISPATCH_PAYMENT_REQUIRED_ERROR,
+    };
   }
   if (job.dispatchAt && job.dispatchAt.getTime() > Date.now()) {
-    throw new Error('Request is scheduled and not dispatchable yet');
+    return {
+      ok: false,
+      code: 'NOT_DISPATCHABLE',
+      error: 'Request is scheduled and not dispatchable yet',
+    };
   }
   if (job.overageBillingMode === 'INSTANT' && job.overageMiles > 0 && job.overageStatus !== 'PAID') {
-    throw new Error('Job overage payment is not settled');
+    return {
+      ok: false,
+      code: 'OVERAGE_UNPAID',
+      error: 'Job overage payment is not settled',
+    };
   }
   if (job.userId === user.id) {
-    throw new Error('Drivers cannot accept their own requests');
+    return {
+      ok: false,
+      code: 'OWN_REQUEST',
+      error: DRIVER_OWN_REQUEST_ERROR,
+    };
   }
   const activeJob = await prisma.deliveryRequest.findFirst({
     where: {
@@ -153,42 +208,65 @@ export async function acceptJob(requestId: string) {
     select: { id: true },
   });
   if (activeJob) {
-    throw new Error('Driver already has an active request');
+    return {
+      ok: false,
+      code: 'DRIVER_BUSY',
+      error: 'Driver already has an active request',
+    };
   }
   
   if (job.assignedDriverId) {
-     throw new Error('Job is already assigned');
+    return {
+      ok: false,
+      code: 'ALREADY_ASSIGNED',
+      error: 'Job is already assigned',
+    };
   }
 
-  const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const assigned = await tx.deliveryRequest.update({
-      where: { id: requestId },
-      data: {
-        status: 'ASSIGNED',
-        assignedDriverId: driverProfile.id,
-        chatEnabled: true,
-        chatClosedAt: null,
-      },
+  let updatedRequestId = requestId;
+  try {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const assigned = await tx.deliveryRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'ASSIGNED',
+          assignedDriverId: driverProfile.id,
+          chatEnabled: true,
+          chatClosedAt: null,
+        },
+      });
+
+      await createSystemRequestMessage(tx, {
+        deliveryRequestId: assigned.id,
+        senderUserId: user.id,
+        senderRole: user.role,
+        messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+      });
+
+      return assigned;
     });
 
-    await createSystemRequestMessage(tx, {
-      deliveryRequestId: assigned.id,
-      senderUserId: user.id,
-      senderRole: user.role,
-      messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
-    });
-
-    return assigned;
-  });
+    updatedRequestId = updated.id;
+  } catch (error) {
+    console.error('[acceptJob] Failed to assign job:', error);
+    return {
+      ok: false,
+      code: 'FAILED',
+      error: 'Unable to accept this request right now.',
+    };
+  }
 
   revalidatePath('/driver/jobs');
   revalidatePath(`/driver/jobs/${requestId}`);
-  return updated;
+  return { ok: true, requestId: updatedRequestId };
 }
 
 export async function acceptJobAction(formData: FormData) {
   const id = formData.get('id') as string;
-  await acceptJob(id);
+  const result = await acceptJob(id);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
 }
 
 export async function updateJobStatus(requestId: string, status: DeliveryRequestStatus) {

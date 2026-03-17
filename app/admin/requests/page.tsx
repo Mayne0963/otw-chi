@@ -3,6 +3,7 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import QueryPopupAlert from '@/components/ui/query-popup-alert';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { DRIVER_ACTIVE_REQUEST_STATUSES } from '@/lib/driver-assignment';
@@ -18,6 +19,7 @@ import {
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 // Loading component for better UX
 function AdminRequestsLoading() {
@@ -276,6 +278,10 @@ function RequestsErrorState({ error }: { error: unknown }) {
   );
 }
 
+function buildAssignErrorPath(message: string) {
+  return `/admin/requests?assignError=${encodeURIComponent(message)}`;
+}
+
 export async function assignDriverAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
@@ -288,117 +294,131 @@ export async function assignDriverAction(formData: FormData) {
   
   if (!id || !driverProfileId) {
     console.warn('[assignDriverAction] Missing required parameters:', { id, driverProfileId });
-    return;
+    redirect(buildAssignErrorPath('Missing request or driver selection.'));
   }
-  
-  try {
-    const prisma = getPrisma();
-    const deliveryRequest = await prisma.deliveryRequest.findUnique({ 
-      where: { id },
-      select: {
-        assignedDriverId: true,
-        status: true,
-        userId: true,
-        paymentRequired: true,
-        deliveryFeePaid: true,
-        deliveryFeeCents: true,
-        overageBillingMode: true,
-        overageMiles: true,
-        overageStatus: true,
-        dispatchAt: true,
-      }
-    });
-    const driverProfile = await prisma.driverProfile.findUnique({
-      where: { id: driverProfileId },
-      select: { id: true, userId: true },
-    });
-    
-    if (deliveryRequest) {
-      if (isDispatchBlockedByPayment(deliveryRequest)) {
-        throw new Error(DISPATCH_PAYMENT_REQUIRED_ERROR);
-      }
-      if (deliveryRequest.dispatchAt && deliveryRequest.dispatchAt.getTime() > Date.now()) {
-        throw new Error('Request is scheduled and not dispatchable yet');
-      }
-      if (
-        deliveryRequest.overageBillingMode === 'INSTANT' &&
-        deliveryRequest.overageMiles > 0 &&
-        deliveryRequest.overageStatus !== 'PAID'
-      ) {
-        throw new Error('Request overage payment is not settled yet');
-      }
-      if (!driverProfile) {
-        throw new Error('Driver not found');
-      }
-      if (deliveryRequest.userId === driverProfile.userId) {
-        throw new Error('Drivers cannot accept their own requests');
-      }
-      const activeRequest = await prisma.deliveryRequest.findFirst({
-        where: {
-          assignedDriverId: driverProfile.id,
-          status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
-          id: { not: id },
-        },
-        select: { id: true },
-      });
-      if (activeRequest) {
-        throw new Error('Driver already has an active request');
-      }
 
-      const assignmentChanged = deliveryRequest.assignedDriverId !== driverProfile.id;
-      const canKeepChatOpen =
-        deliveryRequest.status !== 'DELIVERED' && deliveryRequest.status !== 'CANCELED';
-      await prisma.$transaction(async (tx) => {
-        await tx.deliveryRequest.update({
-          where: { id },
+  const prisma = getPrisma();
+  const deliveryRequest = await prisma.deliveryRequest.findUnique({
+    where: { id },
+    select: {
+      assignedDriverId: true,
+      status: true,
+      userId: true,
+      paymentRequired: true,
+      deliveryFeePaid: true,
+      deliveryFeeCents: true,
+      overageBillingMode: true,
+      overageMiles: true,
+      overageStatus: true,
+      dispatchAt: true,
+    },
+  });
+  if (!deliveryRequest) {
+    console.warn('[assignDriverAction] Request not found:', id);
+    redirect(buildAssignErrorPath('Request not found.'));
+  }
+
+  const driverProfile = await prisma.driverProfile.findUnique({
+    where: { id: driverProfileId },
+    select: { id: true, userId: true },
+  });
+
+  if (isDispatchBlockedByPayment(deliveryRequest)) {
+    redirect(buildAssignErrorPath(DISPATCH_PAYMENT_REQUIRED_ERROR));
+  }
+  if (deliveryRequest.dispatchAt && deliveryRequest.dispatchAt.getTime() > Date.now()) {
+    redirect(buildAssignErrorPath('Request is scheduled and not dispatchable yet'));
+  }
+  if (
+    deliveryRequest.overageBillingMode === 'INSTANT' &&
+    deliveryRequest.overageMiles > 0 &&
+    deliveryRequest.overageStatus !== 'PAID'
+  ) {
+    redirect(buildAssignErrorPath('Request overage payment is not settled yet'));
+  }
+  if (!driverProfile) {
+    redirect(buildAssignErrorPath('Driver not found'));
+  }
+  if (deliveryRequest.userId === driverProfile.userId) {
+    redirect(buildAssignErrorPath("You can't assign a driver to their own request."));
+  }
+
+  const activeRequest = await prisma.deliveryRequest.findFirst({
+    where: {
+      assignedDriverId: driverProfile.id,
+      status: { in: DRIVER_ACTIVE_REQUEST_STATUSES },
+      id: { not: id },
+    },
+    select: { id: true },
+  });
+  if (activeRequest) {
+    redirect(buildAssignErrorPath('Driver already has an active request'));
+  }
+
+  const assignmentChanged = deliveryRequest.assignedDriverId !== driverProfile.id;
+  const canKeepChatOpen = deliveryRequest.status !== 'DELIVERED' && deliveryRequest.status !== 'CANCELED';
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.deliveryRequest.update({
+        where: { id },
+        data: {
+          assignedDriverId: driverProfile.id,
+          status: deliveryRequest.status === 'REQUESTED' ? 'ASSIGNED' : undefined,
+          ...(canKeepChatOpen
+            ? {
+                chatEnabled: true,
+                chatClosedAt: null,
+              }
+            : {}),
+        },
+      });
+
+      if (assignmentChanged) {
+        await tx.driverAssignment.create({
           data: {
-            assignedDriverId: driverProfile.id,
-            status: deliveryRequest.status === 'REQUESTED' ? 'ASSIGNED' : undefined,
-            ...(canKeepChatOpen
-              ? {
-                  chatEnabled: true,
-                  chatClosedAt: null,
-                }
-              : {}),
+            deliveryRequestId: id,
+            driverId: driverProfile.id,
           },
         });
+      }
 
-        if (assignmentChanged) {
-          await tx.driverAssignment.create({
-            data: {
-              deliveryRequestId: id,
-              driverId: driverProfile.id,
-            },
-          });
-        }
-
-        if (assignmentChanged && canKeepChatOpen) {
-          await createSystemRequestMessage(tx, {
-            deliveryRequestId: id,
-            senderUserId: actor.id,
-            senderRole: actor.role,
-            messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
-          });
-        }
-      });
-    } else {
-      console.warn('[assignDriverAction] Request not found:', id);
-      return;
-    }
-
-    revalidatePath('/admin/requests');
-    revalidatePath(`/admin/requests/${id}`);
+      if (assignmentChanged && canKeepChatOpen) {
+        await createSystemRequestMessage(tx, {
+          deliveryRequestId: id,
+          senderUserId: actor.id,
+          senderRole: actor.role,
+          messageText: DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
+        });
+      }
+    });
   } catch (error) {
     console.error('[assignDriverAction] Failed to assign driver:', error);
-    throw error; // Re-throw to trigger error boundary
+    redirect(buildAssignErrorPath('Unable to assign this driver right now. Please try again.'));
   }
+
+  revalidatePath('/admin/requests');
+  revalidatePath(`/admin/requests/${id}`);
+  redirect('/admin/requests');
 }
 
-export default async function AdminRequestsPage() {
+export default async function AdminRequestsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ assignError?: string | string[] }> | { assignError?: string | string[] };
+}) {
   await requireRole(['ADMIN']);
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const assignError =
+    typeof resolvedSearchParams?.assignError === 'string'
+      ? resolvedSearchParams.assignError
+      : Array.isArray(resolvedSearchParams?.assignError)
+        ? resolvedSearchParams.assignError[0]
+        : null;
   
   return (
     <OtwPageShell>
+      <QueryPopupAlert message={assignError} clearParam="assignError" />
       <OtwSectionHeader 
         title="Request Management" 
         subtitle="Monitor and manage customer delivery requests." 
