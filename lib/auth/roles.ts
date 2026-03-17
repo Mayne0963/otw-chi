@@ -1,7 +1,6 @@
 import { getPrisma } from '@/lib/db';
 import { Role } from '@prisma/client';
 import { extractNeonAuthEmail, extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
-import { cookies } from 'next/headers';
 
 export async function getCurrentUser() {
   try {

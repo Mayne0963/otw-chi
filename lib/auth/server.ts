@@ -75,9 +75,9 @@ function normalizeSessionData(sessionData: unknown): unknown {
   };
 }
 
-export async function getNeonSession(cookies?: any) {
+export async function getNeonSession() {
   try {
-    const session = await auth.getSession({ fetchOptions: { headers: { cookie: cookies.toString() } } });
+    const session = await auth.getSession();
     if (!session?.data) return null;
     return normalizeSessionData(session.data);
   } catch (error) {

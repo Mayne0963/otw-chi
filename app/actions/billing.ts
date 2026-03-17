@@ -8,7 +8,9 @@ import {
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
 import { redirect } from 'next/navigation';
-import { headers, cookies } from 'next/headers';
+import { headers } from 'next/headers';
+
+const DEFAULT_PORTAL_RETURN_PATH = '/membership/manage';
 
 async function resolveAppUrlFromRequestHeaders(): Promise<string> {
   const headerList = await headers();
@@ -21,6 +23,30 @@ async function resolveAppUrlFromRequestHeaders(): Promise<string> {
   const forwardedProto = headerList.get('x-forwarded-proto');
   const proto = forwardedProto === 'http' ? 'http' : 'https';
   return `${proto}://${forwardedHost}`;
+}
+
+async function resolveSafeReturnPathFromRequestHeaders(
+  fallback: string = DEFAULT_PORTAL_RETURN_PATH
+): Promise<string> {
+  const headerList = await headers();
+  const referer = headerList.get('referer');
+  if (!referer) return fallback;
+
+  const appUrl = await resolveAppUrlFromRequestHeaders();
+
+  try {
+    const appOrigin = new URL(appUrl).origin;
+    const refererUrl = new URL(referer);
+
+    if (refererUrl.origin !== appOrigin) {
+      return fallback;
+    }
+
+    const returnPath = `${refererUrl.pathname}${refererUrl.search}${refererUrl.hash}`;
+    return returnPath || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' | 'ELITE' | 'BLACK') {
@@ -151,28 +177,58 @@ export async function createCheckoutSession(planCode: 'BASIC' | 'PLUS' | 'PRO' |
 }
 
 export async function createCustomerPortal() {
-    const neonSession = await getNeonSession(cookies());
-    const userId = extractNeonAuthUserId(neonSession);
+  const returnPath = await resolveSafeReturnPathFromRequestHeaders();
+  const neonSession = await getNeonSession();
+  const userId = extractNeonAuthUserId(neonSession);
 
-    if (!userId) throw new Error('Unauthorized');
+  if (!userId) {
+    redirect(`/sign-in?redirect_url=${encodeURIComponent(returnPath)}`);
+  }
 
-    const prisma = getPrisma();
-    const user = await prisma.user.findUnique({
-        where: { neonAuthId: userId },
-        include: { membership: true },
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({
+    where: { neonAuthId: userId },
+    include: { membership: true },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const stripe = getStripe();
+  let stripeCustomerId = user.membership?.stripeCustomerId;
+
+  if (!stripeCustomerId) {
+    const customer = await stripe.customers.create({
+      email: user.email,
+      name: user.name ?? undefined,
+      metadata: {
+        userId: user.id,
+        neonAuthId: userId,
+      },
     });
 
-    if (!user?.membership?.stripeCustomerId) {
-        throw new Error('No billing account found');
-    }
+    stripeCustomerId = customer.id;
 
-    const appUrl = await resolveAppUrlFromRequestHeaders();
-
-    const stripe = getStripe();
-    const session = await stripe.billingPortal.sessions.create({
-        customer: user.membership.stripeCustomerId,
-        return_url: `${appUrl}/membership/manage`,
+    await prisma.membershipSubscription.upsert({
+      where: { userId: user.id },
+      update: {
+        stripeCustomerId,
+      },
+      create: {
+        userId: user.id,
+        stripeCustomerId,
+        status: 'INACTIVE',
+      },
     });
+  }
 
-    redirect(session.url);
+  const appUrl = await resolveAppUrlFromRequestHeaders();
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: stripeCustomerId,
+    return_url: `${appUrl}${returnPath}`,
+  });
+
+  redirect(session.url);
 }

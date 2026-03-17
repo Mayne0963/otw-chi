@@ -363,6 +363,31 @@ export async function middleware(req: NextRequest) {
     response = bypassResponse;
   }
 
+  // Protected-route server actions can also be falsely classified as unauthenticated
+  // by edge middleware, even when a Neon auth cookie is present. Let the action
+  // handler enforce auth instead of forcing an immediate sign-in redirect.
+  if (
+    isServerActionRequest &&
+    !isPublicRoute(pathname) &&
+    requestHasNeonAuthCookie &&
+    (
+      response.status === 401 ||
+      response.status === 403 ||
+      (
+        response.status >= 300 &&
+        response.status < 400 &&
+        response.headers.get('location')?.includes('/sign-in')
+      )
+    )
+  ) {
+    const bypassResponse = NextResponse.next();
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      bypassResponse.headers.set('set-cookie', setCookie);
+    }
+    response = bypassResponse;
+  }
+
   // Public-route server actions can be falsely classified as unauthenticated by edge auth.
   // Let the server action handler enforce auth instead of forcing a sign-in redirect.
   if (
