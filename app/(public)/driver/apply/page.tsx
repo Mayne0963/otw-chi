@@ -22,7 +22,7 @@ export default function DriverApplyPage() {
     city: '',
     vehicleType: '',
     availability: '',
-    message: ''
+    whyOtwAnswer: ''
   });
 
   useEffect(() => {
@@ -62,9 +62,13 @@ export default function DriverApplyPage() {
       
       setSubmitted(true);
     } catch (_error) {
+      const description =
+        _error instanceof Error && _error.message
+          ? _error.message
+          : 'Something went wrong. Please try again.';
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description,
         variant: "destructive"
       });
     } finally {
@@ -176,12 +180,13 @@ export default function DriverApplyPage() {
             </div>
 
             <div>
-              <label htmlFor="message" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Why OTW? (Optional)</label>
+              <label htmlFor="whyOtwAnswer" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Why OTW?</label>
               <textarea 
-                id="message"
-                name="message"
+                id="whyOtwAnswer"
+                name="whyOtwAnswer"
                 rows={3}
-                value={formData.message}
+                required
+                value={formData.whyOtwAnswer}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-border/70 bg-input px-3 py-2 text-sm text-foreground shadow-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:ring-offset-2 focus-visible:ring-offset-background" 
               />
