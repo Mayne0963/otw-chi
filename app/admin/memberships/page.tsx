@@ -3,10 +3,13 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import QueryPopupAlert from '@/components/ui/query-popup-alert';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 function formatDistanceSafe(value: unknown) {
   const date =
@@ -37,30 +40,132 @@ function AdminMembershipsLoading() {
   );
 }
 
+function buildMembershipAdminPath(params: Record<string, string>) {
+  const search = new URLSearchParams(params);
+  return `/admin/memberships?${search.toString()}`;
+}
+
+export async function assignMembershipAction(formData: FormData) {
+  'use server';
+
+  await requireRole(['ADMIN']);
+
+  const userId = String(formData.get('userId') ?? '').trim();
+  const planId = String(formData.get('planId') ?? '').trim();
+  const rawDurationDays = String(formData.get('durationDays') ?? '').trim();
+  const durationDays = Number.parseInt(rawDurationDays, 10);
+
+  if (!userId || !planId || !Number.isFinite(durationDays)) {
+    redirect(buildMembershipAdminPath({ assignError: 'User, plan, and duration are required.' }));
+  }
+
+  if (durationDays < 1 || durationDays > 730) {
+    redirect(buildMembershipAdminPath({ assignError: 'Duration must be between 1 and 730 days.' }));
+  }
+
+  const prisma = getPrisma();
+  const [user, plan] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true },
+    }),
+    prisma.membershipPlan.findUnique({
+      where: { id: planId },
+      select: { id: true, name: true, stripePriceId: true },
+    }),
+  ]);
+
+  if (!user) {
+    redirect(buildMembershipAdminPath({ assignError: 'Selected user was not found.' }));
+  }
+
+  if (!plan) {
+    redirect(buildMembershipAdminPath({ assignError: 'Selected plan was not found.' }));
+  }
+
+  const now = new Date();
+  const currentPeriodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+  try {
+    await prisma.membershipSubscription.upsert({
+      where: { userId: user.id },
+      update: {
+        planId: plan.id,
+        status: 'ACTIVE',
+        currentPeriodEnd,
+        renewsAt: currentPeriodEnd,
+        stripePriceId: plan.stripePriceId ?? undefined,
+      },
+      create: {
+        userId: user.id,
+        planId: plan.id,
+        status: 'ACTIVE',
+        currentPeriodEnd,
+        renewsAt: currentPeriodEnd,
+        stripePriceId: plan.stripePriceId ?? null,
+      },
+    });
+  } catch (error) {
+    console.error('[assignMembershipAction] Failed to assign membership:', error);
+    redirect(buildMembershipAdminPath({ assignError: 'Failed to assign membership. Please try again.' }));
+  }
+
+  revalidatePath('/admin/memberships');
+  revalidatePath(`/admin/customers/${user.id}`);
+  revalidatePath('/membership/manage');
+
+  redirect(
+    buildMembershipAdminPath({
+      assignSuccess: `Assigned ${plan.name} to ${user.email} for ${durationDays} days.`,
+    })
+  );
+}
+
 async function getMembershipsData() {
   const prisma = getPrisma();
   
   try {
-    // Get all membership subscriptions with user and plan details
-    const memberships = await prisma.membershipSubscription.findMany({
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        plan: { select: { id: true, name: true, description: true } }
-      },
-      take: 50
-    });
-
-    // Get membership statistics
-    const stats = await prisma.membershipSubscription.groupBy({
-      by: ['status'],
-      _count: true
-    });
+    const [memberships, stats, assignableUsers, plans] = await Promise.all([
+      prisma.membershipSubscription.findMany({
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          plan: { select: { id: true, name: true, description: true } },
+        },
+        take: 50,
+        orderBy: { currentPeriodEnd: 'desc' },
+      }),
+      prisma.membershipSubscription.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
+      prisma.user.findMany({
+        where: { role: { not: 'ADMIN' } },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          membership: {
+            select: {
+              status: true,
+              currentPeriodEnd: true,
+              plan: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 250,
+      }),
+      prisma.membershipPlan.findMany({
+        select: { id: true, name: true, description: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
     const totalActive = stats.find(s => s.status === 'ACTIVE')?._count || 0;
     const totalCancelled = stats.find(s => s.status === 'CANCELED')?._count || 0;
     const totalPastDue = stats.find(s => s.status === 'PAST_DUE')?._count || 0;
 
-    return { memberships, totalActive, totalCancelled, totalPastDue };
+    return { memberships, totalActive, totalCancelled, totalPastDue, assignableUsers, plans };
   } catch (error) {
     console.error('[AdminMemberships] Failed to fetch memberships:', error);
     throw error;
@@ -69,9 +174,13 @@ async function getMembershipsData() {
 
 type MembershipsData = Awaited<ReturnType<typeof getMembershipsData>>;
 type MembershipRow = MembershipsData['memberships'][number];
+type AssignableUserRow = MembershipsData['assignableUsers'][number];
+type MembershipPlanRow = MembershipsData['plans'][number];
 
 async function MembershipsList() {
   let memberships: MembershipRow[] = [];
+  let assignableUsers: AssignableUserRow[] = [];
+  let plans: MembershipPlanRow[] = [];
   let totalActive = 0;
   let totalCancelled = 0;
   let totalPastDue = 0;
@@ -80,6 +189,8 @@ async function MembershipsList() {
   try {
     const data = await getMembershipsData();
     memberships = data.memberships;
+    assignableUsers = data.assignableUsers;
+    plans = data.plans;
     totalActive = data.totalActive;
     totalCancelled = data.totalCancelled;
     totalPastDue = data.totalPastDue;
@@ -92,15 +203,150 @@ async function MembershipsList() {
   }
 
   if (memberships.length === 0) {
-    return <EmptyMembershipsState totalActive={totalActive} totalCancelled={totalCancelled} totalPastDue={totalPastDue} totalSubscriptions={memberships.length} />;
+    return (
+      <EmptyMembershipsState
+        totalActive={totalActive}
+        totalCancelled={totalCancelled}
+        totalPastDue={totalPastDue}
+        totalSubscriptions={memberships.length}
+        assignableUsers={assignableUsers}
+        plans={plans}
+      />
+    );
   }
 
-  return <MembershipsContent memberships={memberships} totalActive={totalActive} totalCancelled={totalCancelled} totalPastDue={totalPastDue} />;
+  return (
+    <MembershipsContent
+      memberships={memberships}
+      totalActive={totalActive}
+      totalCancelled={totalCancelled}
+      totalPastDue={totalPastDue}
+      assignableUsers={assignableUsers}
+      plans={plans}
+    />
+  );
 }
 
-function EmptyMembershipsState({ totalActive, totalCancelled, totalPastDue, totalSubscriptions }: { totalActive: number; totalCancelled: number; totalPastDue: number; totalSubscriptions: number }) {
+function AssignMembershipCard({
+  assignableUsers,
+  plans,
+}: {
+  assignableUsers: AssignableUserRow[];
+  plans: MembershipPlanRow[];
+}) {
+  return (
+    <OtwCard className="mt-3 p-6">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-white">Assign Membership</h3>
+        <p className="mt-1 text-xs text-white/60">
+          Select a user, plan, and how many days the membership should stay active.
+        </p>
+      </div>
+
+      {assignableUsers.length === 0 || plans.length === 0 ? (
+        <div className="text-sm text-white/60">
+          {assignableUsers.length === 0
+            ? 'No eligible users found to assign a membership.'
+            : 'No membership plans found. Create plans first.'}
+        </div>
+      ) : (
+        <form action={assignMembershipAction} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="space-y-1">
+            <label htmlFor="assign-user" className="text-xs uppercase tracking-wider text-white/60">
+              User
+            </label>
+            <select
+              id="assign-user"
+              name="userId"
+              required
+              defaultValue=""
+              className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"
+            >
+              <option value="" disabled>
+                Select user
+              </option>
+              {assignableUsers.map((user) => {
+                const membershipLabel = user.membership?.plan?.name
+                  ? `${user.membership.plan.name} (${user.membership.status})`
+                  : 'No membership';
+                return (
+                  <option key={user.id} value={user.id}>
+                    {user.name || user.email} - {user.email} - {membershipLabel}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="assign-plan" className="text-xs uppercase tracking-wider text-white/60">
+              Plan
+            </label>
+            <select
+              id="assign-plan"
+              name="planId"
+              required
+              defaultValue=""
+              className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"
+            >
+              <option value="" disabled>
+                Select plan
+              </option>
+              {plans.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="assign-duration" className="text-xs uppercase tracking-wider text-white/60">
+              Active Days
+            </label>
+            <input
+              id="assign-duration"
+              name="durationDays"
+              type="number"
+              min={1}
+              max={730}
+              step={1}
+              required
+              defaultValue={30}
+              className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"
+            />
+          </div>
+
+          <div className="flex items-end">
+            <OtwButton type="submit" variant="outline" className="h-[42px] w-full text-xs">
+              Assign Membership
+            </OtwButton>
+          </div>
+        </form>
+      )}
+    </OtwCard>
+  );
+}
+
+function EmptyMembershipsState({
+  totalActive,
+  totalCancelled,
+  totalPastDue,
+  totalSubscriptions,
+  assignableUsers,
+  plans,
+}: {
+  totalActive: number;
+  totalCancelled: number;
+  totalPastDue: number;
+  totalSubscriptions: number;
+  assignableUsers: AssignableUserRow[];
+  plans: MembershipPlanRow[];
+}) {
   return (
     <>
+      <AssignMembershipCard assignableUsers={assignableUsers} plans={plans} />
+
       <OtwCard className="mt-3 p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
           <div className="p-4 bg-white/5 rounded-lg">
@@ -137,14 +383,20 @@ function MembershipsContent({
   totalActive,
   totalCancelled,
   totalPastDue,
+  assignableUsers,
+  plans,
 }: {
   memberships: MembershipRow[];
   totalActive: number;
   totalCancelled: number;
   totalPastDue: number;
+  assignableUsers: AssignableUserRow[];
+  plans: MembershipPlanRow[];
 }) {
   return (
     <>
+      <AssignMembershipCard assignableUsers={assignableUsers} plans={plans} />
+
       <OtwCard className="mt-3 p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
           <div className="p-4 bg-white/5 rounded-lg">
@@ -254,11 +506,30 @@ function MembershipsErrorState({ error }: { error: unknown }) {
   );
 }
 
-export default async function AdminMembershipsPage() {
+function readSearchParam(
+  value: string | string[] | undefined
+): string | null {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return null;
+}
+
+export default async function AdminMembershipsPage({
+  searchParams,
+}: {
+  searchParams?:
+    | Promise<Record<string, string | string[] | undefined>>
+    | Record<string, string | string[] | undefined>;
+}) {
   await requireRole(['ADMIN']);
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const assignError = readSearchParam(resolvedSearchParams?.assignError);
+  const assignSuccess = readSearchParam(resolvedSearchParams?.assignSuccess);
   
   return (
     <OtwPageShell>
+      <QueryPopupAlert message={assignError} clearParam="assignError" />
+      <QueryPopupAlert message={assignSuccess} clearParam="assignSuccess" />
       <OtwSectionHeader 
         title="Membership Management" 
         subtitle="Monitor subscription plans, member activity, and billing status." 
