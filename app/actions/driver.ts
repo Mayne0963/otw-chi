@@ -21,9 +21,9 @@ import {
   DRIVER_ASSIGNED_CHAT_OPEN_MESSAGE,
 } from '@/lib/request-chat';
 
-export const DRIVER_OWN_REQUEST_ERROR = 'Drivers cannot accept their own requests';
+const DRIVER_OWN_REQUEST_ERROR = 'Drivers cannot accept their own requests';
 
-export type AcceptJobResult =
+type AcceptJobResult =
   | {
       ok: true;
       requestId: string;
