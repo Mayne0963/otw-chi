@@ -25,6 +25,23 @@ type FeaturedLocation = {
 };
 
 const DEFAULT_SEARCH_LIMIT = 12;
+const LIVE_SEARCH_LIMIT = 24;
+const MIN_LIVE_QUERY_LENGTH = 3;
+const SEARCH_CACHE_TTL_MS = 90_000;
+const SEARCH_CACHE_MAX_ENTRIES = 200;
+
+type CachedSearchEntry = {
+  results: GeocodedAddress[];
+  expiresAt: number;
+};
+
+type RankedAddress = {
+  address: GeocodedAddress;
+  score: number;
+  matchedTokenCount: number;
+};
+
+const searchResultCache = new Map<string, CachedSearchEntry>();
 
 const SERVICE_AREAS: ServiceArea[] = [
   {
@@ -1176,6 +1193,32 @@ function normalizeQuery(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+const TOKEN_EQUIVALENTS: Record<string, string[]> = {
+  st: ['street', 'saint'],
+  street: ['st'],
+  rd: ['road'],
+  road: ['rd'],
+  ave: ['avenue'],
+  avenue: ['ave'],
+  blvd: ['boulevard'],
+  boulevard: ['blvd'],
+  dr: ['drive'],
+  drive: ['dr'],
+  ln: ['lane'],
+  lane: ['ln'],
+  ct: ['court'],
+  court: ['ct'],
+  cir: ['circle'],
+  circle: ['cir'],
+  pkwy: ['parkway'],
+  parkway: ['pkwy'],
+  hwy: ['highway'],
+  highway: ['hwy'],
+  us: ['u s'],
+  ft: ['fort'],
+  fort: ['ft'],
+};
+
 function tokenizeQuery(value: string, options?: { minLength?: number }): string[] {
   const minLength = options?.minLength ?? 2;
   return normalizeQuery(value)
@@ -1188,7 +1231,122 @@ function getTokenVariants(token: string): string[] {
   if (token.endsWith('s') && token.length > 3) {
     variants.add(token.slice(0, -1));
   }
+  const equivalents = TOKEN_EQUIVALENTS[token];
+  if (equivalents) {
+    for (const equivalent of equivalents) {
+      variants.add(equivalent);
+    }
+  }
   return Array.from(variants);
+}
+
+function getRequiredTokenMatches(tokens: string[]): number {
+  if (tokens.length <= 2) return tokens.length;
+  return tokens.length - 1;
+}
+
+function countMatchedTokens(searchableText: string, queryTokens: string[]): number {
+  if (queryTokens.length === 0) return 0;
+  return queryTokens.reduce((count, token) => {
+    const variants = getTokenVariants(token);
+    return variants.some((variant) => searchableText.includes(variant)) ? count + 1 : count;
+  }, 0);
+}
+
+function computeAddressMatchScore(params: {
+  address: GeocodedAddress;
+  normalizedQuery: string;
+  queryTokens: string[];
+  searchableText: string;
+  placeName: string;
+  streetAddress: string;
+  city: string;
+  zipCode: string;
+  matchedTokenCount: number;
+}): number {
+  const {
+    address,
+    normalizedQuery,
+    queryTokens,
+    searchableText,
+    placeName,
+    streetAddress,
+    city,
+    zipCode,
+    matchedTokenCount,
+  } = params;
+
+  let score = 0;
+
+  if (normalizedQuery.length > 0) {
+    if (placeName === normalizedQuery) score += 360;
+    if (streetAddress === normalizedQuery) score += 340;
+    if (searchableText === normalizedQuery) score += 320;
+
+    if (placeName.startsWith(normalizedQuery)) score += 250;
+    if (streetAddress.startsWith(normalizedQuery)) score += 230;
+    if (searchableText.startsWith(normalizedQuery)) score += 210;
+    if (city.startsWith(normalizedQuery)) score += 90;
+    if (zipCode.startsWith(normalizedQuery)) score += 95;
+    if (searchableText.includes(normalizedQuery)) score += 120;
+  }
+
+  for (const token of queryTokens) {
+    const variants = getTokenVariants(token);
+    if (variants.some((variant) => placeName.includes(variant))) {
+      score += 48;
+      continue;
+    }
+    if (variants.some((variant) => streetAddress.includes(variant))) {
+      score += 44;
+      continue;
+    }
+    if (variants.some((variant) => zipCode.includes(variant))) {
+      score += 38;
+      continue;
+    }
+    if (variants.some((variant) => city.includes(variant))) {
+      score += 32;
+    }
+  }
+
+  if (queryTokens.length > 0 && matchedTokenCount === queryTokens.length) {
+    score += 120;
+  }
+  score += matchedTokenCount * 24;
+  score -= Math.min(address.distanceFromServiceArea, 30) * 2.2;
+
+  return score;
+}
+
+function cloneAddresses(addresses: GeocodedAddress[]): GeocodedAddress[] {
+  return addresses.map((address) => ({ ...address }));
+}
+
+function getCachedSearchResults(cacheKey: string): GeocodedAddress[] | null {
+  const cached = searchResultCache.get(cacheKey);
+  if (!cached) return null;
+
+  if (cached.expiresAt <= Date.now()) {
+    searchResultCache.delete(cacheKey);
+    return null;
+  }
+
+  return cloneAddresses(cached.results);
+}
+
+function setCachedSearchResults(cacheKey: string, results: GeocodedAddress[]): void {
+  searchResultCache.set(cacheKey, {
+    results: cloneAddresses(results),
+    expiresAt: Date.now() + SEARCH_CACHE_TTL_MS,
+  });
+
+  if (searchResultCache.size > SEARCH_CACHE_MAX_ENTRIES) {
+    const oldestKey = searchResultCache.keys().next().value;
+    if (typeof oldestKey === 'string') {
+      searchResultCache.delete(oldestKey);
+    }
+  }
 }
 
 function getServiceAreasForQuery(query: string): ServiceArea[] {
@@ -1261,6 +1419,13 @@ function toFeaturedAddress(location: FeaturedLocation): GeocodedAddress {
   };
 }
 
+const FEATURED_LOCATION_INDEX = FEATURED_FORT_WAYNE_LOCATIONS.map((location) => ({
+  location,
+  haystack: normalizeQuery(
+    `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.zipCode} ${location.aliases.join(' ')}`
+  ),
+}));
+
 function getFeaturedLocationSuggestions(
   query: string,
   options?: { allowDefaultWhenNoMatch?: boolean }
@@ -1273,12 +1438,8 @@ function getFeaturedLocationSuggestions(
     return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
   if (tokens.length === 0) {
-    const lightweightMatches = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
-      const haystack = normalizeQuery(
-        `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
-      );
-      return haystack.includes(normalized);
-    });
+    const lightweightMatches = FEATURED_LOCATION_INDEX.filter(({ haystack }) => haystack.includes(normalized))
+      .map(({ location }) => location);
 
     if (lightweightMatches.length > 0) {
       return lightweightMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
@@ -1288,23 +1449,17 @@ function getFeaturedLocationSuggestions(
     return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
 
-  const exactTokenMatches = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
-    const haystack = normalizeQuery(
-      `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
-    );
-    return tokens.every((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)));
-  });
+  const exactTokenMatches = FEATURED_LOCATION_INDEX.filter(({ haystack }) =>
+    tokens.every((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)))
+  ).map(({ location }) => location);
 
   if (exactTokenMatches.length > 0) {
     return exactTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
 
-  const partialTokenMatches = FEATURED_FORT_WAYNE_LOCATIONS.filter((location) => {
-    const haystack = normalizeQuery(
-      `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.aliases.join(' ')}`
-    );
-    return tokens.some((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)));
-  });
+  const partialTokenMatches = FEATURED_LOCATION_INDEX.filter(({ haystack }) =>
+    tokens.some((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)))
+  ).map(({ location }) => location);
 
   if (partialTokenMatches.length > 0) {
     return partialTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
@@ -1337,38 +1492,61 @@ export async function searchAddress(
 ): Promise<GeocodedAddress[]> {
   const trimmedQuery = query.trim();
   const featuredSuggestions = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: true });
-  const featuredMatches = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: false });
+  const featuredMatches = getFeaturedLocationSuggestions(trimmedQuery, {
+    allowDefaultWhenNoMatch: false,
+  });
+
   if (!trimmedQuery) return featuredSuggestions;
-  // For short queries, use known matches immediately. If there are no known matches,
-  // still attempt live Fort Wayne geocoding so new place names can resolve.
-  if (trimmedQuery.length < 3 && featuredMatches.length > 0) return featuredSuggestions;
+
+  const normalizedQuery = normalizeQuery(trimmedQuery);
+  const cacheKey = normalizedQuery || trimmedQuery.toLowerCase();
+  const cachedResults = getCachedSearchResults(cacheKey);
+  if (cachedResults) return cachedResults;
+
+  if (trimmedQuery.length < MIN_LIVE_QUERY_LENGTH) {
+    setCachedSearchResults(cacheKey, featuredSuggestions);
+    return featuredSuggestions;
+  }
+
   const queryTokens = tokenizeQuery(trimmedQuery, { minLength: 2 });
+  const requiredTokenMatches = getRequiredTokenMatches(queryTokens);
 
   try {
-    const dedupedResults = new Map<string, GeocodedAddress>();
+    const rankedResults = new Map<string, RankedAddress>();
     const searchQueries = getSearchQueries(trimmedQuery);
+    const payloads = await Promise.all(
+      searchQueries.map(async (search) => {
+        try {
+          const url = getInternalApiUrl('/api/geocoding/search');
+          url.searchParams.append('q', search.searchText);
+          url.searchParams.append('format', 'json');
+          url.searchParams.append('addressdetails', '1');
+          url.searchParams.append('namedetails', '1');
+          url.searchParams.append('limit', String(LIVE_SEARCH_LIMIT));
+          url.searchParams.append('countrycodes', 'us');
+          url.searchParams.append('accept-language', 'en-US');
 
-    for (const search of searchQueries) {
-      const url = getInternalApiUrl('/api/geocoding/search');
-      url.searchParams.append('q', search.searchText);
-      url.searchParams.append('format', 'json');
-      url.searchParams.append('addressdetails', '1');
-      url.searchParams.append('namedetails', '1');
-      url.searchParams.append('limit', String(DEFAULT_SEARCH_LIMIT));
-      url.searchParams.append('countrycodes', 'us');
-      if (search.area) {
-        url.searchParams.append('viewbox', search.area.viewbox);
-        url.searchParams.append('bounded', '0');
-      }
+          if (search.area) {
+            url.searchParams.append('viewbox', search.area.viewbox);
+            url.searchParams.append('bounded', '0');
+          }
 
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        throw new Error(`Geocoding API error: ${response.status}`);
-      }
+          const response = await fetch(url.toString(), { cache: 'force-cache' });
+          if (!response.ok) {
+            console.warn(`Geocoding API response ${response.status} for query "${search.searchText}"`);
+            return [];
+          }
 
-      const payload = (await response.json()) as unknown;
-      if (!Array.isArray(payload)) continue;
+          const payload = (await response.json()) as unknown;
+          return Array.isArray(payload) ? payload : [];
+        } catch (error) {
+          console.warn(`Geocoding request failed for query "${search.searchText}"`, error);
+          return [];
+        }
+      })
+    );
 
+    for (const payload of payloads) {
       for (const value of payload) {
         if (!isRecord(value)) continue;
 
@@ -1389,6 +1567,10 @@ export async function searchAddress(
         const streetNumber = getString(address.house_number);
         const street = getString(address.road);
         const streetAddress = `${streetNumber} ${street}`.trim();
+        const city =
+          getString(address.city) || getString(address.town) || getString(address.village);
+        const state = getString(address.state);
+        const zipCode = getString(address.postcode);
         const placeName =
           (namedetails && getString(namedetails.name)) ||
           getString(value.name) ||
@@ -1404,55 +1586,80 @@ export async function searchAddress(
 
         const roundedDistance = Math.round(nearest.distanceMiles * 10) / 10;
         const formattedAddress = getString(value.display_name);
+        if (!formattedAddress) continue;
+
         const searchableText = normalizeQuery(
-          `${formattedAddress} ${placeName || ''} ${streetAddress} ${
-            getString(address.city) || getString(address.town) || getString(address.village)
-          } ${getString(address.state)} ${getString(address.postcode)}`
+          `${formattedAddress} ${placeName || ''} ${streetAddress} ${city} ${state} ${zipCode}`
         );
-        if (
-          queryTokens.length > 0 &&
-          !queryTokens.every((token) =>
-            getTokenVariants(token).some((variant) => searchableText.includes(variant))
-          )
-        ) {
+        const matchedTokenCount = countMatchedTokens(searchableText, queryTokens);
+        if (queryTokens.length > 0 && matchedTokenCount < requiredTokenMatches) {
           continue;
         }
-        const dedupeKey = `${formattedAddress.toLowerCase()}|${lat.toFixed(6)}|${lng.toFixed(6)}`;
-        dedupedResults.set(dedupeKey, {
+
+        const resolvedAddress: GeocodedAddress = {
           formattedAddress,
           placeName: placeName || undefined,
           streetAddress,
-          city:
-            getString(address.city) ||
-            getString(address.town) ||
-            getString(address.village),
-          state: getString(address.state),
-          zipCode: getString(address.postcode),
+          city,
+          state,
+          zipCode,
           latitude: lat,
           longitude: lng,
           serviceAreaName: nearest.area.name,
           distanceFromServiceArea: roundedDistance,
           distanceFromFortWayne: roundedDistance,
           isWithinServiceArea: true,
+        };
+
+        const score = computeAddressMatchScore({
+          address: resolvedAddress,
+          normalizedQuery,
+          queryTokens,
+          searchableText,
+          placeName: normalizeQuery(placeName || ''),
+          streetAddress: normalizeQuery(streetAddress),
+          city: normalizeQuery(city),
+          zipCode: normalizeQuery(zipCode),
+          matchedTokenCount,
         });
-      }
 
-      if (dedupedResults.size >= DEFAULT_SEARCH_LIMIT) {
-        break;
+        const dedupeKey = `${formattedAddress.toLowerCase()}|${lat.toFixed(6)}|${lng.toFixed(6)}`;
+        const existing = rankedResults.get(dedupeKey);
+        if (
+          !existing ||
+          score > existing.score ||
+          (score === existing.score &&
+            resolvedAddress.distanceFromServiceArea < existing.address.distanceFromServiceArea)
+        ) {
+          rankedResults.set(dedupeKey, {
+            address: resolvedAddress,
+            score,
+            matchedTokenCount,
+          });
+        }
       }
     }
 
-    const resolvedResults = Array.from(dedupedResults.values())
-      .sort((a, b) => a.distanceFromServiceArea - b.distanceFromServiceArea)
+    const resolvedResults = Array.from(rankedResults.values())
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          b.matchedTokenCount - a.matchedTokenCount ||
+          a.address.distanceFromServiceArea - b.address.distanceFromServiceArea
+      )
+      .map((item) => item.address)
       .slice(0, DEFAULT_SEARCH_LIMIT);
-    const prioritized = dedupeAddresses([...featuredMatches, ...resolvedResults]);
-    if (prioritized.length > 0) {
-      return prioritized.slice(0, DEFAULT_SEARCH_LIMIT);
-    }
 
-    return featuredSuggestions;
+    const prioritized = dedupeAddresses([...featuredMatches, ...resolvedResults]).slice(
+      0,
+      DEFAULT_SEARCH_LIMIT
+    );
+    const finalResults = prioritized.length > 0 ? prioritized : featuredSuggestions;
+    setCachedSearchResults(cacheKey, finalResults);
+    return finalResults;
   } catch (error) {
     console.error('Address search error:', error);
+    setCachedSearchResults(cacheKey, featuredSuggestions);
     return featuredSuggestions;
   }
 }

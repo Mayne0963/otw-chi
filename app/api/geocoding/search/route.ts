@@ -6,7 +6,11 @@ async function fetchWithRetry(url: URL, headers: Record<string, string>, maxAtte
   let lastResponse: Response | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const response = await fetch(url.toString(), { headers });
+    const response = await fetch(url.toString(), {
+      headers,
+      cache: 'force-cache',
+      next: { revalidate: 300 },
+    });
     lastResponse = response;
 
     if (response.ok) {
@@ -50,7 +54,15 @@ export async function GET(req: Request) {
     
     // Ensure format is json
     if (!url.searchParams.has('format')) {
-        url.searchParams.append('format', 'json');
+      url.searchParams.append('format', 'json');
+    }
+
+    if (!url.searchParams.has('countrycodes')) {
+      url.searchParams.append('countrycodes', 'us');
+    }
+
+    if (!url.searchParams.has('accept-language')) {
+      url.searchParams.append('accept-language', 'en-US');
     }
 
     const response = await fetchWithRetry(
@@ -66,7 +78,11 @@ export async function GET(req: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
+      },
+    });
   } catch (error) {
     console.error('Geocoding proxy error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

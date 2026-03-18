@@ -95,6 +95,7 @@ export function AddressSearch({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const searchRequestIdRef = useRef(0);
+  const localResultCacheRef = useRef<Map<string, GeocodedAddress[]>>(new Map());
   const errorId = useId();
   const platformHint = getPlatformHint();
 
@@ -127,7 +128,17 @@ export function AddressSearch({
       clearTimeout(searchTimeoutRef.current);
     }
 
-    const trimmedQuery = query.trim();
+    const trimmedQuery = query.trim().replace(/\s+/g, " ");
+    const normalizedKey = trimmedQuery.toLowerCase();
+    const cachedResults = localResultCacheRef.current.get(normalizedKey);
+    if (cachedResults) {
+      setResults(cachedResults);
+      setIsOpen(trimmedQuery.length > 0 && cachedResults.length > 0);
+      setSelectedIndex(-1);
+      setIsLoading(false);
+      return;
+    }
+
     const requestId = ++searchRequestIdRef.current;
 
     searchTimeoutRef.current = setTimeout(async () => {
@@ -135,6 +146,13 @@ export function AddressSearch({
       try {
         const addresses = await searchAddress(trimmedQuery);
         if (requestId !== searchRequestIdRef.current) return;
+        localResultCacheRef.current.set(normalizedKey, addresses);
+        if (localResultCacheRef.current.size > 50) {
+          const oldestKey = localResultCacheRef.current.keys().next().value;
+          if (typeof oldestKey === "string") {
+            localResultCacheRef.current.delete(oldestKey);
+          }
+        }
         setResults(addresses);
         setIsOpen(trimmedQuery.length > 0 && addresses.length > 0);
         setSelectedIndex(-1);
@@ -146,7 +164,7 @@ export function AddressSearch({
         if (requestId !== searchRequestIdRef.current) return;
         setIsLoading(false);
       }
-    }, trimmedQuery.length > 0 ? 300 : 0);
+    }, trimmedQuery.length > 0 ? 180 : 0);
 
     return () => {
       if (searchTimeoutRef.current) {
