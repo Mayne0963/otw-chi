@@ -433,7 +433,16 @@ export async function getRequest(id: string) {
       assignedDriver: {
         include: { user: true }
       },
-      user: true
+      user: true,
+      orderConfirmation: {
+        select: {
+          id: true,
+          customerConfirmed: true,
+          confirmedAt: true,
+          disputeStatus: true,
+          disputedItems: true,
+        },
+      },
     }
   });
 

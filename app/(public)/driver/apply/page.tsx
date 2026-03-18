@@ -9,11 +9,27 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
+type DriverApplicationStatus = 'PENDING' | 'APPROVED' | 'WAITLIST' | 'DENIED';
+
+type ExistingDriverApplication = {
+  id: string;
+  status: DriverApplicationStatus;
+  city: string;
+  vehicleType: string;
+  fullName: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export default function DriverApplyPage() {
   const { user } = useCurrentUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [existingApplication, setExistingApplication] = useState<ExistingDriverApplication | null>(null);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -35,8 +51,86 @@ export default function DriverApplyPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setExistingApplication(null);
+      setStatusLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setStatusLoading(true);
+    fetch('/api/driver/apply', { credentials: 'include', cache: 'no-store' })
+      .then(async (res) => {
+        const payload = (await res.json().catch(() => null)) as
+          | { application?: ExistingDriverApplication | null }
+          | null;
+        if (!res.ok) {
+          throw new Error('Failed to load application status');
+        }
+        return payload?.application ?? null;
+      })
+      .then((application) => {
+        if (cancelled) return;
+        setExistingApplication(application);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn('[DriverApplyPage] Failed to load application status', error);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setStatusLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleWithdraw = async () => {
+    if (!existingApplication || existingApplication.status !== 'PENDING') return;
+    if (!confirm('Withdraw your pending driver application?')) return;
+
+    setWithdrawing(true);
+    try {
+      const response = await fetch('/api/driver/apply', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: existingApplication.id }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Unable to withdraw application');
+      }
+
+      setExistingApplication((prev) =>
+        prev ? { ...prev, status: 'DENIED', updatedAt: new Date().toISOString() } : prev
+      );
+      toast({
+        title: 'Application Withdrawn',
+        description: 'Your pending application was withdrawn. You can submit a new one anytime.',
+      });
+    } catch (_error) {
+      const description =
+        _error instanceof Error && _error.message
+          ? _error.message
+          : 'Unable to withdraw application right now.';
+      toast({
+        title: 'Withdraw Failed',
+        description,
+        variant: 'destructive',
+      });
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,11 +149,18 @@ export default function DriverApplyPage() {
         throw new Error(message || 'Failed to submit application');
       }
 
+      const payload = (await res.json().catch(() => null)) as
+        | { success?: boolean; application?: ExistingDriverApplication }
+        | null;
+
       toast({
         title: "Application Submitted",
         description: "We'll be in touch shortly!",
       });
-      
+
+      if (payload?.application) {
+        setExistingApplication(payload.application);
+      }
       setSubmitted(true);
     } catch (_error) {
       const description =
@@ -76,17 +177,76 @@ export default function DriverApplyPage() {
     }
   };
 
+  const hasActiveApplication =
+    existingApplication?.status === 'PENDING' ||
+    existingApplication?.status === 'WAITLIST' ||
+    existingApplication?.status === 'APPROVED';
+
+  const statusTone =
+    existingApplication?.status === 'APPROVED'
+      ? 'text-green-300 border-green-500/30 bg-green-500/10'
+      : existingApplication?.status === 'WAITLIST'
+        ? 'text-yellow-200 border-yellow-500/30 bg-yellow-500/10'
+        : existingApplication?.status === 'DENIED'
+          ? 'text-red-200 border-red-500/30 bg-red-500/10'
+          : 'text-white/80 border-white/20 bg-white/5';
+
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Apply as OTW Driver" subtitle="Join the team and earn fair payouts." />
       
       <div className="mt-6 max-w-xl mx-auto">
         <Card className="space-y-4 p-5 sm:p-6">
+          {statusLoading ? (
+            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-white/70">
+              Checking your application status...
+            </div>
+          ) : existingApplication ? (
+            <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">Your Application</div>
+                  <div className="text-xs text-white/60">
+                    {existingApplication.city} • {existingApplication.vehicleType}
+                  </div>
+                </div>
+                <span
+                  className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusTone}`}
+                >
+                  {existingApplication.status}
+                </span>
+              </div>
+              {existingApplication.status === 'PENDING' ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-white/65">
+                    Your application is in review. You can withdraw it if needed.
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={withdrawing}
+                    onClick={handleWithdraw}
+                    className="w-full"
+                  >
+                    {withdrawing ? 'Withdrawing...' : 'Withdraw Application'}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {submitted ? (
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-semibold text-foreground">Thanks for applying!</h2>
               <p className="text-sm text-muted-foreground">
                 Your application is under review. We will contact you with next steps.
+              </p>
+            </div>
+          ) : hasActiveApplication ? (
+            <div className="space-y-2 text-center">
+              <h2 className="text-lg font-semibold text-foreground">Application In Progress</h2>
+              <p className="text-sm text-muted-foreground">
+                You already have an active application. We&apos;ll update you by email.
               </p>
             </div>
           ) : (

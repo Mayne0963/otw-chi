@@ -16,6 +16,7 @@ import RequestChat from '@/components/messages/RequestChat';
 import RequestRatingPanel from '@/components/requests/RequestRatingPanel';
 import { isDispatchBlockedByPayment } from '@/lib/request-payment';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
+import OrderConfirmationPanel from '@/components/order/OrderConfirmationPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +99,50 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const canCancelAndRefund =
     isOwner &&
     ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status);
+  const disputeItems = Array.isArray(request.receiptItems)
+    ? request.receiptItems.flatMap((rawItem, index) => {
+        if (!rawItem || typeof rawItem !== 'object') return [];
+        const item = rawItem as Record<string, unknown>;
+        const rawName =
+          item.name ??
+          item.itemName ??
+          item.description ??
+          item.title ??
+          item.item ??
+          item.productName;
+        const name = typeof rawName === 'string' ? rawName.trim() : '';
+        if (!name) return [];
+        const qtyRaw = item.qty ?? item.quantity ?? item.count ?? 1;
+        const qtyNum = Number(qtyRaw);
+        const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? Math.max(1, Math.round(qtyNum)) : 1;
+        const itemKey =
+          typeof item.itemKey === 'string' && item.itemKey.trim()
+            ? item.itemKey.trim()
+            : typeof item.id === 'string' && item.id.trim()
+              ? item.id.trim()
+              : undefined;
+        return [
+          {
+            itemKey,
+            name,
+            qty,
+          },
+        ];
+      })
+    : [];
+  const orderConfirmationSummary = request.orderConfirmation
+    ? {
+        customerConfirmed: request.orderConfirmation.customerConfirmed,
+        confirmedAt: request.orderConfirmation.confirmedAt?.toISOString() ?? null,
+        disputeStatus: request.orderConfirmation.disputeStatus,
+        disputedItemsCount: Array.isArray(request.orderConfirmation.disputedItems)
+          ? request.orderConfirmation.disputedItems.length
+          : 0,
+      }
+    : null;
+  const showOrderConfirmationPanel =
+    isOwner &&
+    (disputeItems.length > 0 || request.isLocked || Boolean(request.orderConfirmation));
 
   return (
     <OtwPageShell>
@@ -331,13 +376,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 )
               )}
 
-              {isOwner && request.isLocked && (
-                <div className="mt-6 border-t border-gray-200 pt-6">
-                  <OtwButton as="a" href={`/requests/${request.id}/dispute`} variant="outline">
-                    Report an Issue
-                  </OtwButton>
-                </div>
-              )}
+              {showOrderConfirmationPanel ? (
+                <OrderConfirmationPanel
+                  deliveryRequestId={request.id}
+                  items={disputeItems}
+                  confirmation={orderConfirmationSummary}
+                />
+              ) : null}
 
               {/* Driver Tracking Section */}
               {['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status) && (
