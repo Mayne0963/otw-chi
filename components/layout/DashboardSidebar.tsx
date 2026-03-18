@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { SignOutButton } from "@/components/auth/SignOutButton"
 import { getClientCapabilities } from "@/lib/capabilities"
 import { 
+  type LucideIcon,
   LayoutDashboard, 
   Package, 
   Wallet,
@@ -20,6 +22,11 @@ import {
   Building2,
   Mail,
   AlertTriangle,
+  FolderOpen,
+  ChevronDown,
+  ChevronRight,
+  HardDrive,
+  RefreshCw,
   LogOut
 } from "lucide-react"
 
@@ -28,53 +35,174 @@ interface DashboardSidebarProps {
   onLinkClick?: () => void
 }
 
+type NavRoute = {
+  label: string
+  href: string
+  icon: LucideIcon
+}
+
+type NavGroup = {
+  id: string
+  label: string
+  routes: NavRoute[]
+  defaultOpen?: boolean
+}
+
+const isRouteActive = (pathname: string, href: string) => {
+  if (href === "/admin") return pathname === href
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   const pathname = usePathname()
   const capabilities = getClientCapabilities({ role })
+  const commonRoutes = useMemo<NavRoute[]>(() => {
+    const routes: NavRoute[] = [
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { label: "My Requests", href: "/requests", icon: Package },
+      { label: "Membership", href: "/membership/manage", icon: CreditCard },
+      { label: "Service Miles", href: "/service-miles", icon: CreditCard },
+      { label: "Support", href: "/support", icon: LifeBuoy },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ]
 
-  const commonRoutes = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "My Requests", href: "/requests", icon: Package },
-    { label: "Membership", href: "/membership/manage", icon: CreditCard },
-    { label: "Service Miles", href: "/service-miles", icon: CreditCard },
-    { label: "Support", href: "/support", icon: LifeBuoy },
-    { label: "Settings", href: "/settings", icon: Settings },
-  ]
-  if (capabilities.canSeeNip) {
-    commonRoutes.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
-  }
+    if (capabilities.canSeeNip) {
+      routes.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })
+    }
 
-  const driverRoutes = [
-    { label: "Driver Dashboard", href: "/driver/dashboard", icon: Truck },
-    { label: "Earnings", href: "/driver/earnings", icon: DollarSign },
-    { label: "Profile", href: "/driver/profile", icon: Settings },
-    { label: "Founder Log", href: "/driver/founder-log", icon: Settings },
-  ]
+    return routes
+  }, [capabilities.canSeeNip])
 
-  const adminRoutes = [
-    { label: "Admin Overview", href: "/admin", icon: ShieldAlert },
-    { label: "OTW-OS", href: "/admin/otw-os", icon: Settings },
-    { label: "Requests", href: "/admin/requests", icon: Package },
-    { label: "Drivers", href: "/admin/drivers", icon: Truck },
-    { label: "Customers", href: "/admin/customers", icon: LayoutDashboard },
-    { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
-    { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
-  ]
-  if (capabilities.canSeeNip) {
-    adminRoutes.push({ label: "Ledger", href: "/admin/nip-ledger", icon: Wallet })
-  }
-  if (capabilities.canSeeFranchise) {
-    adminRoutes.push({ label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 })
-  }
-  if (capabilities.canSeeAdminZones) {
-    adminRoutes.push({ label: "Cities & Zones", href: "/admin/cities-zones", icon: MapPin })
-  }
+  const driverRoutes = useMemo<NavRoute[]>(
+    () => [
+      { label: "Driver Dashboard", href: "/driver/dashboard", icon: Truck },
+      { label: "Earnings", href: "/driver/earnings", icon: DollarSign },
+      { label: "Profile", href: "/driver/profile", icon: Settings },
+      { label: "Founder Log", href: "/driver/founder-log", icon: Settings },
+    ],
+    []
+  )
 
-  let routes = commonRoutes
-  if (role === 'DRIVER')  {
-    routes = [...commonRoutes, ...driverRoutes]
-  } else if (role === 'ADMIN') {
-    routes = [...commonRoutes, ...adminRoutes, ...driverRoutes]
+  const adminGroups = useMemo<NavGroup[]>(() => {
+    if (role !== "ADMIN") return []
+
+    const operationsRoutes: NavRoute[] = [
+      { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
+      { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
+      { label: "Driver Apps", href: "/admin/drivers/applications", icon: Truck },
+      { label: "Memberships", href: "/admin/memberships", icon: CreditCard },
+      { label: "Payouts", href: "/admin/payouts", icon: DollarSign },
+      { label: "Support Desk", href: "/admin/support", icon: LifeBuoy },
+    ]
+
+    if (capabilities.canSeeFranchise) {
+      operationsRoutes.push({ label: "Franchise Apps", href: "/admin/franchise/applications", icon: Building2 })
+    }
+    if (capabilities.canSeeAdminZones) {
+      operationsRoutes.push({ label: "Cities & Zones", href: "/admin/cities-zones", icon: MapPin })
+    }
+
+    const systemRoutes: NavRoute[] = [
+      { label: "OTW-OS", href: "/admin/otw-os", icon: Settings },
+      { label: "Admin Settings", href: "/admin/settings", icon: Settings },
+      { label: "Storage", href: "/admin/system/storage", icon: HardDrive },
+      { label: "Migrations", href: "/admin/migrate", icon: RefreshCw },
+    ]
+
+    if (capabilities.canSeeNip) {
+      systemRoutes.push({ label: "Ledger", href: "/admin/nip-ledger", icon: Wallet })
+    }
+
+    return [
+      {
+        id: "admin-core",
+        label: "Admin Core",
+        defaultOpen: true,
+        routes: [
+          { label: "Admin Overview", href: "/admin", icon: ShieldAlert },
+          { label: "Requests", href: "/admin/requests", icon: Package },
+          { label: "Drivers", href: "/admin/drivers", icon: Truck },
+          { label: "Customers", href: "/admin/customers", icon: LayoutDashboard },
+        ],
+      },
+      {
+        id: "admin-ops",
+        label: "Operations",
+        defaultOpen: true,
+        routes: operationsRoutes,
+      },
+      {
+        id: "admin-system",
+        label: "System",
+        defaultOpen: false,
+        routes: systemRoutes,
+      },
+      {
+        id: "admin-driver-tools",
+        label: "Driver Tools",
+        defaultOpen: false,
+        routes: driverRoutes,
+      },
+    ]
+  }, [
+    capabilities.canSeeAdminZones,
+    capabilities.canSeeFranchise,
+    capabilities.canSeeNip,
+    driverRoutes,
+    role,
+  ])
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const defaults: Record<string, boolean> = {}
+    for (const group of adminGroups) {
+      defaults[group.id] = group.defaultOpen !== false
+    }
+    return defaults
+  })
+
+  useEffect(() => {
+    if (role !== "ADMIN") return
+
+    setOpenGroups((current) => {
+      let changed = false
+      const next = { ...current }
+
+      for (const group of adminGroups) {
+        if (!(group.id in next)) {
+          next[group.id] = group.defaultOpen !== false
+          changed = true
+        }
+        const hasActiveRoute = group.routes.some((route) => isRouteActive(pathname, route.href))
+        if (hasActiveRoute && !next[group.id]) {
+          next[group.id] = true
+          changed = true
+        }
+      }
+
+      return changed ? next : current
+    })
+  }, [adminGroups, pathname, role])
+
+  const renderRoute = (route: NavRoute, options?: { nested?: boolean }) => {
+    const isActive = isRouteActive(pathname, route.href)
+    return (
+      <Link
+        key={route.href}
+        href={route.href}
+        prefetch={false}
+        onClick={onLinkClick}
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+          options?.nested && "ml-2 pl-4",
+          isActive
+            ? "bg-otwGold/10 text-otwGold"
+            : "text-otwOffWhite/70 hover:bg-white/5 hover:text-otwOffWhite"
+        )}
+      >
+        <route.icon className="h-4 w-4" />
+        {route.label}
+      </Link>
+    )
   }
 
   return (
@@ -85,26 +213,48 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
         </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {routes.map((route) => {
-          const isActive = pathname === route.href
-          return (
-            <Link
-              key={route.href}
-              href={route.href}
-              prefetch={false}
-              onClick={onLinkClick}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-otwGold/10 text-otwGold"
-                  : "text-otwOffWhite/70 hover:bg-white/5 hover:text-otwOffWhite"
-              )}
-            >
-              <route.icon className="h-4 w-4" />
-              {route.label}
-            </Link>
-          )
-        })}
+        {commonRoutes.map((route) => renderRoute(route))}
+
+        {role === "DRIVER" && (
+          <div className="space-y-1 pt-2">
+            {driverRoutes.map((route) => renderRoute(route))}
+          </div>
+        )}
+
+        {role === "ADMIN" && (
+          <div className="space-y-2 pt-2">
+            {adminGroups.map((group) => {
+              const defaultOpen = group.defaultOpen !== false
+              const isOpen = openGroups[group.id] ?? defaultOpen
+              return (
+                <div key={group.id} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenGroups((current) => ({
+                        ...current,
+                        [group.id]: !(current[group.id] ?? defaultOpen),
+                      }))
+                    }
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-otwOffWhite/60 hover:bg-white/5 hover:text-otwOffWhite"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      {group.label}
+                    </span>
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  </button>
+                  {isOpen && (
+                    <div className="space-y-1">
+                      {group.routes.map((route) => renderRoute(route, { nested: true }))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         <SignOutButton
           variant="ghost"
           onClick={onLinkClick}
