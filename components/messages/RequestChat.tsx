@@ -61,7 +61,7 @@ export default function RequestChat({
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const isCustomerView = currentUserRole === 'CUSTOMER';
   const effectiveReadOnly = readOnly && currentUserRole !== 'CUSTOMER';
 
@@ -126,7 +126,10 @@ export default function RequestChat({
   }, [fetchMessages]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    // Keep chat autoscroll scoped to the chat panel, not the whole page viewport.
+    container.scrollTop = container.scrollHeight;
   }, [messages]);
 
   const canSend = useMemo(() => !effectiveReadOnly && chatOpen, [chatOpen, effectiveReadOnly]);
@@ -218,7 +221,7 @@ export default function RequestChat({
         {chatOpen ? 'Message your assigned driver in-app.' : 'Chat is unavailable for this request.'}
       </p>
 
-      <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
+      <div ref={messagesContainerRef} className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
         {isLoading ? (
           <div className="text-sm text-white/60">Loading messages...</div>
         ) : messages.length === 0 ? (
@@ -255,7 +258,6 @@ export default function RequestChat({
             );
           })
         )}
-        <div ref={endRef} />
       </div>
 
       {error ? <p className="mt-3 text-xs text-red-300">{error}</p> : null}

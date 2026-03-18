@@ -24,6 +24,8 @@ export default function DriverAcceptJobButton({
   const [isPending, startTransition] = useTransition();
 
   const handleAccept = () => {
+    const restoreScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    const restoreScrollX = typeof window !== 'undefined' ? window.scrollX : 0;
     startTransition(async () => {
       const result = await acceptJob(requestId);
 
@@ -37,7 +39,21 @@ export default function DriverAcceptJobButton({
         return;
       }
 
+      if (typeof document !== 'undefined') {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) {
+          activeElement.blur();
+        }
+      }
       router.refresh();
+      if (typeof window !== 'undefined') {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: restoreScrollY, left: restoreScrollX, behavior: 'auto' });
+        });
+        window.setTimeout(() => {
+          window.scrollTo({ top: restoreScrollY, left: restoreScrollX, behavior: 'auto' });
+        }, 120);
+      }
     });
   };
 
