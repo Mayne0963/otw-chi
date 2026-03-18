@@ -59,7 +59,6 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     { label: "Customers", href: "/admin/customers", icon: LayoutDashboard },
     { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
     { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
-    { label: "Seed Database", href: "/admin/seed", icon: Settings },
   ]
   if (capabilities.canSeeNip) {
     adminRoutes.push({ label: "Ledger", href: "/admin/nip-ledger", icon: Wallet })
