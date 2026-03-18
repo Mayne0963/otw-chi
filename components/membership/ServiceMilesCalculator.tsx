@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import StripePaymentForm from '@/components/stripe/StripePaymentForm';
 import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
+import { getMembershipPlanPerks } from '@/lib/membership-perks';
 
 type QuoteResponse = {
   quote: {
@@ -37,7 +38,14 @@ type QuoteResponse = {
 
 type WalletResponse = {
   membership: { status: string; currentPeriodEnd: string | null } | null;
-  plan: { name: string; cashAllowed: boolean } | null;
+  plan: {
+    name: string;
+    priorityLevel: number;
+    cashAllowed: boolean;
+    peerToPeerAllowed: boolean;
+    markupFree: boolean;
+    overageBillingMode: 'INSTANT' | 'INVOICE';
+  } | null;
   wallet: { balanceMiles: number; rolloverBankMiles: number };
   unlimited: boolean;
 };
@@ -60,15 +68,6 @@ type SubmitResponse = {
 };
 
 type PaymentPreference = 'INSTANT' | 'MONTHLY';
-
-function canChooseMonthlyByPlanName(planName: string | null | undefined): boolean {
-  const normalized = planName?.toUpperCase().trim() ?? '';
-  return (
-    normalized === 'OTW ELITE' ||
-    normalized === 'OTW BLACK' ||
-    normalized.startsWith('OTW BUSINESS')
-  );
-}
 
 async function fetchRouteMinutes(origin: GeocodedAddress, destination: GeocodedAddress): Promise<number> {
   const originParam = `${origin.latitude},${origin.longitude}`;
@@ -159,15 +158,9 @@ export function ServiceMilesCalculator() {
     };
   }, [toast]);
 
-  const eligibleForPriority = useMemo(() => {
-    const name = wallet?.plan?.name?.toUpperCase() ?? '';
-    return name.includes('OTW ELITE') || name.includes('OTW BLACK');
-  }, [wallet?.plan?.name]);
-
-  const canChooseMonthlyPayments = useMemo(
-    () => canChooseMonthlyByPlanName(wallet?.plan?.name),
-    [wallet?.plan?.name],
-  );
+  const planPerks = useMemo(() => getMembershipPlanPerks(wallet?.plan), [wallet?.plan]);
+  const eligibleForPriority = planPerks.canUsePrioritySlot;
+  const canChooseMonthlyPayments = planPerks.canUseMonthlyBilling;
 
   useEffect(() => {
     if (!canChooseMonthlyPayments) {
@@ -176,8 +169,34 @@ export function ServiceMilesCalculator() {
   }, [canChooseMonthlyPayments]);
 
   useEffect(() => {
+    if (!planPerks.canUseSitAndWait) {
+      setSitAndWait(false);
+    }
+    if (!planPerks.canUseMultiStop) {
+      setNumberOfStops(1);
+    }
+    if (!planPerks.canUseReturnOrExchange) {
+      setReturnOrExchange(false);
+    }
+    if (!planPerks.canUseCashHandling) {
+      setCashHandling(false);
+    }
+    if (!planPerks.canLockPreferredDriver) {
+      setLockToPreferred(false);
+    }
+  }, [
+    planPerks.canLockPreferredDriver,
+    planPerks.canUseCashHandling,
+    planPerks.canUseMultiStop,
+    planPerks.canUseReturnOrExchange,
+    planPerks.canUseSitAndWait,
+  ]);
+
+  useEffect(() => {
     if (!eligibleForPriority) {
       setPrioritySlot(false);
+    }
+    if (!planPerks.canLockPreferredDriver) {
       setLockToPreferred(false);
       setPreferredDriverId('');
       setPreferredDrivers(null);
@@ -196,7 +215,7 @@ export function ServiceMilesCalculator() {
         }
       })
       .catch(() => null);
-  }, [eligibleForPriority, preferredDriverId]);
+  }, [eligibleForPriority, planPerks.canLockPreferredDriver, preferredDriverId]);
 
   const refreshRouteEstimate = useCallback(async () => {
     if (!pickupAddress || !dropoffAddress) return;
@@ -499,6 +518,7 @@ export function ServiceMilesCalculator() {
                   setSitAndWait(e.target.checked);
                   setQuote(null);
                 }}
+                disabled={!planPerks.canUseSitAndWait}
               />
               Premium wait rate
             </label>
@@ -513,6 +533,7 @@ export function ServiceMilesCalculator() {
                 setNumberOfStops(Math.max(1, Math.floor(Number(e.target.value) || 1)));
                 setQuote(null);
               }}
+              disabled={!planPerks.canUseMultiStop}
             />
           </div>
           <div className="space-y-2">
@@ -530,6 +551,7 @@ export function ServiceMilesCalculator() {
                 setReturnOrExchange(e.target.checked);
                 setQuote(null);
               }}
+              disabled={!planPerks.canUseReturnOrExchange}
             />
             Return/Exchange
           </label>
@@ -541,7 +563,7 @@ export function ServiceMilesCalculator() {
                 setCashHandling(e.target.checked);
                 setQuote(null);
               }}
-              disabled={wallet?.plan ? !wallet.plan.cashAllowed : false}
+              disabled={!planPerks.canUseCashHandling}
             />
             Cash handling
           </label>
@@ -592,40 +614,48 @@ export function ServiceMilesCalculator() {
                 Priority time-slot booking
               </label>
             </div>
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Locked Driver</div>
-              <label className="inline-flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background text-sm">
-                <input
-                  type="checkbox"
-                  checked={lockToPreferred}
-                  onChange={(e) => {
-                    setLockToPreferred(e.target.checked);
-                    setQuote(null);
-                  }}
-                />
-                Locked driver when possible
-              </label>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Preferred Driver</div>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={preferredDriverId}
-                onChange={(e) => {
-                  setPreferredDriverId(e.target.value);
-                  setQuote(null);
-                }}
-                disabled={!lockToPreferred || !preferredDrivers?.drivers?.length}
-              >
-                {preferredDrivers?.drivers?.length
-                  ? preferredDrivers.drivers.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))
-                  : null}
-              </select>
-            </div>
+            {planPerks.canLockPreferredDriver ? (
+              <>
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Locked Driver</div>
+                  <label className="inline-flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background text-sm">
+                    <input
+                      type="checkbox"
+                      checked={lockToPreferred}
+                      onChange={(e) => {
+                        setLockToPreferred(e.target.checked);
+                        setQuote(null);
+                      }}
+                    />
+                    Locked driver when possible
+                  </label>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Preferred Driver</div>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={preferredDriverId}
+                    onChange={(e) => {
+                      setPreferredDriverId(e.target.value);
+                      setQuote(null);
+                    }}
+                    disabled={!lockToPreferred || !preferredDrivers?.drivers?.length}
+                  >
+                    {preferredDrivers?.drivers?.length
+                      ? preferredDrivers.drivers.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))
+                      : null}
+                  </select>
+                </div>
+              </>
+            ) : (
+              <div className="col-span-2 rounded-md border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+                Locked preferred-driver routing unlocks on higher tiers.
+              </div>
+            )}
           </div>
         ) : null}
 

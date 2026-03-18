@@ -6,8 +6,8 @@ import {
   getActiveSubscription,
   getMembershipBenefits,
   getPlanCodeFromSubscription,
-  resolveDeliveryRequestPaymentPreference,
 } from '@/lib/membership';
+import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest, submitDeliveryRequest } from '@/lib/delivery-submit';
 import { ensureDeliveryFeePaymentIntentForRequest } from '@/lib/delivery-payment';
@@ -190,8 +190,8 @@ export async function createRequestAction(formData: FormData) {
   const planCode = getPlanCodeFromSubscription(sub);
   const membershipBenefits = getMembershipBenefits(planCode);
   const billingMode = sub?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
-  const paymentPreference = resolveDeliveryRequestPaymentPreference(
-    planCode,
+  const paymentPreference = resolveDeliveryPaymentPreferenceByPlan(
+    sub?.plan,
     paymentPreferenceInput === 'MONTHLY' ? 'MONTHLY' : paymentPreferenceInput === 'INSTANT' ? 'INSTANT' : undefined,
   );
   const overageBillingModeOverride =

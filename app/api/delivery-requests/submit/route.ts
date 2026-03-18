@@ -10,9 +10,8 @@ import {
 import { verifyServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
 import {
   getActiveSubscription,
-  getPlanCodeFromSubscription,
-  resolveDeliveryRequestPaymentPreference,
 } from '@/lib/membership';
+import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
@@ -58,11 +57,13 @@ export async function POST(req: Request) {
     }
 
     const activeSubscription = await getActiveSubscription(user.id);
-    const planCode = getPlanCodeFromSubscription(activeSubscription);
     const requestedPreference =
       parsed.data.paymentPreference ??
       (parsed.data.payWithMiles === true ? 'MONTHLY' : parsed.data.payWithMiles === false ? 'INSTANT' : undefined);
-    const paymentPreference = resolveDeliveryRequestPaymentPreference(planCode, requestedPreference);
+    const paymentPreference = resolveDeliveryPaymentPreferenceByPlan(
+      activeSubscription?.plan,
+      requestedPreference,
+    );
     const overageBillingModeOverride =
       paymentPreference === 'MONTHLY' ? OverageBillingMode.INVOICE : OverageBillingMode.INSTANT;
 

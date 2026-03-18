@@ -3,6 +3,7 @@ import { getStripe } from './stripe';
 import { calculateServiceMiles } from './service-miles';
 import { isServiceTypeAllowedForPlan } from './service-miles-access';
 import { UNLIMITED_SERVICE_MILES } from './membership-miles';
+import { getMembershipPlanPerks } from './membership-perks';
 import { computeOverage } from './overage';
 import { addLineItem, getPeriodKey, recomputePeriodTotal, upsertPeriod } from './overage-invoice';
 import {
@@ -210,23 +211,36 @@ export async function submitDeliveryRequest(
 
       const plan = user.membership.plan;
       if (!plan) throw new Error('Membership plan not found');
+      const planPerks = getMembershipPlanPerks(plan);
 
-      const eligibleForPriority =
-        plan.name.toUpperCase().includes('OTW ELITE') || plan.name.toUpperCase().includes('OTW BLACK');
+      const numberOfStops = Math.max(1, Math.round(Math.max(1, input.numberOfStops ?? 1)));
+      if (numberOfStops > 1 && !planPerks.canUseMultiStop) {
+        throw new Error('Multi-stop requests are not enabled for this plan');
+      }
+      if (input.sitAndWait && !planPerks.canUseSitAndWait) {
+        throw new Error('Sit-and-wait requests are not enabled for this plan');
+      }
+      if (input.returnOrExchange && !planPerks.canUseReturnOrExchange) {
+        throw new Error('Returns and exchanges are not enabled for this plan');
+      }
+
       const wantsPriority =
         Boolean(input.prioritySlot) || Boolean(input.preferredDriverId) || Boolean(input.lockToPreferred);
-      if (wantsPriority && !eligibleForPriority) {
+      if (wantsPriority && !planPerks.canUsePrioritySlot) {
         throw new Error('Priority scheduling is not enabled for this plan');
       }
       if (input.lockToPreferred && !input.preferredDriverId) {
         throw new Error('Preferred driver is required when locking');
+      }
+      if (input.lockToPreferred && !planPerks.canLockPreferredDriver) {
+        throw new Error('Preferred-driver lock is not enabled for this plan');
       }
 
       if (!isServiceTypeAllowedForPlan(plan.allowedServiceTypes, serviceType)) {
         throw new Error(`Service type ${serviceType} not allowed for this plan`);
       }
 
-      if (input.cashHandling && !plan.cashAllowed) {
+      if (input.cashHandling && !planPerks.canUseCashHandling) {
         throw new Error('Cash handling is not allowed for this plan');
       }
 
@@ -249,7 +263,7 @@ export async function submitDeliveryRequest(
         quotedAt,
         waitMinutes: input.waitMinutes,
         sitAndWait: input.sitAndWait,
-        numberOfStops: input.numberOfStops,
+        numberOfStops,
         returnOrExchange: input.returnOrExchange,
         cashHandling: input.cashHandling,
         peakHours: input.peakHours,

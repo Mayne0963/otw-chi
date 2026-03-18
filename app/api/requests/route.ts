@@ -7,8 +7,8 @@ import {
   getActiveSubscription,
   getMembershipBenefits,
   getPlanCodeFromSubscription,
-  resolveDeliveryRequestPaymentPreference,
 } from '@/lib/membership';
+import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import {
   DEFAULT_DISPATCH_LEAD_MINUTES,
@@ -118,8 +118,8 @@ export async function POST(req: Request) {
     const dispatchAt = scheduledFor
       ? new Date(scheduledFor.getTime() - DEFAULT_DISPATCH_LEAD_MINUTES * 60 * 1000)
       : null;
-    const paymentPreference = resolveDeliveryRequestPaymentPreference(
-      planCode,
+    const paymentPreference = resolveDeliveryPaymentPreferenceByPlan(
+      activeSubscription?.plan,
       data.paymentPreference,
     );
     const overageBillingModeOverride =

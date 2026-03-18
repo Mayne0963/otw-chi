@@ -8,6 +8,7 @@ import { getPrisma } from '@/lib/db';
 import { calculateServiceMiles } from '@/lib/service-miles';
 import { isServiceTypeAllowedForPlan } from '@/lib/service-miles-access';
 import { signServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
+import { getMembershipPlanPerks } from '@/lib/membership-perks';
 
 const quoteSchema = z.object({
   serviceType: z.nativeEnum(ServiceType),
@@ -56,17 +57,31 @@ export async function POST(req: Request) {
     if (!plan) {
       return NextResponse.json({ error: 'Membership plan not found' }, { status: 400 });
     }
+    const planPerks = getMembershipPlanPerks(plan);
 
     const prioritySlot = parsed.data.prioritySlot ?? false;
     const preferredDriverId = parsed.data.preferredDriverId ?? null;
     const lockToPreferred = parsed.data.lockToPreferred ?? false;
-    const eligibleForPriority = plan.name.toUpperCase().includes('OTW ELITE') || plan.name.toUpperCase().includes('OTW BLACK');
+    const numberOfStops = Math.max(1, Math.round(Math.max(1, parsed.data.numberOfStops ?? 1)));
 
-    if (!eligibleForPriority && (prioritySlot || preferredDriverId || lockToPreferred)) {
+    if (!planPerks.canUseMultiStop && numberOfStops > 1) {
+      return NextResponse.json({ error: 'Multi-stop requests are not enabled for this plan' }, { status: 403 });
+    }
+    if (!planPerks.canUseSitAndWait && parsed.data.sitAndWait) {
+      return NextResponse.json({ error: 'Sit-and-wait requests are not enabled for this plan' }, { status: 403 });
+    }
+    if (!planPerks.canUseReturnOrExchange && parsed.data.returnOrExchange) {
+      return NextResponse.json({ error: 'Returns and exchanges are not enabled for this plan' }, { status: 403 });
+    }
+
+    if (!planPerks.canUsePrioritySlot && (prioritySlot || preferredDriverId || lockToPreferred)) {
       return NextResponse.json({ error: 'Priority scheduling is not enabled for this plan' }, { status: 403 });
     }
     if (lockToPreferred && !preferredDriverId) {
       return NextResponse.json({ error: 'Preferred driver is required when locking' }, { status: 400 });
+    }
+    if (lockToPreferred && !planPerks.canLockPreferredDriver) {
+      return NextResponse.json({ error: 'Preferred-driver lock is not enabled for this plan' }, { status: 403 });
     }
     if (preferredDriverId) {
       const exists = await prisma.driverProfile.findUnique({ where: { id: preferredDriverId }, select: { id: true } });
@@ -82,7 +97,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (parsed.data.cashHandling && !plan.cashAllowed) {
+    if (parsed.data.cashHandling && !planPerks.canUseCashHandling) {
       return NextResponse.json({ error: 'Cash handling is not allowed for this plan' }, { status: 403 });
     }
 
@@ -94,7 +109,7 @@ export async function POST(req: Request) {
       quotedAt,
       waitMinutes: parsed.data.waitMinutes,
       sitAndWait: parsed.data.sitAndWait,
-      numberOfStops: parsed.data.numberOfStops,
+      numberOfStops,
       returnOrExchange: parsed.data.returnOrExchange,
       cashHandling: parsed.data.cashHandling,
       peakHours: parsed.data.peakHours,
@@ -109,7 +124,7 @@ export async function POST(req: Request) {
       travelMinutes: parsed.data.travelMinutes,
       waitMinutes: parsed.data.waitMinutes ?? 0,
       sitAndWait: parsed.data.sitAndWait ?? false,
-      numberOfStops: parsed.data.numberOfStops ?? 1,
+      numberOfStops,
       returnOrExchange: parsed.data.returnOrExchange ?? false,
       cashHandling: parsed.data.cashHandling ?? false,
       peakHours: parsed.data.peakHours ?? false,

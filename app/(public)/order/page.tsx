@@ -15,6 +15,7 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
 import { downscaleImage } from '@/lib/image/downscale';
+import { getMembershipPlanPerks } from '@/lib/membership-perks';
 
 const PICKUP_CODE_TYPES = [
   { value: '', label: 'None' },
@@ -36,20 +37,16 @@ type PaymentPreference = 'INSTANT' | 'MONTHLY';
 type ServiceMilesWalletResponse = {
   plan?: {
     name?: string | null;
+    priorityLevel?: number | null;
+    cashAllowed?: boolean | null;
+    peerToPeerAllowed?: boolean | null;
+    markupFree?: boolean | null;
+    overageBillingMode?: 'INSTANT' | 'INVOICE' | null;
   } | null;
 };
 
 const DEFAULT_SCHEDULE_WINDOW_MINUTES = 30;
 const DEFAULT_SCHEDULE_PRESET_MINUTES_AHEAD = 120;
-
-function canChooseMonthlyByPlanName(planName: string | null | undefined): boolean {
-  const normalized = planName?.toUpperCase().trim() ?? '';
-  return (
-    normalized === 'OTW ELITE' ||
-    normalized === 'OTW BLACK' ||
-    normalized.startsWith('OTW BUSINESS')
-  );
-}
 
 function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
@@ -212,7 +209,7 @@ export default function OrderPage() {
           return;
         }
 
-        const monthlyAllowed = canChooseMonthlyByPlanName(payload?.plan?.name);
+        const monthlyAllowed = getMembershipPlanPerks(payload?.plan).canUseMonthlyBilling;
         setCanChooseMonthlyPayments(monthlyAllowed);
         if (!monthlyAllowed) {
           setPaymentPreference('INSTANT');
@@ -557,7 +554,7 @@ export default function OrderPage() {
                     <option value="MONTHLY">Monthly billing (use service miles first)</option>
                   </Select>
                   <p className="text-xs text-white/55">
-                    Elite, Black, and Business plans can choose instant payment or monthly billing.
+                    Plans with invoice overage billing can choose instant payment or monthly billing.
                   </p>
                 </div>
               ) : (
