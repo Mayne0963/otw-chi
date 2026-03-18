@@ -32,19 +32,6 @@ export default function HowItWorksPage() {
         </section>
 
         <section>
-          <OtwSectionHeader title="Avoid This" subtitle="The #1 mistake and how OTW dodges it." />
-          <OtwCard variant="default" className="p-4 space-y-3">
-            <div className="text-sm font-semibold">Mistake</div>
-            <div className="text-sm opacity-80">Letting customers treat OTW like Uber with better vibes.</div>
-            <div className="text-sm font-semibold mt-4">OTW Fix</div>
-            <div className="text-sm opacity-80">
-              Subscription-first, Service Miles rules up front, and business accounts prioritized.
-              OTW is infrastructure, not a convenience toy.
-            </div>
-          </OtwCard>
-        </section>
-
-        <section>
           <OtwSectionHeader title="Our Services" subtitle="Premium runs for the city." />
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {services.map((it) => (
