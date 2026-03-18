@@ -12,6 +12,15 @@ export type MembershipPlanPerkSnapshot = {
 const MULTI_STOP_MIN_PRIORITY_LEVEL = 1; // OTW PLUS+
 const ADVANCED_WORKFLOW_MIN_PRIORITY_LEVEL = 2; // OTW PRO+
 const LOCKED_DRIVER_MIN_PRIORITY_LEVEL = 3; // OTW ELITE+
+const CONSUMER_PLAN_ORDER = ['OTW BASIC', 'OTW PLUS', 'OTW PRO', 'OTW ELITE', 'OTW BLACK'] as const;
+
+const CONSUMER_PLAN_PERK_DELTAS: Record<(typeof CONSUMER_PLAN_ORDER)[number], string[]> = {
+  'OTW BASIC': ['Food', 'Groceries', 'Quick errands'],
+  'OTW PLUS': ['Multi-stop', 'Longer waits', 'Light priority'],
+  'OTW PRO': ['Returns & exchanges', 'Sit-and-wait', 'No item markups', 'Priority routing'],
+  'OTW ELITE': ['Peer-to-peer delivery', 'Cash handling', 'Priority support'],
+  'OTW BLACK': ['Emergency requests', 'Same rep when possible', 'Handle it mode'],
+};
 
 function toPriorityLevel(value: number | null | undefined): number {
   if (!Number.isFinite(value)) return 0;
@@ -42,4 +51,20 @@ export function resolveDeliveryPaymentPreferenceByPlan(
   return getMembershipPlanPerks(plan).canUseMonthlyBilling && requestedPreference === 'MONTHLY'
     ? 'MONTHLY'
     : 'INSTANT';
+}
+
+export function getCumulativeConsumerPlanPerks(planName: string | null | undefined): string[] {
+  const normalized = String(planName ?? '').trim().toUpperCase() as (typeof CONSUMER_PLAN_ORDER)[number];
+  const planIndex = CONSUMER_PLAN_ORDER.indexOf(normalized);
+  if (planIndex < 0) return [];
+
+  const perkSet = new Set<string>();
+  for (let i = 0; i <= planIndex; i += 1) {
+    const tier = CONSUMER_PLAN_ORDER[i];
+    for (const perk of CONSUMER_PLAN_PERK_DELTAS[tier]) {
+      perkSet.add(perk);
+    }
+  }
+
+  return Array.from(perkSet);
 }

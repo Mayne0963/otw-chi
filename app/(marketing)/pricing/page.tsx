@@ -2,6 +2,7 @@ import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import { Check } from 'lucide-react';
 import { getPrisma } from '@/lib/db';
+import { getCumulativeConsumerPlanPerks } from '@/lib/membership-perks';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +42,7 @@ export default async function PricingPage() {
       rollover: 'No rollover',
       markupFree: false,
       cashPay: false,
-      features: ['Food', 'Groceries', 'Quick errands'],
+      features: getCumulativeConsumerPlanPerks('OTW BASIC'),
     },
     {
       name: 'OTW PLUS',
@@ -51,7 +52,7 @@ export default async function PricingPage() {
       rollover: 'Rollover up to 30',
       markupFree: false,
       cashPay: false,
-      features: ['Multi-stop', 'Longer waits', 'Light priority'],
+      features: getCumulativeConsumerPlanPerks('OTW PLUS'),
     },
     {
       name: 'OTW PRO',
@@ -61,7 +62,7 @@ export default async function PricingPage() {
       rollover: 'Rollover up to 75',
       markupFree: true,
       cashPay: false,
-      features: ['Returns & exchanges', 'Sit-and-wait', 'No item markups', 'Priority routing'],
+      features: getCumulativeConsumerPlanPerks('OTW PRO'),
     },
     {
       name: 'OTW ELITE',
@@ -71,7 +72,7 @@ export default async function PricingPage() {
       rollover: 'Rollover up to 150',
       markupFree: true,
       cashPay: true,
-      features: ['Peer-to-peer delivery', 'Long sit & wait', 'Reduced mile rates per task', 'Priority support'],
+      features: getCumulativeConsumerPlanPerks('OTW ELITE'),
     },
     {
       name: 'OTW BLACK',
@@ -81,7 +82,7 @@ export default async function PricingPage() {
       rollover: 'Unlimited rollover',
       markupFree: true,
       cashPay: true,
-      features: ['Same rep when possible', 'Emergency requests', 'Zero delivery fees', 'Handle it mode'],
+      features: getCumulativeConsumerPlanPerks('OTW BLACK'),
     },
   ];
 

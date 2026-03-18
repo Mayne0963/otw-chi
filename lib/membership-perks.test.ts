@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getCumulativeConsumerPlanPerks,
   getMembershipPlanPerks,
   resolveDeliveryPaymentPreferenceByPlan,
 } from './membership-perks';
@@ -78,5 +79,19 @@ describe('membership perks', () => {
         'MONTHLY',
       ),
     ).toBe('MONTHLY');
+  });
+
+  it('returns cumulative consumer perks for higher tiers', () => {
+    expect(getCumulativeConsumerPlanPerks('OTW BASIC')).toEqual(['Food', 'Groceries', 'Quick errands']);
+    expect(getCumulativeConsumerPlanPerks('OTW PLUS')).toEqual([
+      'Food',
+      'Groceries',
+      'Quick errands',
+      'Multi-stop',
+      'Longer waits',
+      'Light priority',
+    ]);
+    expect(getCumulativeConsumerPlanPerks('OTW PRO')).toContain('Food');
+    expect(getCumulativeConsumerPlanPerks('OTW PRO')).toContain('Priority routing');
   });
 });

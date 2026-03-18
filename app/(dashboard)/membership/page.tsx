@@ -6,6 +6,7 @@ import { Check } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription } from '@/lib/membership';
 import { getPrisma } from '@/lib/db';
+import { getCumulativeConsumerPlanPerks } from '@/lib/membership-perks';
 
 export default async function MembershipPage() {
   const user = await getCurrentUser();
@@ -44,35 +45,35 @@ export default async function MembershipPage() {
       code: 'basic' as const,
       price: '$99 / month',
       miles: 60,
-      features: ['Food', 'Groceries', 'Quick errands'],
+      features: getCumulativeConsumerPlanPerks('OTW BASIC'),
     },
     {
       name: 'OTW PLUS',
       code: 'plus' as const,
       price: '$169 / month',
       miles: 120,
-      features: ['Multi-stop', 'Longer waits', 'Light priority'],
+      features: getCumulativeConsumerPlanPerks('OTW PLUS'),
     },
     {
       name: 'OTW PRO',
       code: 'pro' as const,
       price: '$269 / month',
       miles: 200,
-      features: ['Returns & exchanges', 'Sit-and-wait', 'No item markups', 'Priority routing'],
+      features: getCumulativeConsumerPlanPerks('OTW PRO'),
     },
     {
       name: 'OTW ELITE',
       code: 'elite' as const,
       price: '$429 / month',
       miles: 350,
-      features: ['Peer-to-peer delivery', 'Cash handling', 'Priority support'],
+      features: getCumulativeConsumerPlanPerks('OTW ELITE'),
     },
     {
       name: 'OTW BLACK',
       code: 'black' as const,
       price: '$699 / month',
       miles: 600,
-      features: ['Emergency requests', 'Same rep when possible', 'Handle it mode'],
+      features: getCumulativeConsumerPlanPerks('OTW BLACK'),
     },
   ];
 
