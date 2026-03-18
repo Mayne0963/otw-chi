@@ -6,7 +6,7 @@ import { Check } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getActiveSubscription } from '@/lib/membership';
 import { getPrisma } from '@/lib/db';
-import { getCumulativeConsumerPlanPerks } from '@/lib/membership-perks';
+import { getConsumerPlanDisplayPerks } from '@/lib/membership-perks';
 
 export default async function MembershipPage() {
   const user = await getCurrentUser();
@@ -45,35 +45,35 @@ export default async function MembershipPage() {
       code: 'basic' as const,
       price: '$99 / month',
       miles: 60,
-      features: getCumulativeConsumerPlanPerks('OTW BASIC'),
+      features: getConsumerPlanDisplayPerks('OTW BASIC'),
     },
     {
       name: 'OTW PLUS',
       code: 'plus' as const,
       price: '$169 / month',
       miles: 120,
-      features: getCumulativeConsumerPlanPerks('OTW PLUS'),
+      features: getConsumerPlanDisplayPerks('OTW PLUS'),
     },
     {
       name: 'OTW PRO',
       code: 'pro' as const,
       price: '$269 / month',
       miles: 200,
-      features: getCumulativeConsumerPlanPerks('OTW PRO'),
+      features: getConsumerPlanDisplayPerks('OTW PRO'),
     },
     {
       name: 'OTW ELITE',
       code: 'elite' as const,
       price: '$429 / month',
       miles: 350,
-      features: getCumulativeConsumerPlanPerks('OTW ELITE'),
+      features: getConsumerPlanDisplayPerks('OTW ELITE'),
     },
     {
       name: 'OTW BLACK',
       code: 'black' as const,
       price: '$699 / month',
       miles: 600,
-      features: getCumulativeConsumerPlanPerks('OTW BLACK'),
+      features: getConsumerPlanDisplayPerks('OTW BLACK'),
     },
   ];
 

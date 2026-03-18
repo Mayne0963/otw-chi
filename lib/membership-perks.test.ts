@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getCumulativeConsumerPlanPerks,
+  getConsumerPlanDisplayPerks,
   getMembershipPlanPerks,
   resolveDeliveryPaymentPreferenceByPlan,
 } from './membership-perks';
@@ -93,5 +94,22 @@ describe('membership perks', () => {
     ]);
     expect(getCumulativeConsumerPlanPerks('OTW PRO')).toContain('Food');
     expect(getCumulativeConsumerPlanPerks('OTW PRO')).toContain('Priority routing');
+  });
+
+  it('returns short display perks that inherit from previous tiers', () => {
+    expect(getConsumerPlanDisplayPerks('OTW BASIC')).toEqual(['Food', 'Groceries', 'Quick errands']);
+    expect(getConsumerPlanDisplayPerks('OTW PLUS')).toEqual([
+      'Everything in OTW BASIC',
+      'Multi-stop',
+      'Longer waits',
+      'Light priority',
+    ]);
+    expect(getConsumerPlanDisplayPerks('OTW PRO')).toEqual([
+      'Everything in OTW PLUS',
+      'Returns & exchanges',
+      'Sit-and-wait',
+      'No item markups',
+      'Priority routing',
+    ]);
   });
 });

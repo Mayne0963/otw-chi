@@ -2,7 +2,7 @@ import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import { Check } from 'lucide-react';
 import { getPrisma } from '@/lib/db';
-import { getCumulativeConsumerPlanPerks } from '@/lib/membership-perks';
+import { getConsumerPlanDisplayPerks } from '@/lib/membership-perks';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +42,7 @@ export default async function PricingPage() {
       rollover: 'No rollover',
       markupFree: false,
       cashPay: false,
-      features: getCumulativeConsumerPlanPerks('OTW BASIC'),
+      features: getConsumerPlanDisplayPerks('OTW BASIC'),
     },
     {
       name: 'OTW PLUS',
@@ -52,7 +52,7 @@ export default async function PricingPage() {
       rollover: 'Rollover up to 30',
       markupFree: false,
       cashPay: false,
-      features: getCumulativeConsumerPlanPerks('OTW PLUS'),
+      features: getConsumerPlanDisplayPerks('OTW PLUS'),
     },
     {
       name: 'OTW PRO',
@@ -62,7 +62,7 @@ export default async function PricingPage() {
       rollover: 'Rollover up to 75',
       markupFree: true,
       cashPay: false,
-      features: getCumulativeConsumerPlanPerks('OTW PRO'),
+      features: getConsumerPlanDisplayPerks('OTW PRO'),
     },
     {
       name: 'OTW ELITE',
@@ -72,7 +72,7 @@ export default async function PricingPage() {
       rollover: 'Rollover up to 150',
       markupFree: true,
       cashPay: true,
-      features: getCumulativeConsumerPlanPerks('OTW ELITE'),
+      features: getConsumerPlanDisplayPerks('OTW ELITE'),
     },
     {
       name: 'OTW BLACK',
@@ -82,7 +82,7 @@ export default async function PricingPage() {
       rollover: 'Unlimited rollover',
       markupFree: true,
       cashPay: true,
-      features: getCumulativeConsumerPlanPerks('OTW BLACK'),
+      features: getConsumerPlanDisplayPerks('OTW BLACK'),
     },
   ];
 
