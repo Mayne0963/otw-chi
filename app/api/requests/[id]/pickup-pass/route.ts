@@ -92,23 +92,39 @@ export async function GET(
   }
 
   if (request.pickupPassImageUrl) {
-    const signedUrl = await getSignedUrlForObjectRef(request.pickupPassImageUrl, 900);
-    if (!signedUrl) {
-      return NextResponse.json({ error: 'Pickup pass is unavailable' }, { status: 404 });
+    try {
+      const signedUrl = await getSignedUrlForObjectRef(request.pickupPassImageUrl, 900);
+      if (signedUrl) {
+        return NextResponse.json({
+          pickupPassUrl: signedUrl,
+          pickupPassExpiresAt: request.pickupPassExpiresAt,
+        });
+      }
+    } catch (error) {
+      console.warn('[pickup-pass] failed to sign object ref, falling back', {
+        requestId: request.id,
+        error,
+      });
     }
 
+    if (
+      request.pickupPassImageUrl.startsWith('https://') ||
+      request.pickupPassImageUrl.startsWith('http://') ||
+      request.pickupPassImageUrl.startsWith('data:')
+    ) {
+      return NextResponse.json({
+        pickupPassUrl: request.pickupPassImageUrl,
+        pickupPassExpiresAt: request.pickupPassExpiresAt,
+      });
+    }
+  }
+
+  if (request.pickupPassBase64) {
     return NextResponse.json({
-      pickupPassUrl: signedUrl,
+      pickupPassUrl: toPickupPassDataUrl(request.pickupPassBase64, request.pickupPassMimeType),
       pickupPassExpiresAt: request.pickupPassExpiresAt,
     });
   }
 
-  if (!request.pickupPassBase64) {
-    return NextResponse.json({ error: 'Pickup pass is unavailable' }, { status: 404 });
-  }
-
-  return NextResponse.json({
-    pickupPassUrl: toPickupPassDataUrl(request.pickupPassBase64, request.pickupPassMimeType),
-    pickupPassExpiresAt: request.pickupPassExpiresAt,
-  });
+  return NextResponse.json({ error: 'Pickup pass is unavailable' }, { status: 404 });
 }
