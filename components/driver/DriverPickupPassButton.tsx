@@ -32,6 +32,15 @@ export default function DriverPickupPassButton({
 
       const payload = (await response.json().catch(() => null)) as PickupPassPayload | null;
       if (!response.ok || !payload?.pickupPassUrl) {
+        if (response.status === 410) {
+          throw new Error('Pickup pass has expired.');
+        }
+        if (response.status === 404) {
+          throw new Error('No pickup pass was uploaded for this request.');
+        }
+        if (response.status === 403) {
+          throw new Error('Pickup pass is locked until this request is assigned to you.');
+        }
         throw new Error(payload?.error ?? 'Pickup pass is unavailable for this request.');
       }
 

@@ -201,6 +201,7 @@ export default async function DriverDashboardPage() {
       lastKnownAt: true,
       pickupPassImageUrl: true,
       pickupPassMimeType: true,
+      pickupPassUploadedAt: true,
       pickupPassExpiresAt: true,
     },
   });
@@ -247,6 +248,7 @@ export default async function DriverDashboardPage() {
             createdAt: true,
             pickupPassImageUrl: true,
             pickupPassMimeType: true,
+            pickupPassUploadedAt: true,
             pickupPassExpiresAt: true,
           },
         });
@@ -386,7 +388,9 @@ export default async function DriverDashboardPage() {
                   const isAssigned = req.status === DeliveryRequestStatus.ASSIGNED;
                   const isPickedUp = req.status === DeliveryRequestStatus.PICKED_UP;
                   const isEnRoute = req.status === DeliveryRequestStatus.EN_ROUTE;
-                  const hasPickupPass = Boolean(req.pickupPassImageUrl || req.pickupPassMimeType);
+                  const hasPickupPass = Boolean(
+                    req.pickupPassImageUrl || req.pickupPassMimeType || req.pickupPassUploadedAt
+                  );
                   const pickupPassExpired = req.pickupPassExpiresAt
                     ? req.pickupPassExpiresAt <= new Date()
                     : false;
@@ -502,7 +506,9 @@ export default async function DriverDashboardPage() {
                   const pickupText = req.pickupAddress;
                   const dropoffText = req.dropoffAddress;
                   const prefs = getDispatchPreferences(req.quoteBreakdown);
-                  const hasPickupPass = Boolean(req.pickupPassImageUrl || req.pickupPassMimeType);
+                  const hasPickupPass = Boolean(
+                    req.pickupPassImageUrl || req.pickupPassMimeType || req.pickupPassUploadedAt
+                  );
                   const pickupPassExpired = req.pickupPassExpiresAt
                     ? req.pickupPassExpiresAt <= new Date()
                     : false;

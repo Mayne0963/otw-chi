@@ -28,6 +28,13 @@ export async function GET(
 
   const { id } = await params;
   const prisma = getPrisma();
+  const driverProfile =
+    user.role === Role.DRIVER
+      ? await prisma.driverProfile.findUnique({
+          where: { userId: user.id },
+          select: { id: true },
+        })
+      : null;
   const request = await prisma.deliveryRequest.findUnique({
     where: { id },
     select: {
@@ -54,12 +61,21 @@ export async function GET(
   }
 
   const isAssignedDriverViewer = Boolean(
+    driverProfile?.id &&
+      request.assignedDriverId === driverProfile.id
+  );
+
+  const isOpenMarketDriverViewer = Boolean(
     user.role === Role.DRIVER &&
       request.status === DeliveryRequestStatus.REQUESTED &&
       request.assignedDriverId === null
   );
 
-  if (!isAssignedDriverViewer && !isRequestParticipant(request, { id: user.id, role: user.role })) {
+  if (
+    !isAssignedDriverViewer &&
+    !isOpenMarketDriverViewer &&
+    !isRequestParticipant(request, { id: user.id, role: user.role })
+  ) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
