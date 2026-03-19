@@ -146,11 +146,13 @@ export function AddressSearch({
       try {
         const addresses = await searchAddress(trimmedQuery);
         if (requestId !== searchRequestIdRef.current) return;
-        localResultCacheRef.current.set(normalizedKey, addresses);
-        if (localResultCacheRef.current.size > 50) {
-          const oldestKey = localResultCacheRef.current.keys().next().value;
-          if (typeof oldestKey === "string") {
-            localResultCacheRef.current.delete(oldestKey);
+        if (addresses.length > 0 || trimmedQuery.length < 3) {
+          localResultCacheRef.current.set(normalizedKey, addresses);
+          if (localResultCacheRef.current.size > 50) {
+            const oldestKey = localResultCacheRef.current.keys().next().value;
+            if (typeof oldestKey === "string") {
+              localResultCacheRef.current.delete(oldestKey);
+            }
           }
         }
         setResults(addresses);

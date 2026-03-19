@@ -1245,6 +1245,12 @@ function getRequiredTokenMatches(tokens: string[]): number {
   return tokens.length - 1;
 }
 
+function isSpecificAddressQuery(normalizedQuery: string, tokens: string[]): boolean {
+  const hasNumericToken = tokens.some((token) => /\d/.test(token));
+  const hasStreetLikeShape = /\d+\s+[a-z]/.test(normalizedQuery);
+  return hasStreetLikeShape || hasNumericToken;
+}
+
 function countMatchedTokens(searchableText: string, queryTokens: string[]): number {
   if (queryTokens.length === 0) return 0;
   return queryTokens.reduce((count, token) => {
@@ -1509,6 +1515,7 @@ export async function searchAddress(
   }
 
   const queryTokens = tokenizeQuery(trimmedQuery, { minLength: 2 });
+  const specificAddressQuery = isSpecificAddressQuery(normalizedQuery, queryTokens);
   const requiredTokenMatches = getRequiredTokenMatches(queryTokens);
 
   try {
@@ -1654,11 +1661,22 @@ export async function searchAddress(
       0,
       DEFAULT_SEARCH_LIMIT
     );
-    const finalResults = prioritized.length > 0 ? prioritized : featuredSuggestions;
-    setCachedSearchResults(cacheKey, finalResults);
-    return finalResults;
+    if (prioritized.length > 0) {
+      setCachedSearchResults(cacheKey, prioritized);
+      return prioritized;
+    }
+
+    if (specificAddressQuery) {
+      return [];
+    }
+
+    setCachedSearchResults(cacheKey, featuredSuggestions);
+    return featuredSuggestions;
   } catch (error) {
     console.error('Address search error:', error);
+    if (specificAddressQuery) {
+      return [];
+    }
     setCachedSearchResults(cacheKey, featuredSuggestions);
     return featuredSuggestions;
   }
