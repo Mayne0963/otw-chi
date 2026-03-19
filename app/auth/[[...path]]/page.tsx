@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { AuthView } from '@neondatabase/auth/react';
+import AuthViewWithPasswordToggle from '@/components/auth/AuthViewWithPasswordToggle';
 
 function getAuthPath(pathname: string): string {
   const trimmed = pathname.replace(/^\/auth\/?/, '');
@@ -29,7 +29,7 @@ export default function AuthPage() {
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl">
           <div className="bg-otwBlack/50 rounded-xl p-6">
-            <AuthView path={authPath} />
+            <AuthViewWithPasswordToggle path={authPath} />
           </div>
         </div>
       </div>

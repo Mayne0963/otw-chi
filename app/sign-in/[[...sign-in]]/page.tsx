@@ -1,6 +1,6 @@
 'use client';
-import { AuthView } from '@neondatabase/auth/react';
 import Link from 'next/link';
+import AuthViewWithPasswordToggle from '@/components/auth/AuthViewWithPasswordToggle';
 
 export default function SignInPage() {
   return (
@@ -23,7 +23,7 @@ export default function SignInPage() {
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl" data-testid="sign-in-form">
           <div className="bg-otwBlack/50 rounded-xl p-6">
-             <AuthView path="sign-in" />
+             <AuthViewWithPasswordToggle path="sign-in" />
           </div>
         </div>
         
