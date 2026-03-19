@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { serverFeatureFlags } from '@/lib/featureFlags';
+import { DeliveryRequestStatus, Role } from '@prisma/client';
 import {
   isPickupPassExpired,
   purgeExpiredPickupPassForRequest,
@@ -52,7 +53,13 @@ export async function GET(
     return NextResponse.json({ error: 'Request not found' }, { status: 404 });
   }
 
-  if (!isRequestParticipant(request, { id: user.id, role: user.role })) {
+  const isAssignedDriverViewer = Boolean(
+    user.role === Role.DRIVER &&
+      request.status === DeliveryRequestStatus.REQUESTED &&
+      request.assignedDriverId === null
+  );
+
+  if (!isAssignedDriverViewer && !isRequestParticipant(request, { id: user.id, role: user.role })) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

@@ -18,6 +18,7 @@ import { completeDeliveryRequest, markDriverArrived, markDriverDepartedPickup } 
 import { serverFeatureFlags } from '@/lib/featureFlags';
 import RequestChat from '@/components/messages/RequestChat';
 import DriverAcceptJobButton from '@/components/driver/DriverAcceptJobButton';
+import DriverPickupPassButton from '@/components/driver/DriverPickupPassButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -198,6 +199,9 @@ export default async function DriverDashboardPage() {
       lastKnownLat: true,
       lastKnownLng: true,
       lastKnownAt: true,
+      pickupPassImageUrl: true,
+      pickupPassMimeType: true,
+      pickupPassExpiresAt: true,
     },
   });
 
@@ -241,6 +245,9 @@ export default async function DriverDashboardPage() {
             quoteBreakdown: true,
             scheduledStart: true,
             createdAt: true,
+            pickupPassImageUrl: true,
+            pickupPassMimeType: true,
+            pickupPassExpiresAt: true,
           },
         });
 
@@ -379,6 +386,12 @@ export default async function DriverDashboardPage() {
                   const isAssigned = req.status === DeliveryRequestStatus.ASSIGNED;
                   const isPickedUp = req.status === DeliveryRequestStatus.PICKED_UP;
                   const isEnRoute = req.status === DeliveryRequestStatus.EN_ROUTE;
+                  const hasPickupPass = Boolean(req.pickupPassImageUrl || req.pickupPassMimeType);
+                  const pickupPassExpired = req.pickupPassExpiresAt
+                    ? req.pickupPassExpiresAt <= new Date()
+                    : false;
+                  const canViewPickupPass =
+                    serverFeatureFlags.pickupPass && hasPickupPass && !pickupPassExpired;
 
                   return (
                     <Card key={req.id} className="border-otwGold/30 bg-otwGold/10 p-5 sm:p-6">
@@ -416,7 +429,8 @@ export default async function DriverDashboardPage() {
                                  )}
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
                                 {isAssigned && (
                                     <form action={updateStatus} className="w-full">
                                         <input type="hidden" name="requestId" value={req.id} />
@@ -446,6 +460,10 @@ export default async function DriverDashboardPage() {
                                         </Button>
                                     </form>
                                 )}
+                              </div>
+                              {canViewPickupPass ? (
+                                <DriverPickupPassButton requestId={req.id} className="w-full" />
+                              ) : null}
                             </div>
                         </div>
                     </Card>
@@ -484,6 +502,12 @@ export default async function DriverDashboardPage() {
                   const pickupText = req.pickupAddress;
                   const dropoffText = req.dropoffAddress;
                   const prefs = getDispatchPreferences(req.quoteBreakdown);
+                  const hasPickupPass = Boolean(req.pickupPassImageUrl || req.pickupPassMimeType);
+                  const pickupPassExpired = req.pickupPassExpiresAt
+                    ? req.pickupPassExpiresAt <= new Date()
+                    : false;
+                  const canViewPickupPass =
+                    serverFeatureFlags.pickupPass && hasPickupPass && !pickupPassExpired;
 
                   return (
                     <Card key={req.id} className="p-5 sm:p-6">
@@ -524,12 +548,17 @@ export default async function DriverDashboardPage() {
                                 ) : null}
                             </div>
                             
-                              <DriverAcceptJobButton
-                                requestId={req.id}
-                                label="Accept Job"
-                                className="w-full"
-                                variant="outline"
-                              />
+                              <div className="space-y-2">
+                                <DriverAcceptJobButton
+                                  requestId={req.id}
+                                  label="Accept Job"
+                                  className="w-full"
+                                  variant="outline"
+                                />
+                                {canViewPickupPass ? (
+                                  <DriverPickupPassButton requestId={req.id} className="w-full" />
+                                ) : null}
+                              </div>
                         </div>
                     </Card>
                   );
