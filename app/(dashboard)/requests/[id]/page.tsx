@@ -99,6 +99,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const canCancelAndRefund =
     isOwner &&
     ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status);
+  const canOpenDispute = isOwner && request.status === 'DELIVERED';
   const disputeItems = Array.isArray(request.receiptItems)
     ? request.receiptItems.flatMap((rawItem, index) => {
         if (!rawItem || typeof rawItem !== 'object') return [];
@@ -142,7 +143,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     : null;
   const showOrderConfirmationPanel =
     isOwner &&
-    (disputeItems.length > 0 || request.isLocked || Boolean(request.orderConfirmation));
+    (
+      request.status === 'DELIVERED' ||
+      disputeItems.length > 0 ||
+      request.isLocked ||
+      Boolean(request.orderConfirmation)
+    );
 
   return (
     <OtwPageShell>
@@ -244,6 +250,14 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                       >
                         Pay Now
                       </Link>
+                    ) : null}
+                    {canOpenDispute ? (
+                      <a
+                        href="#order-disputes"
+                        className="inline-flex items-center justify-center rounded-md border border-red-400/45 px-3 py-1 text-[11px] font-semibold text-red-200 transition-all duration-300 hover:border-red-300 hover:text-red-100"
+                      >
+                        Dispute Order
+                      </a>
                     ) : null}
                   </div>
                 </div>
@@ -377,11 +391,13 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
               )}
 
               {showOrderConfirmationPanel ? (
-                <OrderConfirmationPanel
-                  deliveryRequestId={request.id}
-                  items={disputeItems}
-                  confirmation={orderConfirmationSummary}
-                />
+                <div id="order-disputes" className="scroll-mt-24">
+                  <OrderConfirmationPanel
+                    deliveryRequestId={request.id}
+                    items={disputeItems}
+                    confirmation={orderConfirmationSummary}
+                  />
+                </div>
               ) : null}
 
               {/* Driver Tracking Section */}

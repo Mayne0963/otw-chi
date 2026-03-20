@@ -4,6 +4,7 @@ import { UserButton } from "@neondatabase/auth/react"
 import { SignedIn, SignedOut } from "@/components/auth/auth-helpers"
 import { Menu } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
+import { BackNavButton } from "@/components/layout/BackNavButton"
 import {
   Sheet,
   SheetContent,
@@ -58,6 +59,7 @@ export function MarketingNav() {
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="otw-container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
+          <BackNavButton fallbackHref="/" className="h-8 px-2 sm:h-9 sm:px-3" />
           <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
             <span>OTW</span>
             <span className="hidden sm:inline-block text-foreground/70 text-sm font-normal">On The Way</span>

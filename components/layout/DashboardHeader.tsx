@@ -1,12 +1,19 @@
 'use client';
 import { UserButton } from "@neondatabase/auth/react";
 import OtwButton from "@/components/ui/otw/OtwButton"
+import Link from "next/link";
+import { BackNavButton } from "@/components/layout/BackNavButton";
 
 export function DashboardHeader() {
   return (
     <header className="relative z-40 flex h-14 items-center justify-between border-b border-border bg-background px-4 sm:h-16 sm:px-6">
-      <div className="flex items-center gap-4">
-        <h2 className="text-base font-semibold text-foreground sm:text-lg">Dashboard</h2>
+      <div className="flex items-center gap-2 sm:gap-3">
+        <BackNavButton fallbackHref="/dashboard" className="h-8 px-2 sm:h-9 sm:px-3" />
+        <Link href="/" className="inline-flex items-center gap-2 rounded-md px-2 py-1 hover:bg-white/5">
+          <span className="text-sm font-bold text-otwGold sm:text-base">OTW</span>
+          <span className="hidden text-xs font-medium text-foreground/70 sm:inline">Home</span>
+        </Link>
+        <h2 className="hidden text-base font-semibold text-foreground sm:inline sm:text-lg">Dashboard</h2>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
         <OtwButton
