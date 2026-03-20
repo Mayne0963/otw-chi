@@ -44,11 +44,10 @@ function readStoredVersion(): string | null {
   try {
     const sessionValue = window.sessionStorage.getItem(VERSION_STORAGE_KEY);
     if (sessionValue) return sessionValue;
-    const legacyLocalValue = window.localStorage.getItem(VERSION_STORAGE_KEY);
-    if (!legacyLocalValue) return null;
-    window.sessionStorage.setItem(VERSION_STORAGE_KEY, legacyLocalValue);
-    window.localStorage.removeItem(VERSION_STORAGE_KEY);
-    return legacyLocalValue;
+    const localValue = window.localStorage.getItem(VERSION_STORAGE_KEY);
+    if (!localValue) return null;
+    window.sessionStorage.setItem(VERSION_STORAGE_KEY, localValue);
+    return localValue;
   } catch {
     return null;
   }
@@ -57,7 +56,7 @@ function readStoredVersion(): string | null {
 function writeStoredVersion(version: string) {
   try {
     window.sessionStorage.setItem(VERSION_STORAGE_KEY, version);
-    window.localStorage.removeItem(VERSION_STORAGE_KEY);
+    window.localStorage.setItem(VERSION_STORAGE_KEY, version);
   } catch {
     // ignore storage failures
   }
