@@ -88,6 +88,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     if (role !== "ADMIN") return []
 
     const operationsRoutes: NavRoute[] = [
+      { label: "City Requests", href: "/admin/city-requests", icon: MapPin },
       { label: "Contact Inbox", href: "/admin/contact", icon: Mail },
       { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
       { label: "Driver Apps", href: "/admin/drivers/applications", icon: Truck },
