@@ -58,11 +58,11 @@ export function MarketingNav() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="otw-container flex h-16 items-center justify-between">
+      <div className="otw-container flex h-20 items-center justify-between">
         <div className="flex items-center gap-2">
           <BackNavButton fallbackHref="/" className="h-8 px-2 sm:h-9 sm:px-3" />
           <Link href="/" className="flex items-center rounded-md px-1 py-1 hover:bg-white/5">
-            <OtwNavbarLogo imageClassName="h-9 w-9 sm:h-10 sm:w-10" />
+            <OtwNavbarLogo imageClassName="h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20" />
           </Link>
         </div>
 
