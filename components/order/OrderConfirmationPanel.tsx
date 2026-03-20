@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { type ChangeEvent, useMemo, useState } from 'react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 
 type OrderItem = {
@@ -35,6 +35,12 @@ type LocalDisputeSelection = {
   details: string;
 };
 
+type UploadedEvidence = {
+  ref: string;
+  previewUrl: string | null;
+  label: string;
+};
+
 const REASON_OPTIONS: DisputeReason[] = ['MISSING', 'WRONG_ITEM', 'BAD_QUALITY', 'DAMAGED'];
 
 function buildItemKey(item: OrderItem, index: number): string {
@@ -64,6 +70,7 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
 
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSubmittingDispute, setIsSubmittingDispute] = useState(false);
+  const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -71,6 +78,9 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
   const [evidenceInput, setEvidenceInput] = useState('');
   const [disputeNotes, setDisputeNotes] = useState('');
   const [selectionByKey, setSelectionByKey] = useState<Record<string, LocalDisputeSelection>>({});
+  const [pendingEvidenceFiles, setPendingEvidenceFiles] = useState<File[]>([]);
+  const [uploadedEvidence, setUploadedEvidence] = useState<UploadedEvidence[]>([]);
+  const [evidenceInputKey, setEvidenceInputKey] = useState(0);
 
   const selectedDisputedItems = normalizedItems
     .map((item) => ({ item, selection: selectionByKey[item.itemKey] }))
@@ -83,7 +93,7 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
       maxQty: entry.item.qty,
     }));
 
-  const canSubmitDispute = selectedDisputedItems.length > 0;
+  const canSubmitDispute = disputeNotes.trim().length > 0 && !isUploadingEvidence;
 
   const handleConfirm = async () => {
     setIsConfirming(true);
@@ -117,9 +127,77 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
     }
   };
 
+  const handleEvidenceFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    setPendingEvidenceFiles(files);
+  };
+
+  const handleUploadEvidence = async () => {
+    if (pendingEvidenceFiles.length === 0) {
+      setErrorMessage('Choose at least one image or video to upload.');
+      return;
+    }
+
+    setIsUploadingEvidence(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    try {
+      const uploadedBatch: UploadedEvidence[] = [];
+
+      for (const file of pendingEvidenceFiles) {
+        const formData = new FormData();
+        formData.set('deliveryRequestId', deliveryRequestId);
+        formData.set('file', file);
+
+        const response = await fetch('/api/upload/dispute-evidence', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+
+        const data = (await response.json().catch(() => null)) as
+          | { ok?: boolean; error?: string; evidenceRef?: string; evidenceUrl?: string | null; fileName?: string }
+          | null;
+
+        if (!response.ok || !data?.ok || !data.evidenceRef) {
+          throw new Error(data?.error || `Failed to upload ${file.name}`);
+        }
+
+        uploadedBatch.push({
+          ref: data.evidenceRef,
+          previewUrl: data.evidenceUrl ?? null,
+          label: data.fileName?.trim() || file.name,
+        });
+      }
+
+      setUploadedEvidence((prev) => {
+        const byRef = new Map(prev.map((entry) => [entry.ref, entry]));
+        uploadedBatch.forEach((entry) => byRef.set(entry.ref, entry));
+        return Array.from(byRef.values());
+      });
+      setPendingEvidenceFiles([]);
+      setEvidenceInputKey((prev) => prev + 1);
+      setStatusMessage(
+        uploadedBatch.length === 1
+          ? 'Evidence uploaded.'
+          : `${uploadedBatch.length} evidence files uploaded.`
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to upload evidence');
+    } finally {
+      setIsUploadingEvidence(false);
+    }
+  };
+
   const handleDisputeSubmit = async () => {
-    if (!canSubmitDispute) {
-      setErrorMessage('Select at least one specific item before submitting a dispute.');
+    if (!disputeNotes.trim()) {
+      setErrorMessage('Add dispute notes before submitting.');
+      return;
+    }
+
+    if (isUploadingEvidence) {
+      setErrorMessage('Please wait for evidence uploads to finish.');
       return;
     }
 
@@ -127,10 +205,13 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
     setErrorMessage(null);
     setStatusMessage(null);
 
-    const evidenceUrls = evidenceInput
+    const manualEvidenceUrls = evidenceInput
       .split(/[\n,]+/)
       .map((value) => value.trim())
       .filter(Boolean);
+    const evidenceUrls = Array.from(
+      new Set([...uploadedEvidence.map((entry) => entry.ref), ...manualEvidenceUrls])
+    );
 
     try {
       const response = await fetch(`/api/delivery-request/${deliveryRequestId}/dispute`, {
@@ -144,7 +225,7 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
             reason: item.reason,
             details: item.details,
           })),
-          disputeNotes: disputeNotes.trim() || undefined,
+          disputeNotes: disputeNotes.trim(),
           evidenceUrls,
         }),
       });
@@ -233,14 +314,14 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
           className="w-full"
           onClick={() => setShowDisputeForm((value) => !value)}
         >
-          {showDisputeForm ? 'Hide Dispute Form' : 'Report a Problem with Specific Items'}
+          {showDisputeForm ? 'Hide Dispute Form' : 'Report a Problem'}
         </OtwButton>
       </div>
 
       {showDisputeForm && (
         <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3" data-testid="dispute-modal">
           <div className="text-xs uppercase tracking-wide text-white/60">
-            Select specific item(s) to dispute
+            Select specific item(s) to dispute (optional)
           </div>
           {normalizedItems.map((item) => {
             const selection = selectionByKey[item.itemKey] ?? {
@@ -331,24 +412,59 @@ export default function OrderConfirmationPanel({ deliveryRequestId, items, confi
           <textarea
             value={disputeNotes}
             onChange={(event) => setDisputeNotes(event.target.value)}
-            placeholder="Overall dispute notes (optional)"
+            placeholder="Overall dispute notes (required)"
             className="min-h-[80px] w-full rounded border border-white/20 bg-black/30 px-2 py-1 text-sm text-white"
           />
+
+          <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="text-xs uppercase tracking-wide text-white/60">Evidence Upload (Optional)</div>
+            <input
+              key={evidenceInputKey}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              onChange={handleEvidenceFileChange}
+              className="w-full text-sm text-white/80 file:mr-3 file:rounded-md file:border-0 file:bg-white/15 file:px-3 file:py-1 file:text-sm file:text-white hover:file:bg-white/20"
+            />
+            <OtwButton
+              variant="outline"
+              className="w-full"
+              disabled={pendingEvidenceFiles.length === 0 || isUploadingEvidence}
+              onClick={handleUploadEvidence}
+            >
+              {isUploadingEvidence ? 'Uploading Evidence...' : 'Upload Evidence'}
+            </OtwButton>
+            {uploadedEvidence.length > 0 && (
+              <div className="space-y-1 text-xs text-white/70">
+                {uploadedEvidence.map((entry) => (
+                  <div key={entry.ref} className="truncate">
+                    {entry.previewUrl ? (
+                      <a href={entry.previewUrl} target="_blank" rel="noreferrer" className="text-otwGold underline">
+                        {entry.label}
+                      </a>
+                    ) : (
+                      <span>{entry.label}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <textarea
             value={evidenceInput}
             onChange={(event) => setEvidenceInput(event.target.value)}
-            placeholder="Evidence URLs (comma or newline separated)"
+            placeholder="Additional evidence URLs (optional, comma or newline separated)"
             className="min-h-[80px] w-full rounded border border-white/20 bg-black/30 px-2 py-1 text-sm text-white"
           />
 
           <OtwButton
             variant="red"
             className="w-full"
-            disabled={!canSubmitDispute || isSubmittingDispute}
+            disabled={!canSubmitDispute || isSubmittingDispute || isUploadingEvidence}
             onClick={handleDisputeSubmit}
           >
-            {isSubmittingDispute ? 'Submitting Dispute...' : 'Submit Item-Specific Dispute'}
+            {isSubmittingDispute ? 'Submitting Dispute...' : 'Submit Dispute'}
           </OtwButton>
         </div>
       )}

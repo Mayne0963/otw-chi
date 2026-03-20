@@ -12,7 +12,7 @@ export const disputedItemInputSchema = z.object({
 });
 
 export const disputePayloadSchema = z.object({
-  disputedItems: z.array(disputedItemInputSchema).min(1),
+  disputedItems: z.array(disputedItemInputSchema).default([]),
   disputeNotes: z.string().trim().max(5000).optional(),
   evidenceUrls: z.array(z.string().url()).max(20).optional(),
 });

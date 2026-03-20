@@ -5,6 +5,7 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth/roles';
 import DisputeResolutionTable from '@/components/admin/DisputeResolutionTable';
+import { getSignedUrlForObjectRef } from '@/lib/storage';
 
 const statusOptions = ['OPEN', 'NEEDS_INFO', 'RESOLVED_APPROVED', 'RESOLVED_DENIED'] as const;
 
@@ -29,27 +30,38 @@ export default async function AdminDisputesPage({
     take: 200,
   });
 
-  const rows = disputes.map((dispute) => ({
-    id: dispute.id,
-    deliveryRequestId: dispute.deliveryRequestId,
-    createdAt: dispute.createdAt.toISOString(),
-    customerConfirmed: dispute.customerConfirmed,
-    confirmedAt: dispute.confirmedAt?.toISOString() ?? null,
-    disputeStatus: dispute.disputeStatus,
-    disputeNotes: dispute.disputeNotes,
-    evidenceUrls: dispute.evidenceUrls,
-    disputedItems: Array.isArray(dispute.disputedItems)
-      ? (dispute.disputedItems as Array<{ itemKey?: string; name?: string; qtyDisputed?: number; reason?: string; details?: string }>)
-      : [],
-    resolutionNotes: dispute.resolutionNotes,
-    refundAmount: dispute.refundAmount ? dispute.refundAmount.toFixed(2) : null,
-  }));
+  const rows = await Promise.all(
+    disputes.map(async (dispute) => {
+      const evidenceUrls = await Promise.all(
+        dispute.evidenceUrls.map(async (value) => {
+          if (!value.startsWith('s3://')) return value;
+          return (await getSignedUrlForObjectRef(value, 900)) ?? value;
+        })
+      );
+
+      return {
+        id: dispute.id,
+        deliveryRequestId: dispute.deliveryRequestId,
+        createdAt: dispute.createdAt.toISOString(),
+        customerConfirmed: dispute.customerConfirmed,
+        confirmedAt: dispute.confirmedAt?.toISOString() ?? null,
+        disputeStatus: dispute.disputeStatus,
+        disputeNotes: dispute.disputeNotes,
+        evidenceUrls,
+        disputedItems: Array.isArray(dispute.disputedItems)
+          ? (dispute.disputedItems as Array<{ itemKey?: string; name?: string; qtyDisputed?: number; reason?: string; details?: string }>)
+          : [],
+        resolutionNotes: dispute.resolutionNotes,
+        refundAmount: dispute.refundAmount ? dispute.refundAmount.toFixed(2) : null,
+      };
+    })
+  );
 
   return (
     <OtwPageShell>
       <OtwSectionHeader
         title="Dispute Review"
-        subtitle="Review item-specific disputes and resolve outcomes."
+        subtitle="Review customer disputes and resolve outcomes."
       />
 
       <OtwCard className="mt-4">

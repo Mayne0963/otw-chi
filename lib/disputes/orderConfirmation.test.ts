@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildItemsSnapshot,
+  disputePayloadSchema,
   shouldMarkNeedsInfoForDispute,
   validateDisputedItemsAgainstSnapshot,
 } from './orderConfirmation';
@@ -47,5 +48,16 @@ describe('order confirmation disputes', () => {
     );
 
     expect(needsInfo).toBe(true);
+  });
+
+  it('allows disputes without item selections', () => {
+    const parsed = disputePayloadSchema.safeParse({
+      disputeNotes: 'Driver marked delivered but order had other issues.',
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.disputedItems).toEqual([]);
+    }
   });
 });
