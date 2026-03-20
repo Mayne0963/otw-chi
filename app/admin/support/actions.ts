@@ -87,10 +87,13 @@ export async function replyToTicketAction(formData: FormData) {
   const prisma = getPrisma();
   const ticket = await prisma.supportTicket.findUnique({
     where: { id },
-    select: { id: true, message: true },
+    select: { id: true, message: true, status: true },
   });
 
   if (!ticket) {
+    return;
+  }
+  if (ticket.status !== 'OPEN') {
     return;
   }
 

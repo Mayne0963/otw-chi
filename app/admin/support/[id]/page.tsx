@@ -101,20 +101,26 @@ export default async function AdminSupportTicketPage({
 
       <OtwCard className="mt-4 p-5">
         <div className="text-sm font-semibold text-white">Respond to user</div>
-        <form action={replyToTicketAction} className="mt-3 space-y-3">
-          <input type="hidden" name="id" value={ticket.id} />
-          <textarea
-            name="reply"
-            className="min-h-[140px] w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"
-            placeholder="Type your response for the user..."
-            required
-          />
-          <div className="flex flex-wrap gap-2">
-            <OtwButton type="submit" variant="gold" size="sm">
-              Send Response
-            </OtwButton>
+        {ticket.status === 'OPEN' ? (
+          <form action={replyToTicketAction} className="mt-3 space-y-3">
+            <input type="hidden" name="id" value={ticket.id} />
+            <textarea
+              name="reply"
+              className="min-h-[140px] w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"
+              placeholder="Type your response for the user..."
+              required
+            />
+            <div className="flex flex-wrap gap-2">
+              <OtwButton type="submit" variant="gold" size="sm">
+                Send Response
+              </OtwButton>
+            </div>
+          </form>
+        ) : (
+          <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3 text-sm text-white/70">
+            This ticket is {ticket.status.toLowerCase()}. Texting is disabled.
           </div>
-        </form>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
           {ticket.status !== 'RESOLVED' ? (
             <form action={resolveTicketAction}>
