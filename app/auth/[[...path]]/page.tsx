@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import AuthViewWithPasswordToggle from '@/components/auth/AuthViewWithPasswordToggle';
+import AuthNavButtons from '@/components/auth/AuthNavButtons';
 
 function getAuthPath(pathname: string): string {
   const trimmed = pathname.replace(/^\/auth\/?/, '');
@@ -18,6 +19,7 @@ export default function AuthPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-otwBlack relative overflow-hidden">
       <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-otwGold/5 blur-[100px]" />
       <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-otwBlue/5 blur-[100px]" />
+      <AuthNavButtons />
 
       <div className="w-full max-w-md z-10 space-y-8">
         <div className="text-center space-y-2">

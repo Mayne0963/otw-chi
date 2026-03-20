@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import AuthViewWithPasswordToggle from '@/components/auth/AuthViewWithPasswordToggle';
+import AuthNavButtons from '@/components/auth/AuthNavButtons';
 
 export default function SignUpPage() {
   return (
@@ -8,6 +9,7 @@ export default function SignUpPage() {
       {/* Background gradients */}
       <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-otwGold/5 blur-[100px]" />
       <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-otwBlue/5 blur-[100px]" />
+      <AuthNavButtons />
 
       <div className="w-full max-w-md z-10 space-y-8">
         <div className="text-center space-y-2">
