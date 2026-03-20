@@ -6,6 +6,7 @@ import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { formatDistanceToNow } from 'date-fns';
+import { createTicketAction } from '@/app/(dashboard)/support/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,15 +49,18 @@ export default async function SupportPage() {
                           Updated {formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })}
                         </div>
                       </div>
-                      <div className="rounded-full border border-white/15 px-2 py-0.5 text-xs uppercase tracking-wide text-white/70">
-                        {t.status}
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-full border border-white/15 px-2 py-0.5 text-xs uppercase tracking-wide text-white/70">
+                          {t.status}
+                        </div>
+                        <OtwButton as="a" href={`/support/${t.id}`} variant="outline" size="sm" className="h-7 px-2 text-xs">
+                          Open
+                        </OtwButton>
                       </div>
                     </div>
-                    {t.message ? (
-                      <pre className="mt-2 whitespace-pre-wrap text-xs text-white/75">{t.message}</pre>
-                    ) : (
-                      <div className="mt-2 text-xs text-white/50">No message body.</div>
-                    )}
+                    <div className="mt-2 text-xs text-white/60">
+                      Ticket ID: {t.id.slice(-8).toUpperCase()}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -66,18 +70,4 @@ export default async function SupportPage() {
       )}
     </OtwPageShell>
   );
-}
-
-export async function createTicketAction(formData: FormData) {
-  'use server';
-  const user = await getCurrentUser();
-  if (!user) return;
-  const prisma = getPrisma();
-  const subject = String(formData.get('subject') ?? '');
-  const message = String(formData.get('message') ?? '');
-  if (!subject || !message) return;
-  await prisma.supportTicket.create({ data: { userId: user.id, subject, message } });
-  
-  const { revalidatePath } = await import('next/cache');
-  revalidatePath('/support');
 }
