@@ -9,12 +9,13 @@ import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { revalidatePath } from 'next/cache';
 
-async function processPayoutAction(formData: FormData) {
+async function updatePayoutStatusAction(formData: FormData) {
   'use server';
   await requireRole(['ADMIN']);
-  const payoutId = String(formData.get('payoutId'));
-  if (!payoutId) return;
-  
+  const payoutId = String(formData.get('payoutId') ?? '');
+  const status = String(formData.get('status') ?? '');
+  if (!payoutId || (status !== 'paid' && status !== 'failed')) return;
+
   const prisma = getPrisma();
 
   await prisma.$transaction(async (tx) => {
@@ -24,15 +25,14 @@ async function processPayoutAction(formData: FormData) {
     });
     if (!payout || payout.status !== 'processing') return;
 
-    // Mark the specific payout request as paid.
     await tx.driverPayout.update({
       where: { id: payoutId },
-      data: { status: 'paid' },
+      data: { status },
     });
 
     await tx.driverEarnings.updateMany({
       where: { driverId: payout.driverId, status: 'pending' },
-      data: { status: 'paid' },
+      data: { status: status === 'paid' ? 'paid' : 'available' },
     });
   });
 
@@ -60,8 +60,7 @@ async function getPayoutsData() {
   const prisma = getPrisma();
   
   try {
-    // Get all payout-related support tickets with better filtering
-    const payouts = await prisma.supportTicket.findMany({
+    const supportTickets = await prisma.supportTicket.findMany({
       where: { 
         subject: { contains: 'payout', mode: 'insensitive' }
       },
@@ -72,15 +71,21 @@ async function getPayoutsData() {
       take: 100
     });
 
-    // Pending payouts come from explicit driver payout requests.
-    const pendingPayoutRequests = await prisma.driverPayout.findMany({
-      where: { status: 'processing' },
+    const payoutRequests = await prisma.driverPayout.findMany({
       include: {
         user: { select: { id: true, name: true, email: true } },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take: 100,
     });
+
+    const pendingPayoutRequests = payoutRequests
+      .filter((payout) => payout.status === 'processing')
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+    const completedPayoutRequests = payoutRequests
+      .filter((payout) => payout.status !== 'processing')
+      .slice(0, 30);
 
     const pendingPayouts = pendingPayoutRequests.map((p) => ({
       payoutId: p.id,
@@ -96,7 +101,14 @@ async function getPayoutsData() {
     const totalPendingTips = pendingPayouts.reduce((acc, p) => acc + p.tipCents, 0);
     const totalPendingCount = pendingPayouts.reduce((acc, p) => acc + p.count, 0);
 
-    return { payouts, totalPending, totalPendingTips, totalPendingCount, pendingPayouts };
+    return {
+      supportTickets,
+      totalPending,
+      totalPendingTips,
+      totalPendingCount,
+      pendingPayouts,
+      completedPayoutRequests,
+    };
   } catch (error) {
     console.error('[AdminPayouts] Failed to fetch payouts:', error);
     throw error;
@@ -104,12 +116,14 @@ async function getPayoutsData() {
 }
 
 type PayoutsData = Awaited<ReturnType<typeof getPayoutsData>>;
-type PayoutRow = PayoutsData['payouts'][number];
+type SupportTicketRow = PayoutsData['supportTickets'][number];
 type PendingPayoutRow = PayoutsData['pendingPayouts'][number];
+type CompletedPayoutRow = PayoutsData['completedPayoutRequests'][number];
 
 async function PayoutsList() {
-  let payouts: PayoutRow[] = [];
+  let supportTickets: SupportTicketRow[] = [];
   let pendingPayouts: PendingPayoutRow[] = [];
+  let completedPayoutRequests: CompletedPayoutRow[] = [];
   let totalPending = 0;
   let totalPendingTips = 0;
   let totalPendingCount = 0;
@@ -117,8 +131,9 @@ async function PayoutsList() {
 
   try {
     const data = await getPayoutsData();
-    payouts = data.payouts;
+    supportTickets = data.supportTickets;
     pendingPayouts = data.pendingPayouts;
+    completedPayoutRequests = data.completedPayoutRequests;
     totalPending = data.totalPending;
     totalPendingTips = data.totalPendingTips;
     totalPendingCount = data.totalPendingCount;
@@ -130,11 +145,20 @@ async function PayoutsList() {
     return <PayoutsErrorState error={error} />;
   }
 
-  if (payouts.length === 0 && totalPendingCount === 0) {
+  if (supportTickets.length === 0 && totalPendingCount === 0 && completedPayoutRequests.length === 0) {
     return <EmptyPayoutsState totalPending={totalPending} totalPendingTips={totalPendingTips} totalPendingCount={totalPendingCount} />;
   }
 
-  return <PayoutsContent payouts={payouts} pendingPayouts={pendingPayouts} totalPending={totalPending} totalPendingTips={totalPendingTips} totalPendingCount={totalPendingCount} />;
+  return (
+    <PayoutsContent
+      supportTickets={supportTickets}
+      pendingPayouts={pendingPayouts}
+      completedPayoutRequests={completedPayoutRequests}
+      totalPending={totalPending}
+      totalPendingTips={totalPendingTips}
+      totalPendingCount={totalPendingCount}
+    />
+  );
 }
 
 function EmptyPayoutsState({ totalPending, totalPendingTips, totalPendingCount }: { totalPending: number; totalPendingTips: number; totalPendingCount: number }) {
@@ -168,14 +192,16 @@ function EmptyPayoutsState({ totalPending, totalPendingTips, totalPendingCount }
 }
 
 function PayoutsContent({
-  payouts,
+  supportTickets,
   pendingPayouts,
+  completedPayoutRequests,
   totalPending,
   totalPendingTips,
   totalPendingCount,
 }: {
-  payouts: PayoutRow[];
+  supportTickets: SupportTicketRow[];
   pendingPayouts: PendingPayoutRow[];
+  completedPayoutRequests: CompletedPayoutRow[];
   totalPending: number;
   totalPendingTips: number;
   totalPendingCount: number;
@@ -230,12 +256,69 @@ function PayoutsContent({
                       {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
                     </td>
                     <td className="px-4 py-3">
-                      <form action={processPayoutAction}>
-                        <input type="hidden" name="payoutId" value={p.payoutId} />
-                        <OtwButton type="submit" className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs w-full">
-                          Mark Paid
-                        </OtwButton>
-                      </form>
+                      <div className="flex gap-2">
+                        <form action={updatePayoutStatusAction} className="flex-1">
+                          <input type="hidden" name="payoutId" value={p.payoutId} />
+                          <input type="hidden" name="status" value="paid" />
+                          <OtwButton type="submit" className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs w-full">
+                            Mark Paid
+                          </OtwButton>
+                        </form>
+                        <form action={updatePayoutStatusAction} className="flex-1">
+                          <input type="hidden" name="payoutId" value={p.payoutId} />
+                          <input type="hidden" name="status" value="failed" />
+                          <OtwButton type="submit" className="bg-red-600 hover:bg-red-700 text-white h-8 text-xs w-full">
+                            Mark Failed
+                          </OtwButton>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </OtwCard>
+      )}
+
+      {completedPayoutRequests.length > 0 && (
+        <OtwCard className="mt-6">
+          <div className="p-4 border-b border-white/10">
+            <h3 className="text-lg font-semibold text-white">Recent Payout Updates</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="opacity-60 border-b border-white/10">
+                <tr>
+                  <th className="text-left px-4 py-3">Driver</th>
+                  <th className="text-left px-4 py-3">Amount</th>
+                  <th className="text-left px-4 py-3">Status</th>
+                  <th className="text-left px-4 py-3">Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedPayoutRequests.map((payout) => (
+                  <tr key={payout.id} className="border-b border-white/5">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{payout.user?.name || 'Unknown Driver'}</div>
+                      <div className="text-xs text-white/50">{payout.user?.email}</div>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-otwGold">
+                      ${(payout.totalCents / 100).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                          payout.status === 'paid'
+                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                            : 'bg-red-500/20 text-red-400 border-red-500/30'
+                        }`}
+                      >
+                        {payout.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-white/70 text-xs">
+                      {formatDistanceToNow(new Date(payout.createdAt), { addSuffix: true })}
                     </td>
                   </tr>
                 ))}
@@ -262,7 +345,7 @@ function PayoutsContent({
               </tr>
             </thead>
             <tbody>
-              {payouts.map((payout) => (
+              {supportTickets.map((payout) => (
                 <tr key={payout.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3 text-white/60 text-xs">
                     {formatDistanceToNow(new Date(payout.createdAt), { addSuffix: true })}

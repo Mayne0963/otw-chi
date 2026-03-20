@@ -439,8 +439,64 @@ export async function requestPayoutAction(_formData: FormData) {
     });
 
     await tx.driverEarnings.updateMany({
-      where: { driverId: user.id },
+      where: { driverId: user.id, status: 'available' },
       data: { status: 'pending' },
+    });
+  });
+
+  revalidatePath('/driver/earnings');
+  revalidatePath('/admin/payouts');
+}
+
+export async function getDriverPayoutRequests() {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) {
+    return [];
+  }
+
+  const prisma = getPrisma();
+  return prisma.driverPayout.findMany({
+    where: { driverId: user.id },
+    orderBy: { createdAt: 'desc' },
+    take: 25,
+  });
+}
+
+export async function cancelPayoutRequestAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== 'DRIVER' && user.role !== 'ADMIN')) return;
+
+  const payoutId = String(formData.get('payoutId') ?? '');
+  if (!payoutId) return;
+
+  const prisma = getPrisma();
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const payout = await tx.driverPayout.findFirst({
+      where: {
+        id: payoutId,
+        driverId: user.id,
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!payout || payout.status !== 'processing') {
+      return;
+    }
+
+    await tx.driverPayout.update({
+      where: { id: payout.id },
+      data: { status: 'failed' },
+    });
+
+    await tx.driverEarnings.updateMany({
+      where: {
+        driverId: user.id,
+        status: 'pending',
+      },
+      data: { status: 'available' },
     });
   });
 

@@ -3,9 +3,14 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 import OtwStatPill from '@/components/ui/otw/OtwStatPill';
 import { Button } from '@/components/ui/button';
-import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
-import { getDriverEarnings, requestPayoutAction } from '@/app/actions/driver';
+import {
+  cancelPayoutRequestAction,
+  getDriverEarnings,
+  getDriverPayoutRequests,
+  requestPayoutAction,
+} from '@/app/actions/driver';
+import { formatDistanceToNow } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +25,8 @@ export default async function DriverEarningsPage() {
     );
   }
   
-  const { history, availableCents, paidOutCents, processingPayoutCents } = await getDriverEarnings();
+  const [{ history, availableCents, paidOutCents, processingPayoutCents }, payoutRequests] =
+    await Promise.all([getDriverEarnings(), getDriverPayoutRequests()]);
   
   const now = new Date();
   const startOfWeek = new Date(now);
@@ -39,13 +45,10 @@ export default async function DriverEarningsPage() {
 
   const availableTotal = availableCents;
 
-  const prisma = getPrisma();
-  const latestPayout = await prisma.driverPayout.findFirst({
-    where: { driverId: user.id },
-    orderBy: { createdAt: 'desc' },
-  }) ?? null;
+  const latestPayout = payoutRequests[0] ?? null;
   const latestPayoutStatus = latestPayout?.status ?? null;
-  const hasProcessingPayout = latestPayout?.status === 'processing';
+  const activeProcessingPayout = payoutRequests.find((payout) => payout.status === 'processing') ?? null;
+  const hasProcessingPayout = Boolean(activeProcessingPayout);
 
   return (
     <OtwPageShell>
@@ -70,14 +73,62 @@ export default async function DriverEarningsPage() {
           </div>
           {latestPayoutStatus && (
             <div className="mt-2 text-xs opacity-70">
-              Latest payout: <span className="font-semibold">{latestPayoutStatus}</span>
+              Latest payout:{' '}
+              <span className="font-semibold">
+                {latestPayoutStatus.charAt(0).toUpperCase() + latestPayoutStatus.slice(1)}
+              </span>
             </div>
           )}
           <form action={requestPayoutAction} className="mt-2 flex gap-2">
             <Button variant="outline" disabled={hasProcessingPayout || availableTotal <= 0}>Request Payout</Button>
           </form>
+          {activeProcessingPayout && (
+            <form action={cancelPayoutRequestAction} className="mt-2 flex gap-2">
+              <input type="hidden" name="payoutId" value={activeProcessingPayout.id} />
+              <Button variant="outline" className="w-full" type="submit">
+                Cancel Current Request
+              </Button>
+            </form>
+          )}
         </Card>
       </div>
+      <Card className="mt-3 p-5 sm:p-6">
+        <div className="text-sm font-medium">Payout Requests</div>
+        {payoutRequests.length === 0 ? (
+          <p className="mt-2 text-sm opacity-80">No payout requests yet.</p>
+        ) : (
+          <ul>
+            {payoutRequests.map((payout) => (
+              <li key={payout.id} className="py-3 border-b border-white/10 last:border-0">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs opacity-70">
+                      {formatDistanceToNow(new Date(payout.createdAt), { addSuffix: true })}
+                    </div>
+                    <div className="text-xs opacity-60 mt-1">
+                      {new Date(payout.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-xs rounded-full px-2 py-1 border font-medium ${
+                        payout.status === 'paid'
+                          ? 'bg-green-500/20 border-green-500/30 text-green-400'
+                          : payout.status === 'failed'
+                          ? 'bg-red-500/20 border-red-500/30 text-red-400'
+                          : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                      }`}
+                    >
+                      {payout.status.toUpperCase()}
+                    </span>
+                    <span className="font-medium">${(payout.totalCents / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
       <Card className="mt-3 p-5 sm:p-6">
         <div className="text-sm font-medium">Recent Earnings</div>
         {history.length === 0 ? (
