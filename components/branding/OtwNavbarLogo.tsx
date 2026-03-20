@@ -14,7 +14,7 @@ export default function OtwNavbarLogo({
   return (
     <span className={cn('inline-flex items-center', className)}>
       <img
-        src="/icons/otw-512.svg"
+        src="/icons/image02.jpg"
         alt={alt}
         className={cn('h-8 w-8 rounded-md object-contain', imageClassName)}
         loading="eager"
