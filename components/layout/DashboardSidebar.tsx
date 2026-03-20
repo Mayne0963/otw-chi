@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { SignOutButton } from "@/components/auth/SignOutButton"
 import { getClientCapabilities } from "@/lib/capabilities"
+import OtwNavbarLogo from "@/components/branding/OtwNavbarLogo"
 import { 
   type LucideIcon,
   LayoutDashboard, 
@@ -208,8 +209,9 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   return (
     <div className="relative z-40 flex h-full w-64 flex-col border-r border-white/10 bg-otwBlack">
       <div className="flex h-16 items-center px-6">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-otwGold">
-          OTW <span className="text-xs text-white/50 font-normal">App</span>
+        <Link href="/" className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-white/5">
+          <OtwNavbarLogo imageClassName="h-8 w-8" />
+          <span className="text-xs text-white/50 font-normal">App</span>
         </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">

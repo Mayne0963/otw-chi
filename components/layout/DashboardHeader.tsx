@@ -3,6 +3,7 @@ import { UserButton } from "@neondatabase/auth/react";
 import OtwButton from "@/components/ui/otw/OtwButton"
 import Link from "next/link";
 import { BackNavButton } from "@/components/layout/BackNavButton";
+import OtwNavbarLogo from "@/components/branding/OtwNavbarLogo";
 
 export function DashboardHeader() {
   return (
@@ -10,7 +11,7 @@ export function DashboardHeader() {
       <div className="flex items-center gap-2 sm:gap-3">
         <BackNavButton fallbackHref="/dashboard" className="h-8 px-2 sm:h-9 sm:px-3" />
         <Link href="/" className="inline-flex items-center gap-2 rounded-md px-2 py-1 hover:bg-white/5">
-          <span className="text-sm font-bold text-otwGold sm:text-base">OTW</span>
+          <OtwNavbarLogo imageClassName="h-7 w-7 sm:h-8 sm:w-8" />
           <span className="hidden text-xs font-medium text-foreground/70 sm:inline">Home</span>
         </Link>
         <h2 className="hidden text-base font-semibold text-foreground sm:inline sm:text-lg">Dashboard</h2>
