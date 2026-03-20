@@ -7,7 +7,10 @@ import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { revalidatePath } from 'next/cache';
+import {
+  closeTicketAction,
+  resolveTicketAction,
+} from '@/app/admin/support/actions';
 
 // Loading component for better UX
 function AdminSupportLoading() {
@@ -164,6 +167,14 @@ function SupportTable({ tickets }: { tickets: SupportTicketRow[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
+                    <OtwButton
+                      as="a"
+                      href={`/admin/support/${ticket.id}`}
+                      variant="outline"
+                      className="h-7 px-2 text-xs border-otwGold/40 text-otwGold hover:bg-otwGold/10 hover:text-otwGold"
+                    >
+                      Open
+                    </OtwButton>
                     {ticket.status === 'OPEN' && (
                       <form action={resolveTicketAction}>
                         <input type="hidden" name="id" value={ticket.id} />
@@ -217,54 +228,6 @@ function SupportErrorState({ error }: { error: unknown }) {
       </OtwButton>
     </OtwCard>
   );
-}
-
-export async function resolveTicketAction(formData: FormData) {
-  'use server';
-  await requireRole(['ADMIN']);
-  const id = String(formData.get('id') ?? '');
-  
-  if (!id) {
-    console.warn('[resolveTicketAction] Missing ticket ID');
-    return;
-  }
-  
-  try {
-    const prisma = getPrisma();
-    await prisma.supportTicket.update({
-      where: { id },
-      data: { status: 'RESOLVED' }
-    });
-    revalidatePath('/admin/support');
-    console.warn('[resolveTicketAction] Successfully resolved ticket:', id);
-  } catch (error) {
-    console.error('[resolveTicketAction] Failed to resolve ticket:', error);
-    throw error;
-  }
-}
-
-export async function closeTicketAction(formData: FormData) {
-  'use server';
-  await requireRole(['ADMIN']);
-  const id = String(formData.get('id') ?? '');
-  
-  if (!id) {
-    console.warn('[closeTicketAction] Missing ticket ID');
-    return;
-  }
-  
-  try {
-    const prisma = getPrisma();
-    await prisma.supportTicket.update({
-      where: { id },
-      data: { status: 'CLOSED' }
-    });
-    revalidatePath('/admin/support');
-    console.warn('[closeTicketAction] Successfully closed ticket:', id);
-  } catch (error) {
-    console.error('[closeTicketAction] Failed to close ticket:', error);
-    throw error;
-  }
 }
 
 export default async function AdminSupportPage() {

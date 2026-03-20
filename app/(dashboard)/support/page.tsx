@@ -5,6 +5,7 @@ import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth/roles';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
+import { formatDistanceToNow } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,11 +40,23 @@ export default async function SupportPage() {
             ) : (
               <ul className="mt-2 space-y-2">
                 {tickets.map(t => (
-                  <li key={t.id} className="text-sm opacity-90">
-                    <div className="flex items-center justify-between">
-                      <div>{t.subject}</div>
-                      <div className="opacity-80">{t.status}</div>
+                  <li key={t.id} className="rounded-lg border border-white/10 bg-black/20 p-3 text-sm opacity-90">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-medium text-white">{t.subject}</div>
+                        <div className="text-xs text-white/50">
+                          Updated {formatDistanceToNow(new Date(t.updatedAt), { addSuffix: true })}
+                        </div>
+                      </div>
+                      <div className="rounded-full border border-white/15 px-2 py-0.5 text-xs uppercase tracking-wide text-white/70">
+                        {t.status}
+                      </div>
                     </div>
+                    {t.message ? (
+                      <pre className="mt-2 whitespace-pre-wrap text-xs text-white/75">{t.message}</pre>
+                    ) : (
+                      <div className="mt-2 text-xs text-white/50">No message body.</div>
+                    )}
                   </li>
                 ))}
               </ul>
