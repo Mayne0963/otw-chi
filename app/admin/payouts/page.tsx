@@ -5,6 +5,7 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { getStripe } from '@/lib/stripe';
 import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { revalidatePath } from 'next/cache';
@@ -33,6 +34,145 @@ async function updatePayoutStatusAction(formData: FormData) {
     await tx.driverEarnings.updateMany({
       where: { driverId: payout.driverId, status: 'pending' },
       data: { status: status === 'paid' ? 'paid' : 'available' },
+    });
+  });
+
+  revalidatePath('/driver/earnings');
+  revalidatePath('/admin/payouts');
+}
+
+function normalizeDriverEmail(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+async function findDriverConnectedAccountId(
+  driverId: string,
+  driverEmail: string | null | undefined,
+): Promise<string | null> {
+  const stripe = getStripe();
+  const normalizedEmail = normalizeDriverEmail(driverEmail);
+
+  const envExactDriver = process.env[`STRIPE_CONNECT_ACCOUNT_${driverId.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`];
+  if (envExactDriver) return envExactDriver.trim();
+
+  if (process.env.STRIPE_CONNECT_ACCOUNT_DEFAULT) {
+    return process.env.STRIPE_CONNECT_ACCOUNT_DEFAULT.trim();
+  }
+
+  let startingAfter: string | undefined;
+  for (let page = 0; page < 10; page += 1) {
+    const accounts = await stripe.accounts.list({
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+
+    const match = accounts.data.find((account) => {
+      const accountDriverId =
+        account.metadata?.driverId ||
+        account.metadata?.userId ||
+        account.metadata?.otwDriverId;
+      if (typeof accountDriverId === 'string' && accountDriverId === driverId) {
+        return true;
+      }
+      if (normalizedEmail && account.email && account.email.toLowerCase() === normalizedEmail) {
+        return true;
+      }
+      return false;
+    });
+
+    if (match) return match.id;
+
+    if (!accounts.has_more || accounts.data.length === 0) break;
+    startingAfter = accounts.data[accounts.data.length - 1]?.id;
+  }
+
+  return null;
+}
+
+async function triggerStripePayoutAction(formData: FormData) {
+  'use server';
+  await requireRole(['ADMIN']);
+
+  const payoutId = String(formData.get('payoutId') ?? '').trim();
+  if (!payoutId) return;
+
+  const prisma = getPrisma();
+  const payout = await prisma.driverPayout.findUnique({
+    where: { id: payoutId },
+    select: {
+      id: true,
+      driverId: true,
+      totalCents: true,
+      status: true,
+      user: {
+        select: {
+          email: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!payout || payout.status !== 'processing') {
+    return;
+  }
+
+  let paidViaStripe = false;
+
+  try {
+    const destinationAccountId = await findDriverConnectedAccountId(
+      payout.driverId,
+      payout.user?.email,
+    );
+    if (!destinationAccountId) {
+      throw new Error(
+        'No connected Stripe account found for this driver. Add account metadata driverId/userId or set STRIPE_CONNECT_ACCOUNT_DEFAULT.',
+      );
+    }
+
+    const stripe = getStripe();
+    await stripe.transfers.create(
+      {
+        amount: payout.totalCents,
+        currency: 'usd',
+        destination: destinationAccountId,
+        description: `OTW Driver payout for ${payout.user?.name || payout.driverId}`,
+        metadata: {
+          payoutId: payout.id,
+          driverId: payout.driverId,
+          driverEmail: payout.user?.email ?? '',
+        },
+      },
+      {
+        idempotencyKey: `driver_payout_${payout.id}`,
+      },
+    );
+
+    paidViaStripe = true;
+  } catch (error) {
+    console.error('[triggerStripePayoutAction] Stripe payout failed', {
+      payoutId: payout.id,
+      driverId: payout.driverId,
+      error,
+    });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.driverPayout.updateMany({
+      where: { id: payout.id, status: 'processing' },
+      data: {
+        status: paidViaStripe ? 'paid' : 'failed',
+        payoutMethod: paidViaStripe ? 'stripe' : 'manual',
+      },
+    });
+
+    if (updated.count === 0) return;
+
+    await tx.driverEarnings.updateMany({
+      where: { driverId: payout.driverId, status: 'pending' },
+      data: { status: paidViaStripe ? 'paid' : 'available' },
     });
   });
 
@@ -257,6 +397,12 @@ function PayoutsContent({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
+                        <form action={triggerStripePayoutAction} className="flex-1">
+                          <input type="hidden" name="payoutId" value={p.payoutId} />
+                          <OtwButton type="submit" className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs w-full">
+                            Pay via Stripe
+                          </OtwButton>
+                        </form>
                         <form action={updatePayoutStatusAction} className="flex-1">
                           <input type="hidden" name="payoutId" value={p.payoutId} />
                           <input type="hidden" name="status" value="paid" />
