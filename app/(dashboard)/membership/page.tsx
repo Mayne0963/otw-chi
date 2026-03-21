@@ -83,18 +83,27 @@ export default async function MembershipPage() {
       name: 'OTW BUSINESS CORE',
       price: '$699 / month',
       miles: 500,
+      users: 'Up to 5',
+      rollover: 'Rollover up to 250',
+      billing: 'Monthly invoice',
       features: ['Up to 5 users', 'Rollover up to 250', 'Monthly invoice'],
     },
     {
       name: 'OTW BUSINESS PRO',
       price: '$1,199 / month',
       miles: 1_000,
+      users: 'Up to 15',
+      rollover: 'Rollover up to 500',
+      billing: 'Monthly invoice',
       features: ['Up to 15 users', 'Rollover up to 500', 'Dedicated rep'],
     },
     {
       name: 'OTW TRUE',
       price: '$1,499 / month',
       miles: 1_200,
+      users: 'Up to 50',
+      rollover: 'Rollover up to 600',
+      billing: 'Monthly invoice',
       features: [
         'Add and remove employees under one membership',
         'Each employee gets a free OTW BASIC home-delivery membership',
@@ -107,6 +116,9 @@ export default async function MembershipPage() {
       name: 'OTW ENTERPRISE',
       price: 'Custom',
       miles: 'Custom',
+      users: 'Custom',
+      rollover: 'Custom',
+      billing: 'Contract / SLA',
       features: ['SLA contracts', 'Guaranteed response times', 'Multi-location support'],
     },
   ];
@@ -181,31 +193,43 @@ export default async function MembershipPage() {
 
         <div className="space-y-3">
           <h2 className="text-xl font-semibold">Business</h2>
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-4">
             {businessPlans.map((plan) => (
-              <OtwCard key={plan.name} className="relative flex flex-col">
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                    <span className="text-lg text-white/60">{plan.price}</span>
+              <OtwCard key={plan.name} className="relative flex h-full min-h-[540px] flex-col p-0 sm:p-0">
+                <div className="flex h-full flex-col p-6">
+                  <div className="mb-4 space-y-1">
+                    <h3 className="text-[1.6rem] font-semibold leading-[1.1] tracking-tight text-white break-words">
+                      {plan.name}
+                    </h3>
+                    <p className="text-base text-white/65">{plan.price}</p>
                   </div>
-                  <div className="mb-4 text-xs text-white/70">
-                    Service Miles:{' '}
-                    <span className="text-white">
-                      {typeof plan.miles === 'number' ? plan.miles.toLocaleString() : plan.miles}
-                    </span>
+
+                  <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/75">
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                      <span>Service Miles</span>
+                      <span className="text-right text-white">
+                        {typeof plan.miles === 'number' ? plan.miles.toLocaleString() : plan.miles}
+                      </span>
+                      <span>Users</span>
+                      <span className="text-right text-white">{plan.users}</span>
+                      <span>Rollover</span>
+                      <span className="text-right text-white">{plan.rollover}</span>
+                      <span>Billing</span>
+                      <span className="text-right text-white">{plan.billing}</span>
+                    </div>
                   </div>
-                  <ul className="space-y-3 mb-8 flex-1">
+
+                  <ul className="mb-8 flex-1 space-y-2.5">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-otwGold shrink-0 mt-0.5" />
-                        <span className="text-white/80">{feature}</span>
+                        <span className="text-white/85 leading-6">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   <a
                     href="/contact"
-                    className="mt-auto inline-flex h-10 items-center justify-center rounded-md bg-otwGold px-4 text-sm font-medium text-otwBlack hover:bg-otwGold/90"
+                    className="mt-auto inline-flex h-11 w-full items-center justify-center rounded-md bg-otwGold px-4 text-sm font-medium text-otwBlack hover:bg-otwGold/90"
                   >
                     Request Invoice
                   </a>
