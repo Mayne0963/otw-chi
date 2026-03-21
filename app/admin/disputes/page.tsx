@@ -28,6 +28,25 @@ export default async function AdminDisputesPage({
     },
     orderBy: { createdAt: 'desc' },
     take: 200,
+    select: {
+      id: true,
+      deliveryRequestId: true,
+      createdAt: true,
+      customerConfirmed: true,
+      confirmedAt: true,
+      disputeStatus: true,
+      disputeNotes: true,
+      evidenceUrls: true,
+      disputedItems: true,
+      resolutionNotes: true,
+      refundAmount: true,
+      deliveryRequest: {
+        select: {
+          isLocked: true,
+          status: true,
+        },
+      },
+    },
   });
 
   const rows = await Promise.all(
@@ -48,6 +67,8 @@ export default async function AdminDisputesPage({
         disputeStatus: dispute.disputeStatus,
         disputeNotes: dispute.disputeNotes,
         evidenceUrls,
+        requestLocked: dispute.deliveryRequest.isLocked,
+        requestStatus: dispute.deliveryRequest.status,
         disputedItems: Array.isArray(dispute.disputedItems)
           ? (dispute.disputedItems as Array<{ itemKey?: string; name?: string; qtyDisputed?: number; reason?: string; details?: string }>)
           : [],

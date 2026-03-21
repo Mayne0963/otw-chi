@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth/roles';
-import { evaluateDeliveryRequestLock } from '@/lib/refunds/lock';
 
 const resolvePayloadSchema = z.object({
   resolution: z.enum(['APPROVED', 'DENIED', 'NEEDS_INFO']),
@@ -43,9 +42,12 @@ export async function POST(
     where: { id: confirmationId },
     select: {
       id: true,
-      disputeStatus: true,
-      disputedItems: true,
       deliveryRequestId: true,
+      deliveryRequest: {
+        select: {
+          isLocked: true,
+        },
+      },
     },
   });
 
@@ -53,25 +55,26 @@ export async function POST(
     return NextResponse.json({ error: 'Order confirmation not found' }, { status: 404 });
   }
 
-  // Check if the delivery request is locked
-  const lockEvaluation = await evaluateDeliveryRequestLock(confirmation.deliveryRequestId);
-  if (!lockEvaluation.locked) {
-    return NextResponse.json({ 
-      error: 'Cannot resolve dispute: delivery request is not locked. Lock requires verified receipt + confirmed items.' 
-    }, { status: 400 });
-  }
+  const resolution = parsed.data.resolution;
+  const notes = parsed.data.notes?.trim() ?? '';
+  const refundAmount = normalizeRefundAmount(parsed.data.refundAmount);
 
-  const disputedItemCount = Array.isArray(confirmation.disputedItems)
-    ? confirmation.disputedItems.length
-    : 0;
-  if (disputedItemCount === 0 && parsed.data.resolution !== 'NEEDS_INFO') {
+  if (resolution === 'NEEDS_INFO' && !notes) {
     return NextResponse.json(
-      { error: 'Cannot resolve dispute without disputed items' },
+      { error: 'Provide notes so the customer knows what information is needed.' },
       { status: 400 }
     );
   }
 
-  const resolution = parsed.data.resolution;
+  if (resolution === 'APPROVED') {
+    if (refundAmount == null || Number(refundAmount) <= 0) {
+      return NextResponse.json(
+        { error: 'Refund amount is required for approval.' },
+        { status: 400 }
+      );
+    }
+  }
+
   const mappedStatus =
     resolution === 'APPROVED'
       ? 'RESOLVED_APPROVED'
@@ -79,13 +82,11 @@ export async function POST(
         ? 'RESOLVED_DENIED'
         : 'NEEDS_INFO';
 
-  const refundAmount = normalizeRefundAmount(parsed.data.refundAmount);
-
   const updated = await prisma.orderConfirmation.update({
     where: { id: confirmationId },
     data: {
       disputeStatus: mappedStatus,
-      resolutionNotes: parsed.data.notes?.trim() || null,
+      resolutionNotes: notes || null,
       refundAmount: resolution === 'APPROVED' ? refundAmount : null,
       resolvedAt: resolution === 'NEEDS_INFO' ? null : new Date(),
       resolvedByUserId: resolution === 'NEEDS_INFO' ? null : adminUser.id,
@@ -104,5 +105,6 @@ export async function POST(
     ok: true,
     confirmationId: updated.id,
     disputeStatus: updated.disputeStatus,
+    requestLocked: confirmation.deliveryRequest.isLocked,
   });
 }
