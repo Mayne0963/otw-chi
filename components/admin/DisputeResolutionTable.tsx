@@ -35,7 +35,11 @@ function statusTone(status: string): string {
 function formatCreatedAt(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString();
+  return new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Indiana/Indianapolis',
+  }).format(parsed);
 }
 
 function extractEvidenceLabel(url: string): string {

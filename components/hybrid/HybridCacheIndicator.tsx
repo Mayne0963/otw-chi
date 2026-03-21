@@ -24,7 +24,11 @@ export default function HybridCacheIndicator({
     if (!fetchedAtMs) return null;
     const d = new Date(fetchedAtMs);
     if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleString();
+    return new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'America/Indiana/Indianapolis',
+    }).format(d);
   }, [fetchedAtMs]);
 
   const label = source ? `${statusLabel} • ${source}` : statusLabel;
@@ -36,4 +40,3 @@ export default function HybridCacheIndicator({
     </div>
   );
 }
-
