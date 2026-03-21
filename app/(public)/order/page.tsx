@@ -7,6 +7,7 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import { BackNavButton } from '@/components/layout/BackNavButton';
 import { useCurrentUser } from '@/components/auth/use-current-user';
 import { AddressSearch } from '@/components/ui/address-search';
 import { Input } from '@/components/ui/input';
@@ -429,6 +430,12 @@ export default function OrderPage() {
 
   return (
     <OtwPageShell>
+      <div className="mb-4 flex items-center gap-2">
+        <BackNavButton fallbackHref="/" className="h-9 px-3" />
+        <OtwButton as="a" href="/" variant="ghost" size="sm" className="h-9 px-3">
+          Home
+        </OtwButton>
+      </div>
       <OtwSectionHeader
         title="Order Delivery"
         subtitle="Create a core pickup-and-delivery request"
