@@ -9,12 +9,13 @@ import {
 } from '@/lib/delivery-submit';
 import { verifyServiceMilesQuoteToken } from '@/lib/service-miles-quote-token';
 import {
-  getActiveSubscription,
+  getActiveSubscriptionUncached,
 } from '@/lib/membership';
 import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
+import { syncOtwTrueEmployeeAccessForUser } from '@/lib/otw-true';
 
 export const runtime = 'nodejs';
 
@@ -38,6 +39,7 @@ const submitSchema = z.object({
   quoteToken: z.string().min(10).optional(),
   payWithMiles: z.boolean().optional(),
   paymentPreference: z.enum(['INSTANT', 'MONTHLY']).optional(),
+  otwTrueBenefitType: z.enum(['FOOD_JOB_SITE', 'COMMUTE_RIDE', 'ROADSIDE_ASSIST']).optional(),
   isScheduled: z.boolean().optional(),
   scheduledFor: z.string().datetime().optional(),
   scheduleWindowMinutes: z.number().int().min(5).max(180).optional(),
@@ -56,7 +58,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const activeSubscription = await getActiveSubscription(user.id);
+    const prisma = getPrisma();
+    await syncOtwTrueEmployeeAccessForUser(prisma, {
+      userId: user.id,
+      email: user.email,
+    });
+    const activeSubscription = await getActiveSubscriptionUncached(user.id);
     const requestedPreference =
       parsed.data.paymentPreference ??
       (parsed.data.payWithMiles === true ? 'MONTHLY' : parsed.data.payWithMiles === false ? 'INSTANT' : undefined);
@@ -154,6 +161,7 @@ export async function POST(req: Request) {
       payWithMiles: true,
       overageBillingModeOverride,
       quotedAt,
+      otwTrueBenefitType: parsed.data.otwTrueBenefitType,
     });
 
     const deliveryFeeCents = Number.isFinite(result.request.deliveryFeeCents)

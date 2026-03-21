@@ -26,6 +26,7 @@ export default async function PricingPage() {
     'OTW BLACK',
     'OTW BUSINESS CORE',
     'OTW BUSINESS PRO',
+    'OTW TRUE',
     'OTW ENTERPRISE',
   ];
   const planRecords = await prisma.membershipPlan.findMany({
@@ -104,6 +105,21 @@ export default async function PricingPage() {
       rollover: 'Rollover up to 500',
       billing: 'Monthly invoice',
       features: ['Priority dispatch', 'Dedicated rep', 'Custom rules'],
+    },
+    {
+      name: 'OTW TRUE',
+      price: '$1,499 / month',
+      miles: 1_200,
+      users: 'Up to 50',
+      rollover: 'Rollover up to 600',
+      billing: 'Monthly invoice',
+      features: [
+        'Add/remove employees under one membership',
+        'Free OTW BASIC home deliveries for all added employees',
+        'Free job-site food delivery for employees',
+        '2 free rides to/from work per employee each year',
+        '2 free roadside assists to/from work per employee each year',
+      ],
     },
     {
       name: 'OTW ENTERPRISE',
@@ -197,7 +213,7 @@ export default async function PricingPage() {
 
       <div className="space-y-4">
         <h2 className="text-2xl font-semibold">Business</h2>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {businessPlans.map((plan) => (
             <OtwCard key={plan.name} className="relative flex flex-col">
               <div className="p-6 flex-1 flex flex-col">

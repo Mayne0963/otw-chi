@@ -6,6 +6,7 @@ import { getActiveSubscription, getMembershipBenefits, getPlanCodeFromSubscripti
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { calculateServiceMiles } from '@/lib/service-miles';
 import { ServiceType } from '@prisma/client';
+import { isServiceTypeAllowedForPlan } from '@/lib/service-miles-access';
 
 export async function POST(req: Request) {
   try {
@@ -13,27 +14,36 @@ export async function POST(req: Request) {
     const miles = Number(formData.get('miles')) || 1;
     const durationMinutes = Number(formData.get('durationMinutes')) || Math.ceil(miles * 5);
     const waitMinutes = Number(formData.get('waitMinutes')) || 10;
-    const serviceType = String(formData.get('serviceType') ?? 'FOOD').toUpperCase();
+    const serviceTypeRaw = String(formData.get('serviceType') ?? 'FOOD').toUpperCase();
+    const serviceType = (['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'].includes(serviceTypeRaw)
+      ? serviceTypeRaw
+      : 'FOOD') as ServiceType;
 
     const user = await getCurrentUser();
     let membershipBenefits = getMembershipBenefits(null);
 
     if (user) {
       const sub = await getActiveSubscription(user.id);
+      if (sub?.plan && !isServiceTypeAllowedForPlan(sub.plan.allowedServiceTypes, serviceType)) {
+        return NextResponse.json(
+          { error: `Service type ${serviceType} is not available on your plan.` },
+          { status: 403 },
+        );
+      }
       const planCode = getPlanCodeFromSubscription(sub);
       membershipBenefits = getMembershipBenefits(planCode);
     }
 
     const pricing = calculatePriceBreakdownCents({
       miles,
-      serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE',
+      serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE' | 'RIDE',
       discount: membershipBenefits.discount,
       waiveServiceFee: membershipBenefits.waiveServiceFee,
     });
 
     const milesQuote = calculateServiceMiles({
       travelMinutes: durationMinutes,
-      serviceType: serviceType as ServiceType,
+      serviceType,
       scheduledStart: new Date(),
       quotedAt: new Date(),
       waitMinutes,

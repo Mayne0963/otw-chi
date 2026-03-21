@@ -13,6 +13,7 @@ import { cancelDeliveryRequest, submitDeliveryRequest } from '@/lib/delivery-sub
 import { ensureDeliveryFeePaymentIntentForRequest } from '@/lib/delivery-payment';
 import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import { closeRequestChat } from '@/lib/request-chat';
+import { syncOtwTrueEmployeeAccessForUser, isOtwTrueBenefitType } from '@/lib/otw-true';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -161,7 +162,11 @@ export async function createRequestAction(formData: FormData) {
   const dropoffLng = parseNumber(formData.get('dropoffLng'));
   
   // Validate service type
-  const serviceType = (['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'].includes(st) ? st : 'FOOD') as ServiceType;
+  const serviceType = (['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'].includes(st) ? st : 'FOOD') as ServiceType;
+  const requestedOtwTrueBenefit = String(formData.get('otwTrueBenefitType') ?? '').trim().toUpperCase();
+  const otwTrueBenefitType = isOtwTrueBenefitType(requestedOtwTrueBenefit)
+    ? requestedOtwTrueBenefit
+    : undefined;
 
   const user = await getCurrentUser();
   if (!user) throw new Error('Unauthorized');
@@ -185,6 +190,11 @@ export async function createRequestAction(formData: FormData) {
   const milesEstimate = Math.max(1, Math.round(miles));
   const travelMinutesFromMiles = Math.max(5, Math.round(Math.max(0.1, miles) * 5));
 
+  await syncOtwTrueEmployeeAccessForUser(prisma, {
+    userId: user.id,
+    email: user.email,
+  });
+
   // Get membership benefits
   const sub = await getActiveSubscription(user.id);
   const planCode = getPlanCodeFromSubscription(sub);
@@ -200,7 +210,7 @@ export async function createRequestAction(formData: FormData) {
   // Calculate cost with membership discount
   const pricing = calculatePriceBreakdownCents({
     miles,
-    serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE',
+    serviceType: serviceType as 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE' | 'RIDE',
     discount: membershipBenefits.discount,
     waiveServiceFee: membershipBenefits.waiveServiceFee,
   });
@@ -232,6 +242,7 @@ export async function createRequestAction(formData: FormData) {
         payWithMiles: true,
         overageBillingModeOverride,
         deliveryFeeCents: pricing.totalCents,
+        otwTrueBenefitType,
       }).then((result) => result.request)
     : await prisma.deliveryRequest.create({
         data: {

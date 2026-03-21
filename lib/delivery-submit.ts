@@ -6,6 +6,7 @@ import { UNLIMITED_SERVICE_MILES } from './membership-miles';
 import { getMembershipPlanPerks } from './membership-perks';
 import { computeOverage } from './overage';
 import { addLineItem, getPeriodKey, recomputePeriodTotal, upsertPeriod } from './overage-invoice';
+import { consumeOtwTrueBenefit, isOtwTrueBenefitType } from './otw-true';
 import {
   Prisma,
   DeliveryRequestStatus,
@@ -55,6 +56,7 @@ export interface SubmitDeliveryRequestInput {
   couponCode?: string;
   discountCents?: number;
   tipCents?: number;
+  otwTrueBenefitType?: string | null;
 }
 
 export interface SubmitDeliveryRequestResult {
@@ -212,6 +214,10 @@ export async function submitDeliveryRequest(
       const plan = user.membership.plan;
       if (!plan) throw new Error('Membership plan not found');
       const planPerks = getMembershipPlanPerks(plan);
+      const requestedOtwTrueBenefit = isOtwTrueBenefitType(input.otwTrueBenefitType)
+        ? input.otwTrueBenefitType
+        : null;
+      let consumedOtwTrueBenefit: Awaited<ReturnType<typeof consumeOtwTrueBenefit>> | null = null;
 
       const numberOfStops = Math.max(1, Math.round(Math.max(1, input.numberOfStops ?? 1)));
       if (numberOfStops > 1 && !planPerks.canUseMultiStop) {
@@ -236,7 +242,16 @@ export async function submitDeliveryRequest(
         throw new Error('Preferred-driver lock is not enabled for this plan');
       }
 
-      if (!isServiceTypeAllowedForPlan(plan.allowedServiceTypes, serviceType)) {
+      if (requestedOtwTrueBenefit) {
+        consumedOtwTrueBenefit = await consumeOtwTrueBenefit(tx, {
+          userId: user.id,
+          email: user.email,
+          serviceType,
+          benefitType: requestedOtwTrueBenefit,
+        });
+      }
+
+      if (!consumedOtwTrueBenefit && !isServiceTypeAllowedForPlan(plan.allowedServiceTypes, serviceType)) {
         throw new Error(`Service type ${serviceType} not allowed for this plan`);
       }
 
@@ -276,6 +291,7 @@ export async function submitDeliveryRequest(
         update: {},
         create: { userId: user.id },
       });
+      const effectivePayWithMiles = payWithMiles && !consumedOtwTrueBenefit;
 
       const isUnlimited =
         wallet.balanceMiles === UNLIMITED_SERVICE_MILES ||
@@ -289,7 +305,7 @@ export async function submitDeliveryRequest(
       let paymentRequired = false;
       let invoicePeriodId: string | null = null;
 
-      if (payWithMiles) {
+      if (effectivePayWithMiles) {
         overageBillingMode = input.overageBillingModeOverride ?? plan.overageBillingMode;
 
         const availableMiles = isUnlimited ? requiredMiles : Math.max(0, wallet.balanceMiles);
@@ -358,14 +374,18 @@ export async function submitDeliveryRequest(
         input.lockToPreferred && input.preferredDriverId
           ? new Date(quotedAt.getTime() + 30 * 60 * 1000).toISOString()
           : null;
-      const deliveryFeeCents = Number.isFinite(input.deliveryFeeCents)
-        ? Math.max(0, Math.round(Number(input.deliveryFeeCents)))
-        : 0;
+      const deliveryFeeCents = consumedOtwTrueBenefit
+        ? 0
+        : Number.isFinite(input.deliveryFeeCents)
+          ? Math.max(0, Math.round(Number(input.deliveryFeeCents)))
+          : 0;
       const hasBillableDeliveryFee = deliveryFeeCents > 0;
-      const deliveryFeePaid =
-        typeof input.deliveryFeePaid === 'boolean'
+      const deliveryFeePaid = consumedOtwTrueBenefit
+        ? true
+        : typeof input.deliveryFeePaid === 'boolean'
           ? input.deliveryFeePaid
           : !hasBillableDeliveryFee;
+      const effectivePaymentRequired = consumedOtwTrueBenefit ? false : paymentRequired;
       const quoteBreakdown = {
         ...quote.quoteBreakdown,
         dispatchPreferences: {
@@ -374,6 +394,14 @@ export async function submitDeliveryRequest(
           lockToPreferred: Boolean(input.lockToPreferred),
           lockExpiresAtIso,
         },
+        otwTrueBenefit: consumedOtwTrueBenefit
+          ? {
+              type: consumedOtwTrueBenefit.benefitType,
+              ownerUserId: consumedOtwTrueBenefit.ownerUserId,
+              employeeId: consumedOtwTrueBenefit.employeeId,
+              benefitYear: consumedOtwTrueBenefit.benefitYear,
+            }
+          : null,
       };
 
       let request = await tx.deliveryRequest.create({
@@ -413,16 +441,20 @@ export async function submitDeliveryRequest(
           overageCents,
           overageBillingMode,
           overageStatus,
-          paymentRequired,
+          paymentRequired: effectivePaymentRequired,
           quoteBreakdown: quoteBreakdown as Prisma.InputJsonValue,
           deliveryFeePaid,
           receiptVerifiedAt: input.receiptItems ? new Date() : null,
+          otwTrueBenefitType: consumedOtwTrueBenefit?.benefitType ?? null,
+          otwTrueOwnerUserId: consumedOtwTrueBenefit?.ownerUserId ?? null,
+          otwTrueBenefitYear: consumedOtwTrueBenefit?.benefitYear ?? null,
+          otwTrueEmployeeId: consumedOtwTrueBenefit?.employeeId ?? null,
 
           waitMinutes: input.waitMinutes ?? 10,
         },
       });
 
-      if (payWithMiles && (isUnlimited || milesUsed > 0)) {
+      if (effectivePayWithMiles && (isUnlimited || milesUsed > 0)) {
         const ledgerRef = `request:${request.id}:MILES_DEDUCT`;
         await tx.serviceMilesLedger.upsert({
           where: {
@@ -444,7 +476,7 @@ export async function submitDeliveryRequest(
       }
 
       if (
-        payWithMiles &&
+        effectivePayWithMiles &&
         overageBillingMode === OverageBillingMode.INVOICE &&
         overageMiles > 0 &&
         overageCents > 0

@@ -172,6 +172,8 @@ model User {
   franchiseApplications FranchiseApplication[]
   contactMessages    ContactMessage[]
   serviceMilesWallet ServiceMilesWallet?
+  otwTrueOwnedEmployees OtwTrueEmployee[] @relation("OtwTrueOwner")
+  otwTrueEmployeeLinks  OtwTrueEmployee[] @relation("OtwTrueEmployeeUser")
   founderServiceLogs FounderServiceLog[]
   auditLogs          AuditLog[]
   sentMessages       RequestMessage[]
@@ -383,11 +385,56 @@ model DeliveryRequest {
   lockedAt            DateTime?
   lockReason          String?
   refundPolicy        RefundPolicy @default(AUTO_ALLOWED)
+  otwTrueBenefitType  String?
+  otwTrueOwnerUserId  String?
+  otwTrueBenefitYear  Int?
+  otwTrueEmployeeId   String?
+  otwTrueEmployee     OtwTrueEmployee? @relation(fields: [otwTrueEmployeeId], references: [id])
 
   @@index([userId])
   @@index([status])
   @@index([dispatchAt])
+  @@index([otwTrueEmployeeId])
   @@unique([userId, idempotencyKey])
+}
+
+model OtwTrueEmployee {
+  id             String   @id @default(cuid())
+  ownerUserId    String
+  employeeUserId String?
+  employeeEmail  String
+  employeeName   String?
+  isActive       Boolean  @default(true)
+  removedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner        User  @relation("OtwTrueOwner", fields: [ownerUserId], references: [id])
+  employeeUser User? @relation("OtwTrueEmployeeUser", fields: [employeeUserId], references: [id])
+
+  yearlyBenefits  OtwTrueEmployeeBenefitYear[]
+  deliveryRequests DeliveryRequest[]
+
+  @@unique([ownerUserId, employeeEmail])
+  @@index([employeeUserId])
+  @@index([employeeEmail])
+  @@index([isActive])
+}
+
+model OtwTrueEmployeeBenefitYear {
+  id                     String   @id @default(cuid())
+  employeeId             String
+  benefitYear            Int
+  freeFoodDeliveriesUsed Int      @default(0)
+  commuteRidesUsed       Int      @default(0)
+  roadsideAssistsUsed    Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  employee OtwTrueEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, benefitYear])
+  @@index([benefitYear])
 }
 
 model PromoCode {

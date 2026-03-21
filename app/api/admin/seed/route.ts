@@ -12,6 +12,7 @@ function getOverageDefaults(planName: string) {
   const invoiceMode =
     upper === 'OTW ELITE' ||
     upper === 'OTW BLACK' ||
+    upper === 'OTW TRUE' ||
     upper === 'OTW ENTERPRISE' ||
     upper.startsWith('OTW BUSINESS');
 
@@ -227,16 +228,31 @@ export async function POST(_request: Request) {
         allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
       },
       {
-        name: 'OTW ENTERPRISE',
-        description: 'Custom pricing with SLA contracts, guaranteed response times, and multi-location support.',
-        monthlyServiceMiles: 0,
-        rolloverCapMiles: 0,
+        name: 'OTW TRUE',
+        description:
+          'Business membership with employee management, OTW Basic home access, free job-site food delivery, annual commute rides, and roadside assistance support.',
+        publicMonthlyPriceCents: 149900,
+        includedUsers: 50,
+        monthlyServiceMiles: 1200,
+        rolloverCapMiles: 600,
         advanceDiscountMax: 0,
         priorityLevel: 7,
         markupFree: true,
         cashAllowed: true,
         peerToPeerAllowed: true,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'],
+      },
+      {
+        name: 'OTW ENTERPRISE',
+        description: 'Custom pricing with SLA contracts, guaranteed response times, and multi-location support.',
+        monthlyServiceMiles: 0,
+        rolloverCapMiles: 0,
+        advanceDiscountMax: 0,
+        priorityLevel: 8,
+        markupFree: true,
+        cashAllowed: true,
+        peerToPeerAllowed: true,
+        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'],
       },
     ];
 

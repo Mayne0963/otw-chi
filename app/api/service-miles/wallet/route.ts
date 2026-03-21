@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { UNLIMITED_SERVICE_MILES } from '@/lib/membership-miles';
+import { syncOtwTrueEmployeeAccessForUser } from '@/lib/otw-true';
 
 export const runtime = 'nodejs';
 
@@ -12,6 +13,10 @@ export async function GET() {
   }
 
   const prisma = getPrisma();
+  const otwTrueEntitlement = await syncOtwTrueEmployeeAccessForUser(prisma, {
+    userId: user.id,
+    email: user.email,
+  });
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
     include: {
@@ -70,6 +75,7 @@ export async function GET() {
             rolloverBankMiles: 0,
           },
       unlimited,
+      otwTrue: otwTrueEntitlement,
     },
     { status: 200 }
   );

@@ -4,7 +4,7 @@ import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 import { OverageBillingMode } from '@prisma/client';
 import {
-  getActiveSubscription,
+  getActiveSubscriptionUncached,
   getMembershipBenefits,
   getPlanCodeFromSubscription,
 } from '@/lib/membership';
@@ -18,6 +18,7 @@ import {
 import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
+import { syncOtwTrueEmployeeAccessForUser } from '@/lib/otw-true';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +27,7 @@ const ServiceType = {
   STORE: 'STORE',
   FRAGILE: 'FRAGILE',
   CONCIERGE: 'CONCIERGE',
+  RIDE: 'RIDE',
 } as const;
 type ServiceType = typeof ServiceType[keyof typeof ServiceType];
 const ESTIMATED_MINUTES_PER_MILE = 5;
@@ -38,7 +40,7 @@ const pickupCodeTypeSchema = z.union([
 const requestSchema = z.object({
   pickup: z.string().min(5),
   dropoff: z.string().min(5),
-  serviceType: z.enum(['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE']),
+  serviceType: z.enum(['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE']),
   notes: z.string().optional(),
   costEstimate: z.number().int().positive().optional(),
   milesEstimate: z.number().positive(),
@@ -48,6 +50,7 @@ const requestSchema = z.object({
   pickupCodeType: pickupCodeTypeSchema.optional(),
   pickupCodeText: z.string().max(255).optional(),
   paymentPreference: z.enum(['INSTANT', 'MONTHLY']).optional(),
+  otwTrueBenefitType: z.enum(['FOOD_JOB_SITE', 'COMMUTE_RIDE', 'ROADSIDE_ASSIST']).optional(),
   isScheduled: z.boolean().optional(),
   scheduledFor: z.string().datetime().optional(),
   scheduleWindowMinutes: z.number().int().min(5).max(180).optional(),
@@ -76,6 +79,10 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const data = requestSchema.parse(body);
+    await syncOtwTrueEmployeeAccessForUser(prisma, {
+      userId: user.id,
+      email: user.email,
+    });
     const miles = Number(data.milesEstimate);
     const milesEstimate = Math.max(0, Math.round(miles));
 
@@ -83,7 +90,7 @@ export async function POST(req: Request) {
     let planCode = getPlanCodeFromSubscription(null);
     let benefits = getMembershipBenefits(planCode);
     try {
-      activeSubscription = await getActiveSubscription(user.id);
+      activeSubscription = await getActiveSubscriptionUncached(user.id);
       planCode = getPlanCodeFromSubscription(activeSubscription);
       benefits = getMembershipBenefits(planCode);
     } catch {
@@ -155,6 +162,7 @@ export async function POST(req: Request) {
         payWithMiles: true,
         overageBillingModeOverride,
         deliveryFeeCents: pricing.totalCents,
+        otwTrueBenefitType: data.otwTrueBenefitType,
       });
 
       await prisma.deliveryRequest.update({
@@ -220,6 +228,13 @@ export async function POST(req: Request) {
     const paymentRequired = paymentPreference !== 'MONTHLY' && pricing.totalCents > 0;
     const hasBillableDeliveryFee = pricing.totalCents > 0;
     const deliveryFeePaid = hasBillableDeliveryFee ? false : true;
+
+    if (data.otwTrueBenefitType) {
+      return NextResponse.json(
+        { error: 'OTW True benefits require an active linked membership before request submission' },
+        { status: 400 },
+      );
+    }
 
     const request = await prisma.deliveryRequest.create({
       data: {

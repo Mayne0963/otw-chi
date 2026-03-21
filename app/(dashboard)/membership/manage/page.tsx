@@ -9,17 +9,26 @@ import { createCustomerPortal } from '@/app/actions/billing';
 import { getPrisma } from '@/lib/db';
 import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 import { BillingSync } from '@/app/(dashboard)/billing/BillingSync';
+import {
+  addOtwTrueEmployeeAction,
+  removeOtwTrueEmployeeAction,
+} from '@/app/actions/otw-true';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MembershipManagePage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; canceled?: string }>;
+  searchParams: Promise<{
+    success?: string;
+    canceled?: string;
+    otwTrueSuccess?: string;
+    otwTrueError?: string;
+  }>;
 }) {
   const user = await getCurrentUser();
   if (!user) return <div>Please sign in</div>;
-  const { success, canceled } = await searchParams;
+  const { success, canceled, otwTrueSuccess, otwTrueError } = await searchParams;
   const checkoutSuccess = success === '1' || success === 'true';
   const checkoutCanceled = canceled === '1' || canceled === 'true';
 
@@ -39,6 +48,31 @@ export default async function MembershipManagePage({
     where: { name: { in: planNames } },
   });
   const planMap = new Map(planRecords.map((plan) => [plan.name, plan]));
+  const isOtwTrueOwner = sub?.plan?.name?.trim().toUpperCase() === 'OTW TRUE';
+  const currentBenefitYear = new Date().getFullYear();
+  const otwTrueEmployees = isOtwTrueOwner
+    ? await prisma.otwTrueEmployee.findMany({
+        where: { ownerUserId: user.id },
+        include: {
+          yearlyBenefits: {
+            where: { benefitYear: currentBenefitYear },
+            select: {
+              freeFoodDeliveriesUsed: true,
+              commuteRidesUsed: true,
+              roadsideAssistsUsed: true,
+            },
+            take: 1,
+          },
+          employeeUser: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
+      })
+    : [];
 
   const consumerPlans = [
     { name: 'OTW BASIC', code: 'basic' as const, label: '$99 / month • 60 miles' },
@@ -62,27 +96,139 @@ export default async function MembershipManagePage({
           Subscription checkout was canceled.
         </div>
       )}
+      {otwTrueSuccess ? (
+        <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+          {otwTrueSuccess}
+        </div>
+      ) : null}
+      {otwTrueError ? (
+        <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+          {otwTrueError}
+        </div>
+      ) : null}
       
       {sub ? (
-        <Card className="mt-3 p-5 sm:p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="text-sm font-medium opacity-70 uppercase tracking-wider">Current Plan</div>
-              <div className="text-2xl font-bold mt-1 text-otwGold">{sub.plan?.name ?? 'No Plan'}</div>
-              <div className="mt-2 text-sm opacity-80">
-                Status: <OtwStatPill label="Status" value={sub.status} tone={sub.status === 'ACTIVE' ? 'success' : 'danger'} />
-              </div>
-              {sub.currentPeriodEnd && (
-                <div className="mt-2 text-xs opacity-60">
-                  Renews: {sub.currentPeriodEnd.toLocaleDateString()}
+        <div className="mt-3 space-y-4">
+          <Card className="p-5 sm:p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="text-sm font-medium opacity-70 uppercase tracking-wider">Current Plan</div>
+                <div className="text-2xl font-bold mt-1 text-otwGold">{sub.plan?.name ?? 'No Plan'}</div>
+                <div className="mt-2 text-sm opacity-80">
+                  Status:{' '}
+                  <OtwStatPill
+                    label="Status"
+                    value={sub.status}
+                    tone={sub.status === 'ACTIVE' ? 'success' : 'danger'}
+                  />
                 </div>
-              )}
-            </div>
-            <form action={createCustomerPortal}>
+                {sub.currentPeriodEnd && (
+                  <div className="mt-2 text-xs opacity-60">
+                    Renews: {sub.currentPeriodEnd.toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+              <form action={createCustomerPortal}>
                 <Button variant="outline">Manage Billing</Button>
-            </form>
-          </div>
-        </Card>
+              </form>
+            </div>
+          </Card>
+
+          {isOtwTrueOwner ? (
+            <Card className="p-5 sm:p-6">
+              <div className="space-y-4">
+                <div>
+                  <div className="text-lg font-semibold text-white">OTW True Employees</div>
+                  <div className="text-sm text-white/65">
+                    Manage employees with OTW BASIC home access plus annual commute and roadside benefits.
+                  </div>
+                </div>
+
+                <form action={addOtwTrueEmployeeAction} className="grid gap-3 md:grid-cols-[1.2fr_1fr_auto]">
+                  <input
+                    type="email"
+                    name="employeeEmail"
+                    required
+                    placeholder="employee@company.com"
+                    className="h-10 rounded-md border border-white/15 bg-black/30 px-3 text-sm text-white"
+                  />
+                  <input
+                    type="text"
+                    name="employeeName"
+                    placeholder="Employee name (optional)"
+                    className="h-10 rounded-md border border-white/15 bg-black/30 px-3 text-sm text-white"
+                  />
+                  <Button type="submit" className="h-10">
+                    Add Employee
+                  </Button>
+                </form>
+
+                {otwTrueEmployees.length > 0 ? (
+                  <div className="space-y-3">
+                    {otwTrueEmployees.map((employee) => {
+                      const usage = employee.yearlyBenefits[0] ?? {
+                        freeFoodDeliveriesUsed: 0,
+                        commuteRidesUsed: 0,
+                        roadsideAssistsUsed: 0,
+                      };
+
+                      return (
+                        <div
+                          key={employee.id}
+                          className="rounded-lg border border-white/10 bg-black/25 p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <div className="font-medium text-white">
+                                {employee.employeeName ||
+                                  employee.employeeUser?.name ||
+                                  employee.employeeEmail}
+                              </div>
+                              <div className="text-xs text-white/60">
+                                {employee.employeeEmail}
+                                {!employee.isActive ? ' • Removed' : ''}
+                              </div>
+                            </div>
+                            {employee.isActive ? (
+                              <form action={removeOtwTrueEmployeeAction}>
+                                <input type="hidden" name="employeeId" value={employee.id} />
+                                <Button type="submit" variant="outline" className="h-8 text-xs">
+                                  Remove
+                                </Button>
+                              </form>
+                            ) : null}
+                          </div>
+                          <div className="mt-3 grid gap-2 text-xs text-white/70 sm:grid-cols-3">
+                            <div>
+                              Free food deliveries ({currentBenefitYear}):{' '}
+                              <span className="text-white">{usage.freeFoodDeliveriesUsed}</span>
+                            </div>
+                            <div>
+                              Commute rides remaining:{' '}
+                              <span className="text-white">
+                                {Math.max(0, 2 - usage.commuteRidesUsed)}
+                              </span>
+                            </div>
+                            <div>
+                              Roadside assists remaining:{' '}
+                              <span className="text-white">
+                                {Math.max(0, 2 - usage.roadsideAssistsUsed)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-white/10 bg-black/25 p-4 text-sm text-white/65">
+                    No employees added yet.
+                  </div>
+                )}
+              </div>
+            </Card>
+          ) : null}
+        </div>
       ) : (
         <div className="mt-3 space-y-6">
           <div className="grid md:grid-cols-3 gap-4">

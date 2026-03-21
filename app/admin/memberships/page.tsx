@@ -10,6 +10,7 @@ import { Suspense } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { grantMembershipMilesForPeriod } from '@/lib/membership-benefits';
 
 function formatDistanceSafe(value: unknown) {
   const date =
@@ -71,7 +72,7 @@ export async function assignMembershipAction(formData: FormData) {
     }),
     prisma.membershipPlan.findUnique({
       where: { id: planId },
-      select: { id: true, name: true, stripePriceId: true },
+      select: { id: true, name: true, stripePriceId: true, monthlyServiceMiles: true },
     }),
   ]);
 
@@ -87,7 +88,7 @@ export async function assignMembershipAction(formData: FormData) {
   const currentPeriodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
   try {
-    await prisma.membershipSubscription.upsert({
+    const subscription = await prisma.membershipSubscription.upsert({
       where: { userId: user.id },
       update: {
         planId: plan.id,
@@ -104,6 +105,17 @@ export async function assignMembershipAction(formData: FormData) {
         renewsAt: currentPeriodEnd,
         stripePriceId: plan.stripePriceId ?? null,
       },
+    });
+
+    await grantMembershipMilesForPeriod(prisma, {
+      userId: subscription.userId,
+      plan: {
+        id: plan.id,
+        name: plan.name,
+        monthlyServiceMiles: plan.monthlyServiceMiles ?? 0,
+      },
+      currentPeriodEnd,
+      source: 'admin_assign_membership',
     });
   } catch (error) {
     console.error('[assignMembershipAction] Failed to assign membership:', error);

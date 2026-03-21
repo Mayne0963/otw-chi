@@ -2,7 +2,7 @@ import { getPrisma } from '@/lib/db';
 import { cache } from 'react';
 import { MembershipSubscription, MembershipPlan } from '@prisma/client';
 
-export const getActiveSubscription = cache(async (userId: string) => {
+export async function getActiveSubscriptionUncached(userId: string) {
   const prisma = getPrisma();
   const sub = await prisma.membershipSubscription.findUnique({
     where: { userId },
@@ -20,7 +20,9 @@ export const getActiveSubscription = cache(async (userId: string) => {
   }
   
   return null;
-});
+}
+
+export const getActiveSubscription = cache(getActiveSubscriptionUncached);
 
 export type MembershipPlanCode =
   | 'OTW_BASIC'
@@ -44,7 +46,9 @@ export function getPlanCodeFromSubscription(
   if (name === 'OTW PRO') return 'OTW_PRO';
   if (name === 'OTW ELITE') return 'OTW_ELITE';
   if (name === 'OTW BLACK') return 'OTW_BLACK';
-  if (name.startsWith('OTW BUSINESS') || name === 'OTW ENTERPRISE') return 'OTW_BUSINESS';
+  if (name.startsWith('OTW BUSINESS') || name === 'OTW TRUE' || name === 'OTW ENTERPRISE') {
+    return 'OTW_BUSINESS';
+  }
   
   return null;
 }

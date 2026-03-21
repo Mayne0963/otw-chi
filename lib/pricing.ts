@@ -25,6 +25,12 @@ const PRICING_TABLE = {
     serviceFee: 299,
     minimum: 1099,
   },
+  RIDE: {
+    base: 449,
+    perMile: 125,
+    serviceFee: 199,
+    minimum: 799,
+  },
 } as const;
 
 type ServiceType = keyof typeof PRICING_TABLE;

@@ -249,6 +249,7 @@ export function NewRequestForm() {
                   <option value="STORE">Grocery / Store</option>
                   <option value="FRAGILE">Fragile / Important</option>
                   <option value="CONCIERGE">Custom Concierge</option>
+                  <option value="RIDE">Ride</option>
                 </select>
               </div>
             </div>

@@ -26,7 +26,8 @@ const PICKUP_CODE_TYPES = [
   { value: 'CONFIRMATION', label: 'Confirmation' },
 ];
 
-type ServiceType = 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE';
+type ServiceType = 'FOOD' | 'STORE' | 'FRAGILE' | 'CONCIERGE' | 'RIDE';
+type OtwTrueBenefitType = 'FOOD_JOB_SITE' | 'COMMUTE_RIDE' | 'ROADSIDE_ASSIST';
 
 type Base64StatusResponse = {
   base64Mode?: boolean;
@@ -43,6 +44,22 @@ type ServiceMilesWalletResponse = {
     peerToPeerAllowed?: boolean | null;
     markupFree?: boolean | null;
     overageBillingMode?: 'INSTANT' | 'INVOICE' | null;
+  } | null;
+  otwTrue?: {
+    employeeId: string;
+    ownerUserId: string;
+    ownerName: string | null;
+    ownerEmail: string;
+    benefitYear: number;
+    usage: {
+      freeFoodDeliveriesUsed: number;
+      commuteRidesUsed: number;
+      roadsideAssistsUsed: number;
+    };
+    remaining: {
+      commuteRides: number;
+      roadsideAssists: number;
+    };
   } | null;
 };
 
@@ -108,6 +125,8 @@ export default function OrderPage() {
   const [paymentPreference, setPaymentPreference] = useState<PaymentPreference>('INSTANT');
   const [canChooseMonthlyPayments, setCanChooseMonthlyPayments] = useState(false);
   const [isCheckingPaymentPolicy, setIsCheckingPaymentPolicy] = useState(false);
+  const [otwTrueEntitlement, setOtwTrueEntitlement] = useState<ServiceMilesWalletResponse['otwTrue']>(null);
+  const [otwTrueBenefitType, setOtwTrueBenefitType] = useState<OtwTrueBenefitType | ''>('');
   const [deliveryTiming, setDeliveryTiming] = useState<'ASAP' | 'SCHEDULED'>('ASAP');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
@@ -187,6 +206,8 @@ export default function OrderPage() {
     if (!isSignedIn) {
       setCanChooseMonthlyPayments(false);
       setPaymentPreference('INSTANT');
+      setOtwTrueEntitlement(null);
+      setOtwTrueBenefitType('');
       setIsCheckingPaymentPolicy(false);
       return;
     }
@@ -215,6 +236,10 @@ export default function OrderPage() {
         if (!monthlyAllowed) {
           setPaymentPreference('INSTANT');
         }
+        setOtwTrueEntitlement(payload?.otwTrue ?? null);
+        if (!payload?.otwTrue) {
+          setOtwTrueBenefitType('');
+        }
       })
       .catch(() => {
         if (!isActive) {
@@ -222,6 +247,8 @@ export default function OrderPage() {
         }
         setCanChooseMonthlyPayments(false);
         setPaymentPreference('INSTANT');
+        setOtwTrueEntitlement(null);
+        setOtwTrueBenefitType('');
       })
       .finally(() => {
         if (isActive) {
@@ -249,6 +276,26 @@ export default function OrderPage() {
     setScheduledDate(toLocalDateValue(seed));
     setScheduledTime(toLocalTimeValue(seed));
   }, [deliveryTiming, scheduledDate, scheduledTime]);
+
+  useEffect(() => {
+    if (otwTrueBenefitType === 'FOOD_JOB_SITE' && serviceType !== 'FOOD') {
+      setServiceType('FOOD');
+      return;
+    }
+
+    if (otwTrueBenefitType === 'COMMUTE_RIDE' && serviceType !== 'RIDE') {
+      setServiceType('RIDE');
+      return;
+    }
+
+    if (
+      otwTrueBenefitType === 'ROADSIDE_ASSIST' &&
+      serviceType !== 'RIDE' &&
+      serviceType !== 'CONCIERGE'
+    ) {
+      setServiceType('RIDE');
+    }
+  }, [otwTrueBenefitType, serviceType]);
 
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -318,6 +365,7 @@ export default function OrderPage() {
           pickupCodeType: pickupCodeType || undefined,
           pickupCodeText: pickupCodeText.trim() || undefined,
           paymentPreference: canChooseMonthlyPayments ? paymentPreference : 'INSTANT',
+          otwTrueBenefitType: otwTrueBenefitType || undefined,
           isScheduled,
           scheduledFor: scheduledForIso ?? undefined,
           scheduleWindowMinutes: DEFAULT_SCHEDULE_WINDOW_MINUTES,
@@ -503,9 +551,42 @@ export default function OrderPage() {
                   <option value="STORE">Store / Grocery</option>
                   <option value="FRAGILE">Fragile Delivery</option>
                   <option value="CONCIERGE">Concierge</option>
+                  <option value="RIDE">Ride</option>
                 </Select>
               </div>
             </div>
+
+            {otwTrueEntitlement ? (
+              <div className="space-y-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3">
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                  OTW True Employee Benefit
+                </label>
+                <Select
+                  value={otwTrueBenefitType}
+                  onChange={(event) => setOtwTrueBenefitType(event.target.value as OtwTrueBenefitType | '')}
+                  className="bg-black/30 text-white"
+                >
+                  <option value="">Do not apply OTW True benefit</option>
+                  <option value="FOOD_JOB_SITE">Free job-site food delivery</option>
+                  <option
+                    value="COMMUTE_RIDE"
+                    disabled={otwTrueEntitlement.remaining.commuteRides <= 0}
+                  >
+                    Commute ride ({otwTrueEntitlement.remaining.commuteRides} remaining this year)
+                  </option>
+                  <option
+                    value="ROADSIDE_ASSIST"
+                    disabled={otwTrueEntitlement.remaining.roadsideAssists <= 0}
+                  >
+                    Roadside assist ({otwTrueEntitlement.remaining.roadsideAssists} remaining this year)
+                  </option>
+                </Select>
+                <p className="text-xs text-emerald-100/80">
+                  Linked to {otwTrueEntitlement.ownerName || otwTrueEntitlement.ownerEmail}. OTW True benefits make
+                  the selected request complimentary.
+                </p>
+              </div>
+            ) : null}
 
             <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">
               <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
