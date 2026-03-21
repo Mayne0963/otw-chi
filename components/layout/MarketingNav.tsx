@@ -16,7 +16,6 @@ import {
 
 import { SignOutButton } from "@/components/auth/SignOutButton"
 import { getServerCapabilities } from "@/lib/capabilities"
-import OtwNavbarLogo from "@/components/branding/OtwNavbarLogo"
 
 function NavLinks() {
   const capabilities = getServerCapabilities({});
@@ -61,9 +60,6 @@ export function MarketingNav() {
       <div className="otw-container flex h-20 items-center justify-between">
         <div className="flex items-center gap-2">
           <BackNavButton fallbackHref="/" className="h-8 px-2 sm:h-9 sm:px-3" />
-          <Link href="/" className="flex items-center rounded-md px-1 py-1 hover:bg-white/5">
-            <OtwNavbarLogo imageClassName="h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20" />
-          </Link>
         </div>
 
         {/* Desktop Navigation */}

@@ -16,7 +16,7 @@ export default function OtwNavbarLogo({
       <img
         src="/icons/image02.jpg"
         alt={alt}
-        className={cn('h-16 w-16 rounded-md object-contain', imageClassName)}
+        className={cn('h-32 w-32 rounded-md object-contain', imageClassName)}
         loading="eager"
         decoding="async"
       />

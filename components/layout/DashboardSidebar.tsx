@@ -209,9 +209,9 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
 
   return (
     <div className="relative z-40 flex h-full w-64 flex-col border-r border-white/10 bg-otwBlack">
-      <div className="flex h-20 items-center px-6">
+      <div className="flex h-40 items-center px-6">
         <Link href="/" className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-white/5">
-          <OtwNavbarLogo imageClassName="h-16 w-16" />
+          <OtwNavbarLogo imageClassName="h-32 w-32" />
           <span className="text-xs text-white/50 font-normal">App</span>
         </Link>
       </div>
