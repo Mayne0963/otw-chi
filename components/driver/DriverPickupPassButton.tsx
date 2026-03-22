@@ -127,7 +127,7 @@ export default function DriverPickupPassButton({
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:pointer-events-none" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/15 bg-[#0c0f14]/95 p-4 text-white shadow-2xl backdrop-blur-xl focus:outline-none sm:p-5">
+        <Dialog.Content className="otw-inverse-surface fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/15 bg-[#0c0f14]/95 p-4 text-white shadow-2xl backdrop-blur-xl focus:outline-none sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <Dialog.Title className="text-base font-semibold text-white">Pickup Pass</Dialog.Title>
             <button
