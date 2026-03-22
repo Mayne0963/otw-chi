@@ -288,6 +288,9 @@ model BusinessMembershipInvoiceRequest {
   primaryContactPhone          String
   businessWebsiteUrl           String?
   taxIdVatNumber               String?
+  invoiceWorkflowType          String?
+  stripeInvoiceId              String?                                @unique
+  invoiceStartedAt             DateTime?
   validatedAddress             String?
   addressValidatedAt           DateTime?
   createdAt                    DateTime                               @default(now())
@@ -296,6 +299,7 @@ model BusinessMembershipInvoiceRequest {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
+  @@index([invoiceWorkflowType])
   @@index([planName])
   @@index([userId])
 }
