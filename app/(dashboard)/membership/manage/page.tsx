@@ -9,6 +9,7 @@ import { createCustomerPortal } from '@/app/actions/billing';
 import { getPrisma } from '@/lib/db';
 import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 import BusinessMembershipProfileForm from '@/components/membership/BusinessMembershipProfileForm';
+import BusinessPlansGrid from '@/components/membership/BusinessPlansGrid';
 import { BillingSync } from '@/app/(dashboard)/billing/BillingSync';
 import {
   addOtwTrueEmployeeAction,
@@ -45,7 +46,21 @@ export default async function MembershipManagePage({
     black: process.env.STRIPE_PRICE_BLACK,
   } as const;
   const prisma = getPrisma();
-  const planNames = ['OTW BASIC', 'OTW PLUS', 'OTW PRO', 'OTW ELITE', 'OTW BLACK'];
+  const customerProfile = await prisma.customerProfile.findUnique({
+    where: { userId: user.id },
+    select: { phone: true },
+  });
+  const planNames = [
+    'OTW BASIC',
+    'OTW PLUS',
+    'OTW PRO',
+    'OTW ELITE',
+    'OTW BLACK',
+    'OTW BUSINESS CORE',
+    'OTW BUSINESS PRO',
+    'OTW TRUE',
+    'OTW ENTERPRISE',
+  ];
   const planRecords = await prisma.membershipPlan.findMany({
     where: { name: { in: planNames } },
   });
@@ -71,37 +86,28 @@ export default async function MembershipManagePage({
         validatedAddress: string | null;
       }
     | null = null;
-  let customerProfilePhone: string | null = null;
+  const customerProfilePhone = customerProfile?.phone ?? null;
 
   if (isBusinessMembership && sub) {
-    const [profileRecord, customerProfile] = await Promise.all([
-      prisma.businessMembershipProfile.findUnique({
-        where: { membershipId: sub.id },
-        select: {
-          businessLegalName: true,
-          employeeCount: true,
-          primaryBusinessStreetAddress: true,
-          primaryBusinessCity: true,
-          primaryBusinessStateProvince: true,
-          primaryBusinessPostalCode: true,
-          primaryBusinessCountry: true,
-          industryType: true,
-          primaryContactFullName: true,
-          primaryContactEmail: true,
-          primaryContactPhone: true,
-          businessWebsiteUrl: true,
-          taxIdVatNumber: true,
-          validatedAddress: true,
-        },
-      }),
-      prisma.customerProfile.findUnique({
-        where: { userId: user.id },
-        select: { phone: true },
-      }),
-    ]);
-
-    businessProfile = profileRecord;
-    customerProfilePhone = customerProfile?.phone ?? null;
+    businessProfile = await prisma.businessMembershipProfile.findUnique({
+      where: { membershipId: sub.id },
+      select: {
+        businessLegalName: true,
+        employeeCount: true,
+        primaryBusinessStreetAddress: true,
+        primaryBusinessCity: true,
+        primaryBusinessStateProvince: true,
+        primaryBusinessPostalCode: true,
+        primaryBusinessCountry: true,
+        industryType: true,
+        primaryContactFullName: true,
+        primaryContactEmail: true,
+        primaryContactPhone: true,
+        businessWebsiteUrl: true,
+        taxIdVatNumber: true,
+        validatedAddress: true,
+      },
+    });
   }
 
   const otwTrueEmployees = isOtwTrueOwner
@@ -134,6 +140,54 @@ export default async function MembershipManagePage({
     { name: 'OTW PRO', code: 'pro' as const, label: '$269 / month • 200 miles' },
     { name: 'OTW ELITE', code: 'elite' as const, label: '$429 / month • 350 miles' },
     { name: 'OTW BLACK', code: 'black' as const, label: '$699 / month • 600 miles' },
+  ];
+  const businessPlans = [
+    {
+      id: planMap.get('OTW BUSINESS CORE')?.id ?? null,
+      name: 'OTW BUSINESS CORE',
+      price: '$699 / month',
+      miles: 500,
+      users: 'Up to 5',
+      rollover: 'Rollover up to 250',
+      billing: 'Monthly invoice',
+      features: ['Up to 5 users', 'Rollover up to 250', 'Monthly invoice'],
+    },
+    {
+      id: planMap.get('OTW BUSINESS PRO')?.id ?? null,
+      name: 'OTW BUSINESS PRO',
+      price: '$1,199 / month',
+      miles: 1_000,
+      users: 'Up to 15',
+      rollover: 'Rollover up to 500',
+      billing: 'Monthly invoice',
+      features: ['Up to 15 users', 'Rollover up to 500', 'Dedicated rep'],
+    },
+    {
+      id: planMap.get('OTW TRUE')?.id ?? null,
+      name: 'OTW TRUE',
+      price: 'Starting at $1,499 / month',
+      miles: 1_200,
+      users: 'Up to 50',
+      rollover: 'Rollover up to 600',
+      billing: 'Monthly invoice',
+      features: [
+        'Add and remove employees under one membership',
+        'Each employee gets a free OTW BASIC home-delivery membership',
+        'Free food delivery to the job site for all employees',
+        '2 free rides to/from work per employee each year',
+        '2 free roadside assists to/from work per employee each year',
+      ],
+    },
+    {
+      id: planMap.get('OTW ENTERPRISE')?.id ?? null,
+      name: 'OTW ENTERPRISE',
+      price: 'Custom',
+      miles: 'Custom',
+      users: 'Custom',
+      rollover: 'Custom',
+      billing: 'Contract / SLA',
+      features: ['SLA contracts', 'Guaranteed response times', 'Multi-location support'],
+    },
   ];
 
   return (
@@ -349,12 +403,14 @@ export default async function MembershipManagePage({
             <div className="text-xl font-bold">Business plans</div>
             <div className="text-sm opacity-70 mt-1">Invoice billing with reliability-first dispatch.</div>
             <div className="mt-6">
-              <a
-                href="/contact"
-                className="inline-flex h-10 w-full items-center justify-center rounded-md bg-otwGold px-4 text-sm font-medium text-otwBlack hover:bg-otwGold/90"
-              >
-                Request Invoice
-              </a>
+              <BusinessPlansGrid
+                plans={businessPlans}
+                requesterDefaults={{
+                  fullName: user.name ?? null,
+                  email: user.email ?? null,
+                  phone: customerProfilePhone,
+                }}
+              />
             </div>
           </Card>
         </div>

@@ -211,6 +211,23 @@ export const businessMembershipProfileFormSchema = z.object({
 export type BusinessMembershipProfileFormInput = z.input<typeof businessMembershipProfileFormSchema>;
 export type BusinessMembershipProfileFormValues = z.output<typeof businessMembershipProfileFormSchema>;
 
+export const businessMembershipInvoiceRequestSchema = businessMembershipProfileFormSchema.extend({
+  planName: z
+    .string()
+    .trim()
+    .min(2, 'Select a business membership plan.')
+    .max(120, 'Plan name is too long.'),
+  planId: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(''))
+    .transform((value) => normalizeOptionalText(value)),
+});
+
+export type BusinessMembershipInvoiceRequestInput = z.input<typeof businessMembershipInvoiceRequestSchema>;
+export type BusinessMembershipInvoiceRequestValues = z.output<typeof businessMembershipInvoiceRequestSchema>;
+
 export function getBusinessMembershipProfileFieldErrors(error: z.ZodError): Record<string, string> {
   const fieldErrors = error.flatten().fieldErrors as Record<string, string[] | undefined>;
   return Object.fromEntries(

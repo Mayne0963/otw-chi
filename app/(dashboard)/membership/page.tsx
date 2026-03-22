@@ -13,6 +13,13 @@ import { getConsumerPlanDisplayPerks } from '@/lib/membership-perks';
 export default async function MembershipPage() {
   const user = await getCurrentUser();
   const sub = user ? await getActiveSubscription(user.id) : null;
+  const prisma = getPrisma();
+  const customerProfile = user
+    ? await prisma.customerProfile.findUnique({
+        where: { userId: user.id },
+        select: { phone: true },
+      })
+    : null;
   const stripeReady =
     Boolean(process.env.STRIPE_SECRET_KEY) && Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
   const consumerPriceIds = {
@@ -23,7 +30,6 @@ export default async function MembershipPage() {
     black: process.env.STRIPE_PRICE_BLACK,
   } as const;
 
-  const prisma = getPrisma();
   const planNames = [
     'OTW BASIC',
     'OTW PLUS',
@@ -82,6 +88,7 @@ export default async function MembershipPage() {
 
   const businessPlans = [
     {
+      id: planMap.get('OTW BUSINESS CORE')?.id ?? null,
       name: 'OTW BUSINESS CORE',
       price: '$699 / month',
       miles: 500,
@@ -91,6 +98,7 @@ export default async function MembershipPage() {
       features: ['Up to 5 users', 'Rollover up to 250', 'Monthly invoice'],
     },
     {
+      id: planMap.get('OTW BUSINESS PRO')?.id ?? null,
       name: 'OTW BUSINESS PRO',
       price: '$1,199 / month',
       miles: 1_000,
@@ -100,6 +108,7 @@ export default async function MembershipPage() {
       features: ['Up to 15 users', 'Rollover up to 500', 'Dedicated rep'],
     },
     {
+      id: planMap.get('OTW TRUE')?.id ?? null,
       name: 'OTW TRUE',
       price: 'Starting at $1,499 / month',
       miles: 1_200,
@@ -115,6 +124,7 @@ export default async function MembershipPage() {
       ],
     },
     {
+      id: planMap.get('OTW ENTERPRISE')?.id ?? null,
       name: 'OTW ENTERPRISE',
       price: 'Custom',
       miles: 'Custom',
@@ -203,7 +213,14 @@ export default async function MembershipPage() {
 
         <div className="space-y-3">
           <h2 className="text-xl font-semibold">Business</h2>
-          <BusinessPlansGrid plans={businessPlans} />
+          <BusinessPlansGrid
+            plans={businessPlans}
+            requesterDefaults={{
+              fullName: user?.name ?? null,
+              email: user?.email ?? null,
+              phone: customerProfile?.phone ?? null,
+            }}
+          />
         </div>
       </div>
     </OtwPageShell>

@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import OtwCard from '@/components/ui/otw/OtwCard';
+import BusinessMembershipInvoiceRequestDialog from '@/components/membership/BusinessMembershipInvoiceRequestDialog';
 
 type BusinessPlan = {
+  id?: string | null;
   name: string;
   price: string;
   miles: number | string;
@@ -14,11 +16,18 @@ type BusinessPlan = {
   features: string[];
 };
 
-type BusinessPlansGridProps = {
-  plans: BusinessPlan[];
+type RequesterDefaults = {
+  fullName?: string | null;
+  email?: string | null;
+  phone?: string | null;
 };
 
-export default function BusinessPlansGrid({ plans }: BusinessPlansGridProps) {
+type BusinessPlansGridProps = {
+  plans: BusinessPlan[];
+  requesterDefaults?: RequesterDefaults;
+};
+
+export default function BusinessPlansGrid({ plans, requesterDefaults }: BusinessPlansGridProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -80,12 +89,14 @@ export default function BusinessPlansGrid({ plans }: BusinessPlansGridProps) {
                   ) : null}
                 </ul>
 
-                <a
-                  href="/contact"
-                  className="mt-auto inline-flex h-11 w-full items-center justify-center rounded-md bg-otwGold px-4 text-sm font-medium text-otwBlack hover:bg-otwGold/90"
-                >
-                  Request Invoice
-                </a>
+                <BusinessMembershipInvoiceRequestDialog
+                  plan={{
+                    id: plan.id ?? null,
+                    name: plan.name,
+                    price: plan.price,
+                  }}
+                  requesterDefaults={requesterDefaults}
+                />
               </div>
             </OtwCard>
           );

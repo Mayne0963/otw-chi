@@ -133,6 +133,13 @@ enum BusinessIndustryType {
   OTHER
 }
 
+enum BusinessMembershipInvoiceRequestStatus {
+  PENDING
+  REVIEWED
+  CONVERTED
+  CLOSED
+}
+
 enum DriverTier {
   PROBATION
   STANDARD
@@ -186,6 +193,7 @@ model User {
   paymentTransactions PaymentTransaction[]
   franchiseProfile   FranchiseProfile?
   businessMembershipProfile BusinessMembershipProfile?
+  businessMembershipInvoiceRequests BusinessMembershipInvoiceRequest[]
   driverApplications DriverApplication[]
   deliveryRequests   DeliveryRequest[]
   overageInvoicePeriods OverageInvoicePeriod[]
@@ -260,6 +268,36 @@ model ContactMessage {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model BusinessMembershipInvoiceRequest {
+  id                           String                                 @id @default(cuid())
+  userId                       String?
+  planName                     String
+  status                       BusinessMembershipInvoiceRequestStatus @default(PENDING)
+  businessLegalName            String
+  employeeCount                Int
+  primaryBusinessStreetAddress String
+  primaryBusinessCity          String
+  primaryBusinessStateProvince String
+  primaryBusinessPostalCode    String
+  primaryBusinessCountry       String
+  industryType                 BusinessIndustryType
+  primaryContactFullName       String
+  primaryContactEmail          String
+  primaryContactPhone          String
+  businessWebsiteUrl           String?
+  taxIdVatNumber               String?
+  validatedAddress             String?
+  addressValidatedAt           DateTime?
+  createdAt                    DateTime                               @default(now())
+  updatedAt                    DateTime                               @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([planName])
+  @@index([userId])
 }
 
 model DriverProfile {

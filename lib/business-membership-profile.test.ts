@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildBusinessAddressSummary,
+  businessMembershipInvoiceRequestSchema,
   businessMembershipProfileFormSchema,
   formatBusinessCountryLabel,
   formatBusinessIndustryLabel,
@@ -65,5 +66,17 @@ describe('business membership profile form', () => {
         primaryBusinessCountry: 'US',
       }),
     ).toBe('123 Main Street, Fort Wayne, Indiana 46802, United States');
+  });
+
+  it('accepts invoice request metadata with the shared business fields', () => {
+    const parsed = businessMembershipInvoiceRequestSchema.parse({
+      ...validBusinessProfileInput,
+      planName: 'OTW BUSINESS PRO',
+      planId: 'plan_123',
+    });
+
+    expect(parsed.planName).toBe('OTW BUSINESS PRO');
+    expect(parsed.planId).toBe('plan_123');
+    expect(parsed.employeeCount).toBe(25);
   });
 });
