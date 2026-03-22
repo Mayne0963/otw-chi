@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 type OtwNavbarLogoProps = {
@@ -13,12 +14,13 @@ export default function OtwNavbarLogo({
 }: OtwNavbarLogoProps) {
   return (
     <span className={cn('inline-flex items-center', className)}>
-      <img
+      <Image
         src="/icons/image02.jpg"
         alt={alt}
+        width={96}
+        height={96}
         className={cn('h-24 w-24 rounded-md object-contain', imageClassName)}
-        loading="eager"
-        decoding="async"
+        priority
       />
     </span>
   );

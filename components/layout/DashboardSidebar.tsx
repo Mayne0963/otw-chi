@@ -2,12 +2,12 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { SignOutButton } from "@/components/auth/SignOutButton"
 import { getClientCapabilities } from "@/lib/capabilities"
-import OtwNavbarLogo from "@/components/branding/OtwNavbarLogo"
+import OtwBrandLink from "@/components/branding/OtwBrandLink"
 import { 
   type LucideIcon,
   LayoutDashboard, 
@@ -162,29 +162,6 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
     return defaults
   })
 
-  useEffect(() => {
-    if (role !== "ADMIN") return
-
-    setOpenGroups((current) => {
-      let changed = false
-      const next = { ...current }
-
-      for (const group of adminGroups) {
-        if (!(group.id in next)) {
-          next[group.id] = group.defaultOpen !== false
-          changed = true
-        }
-        const hasActiveRoute = group.routes.some((route) => isRouteActive(pathname, route.href))
-        if (hasActiveRoute && !next[group.id]) {
-          next[group.id] = true
-          changed = true
-        }
-      }
-
-      return changed ? next : current
-    })
-  }, [adminGroups, pathname, role])
-
   const renderRoute = (route: NavRoute, options?: { nested?: boolean }) => {
     const isActive = isRouteActive(pathname, route.href)
     return (
@@ -210,10 +187,11 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   return (
     <div className="relative z-40 flex h-full w-64 flex-col border-r border-white/10 bg-otwBlack">
       <div className="flex h-32 items-center px-6">
-        <Link href="/" className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-white/5">
-          <OtwNavbarLogo imageClassName="h-24 w-24" />
-          <span className="text-xs text-white/50 font-normal">App</span>
-        </Link>
+        <OtwBrandLink
+          imageClassName="h-24 w-24 rounded-xl"
+          labelClassName="text-sm tracking-[0.28em] text-white"
+          subtitle="App"
+        />
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {commonRoutes.map((route) => renderRoute(route))}
@@ -228,7 +206,8 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
           <div className="space-y-2 pt-2">
             {adminGroups.map((group) => {
               const defaultOpen = group.defaultOpen !== false
-              const isOpen = openGroups[group.id] ?? defaultOpen
+              const hasActiveRoute = group.routes.some((route) => isRouteActive(pathname, route.href))
+              const isOpen = hasActiveRoute || (openGroups[group.id] ?? defaultOpen)
               return (
                 <div key={group.id} className="space-y-1">
                   <button
