@@ -8,11 +8,13 @@ import { getActiveSubscription } from '@/lib/membership';
 import { createCustomerPortal } from '@/app/actions/billing';
 import { getPrisma } from '@/lib/db';
 import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
+import BusinessMembershipProfileForm from '@/components/membership/BusinessMembershipProfileForm';
 import { BillingSync } from '@/app/(dashboard)/billing/BillingSync';
 import {
   addOtwTrueEmployeeAction,
   removeOtwTrueEmployeeAction,
 } from '@/app/actions/otw-true';
+import { isBusinessMembershipPlanName } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +51,59 @@ export default async function MembershipManagePage({
   });
   const planMap = new Map(planRecords.map((plan) => [plan.name, plan]));
   const isOtwTrueOwner = sub?.plan?.name?.trim().toUpperCase() === 'OTW TRUE';
+  const isBusinessMembership = isBusinessMembershipPlanName(sub?.plan?.name ?? null);
   const currentBenefitYear = new Date().getFullYear();
+  let businessProfile:
+    | {
+        businessLegalName: string;
+        employeeCount: number;
+        primaryBusinessStreetAddress: string;
+        primaryBusinessCity: string;
+        primaryBusinessStateProvince: string;
+        primaryBusinessPostalCode: string;
+        primaryBusinessCountry: string;
+        industryType: string;
+        primaryContactFullName: string;
+        primaryContactEmail: string;
+        primaryContactPhone: string;
+        businessWebsiteUrl: string | null;
+        taxIdVatNumber: string | null;
+        validatedAddress: string | null;
+      }
+    | null = null;
+  let customerProfilePhone: string | null = null;
+
+  if (isBusinessMembership && sub) {
+    const [profileRecord, customerProfile] = await Promise.all([
+      prisma.businessMembershipProfile.findUnique({
+        where: { membershipId: sub.id },
+        select: {
+          businessLegalName: true,
+          employeeCount: true,
+          primaryBusinessStreetAddress: true,
+          primaryBusinessCity: true,
+          primaryBusinessStateProvince: true,
+          primaryBusinessPostalCode: true,
+          primaryBusinessCountry: true,
+          industryType: true,
+          primaryContactFullName: true,
+          primaryContactEmail: true,
+          primaryContactPhone: true,
+          businessWebsiteUrl: true,
+          taxIdVatNumber: true,
+          validatedAddress: true,
+        },
+      }),
+      prisma.customerProfile.findUnique({
+        where: { userId: user.id },
+        select: { phone: true },
+      }),
+    ]);
+
+    businessProfile = profileRecord;
+    customerProfilePhone = customerProfile?.phone ?? null;
+  }
+
   const otwTrueEmployees = isOtwTrueOwner
     ? await prisma.otwTrueEmployee.findMany({
         where: { ownerUserId: user.id },
@@ -122,6 +176,16 @@ export default async function MembershipManagePage({
                     tone={sub.status === 'ACTIVE' ? 'success' : 'danger'}
                   />
                 </div>
+                {isBusinessMembership ? (
+                  <div className="mt-2 text-sm opacity-80">
+                    Business profile:{' '}
+                    <OtwStatPill
+                      label="Business"
+                      value={businessProfile ? 'On file' : 'Required'}
+                      tone={businessProfile ? 'success' : 'danger'}
+                    />
+                  </div>
+                ) : null}
                 {sub.currentPeriodEnd && (
                   <div className="mt-2 text-xs opacity-60">
                     Renews: {sub.currentPeriodEnd.toLocaleDateString()}
@@ -133,6 +197,31 @@ export default async function MembershipManagePage({
               </form>
             </div>
           </Card>
+
+          {isBusinessMembership ? (
+            <Card className="p-5 sm:p-6">
+              <BusinessMembershipProfileForm
+                planName={sub.plan?.name ?? 'Business Membership'}
+                hasSavedProfile={Boolean(businessProfile)}
+                initialValidatedAddress={businessProfile?.validatedAddress ?? null}
+                initialValues={{
+                  businessLegalName: businessProfile?.businessLegalName ?? '',
+                  employeeCount: businessProfile?.employeeCount ? String(businessProfile.employeeCount) : '',
+                  primaryBusinessStreetAddress: businessProfile?.primaryBusinessStreetAddress ?? '',
+                  primaryBusinessCity: businessProfile?.primaryBusinessCity ?? '',
+                  primaryBusinessStateProvince: businessProfile?.primaryBusinessStateProvince ?? '',
+                  primaryBusinessPostalCode: businessProfile?.primaryBusinessPostalCode ?? '',
+                  primaryBusinessCountry: businessProfile?.primaryBusinessCountry ?? 'US',
+                  industryType: businessProfile?.industryType ?? '',
+                  primaryContactFullName: businessProfile?.primaryContactFullName ?? user.name ?? '',
+                  primaryContactEmail: businessProfile?.primaryContactEmail ?? user.email ?? '',
+                  primaryContactPhone: businessProfile?.primaryContactPhone ?? customerProfilePhone ?? '',
+                  businessWebsiteUrl: businessProfile?.businessWebsiteUrl ?? '',
+                  taxIdVatNumber: businessProfile?.taxIdVatNumber ?? '',
+                }}
+              />
+            </Card>
+          ) : null}
 
           {isOtwTrueOwner ? (
             <Card className="p-5 sm:p-6">

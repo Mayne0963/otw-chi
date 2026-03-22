@@ -11,6 +11,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { grantMembershipMilesForPeriod } from '@/lib/membership-benefits';
+import {
+  buildBusinessAddressSummary,
+  formatBusinessIndustryLabel,
+} from '@/lib/business-membership-profile';
+import { isBusinessMembershipPlanName } from '@/lib/membership';
 
 function formatDistanceSafe(value: unknown) {
   const date =
@@ -44,6 +49,23 @@ function AdminMembershipsLoading() {
 function buildMembershipAdminPath(params: Record<string, string>) {
   const search = new URLSearchParams(params);
   return `/admin/memberships?${search.toString()}`;
+}
+
+function getBusinessProfileMetrics(memberships: MembershipRow[]) {
+  const businessMemberships = memberships.filter((membership) =>
+    isBusinessMembershipPlanName(membership.plan?.name ?? null),
+  );
+  const profilesOnFile = businessMemberships.filter((membership) => Boolean(membership.businessProfile)).length;
+  const profilesMissing = Math.max(businessMemberships.length - profilesOnFile, 0);
+  const completionRate =
+    businessMemberships.length > 0 ? Math.round((profilesOnFile / businessMemberships.length) * 100) : null;
+
+  return {
+    businessMembershipCount: businessMemberships.length,
+    businessProfilesOnFile: profilesOnFile,
+    businessProfilesMissing: profilesMissing,
+    businessProfileCompletionRate: completionRate,
+  };
 }
 
 export async function assignMembershipAction(formData: FormData) {
@@ -142,6 +164,26 @@ async function getMembershipsData() {
         include: {
           user: { select: { id: true, name: true, email: true } },
           plan: { select: { id: true, name: true, description: true } },
+          businessProfile: {
+            select: {
+              businessLegalName: true,
+              employeeCount: true,
+              primaryBusinessStreetAddress: true,
+              primaryBusinessCity: true,
+              primaryBusinessStateProvince: true,
+              primaryBusinessPostalCode: true,
+              primaryBusinessCountry: true,
+              industryType: true,
+              primaryContactFullName: true,
+              primaryContactEmail: true,
+              primaryContactPhone: true,
+              businessWebsiteUrl: true,
+              taxIdVatNumber: true,
+              validatedAddress: true,
+              addressValidatedAt: true,
+              updatedAt: true,
+            },
+          },
         },
         take: 50,
         orderBy: { currentPeriodEnd: 'desc' },
@@ -340,6 +382,137 @@ function AssignMembershipCard({
   );
 }
 
+function MembershipSummaryGrid({
+  totalActive,
+  totalCancelled,
+  totalPastDue,
+  totalSubscriptions,
+  businessMembershipCount,
+  businessProfilesOnFile,
+  businessProfilesMissing,
+  businessProfileCompletionRate,
+}: {
+  totalActive: number;
+  totalCancelled: number;
+  totalPastDue: number;
+  totalSubscriptions: number;
+  businessMembershipCount: number;
+  businessProfilesOnFile: number;
+  businessProfilesMissing: number;
+  businessProfileCompletionRate: number | null;
+}) {
+  return (
+    <OtwCard className="mt-3 p-6">
+      <div className="grid grid-cols-1 gap-4 text-center md:grid-cols-3 xl:grid-cols-7">
+        <div className="rounded-lg bg-white/5 p-4">
+          <div className="text-2xl font-bold text-green-400">{totalActive}</div>
+          <div className="text-xs text-white/60">Active Members</div>
+        </div>
+        <div className="rounded-lg bg-white/5 p-4">
+          <div className="text-2xl font-bold text-red-400">{totalCancelled}</div>
+          <div className="text-xs text-white/60">Cancelled</div>
+        </div>
+        <div className="rounded-lg bg-white/5 p-4">
+          <div className="text-2xl font-bold text-yellow-400">{totalPastDue}</div>
+          <div className="text-xs text-white/60">Past Due</div>
+        </div>
+        <div className="rounded-lg bg-white/5 p-4">
+          <div className="text-2xl font-bold text-white">{totalSubscriptions}</div>
+          <div className="text-xs text-white/60">Total Subscriptions</div>
+        </div>
+        <div className="rounded-lg bg-white/5 p-4">
+          <div className="text-2xl font-bold text-otwGold">{businessMembershipCount}</div>
+          <div className="text-xs text-white/60">Business Plans</div>
+        </div>
+        <div className="rounded-lg bg-white/5 p-4">
+          <div className="text-2xl font-bold text-emerald-300">{businessProfilesOnFile}</div>
+          <div className="text-xs text-white/60">Profiles On File</div>
+        </div>
+        <div className="rounded-lg bg-white/5 p-4">
+          <div className="text-2xl font-bold text-white">
+            {businessProfileCompletionRate === null ? 'N/A' : `${businessProfileCompletionRate}%`}
+          </div>
+          <div className="text-xs text-white/60">
+            Coverage
+            {businessProfilesMissing > 0 ? ` • ${businessProfilesMissing} missing` : ''}
+          </div>
+        </div>
+      </div>
+    </OtwCard>
+  );
+}
+
+function BusinessProfileCell({ membership }: { membership: MembershipRow }) {
+  const isBusinessMembership = isBusinessMembershipPlanName(membership.plan?.name ?? null);
+  const profile = membership.businessProfile;
+
+  if (!isBusinessMembership) {
+    return <div className="min-w-[240px] text-xs text-white/35">Not required for this membership plan.</div>;
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-w-[260px] rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+        <div className="inline-flex rounded-full border border-red-500/30 px-2 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-red-200">
+          Required
+        </div>
+        <div className="mt-2 text-sm font-medium text-white">Business profile missing</div>
+        <div className="mt-1 text-xs leading-5 text-red-100/80">
+          This business membership is active, but no organizational profile has been submitted yet.
+        </div>
+      </div>
+    );
+  }
+
+  const addressSummary = buildBusinessAddressSummary(profile);
+  const normalizedWebsite = profile.businessWebsiteUrl?.replace(/^https?:\/\//i, '') ?? null;
+
+  return (
+    <div className="min-w-[300px] space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-emerald-200">
+          On file
+        </span>
+        {profile.addressValidatedAt ? (
+          <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-emerald-300">
+            Address verified
+          </span>
+        ) : null}
+      </div>
+
+      <div>
+        <div className="text-sm font-medium text-white">{profile.businessLegalName}</div>
+        <div className="mt-1 text-xs text-white/60">
+          {formatBusinessIndustryLabel(profile.industryType)} • {profile.employeeCount.toLocaleString()} employees
+        </div>
+      </div>
+
+      <div className="text-xs leading-5 text-white/60">{addressSummary}</div>
+
+      {profile.validatedAddress ? (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5 text-xs leading-5 text-emerald-200">
+          Verified address: {profile.validatedAddress}
+        </div>
+      ) : null}
+
+      <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">Primary Contact</div>
+        <div className="mt-2 text-xs text-white/85">{profile.primaryContactFullName}</div>
+        <div className="text-xs text-white/60">{profile.primaryContactEmail}</div>
+        <div className="text-xs text-white/60">{profile.primaryContactPhone}</div>
+      </div>
+
+      <div className="flex flex-wrap gap-3 text-[11px] leading-5 text-white/45">
+        {normalizedWebsite ? <span>Website: {normalizedWebsite}</span> : null}
+        {profile.taxIdVatNumber ? <span>Tax ID / VAT: {profile.taxIdVatNumber}</span> : null}
+        {!normalizedWebsite && !profile.taxIdVatNumber ? <span>No optional billing details provided.</span> : null}
+      </div>
+
+      <div className="text-[11px] text-white/35">Updated {formatDistanceSafe(profile.updatedAt)}</div>
+    </div>
+  );
+}
+
 function EmptyMembershipsState({
   totalActive,
   totalCancelled,
@@ -359,26 +532,16 @@ function EmptyMembershipsState({
     <>
       <AssignMembershipCard assignableUsers={assignableUsers} plans={plans} />
 
-      <OtwCard className="mt-3 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-green-400">{totalActive}</div>
-            <div className="text-xs text-white/60">Active Members</div>
-          </div>
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-red-400">{totalCancelled}</div>
-            <div className="text-xs text-white/60">Cancelled</div>
-          </div>
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-yellow-400">{totalPastDue}</div>
-            <div className="text-xs text-white/60">Past Due</div>
-          </div>
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-white">{totalSubscriptions}</div>
-            <div className="text-xs text-white/60">Total Subscriptions</div>
-          </div>
-        </div>
-      </OtwCard>
+      <MembershipSummaryGrid
+        totalActive={totalActive}
+        totalCancelled={totalCancelled}
+        totalPastDue={totalPastDue}
+        totalSubscriptions={totalSubscriptions}
+        businessMembershipCount={0}
+        businessProfilesOnFile={0}
+        businessProfilesMissing={0}
+        businessProfileCompletionRate={null}
+      />
       
       <OtwCard className="mt-3 p-8 text-center">
         <OtwEmptyState 
@@ -405,30 +568,22 @@ function MembershipsContent({
   assignableUsers: AssignableUserRow[];
   plans: MembershipPlanRow[];
 }) {
+  const businessMetrics = getBusinessProfileMetrics(memberships);
+
   return (
     <>
       <AssignMembershipCard assignableUsers={assignableUsers} plans={plans} />
 
-      <OtwCard className="mt-3 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-green-400">{totalActive}</div>
-            <div className="text-xs text-white/60">Active Members</div>
-          </div>
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-red-400">{totalCancelled}</div>
-            <div className="text-xs text-white/60">Cancelled</div>
-          </div>
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-yellow-400">{totalPastDue}</div>
-            <div className="text-xs text-white/60">Past Due</div>
-          </div>
-          <div className="p-4 bg-white/5 rounded-lg">
-            <div className="text-2xl font-bold text-white">{memberships.length}</div>
-            <div className="text-xs text-white/60">Total Subscriptions</div>
-          </div>
-        </div>
-      </OtwCard>
+      <MembershipSummaryGrid
+        totalActive={totalActive}
+        totalCancelled={totalCancelled}
+        totalPastDue={totalPastDue}
+        totalSubscriptions={memberships.length}
+        businessMembershipCount={businessMetrics.businessMembershipCount}
+        businessProfilesOnFile={businessMetrics.businessProfilesOnFile}
+        businessProfilesMissing={businessMetrics.businessProfilesMissing}
+        businessProfileCompletionRate={businessMetrics.businessProfileCompletionRate}
+      />
 
       <OtwCard className="mt-3">
         <div className="overflow-x-auto">
@@ -437,6 +592,7 @@ function MembershipsContent({
               <tr>
                 <th className="text-left px-4 py-3">Member</th>
                 <th className="text-left px-4 py-3">Plan</th>
+                <th className="text-left px-4 py-3">Business Profile</th>
                 <th className="text-left px-4 py-3">Status</th>
                 <th className="text-left px-4 py-3">Period End</th>
                 <th className="text-left px-4 py-3">Renews</th>
@@ -459,6 +615,9 @@ function MembershipsContent({
                         <div className="text-xs text-white/50">{membership.plan.description}</div>
                       ) : null}
                     </div>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <BusinessProfileCell membership={membership} />
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

@@ -112,6 +112,27 @@ enum OverageStatus {
   FAILED
 }
 
+enum BusinessIndustryType {
+  PROFESSIONAL_SERVICES
+  REAL_ESTATE
+  HEALTHCARE
+  LEGAL
+  CONSTRUCTION
+  HOSPITALITY
+  RETAIL
+  MANUFACTURING
+  LOGISTICS
+  AUTOMOTIVE
+  EDUCATION
+  NONPROFIT
+  GOVERNMENT
+  FINANCIAL_SERVICES
+  TECHNOLOGY
+  PROPERTY_MANAGEMENT
+  RELIGIOUS_ORGANIZATION
+  OTHER
+}
+
 enum DriverTier {
   PROBATION
   STANDARD
@@ -164,6 +185,7 @@ model User {
   nipTransactions    NipTransaction[]
   paymentTransactions PaymentTransaction[]
   franchiseProfile   FranchiseProfile?
+  businessMembershipProfile BusinessMembershipProfile?
   driverApplications DriverApplication[]
   deliveryRequests   DeliveryRequest[]
   overageInvoicePeriods OverageInvoicePeriod[]
@@ -515,8 +537,38 @@ model MembershipSubscription {
   renewsAt         DateTime?
   currentPeriodEnd DateTime?
 
-  user User           @relation(fields: [userId], references: [id])
-  plan MembershipPlan? @relation(fields: [planId], references: [id])
+  user User                     @relation(fields: [userId], references: [id])
+  plan MembershipPlan?          @relation(fields: [planId], references: [id])
+  businessProfile BusinessMembershipProfile?
+}
+
+model BusinessMembershipProfile {
+  id                          String               @id @default(cuid())
+  membershipId                String               @unique
+  userId                      String               @unique
+  businessLegalName           String
+  employeeCount               Int
+  primaryBusinessStreetAddress String
+  primaryBusinessCity         String
+  primaryBusinessStateProvince String
+  primaryBusinessPostalCode   String
+  primaryBusinessCountry      String
+  industryType                BusinessIndustryType
+  primaryContactFullName      String
+  primaryContactEmail         String
+  primaryContactPhone         String
+  businessWebsiteUrl          String?
+  taxIdVatNumber              String?
+  validatedAddress            String?
+  addressValidatedAt          DateTime?
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+
+  membership MembershipSubscription @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([industryType])
+  @@index([businessLegalName])
 }
 
 model PaymentTransaction {

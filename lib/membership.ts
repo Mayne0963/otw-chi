@@ -35,6 +35,16 @@ export type MembershipPlanCode =
 
 export type DeliveryRequestPaymentPreference = 'INSTANT' | 'MONTHLY';
 
+export function isBusinessMembershipPlanName(planName: string | null | undefined): boolean {
+  if (!planName) return false;
+  const normalizedName = planName.trim().toUpperCase();
+  return (
+    normalizedName.startsWith('OTW BUSINESS') ||
+    normalizedName === 'OTW TRUE' ||
+    normalizedName === 'OTW ENTERPRISE'
+  );
+}
+
 export function getPlanCodeFromSubscription(
   sub: (MembershipSubscription & { plan: MembershipPlan | null }) | null
 ): MembershipPlanCode {
@@ -46,7 +56,7 @@ export function getPlanCodeFromSubscription(
   if (name === 'OTW PRO') return 'OTW_PRO';
   if (name === 'OTW ELITE') return 'OTW_ELITE';
   if (name === 'OTW BLACK') return 'OTW_BLACK';
-  if (name.startsWith('OTW BUSINESS') || name === 'OTW TRUE' || name === 'OTW ENTERPRISE') {
+  if (isBusinessMembershipPlanName(name)) {
     return 'OTW_BUSINESS';
   }
   
