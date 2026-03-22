@@ -108,6 +108,15 @@ function buildSummaryWebsiteLabel(url: string | null) {
   return url.replace(/^https?:\/\//i, '');
 }
 
+const formLabelClassName =
+  'text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88';
+
+const formControlClassName =
+  'border-white/10 bg-white/[0.07] text-white placeholder:text-white/35 shadow-none hover:border-white/20 focus-visible:border-otwGold/60 focus-visible:ring-otwGold/70 focus-visible:ring-offset-[#0c0f14]';
+
+const sectionSurfaceClassName =
+  'rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.055))] p-5';
+
 export default function BusinessMembershipInvoiceRequestDialog({
   plan,
   requesterDefaults,
@@ -254,7 +263,7 @@ export default function BusinessMembershipInvoiceRequestDialog({
 
           <div className="overflow-y-auto px-5 py-5">
             <div className="space-y-5">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.055))] p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
                   Selected Membership
                 </div>
@@ -282,7 +291,7 @@ export default function BusinessMembershipInvoiceRequestDialog({
 
               {isReviewing && reviewValues ? (
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <div className={sectionSurfaceClassName}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="text-base font-semibold text-white">Review invoice request</div>
@@ -324,9 +333,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                 <form onSubmit={handleReview} className="space-y-5">
                   <div className="grid gap-5 md:grid-cols-2">
                     <div className="md:col-span-2">
-                      <Label htmlFor={`businessLegalName-${plan.name}`}>Business Legal Name</Label>
+                      <Label className={formLabelClassName} htmlFor={`businessLegalName-${plan.name}`}>
+                        Business Legal Name
+                      </Label>
                       <Input
                         id={`businessLegalName-${plan.name}`}
+                        className={formControlClassName}
                         value={values.businessLegalName}
                         onChange={(event) => handleChange('businessLegalName', event.target.value)}
                         placeholder="Acme Logistics Group LLC"
@@ -338,9 +350,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                     </div>
 
                     <div>
-                      <Label htmlFor={`employeeCount-${plan.name}`}>Number of Employees</Label>
+                      <Label className={formLabelClassName} htmlFor={`employeeCount-${plan.name}`}>
+                        Number of Employees
+                      </Label>
                       <Input
                         id={`employeeCount-${plan.name}`}
+                        className={formControlClassName}
                         type="number"
                         min={1}
                         step={1}
@@ -356,9 +371,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                     </div>
 
                     <div>
-                      <Label htmlFor={`industryType-${plan.name}`}>Industry Type</Label>
+                      <Label className={formLabelClassName} htmlFor={`industryType-${plan.name}`}>
+                        Industry Type
+                      </Label>
                       <Select
                         id={`industryType-${plan.name}`}
+                        className={formControlClassName}
                         value={values.industryType}
                         onChange={(event) => handleChange('industryType', event.target.value)}
                         aria-invalid={Boolean(fieldErrors.industryType)}
@@ -376,7 +394,7 @@ export default function BusinessMembershipInvoiceRequestDialog({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <div className={sectionSurfaceClassName}>
                     <div className="text-sm font-semibold text-white">Primary Business Location</div>
                     <div className="mt-1 text-sm text-white/60">
                       U.S. addresses are automatically verified before the invoice request is accepted.
@@ -384,9 +402,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
 
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                       <div className="md:col-span-2">
-                        <Label htmlFor={`primaryBusinessStreetAddress-${plan.name}`}>Street Address</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryBusinessStreetAddress-${plan.name}`}>
+                          Street Address
+                        </Label>
                         <Input
                           id={`primaryBusinessStreetAddress-${plan.name}`}
+                          className={formControlClassName}
                           value={values.primaryBusinessStreetAddress}
                           onChange={(event) => handleChange('primaryBusinessStreetAddress', event.target.value)}
                           placeholder="123 Main Street"
@@ -397,9 +418,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                       </div>
 
                       <div>
-                        <Label htmlFor={`primaryBusinessCity-${plan.name}`}>City</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryBusinessCity-${plan.name}`}>
+                          City
+                        </Label>
                         <Input
                           id={`primaryBusinessCity-${plan.name}`}
+                          className={formControlClassName}
                           value={values.primaryBusinessCity}
                           onChange={(event) => handleChange('primaryBusinessCity', event.target.value)}
                           placeholder="Fort Wayne"
@@ -410,9 +434,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                       </div>
 
                       <div>
-                        <Label htmlFor={`primaryBusinessStateProvince-${plan.name}`}>State / Province</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryBusinessStateProvince-${plan.name}`}>
+                          State / Province
+                        </Label>
                         <Input
                           id={`primaryBusinessStateProvince-${plan.name}`}
+                          className={formControlClassName}
                           value={values.primaryBusinessStateProvince}
                           onChange={(event) => handleChange('primaryBusinessStateProvince', event.target.value)}
                           placeholder="Indiana"
@@ -423,9 +450,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                       </div>
 
                       <div>
-                        <Label htmlFor={`primaryBusinessPostalCode-${plan.name}`}>Postal Code</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryBusinessPostalCode-${plan.name}`}>
+                          Postal Code
+                        </Label>
                         <Input
                           id={`primaryBusinessPostalCode-${plan.name}`}
+                          className={formControlClassName}
                           value={values.primaryBusinessPostalCode}
                           onChange={(event) => handleChange('primaryBusinessPostalCode', event.target.value)}
                           placeholder="46802"
@@ -436,9 +466,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                       </div>
 
                       <div>
-                        <Label htmlFor={`primaryBusinessCountry-${plan.name}`}>Country</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryBusinessCountry-${plan.name}`}>
+                          Country
+                        </Label>
                         <Select
                           id={`primaryBusinessCountry-${plan.name}`}
+                          className={formControlClassName}
                           value={values.primaryBusinessCountry}
                           onChange={(event) => handleChange('primaryBusinessCountry', event.target.value)}
                           aria-invalid={Boolean(fieldErrors.primaryBusinessCountry)}
@@ -456,7 +489,7 @@ export default function BusinessMembershipInvoiceRequestDialog({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <div className={sectionSurfaceClassName}>
                     <div className="text-sm font-semibold text-white">Primary Contact Person for Membership</div>
                     <div className="mt-1 text-sm text-white/60">
                       This contact will receive invoice setup and business-membership follow-up from OTW.
@@ -464,9 +497,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
 
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                       <div>
-                        <Label htmlFor={`primaryContactFullName-${plan.name}`}>Full Name</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryContactFullName-${plan.name}`}>
+                          Full Name
+                        </Label>
                         <Input
                           id={`primaryContactFullName-${plan.name}`}
+                          className={formControlClassName}
                           value={values.primaryContactFullName}
                           onChange={(event) => handleChange('primaryContactFullName', event.target.value)}
                           placeholder="Jordan Smith"
@@ -477,9 +513,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                       </div>
 
                       <div>
-                        <Label htmlFor={`primaryContactEmail-${plan.name}`}>Email Address</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryContactEmail-${plan.name}`}>
+                          Email Address
+                        </Label>
                         <Input
                           id={`primaryContactEmail-${plan.name}`}
+                          className={formControlClassName}
                           type="email"
                           value={values.primaryContactEmail}
                           onChange={(event) => handleChange('primaryContactEmail', event.target.value)}
@@ -491,9 +530,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                       </div>
 
                       <div className="md:col-span-2">
-                        <Label htmlFor={`primaryContactPhone-${plan.name}`}>Phone Number</Label>
+                        <Label className={formLabelClassName} htmlFor={`primaryContactPhone-${plan.name}`}>
+                          Phone Number
+                        </Label>
                         <Input
                           id={`primaryContactPhone-${plan.name}`}
+                          className={formControlClassName}
                           type="tel"
                           value={values.primaryContactPhone}
                           onChange={(event) => handleChange('primaryContactPhone', event.target.value)}
@@ -506,7 +548,7 @@ export default function BusinessMembershipInvoiceRequestDialog({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <div className={sectionSurfaceClassName}>
                     <div className="text-sm font-semibold text-white">Optional Details</div>
                     <div className="mt-1 text-sm text-white/60">
                       These fields help OTW prepare invoice setup and regional billing requirements.
@@ -514,9 +556,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
 
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                       <div>
-                        <Label htmlFor={`businessWebsiteUrl-${plan.name}`}>Business Website URL</Label>
+                        <Label className={formLabelClassName} htmlFor={`businessWebsiteUrl-${plan.name}`}>
+                          Business Website URL
+                        </Label>
                         <Input
                           id={`businessWebsiteUrl-${plan.name}`}
+                          className={formControlClassName}
                           type="url"
                           value={values.businessWebsiteUrl}
                           onChange={(event) => handleChange('businessWebsiteUrl', event.target.value)}
@@ -528,9 +573,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
                       </div>
 
                       <div>
-                        <Label htmlFor={`taxIdVatNumber-${plan.name}`}>Tax Identification Number / VAT Number</Label>
+                        <Label className={formLabelClassName} htmlFor={`taxIdVatNumber-${plan.name}`}>
+                          Tax Identification Number / VAT Number
+                        </Label>
                         <Input
                           id={`taxIdVatNumber-${plan.name}`}
+                          className={formControlClassName}
                           value={values.taxIdVatNumber}
                           onChange={(event) => handleChange('taxIdVatNumber', event.target.value)}
                           placeholder="12-3456789"
