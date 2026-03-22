@@ -80,12 +80,12 @@ function buildInitialDraft(plan: InvoiceRequestPlan, requesterDefaults?: Request
 }
 
 function FieldHelp({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1 text-xs leading-5 text-white/55">{children}</p>;
+  return <p className="mt-1 text-xs leading-5 text-muted-foreground dark:text-white/55">{children}</p>;
 }
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="mt-1 text-xs leading-5 text-red-300">{message}</p>;
+  return <p className="mt-1 text-xs leading-5 text-red-700 dark:text-red-300">{message}</p>;
 }
 
 function ReviewItem({
@@ -96,9 +96,11 @@ function ReviewItem({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-black/25 p-3">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{label}</div>
-      <div className="mt-2 text-sm text-white/90">{value}</div>
+    <div className="rounded-lg border border-border/70 bg-muted/40 p-3 dark:border-white/10 dark:bg-black/25">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-white/45">
+        {label}
+      </div>
+      <div className="mt-2 text-sm text-foreground dark:text-white/90">{value}</div>
     </div>
   );
 }
@@ -109,13 +111,13 @@ function buildSummaryWebsiteLabel(url: string | null) {
 }
 
 const formLabelClassName =
-  'text-[11px] font-semibold uppercase tracking-[0.16em] text-white/88';
+  'text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground dark:text-white/88';
 
 const formControlClassName =
-  'border-white/10 bg-white/[0.07] text-white placeholder:text-white/35 shadow-none hover:border-white/20 focus-visible:border-otwGold/60 focus-visible:ring-otwGold/70 focus-visible:ring-offset-[#0c0f14]';
+  'border-border/70 bg-input text-foreground placeholder:text-muted-foreground shadow-none hover:border-secondary/60 focus-visible:ring-ring/80 focus-visible:ring-offset-background dark:border-white/10 dark:bg-white/[0.07] dark:text-white dark:placeholder:text-white/35 dark:hover:border-white/20 dark:focus-visible:border-otwGold/60 dark:focus-visible:ring-otwGold/70 dark:focus-visible:ring-offset-[#0c0f14]';
 
 const sectionSurfaceClassName =
-  'rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.055))] p-5';
+  'rounded-2xl border border-border/70 bg-muted/40 p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.055))]';
 
 export default function BusinessMembershipInvoiceRequestDialog({
   plan,
@@ -242,20 +244,20 @@ export default function BusinessMembershipInvoiceRequestDialog({
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:pointer-events-none" />
-        <Dialog.Content className="otw-inverse-surface fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#0c0f14]/95 text-white shadow-2xl backdrop-blur-xl focus:outline-none">
-          <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card/95 text-foreground shadow-otwElevated backdrop-blur-xl focus:outline-none dark:border-white/15 dark:bg-[#0c0f14]/95 dark:text-white">
+          <div className="flex items-start justify-between gap-3 border-b border-border/70 px-5 py-4 dark:border-white/10">
             <div>
-              <Dialog.Title className="text-lg font-semibold text-white">
+              <Dialog.Title className="text-lg font-semibold text-foreground dark:text-white">
                 Request Invoice for {plan.name}
               </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-white/60">
+              <Dialog.Description className="mt-1 text-sm text-muted-foreground dark:text-white/60">
                 Enter your business information now so OTW can review the account and prepare invoice-based membership onboarding for {plan.price}.
               </Dialog.Description>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md border border-white/20 px-2 py-1 text-xs font-medium text-white/85 transition hover:border-white/40 hover:text-white"
+              className="rounded-md border border-border/70 px-2 py-1 text-xs font-medium text-muted-foreground transition hover:border-secondary/60 hover:text-foreground dark:border-white/20 dark:text-white/85 dark:hover:border-white/40 dark:hover:text-white"
             >
               Close
             </button>
@@ -263,28 +265,30 @@ export default function BusinessMembershipInvoiceRequestDialog({
 
           <div className="overflow-y-auto px-5 py-5">
             <div className="space-y-5">
-              <div className="rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.055))] p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">
+              <div className="rounded-xl border border-border/70 bg-muted/40 p-4 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.055))]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-white/45">
                   Selected Membership
                 </div>
-                <div className="mt-2 text-base font-medium text-white">{plan.name}</div>
-                <div className="mt-1 text-sm text-white/60">{plan.price}</div>
+                <div className="mt-2 text-base font-medium text-foreground dark:text-white">{plan.name}</div>
+                <div className="mt-1 text-sm text-muted-foreground dark:text-white/60">{plan.price}</div>
               </div>
 
               {successMessage ? (
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-200">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
                     <span>{successMessage}</span>
                   </div>
                   {validatedAddress ? (
-                    <div className="mt-2 text-xs text-emerald-100/80">Verified address: {validatedAddress}</div>
+                    <div className="mt-2 text-xs text-emerald-700/80 dark:text-emerald-100/80">
+                      Verified address: {validatedAddress}
+                    </div>
                   ) : null}
                 </div>
               ) : null}
 
               {formError ? (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-200">
                   {formError}
                 </div>
               ) : null}
@@ -294,8 +298,8 @@ export default function BusinessMembershipInvoiceRequestDialog({
                   <div className={sectionSurfaceClassName}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <div className="text-base font-semibold text-white">Review invoice request</div>
-                        <div className="mt-1 text-sm text-white/60">
+                        <div className="text-base font-semibold text-foreground dark:text-white">Review invoice request</div>
+                        <div className="mt-1 text-sm text-muted-foreground dark:text-white/60">
                           Confirm the business details below before sending this invoice request to OTW.
                         </div>
                       </div>
@@ -395,8 +399,8 @@ export default function BusinessMembershipInvoiceRequestDialog({
                   </div>
 
                   <div className={sectionSurfaceClassName}>
-                    <div className="text-sm font-semibold text-white">Primary Business Location</div>
-                    <div className="mt-1 text-sm text-white/60">
+                    <div className="text-sm font-semibold text-foreground dark:text-white">Primary Business Location</div>
+                    <div className="mt-1 text-sm text-muted-foreground dark:text-white/60">
                       U.S. addresses are automatically verified before the invoice request is accepted.
                     </div>
 
@@ -490,8 +494,8 @@ export default function BusinessMembershipInvoiceRequestDialog({
                   </div>
 
                   <div className={sectionSurfaceClassName}>
-                    <div className="text-sm font-semibold text-white">Primary Contact Person for Membership</div>
-                    <div className="mt-1 text-sm text-white/60">
+                    <div className="text-sm font-semibold text-foreground dark:text-white">Primary Contact Person for Membership</div>
+                    <div className="mt-1 text-sm text-muted-foreground dark:text-white/60">
                       This contact will receive invoice setup and business-membership follow-up from OTW.
                     </div>
 
@@ -549,8 +553,8 @@ export default function BusinessMembershipInvoiceRequestDialog({
                   </div>
 
                   <div className={sectionSurfaceClassName}>
-                    <div className="text-sm font-semibold text-white">Optional Details</div>
-                    <div className="mt-1 text-sm text-white/60">
+                    <div className="text-sm font-semibold text-foreground dark:text-white">Optional Details</div>
+                    <div className="mt-1 text-sm text-muted-foreground dark:text-white/60">
                       These fields help OTW prepare invoice setup and regional billing requirements.
                     </div>
 
