@@ -25,6 +25,37 @@ function normalizeEmail(value: string | null | undefined) {
   return trimmed || null;
 }
 
+function serializeApplicationSummary<T extends {
+  id: string;
+  status: DriverApplicationStatus;
+  city: string;
+  vehicleType: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  availability: string | null;
+  whyOtwAnswer: string | null;
+  message: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}>(application: T | null) {
+  if (!application) return null;
+
+  return {
+    id: application.id,
+    status: application.status,
+    city: application.city,
+    vehicleType: application.vehicleType,
+    fullName: application.fullName,
+    email: application.email,
+    phone: application.phone,
+    availability: application.availability,
+    whyOtwAnswer: application.message ?? application.whyOtwAnswer ?? null,
+    createdAt: application.createdAt,
+    updatedAt: application.updatedAt,
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getNeonSession();
@@ -96,14 +127,22 @@ export async function POST(req: Request) {
         id: true,
         status: true,
         email: true,
+        phone: true,
         city: true,
         vehicleType: true,
+        availability: true,
+        whyOtwAnswer: true,
+        message: true,
         fullName: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
-    return NextResponse.json({ success: true, application: created });
+    return NextResponse.json({
+      success: true,
+      application: serializeApplicationSummary(created),
+    });
   } catch (error) {
     console.error('Driver application error:', error);
     return new NextResponse('Invalid application data', { status: 400 });
@@ -156,12 +195,16 @@ export async function GET() {
         vehicleType: true,
         fullName: true,
         email: true,
+        phone: true,
+        availability: true,
+        whyOtwAnswer: true,
+        message: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    return NextResponse.json({ application });
+    return NextResponse.json({ application: serializeApplicationSummary(application) });
   } catch (error) {
     console.error('Driver application lookup error:', error);
     return new NextResponse('Unable to load application status', { status: 500 });

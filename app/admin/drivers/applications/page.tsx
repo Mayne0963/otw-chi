@@ -9,6 +9,10 @@ import { revalidatePath } from 'next/cache';
 import { DriverApplicationStatus, DriverCandidateProfile } from '@prisma/client';
 
 const scoreOptions = [1, 2, 3, 4, 5] as const;
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
 
 function parseScore(raw: FormDataEntryValue | null) {
   const n = Number(raw);
@@ -16,6 +20,70 @@ function parseScore(raw: FormDataEntryValue | null) {
   const i = Math.trunc(n);
   if (i < 1 || i > 5) return null;
   return i;
+}
+
+function formatDateTime(value: Date | null | undefined) {
+  if (!value) return 'Not recorded';
+  return dateTimeFormatter.format(value);
+}
+
+function getStatusTone(status: DriverApplicationStatus) {
+  if (status === 'APPROVED') return 'bg-green-500/20 text-green-400 border border-green-500/30';
+  if (status === 'DENIED') return 'bg-red-500/20 text-red-400 border border-red-500/30';
+  if (status === 'WAITLIST') return 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30';
+  return 'bg-white/10 text-white/70 border border-white/20';
+}
+
+function formatCandidateProfileLabel(profile: DriverCandidateProfile | null) {
+  return profile ? profile.replaceAll('_', ' ') : 'Unspecified';
+}
+
+function normalizePhoneHref(phone: string) {
+  const digits = phone.replace(/[^\d+]/g, '');
+  return digits.startsWith('+') ? digits : digits.replace(/[^\d]/g, '');
+}
+
+function DetailField({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string | null | undefined;
+  href?: string;
+}) {
+  const displayValue = value?.trim() ? value : 'Not provided';
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{label}</div>
+      <div className="mt-2 text-sm text-white">
+        {href && value?.trim() ? (
+          <a href={href} className="underline decoration-white/20 underline-offset-4 transition hover:text-otwGold">
+            {displayValue}
+          </a>
+        ) : (
+          displayValue
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ResponseField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{label}</div>
+      <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white/85">
+        {value?.trim() ? value : 'No response provided.'}
+      </div>
+    </div>
+  );
 }
 
 async function updateStatus(formData: FormData) {
@@ -180,248 +248,280 @@ export default async function AdminDriverApplicationsPage() {
 
       <div className="grid gap-4 mt-6">
         {applications.map((app) => (
-            <OtwCard key={app.id} className="p-6">
-                <div className="flex justify-between items-start mb-4">
+          <OtwCard key={app.id} className="p-6">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <div className="text-lg font-semibold text-white">{app.fullName}</div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/55">
+                  <a
+                    href={`mailto:${app.email}`}
+                    className="underline decoration-white/15 underline-offset-4 transition hover:text-otwGold"
+                  >
+                    {app.email}
+                  </a>
+                  <a
+                    href={`tel:${normalizePhoneHref(app.phone)}`}
+                    className="underline decoration-white/15 underline-offset-4 transition hover:text-otwGold"
+                  >
+                    {app.phone}
+                  </a>
+                  <span>{app.user ? 'Linked account' : 'Guest application'}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded px-2 py-1 text-xs font-medium ${getStatusTone(app.status)}`}>
+                  {app.status}
+                </span>
+                <span className="rounded border border-white/10 bg-black/20 px-2 py-1 text-xs text-white/65">
+                  Min Score {app.minScore ?? '-'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+              <div className="space-y-4">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-sm font-semibold text-white">Application Submission</div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <DetailField label="Full Name" value={app.fullName} />
+                    <DetailField label="Email" value={app.email} href={`mailto:${app.email}`} />
+                    <DetailField label="Phone" value={app.phone} href={`tel:${normalizePhoneHref(app.phone)}`} />
+                    <DetailField label="City" value={app.city} />
+                    <DetailField label="Vehicle Type" value={app.vehicleType} />
+                    <DetailField label="Availability" value={app.availability} />
+                    <DetailField label="Submitted" value={formatDateTime(app.createdAt)} />
+                    <DetailField label="Last Updated" value={formatDateTime(app.updatedAt)} />
+                    <DetailField
+                      label="Linked Account"
+                      value={
+                        app.user
+                          ? [app.user.name, app.user.email].filter(Boolean).join(' • ') || app.user.id
+                          : 'No linked OTW account'
+                      }
+                    />
+                    <DetailField
+                      label="Last Scored"
+                      value={app.scoredAt ? formatDateTime(app.scoredAt) : 'Not scored yet'}
+                    />
+                  </div>
+
+                  <div className="mt-3">
+                    <ResponseField label="Why OTW?" value={app.message ?? app.whyOtwAnswer} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-sm font-semibold text-white">Interview & Scoring</div>
+                  <div className="mt-2 text-xs text-white/50">
+                    Only onboard 4s and 5s. 3s go waitlist. Anything lower is a no.
+                  </div>
+                  <form action={saveInterview} className="mt-4 space-y-3">
+                    <input type="hidden" name="id" value={app.id} />
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Candidate Profile</div>
+                        <select
+                          name="candidateProfile"
+                          defaultValue={app.candidateProfile ?? ''}
+                          className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                        >
+                          <option value="">Unspecified</option>
+                          {Object.values(DriverCandidateProfile).map((p) => (
+                            <option key={p} value={p}>
+                              {formatCandidateProfileLabel(p)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Saved Profile</div>
+                        <div className="mt-2 text-sm text-white">
+                          {formatCandidateProfileLabel(app.candidateProfile)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-5">
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Patience</div>
+                        <select
+                          name="patienceScore"
+                          defaultValue={app.patienceScore ?? ''}
+                          className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
+                        >
+                          <option value="">-</option>
+                          {scoreOptions.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Comms</div>
+                        <select
+                          name="communicationScore"
+                          defaultValue={app.communicationScore ?? ''}
+                          className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
+                        >
+                          <option value="">-</option>
+                          {scoreOptions.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Reliable</div>
+                        <select
+                          name="reliabilityScore"
+                          defaultValue={app.reliabilityScore ?? ''}
+                          className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
+                        >
+                          <option value="">-</option>
+                          {scoreOptions.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Attitude</div>
+                        <select
+                          name="attitudeScore"
+                          defaultValue={app.attitudeScore ?? ''}
+                          className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
+                        >
+                          <option value="">-</option>
+                          {scoreOptions.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Aligned</div>
+                        <select
+                          name="alignmentScore"
+                          defaultValue={app.alignmentScore ?? ''}
+                          className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
+                        >
+                          <option value="">-</option>
+                          {scoreOptions.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
-                        <div className="text-lg font-semibold text-white">{app.fullName}</div>
-                        <p className="text-sm text-white/50">{app.email} • {app.phone}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        app.status === 'APPROVED' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
-                        app.status === 'DENIED' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 
-                        app.status === 'WAITLIST' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
-                        'bg-white/10 text-white/70 border border-white/20'
-                    }`}>
-                        {app.status}
-                    </span>
-                </div>
-                <div>
-                    <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                        <div>
-                            <p className="text-white/50">City</p>
-                            <p>{app.city}</p>
-                        </div>
-                        <div>
-                            <p className="text-white/50">Vehicle</p>
-                            <p>{app.vehicleType}</p>
-                        </div>
-                        {app.availability && (
-                            <div className="col-span-2">
-                                <p className="text-white/50">Availability</p>
-                                <p>{app.availability}</p>
-                            </div>
-                        )}
-                        {app.message && (
-                            <div className="col-span-2">
-                                <p className="text-white/50">Message</p>
-                                <p>{app.message}</p>
-                            </div>
-                        )}
+                      <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Interview Notes</div>
+                      <textarea
+                        name="interviewNotes"
+                        defaultValue={app.interviewNotes ?? ''}
+                        className="h-24 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                        placeholder="Interview notes, callbacks, or concerns"
+                      />
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                        <div className="text-sm font-semibold text-white">Scoring (1–5)</div>
-                        <div className="mt-2 text-xs text-white/50">
-                          Only onboard 4s and 5s. 3s go waitlist. Anything lower is a no.
-                        </div>
-                        <form action={saveInterview} className="mt-4 space-y-3">
-                          <input type="hidden" name="id" value={app.id} />
-
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Candidate Profile</div>
-                              <select
-                                name="candidateProfile"
-                                defaultValue={app.candidateProfile ?? ''}
-                                className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
-                              >
-                                <option value="">Unspecified</option>
-                                {Object.values(DriverCandidateProfile).map((p) => (
-                                  <option key={p} value={p}>
-                                    {p.replaceAll('_', ' ')}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Notes</div>
-                              <input
-                                name="interviewNotes"
-                                defaultValue={app.interviewNotes ?? ''}
-                                className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
-                                placeholder="Interview notes (optional)"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid gap-3 sm:grid-cols-5">
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Patience</div>
-                              <select
-                                name="patienceScore"
-                                defaultValue={app.patienceScore ?? ''}
-                                className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
-                              >
-                                <option value="">-</option>
-                                {scoreOptions.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Comms</div>
-                              <select
-                                name="communicationScore"
-                                defaultValue={app.communicationScore ?? ''}
-                                className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
-                              >
-                                <option value="">-</option>
-                                {scoreOptions.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Reliable</div>
-                              <select
-                                name="reliabilityScore"
-                                defaultValue={app.reliabilityScore ?? ''}
-                                className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
-                              >
-                                <option value="">-</option>
-                                {scoreOptions.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Attitude</div>
-                              <select
-                                name="attitudeScore"
-                                defaultValue={app.attitudeScore ?? ''}
-                                className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
-                              >
-                                <option value="">-</option>
-                                {scoreOptions.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Aligned</div>
-                              <select
-                                name="alignmentScore"
-                                defaultValue={app.alignmentScore ?? ''}
-                                className="w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm text-white"
-                              >
-                                <option value="">-</option>
-                                {scoreOptions.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Time & Patience Answer</div>
-                              <textarea
-                                name="patienceAnswer"
-                                defaultValue={app.patienceAnswer ?? ''}
-                                className="h-20 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
-                              />
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Customer Care Answer</div>
-                              <textarea
-                                name="customerCareAnswer"
-                                defaultValue={app.customerCareAnswer ?? ''}
-                                className="h-20 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
-                              />
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Instructions Answer</div>
-                              <textarea
-                                name="instructionsAnswer"
-                                defaultValue={app.instructionsAnswer ?? ''}
-                                className="h-20 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
-                              />
-                            </div>
-                            <div>
-                              <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Why OTW Answer</div>
-                              <textarea
-                                name="whyOtwAnswer"
-                                defaultValue={app.whyOtwAnswer ?? ''}
-                                className="h-20 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-xs text-white/50">
-                              Min Score: <span className="text-white">{app.minScore ?? '-'}</span>
-                            </div>
-                            <OtwButton type="submit" variant="outline" className="h-8 text-xs">
-                              Save Scoring
-                            </OtwButton>
-                          </div>
-                        </form>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Time & Patience Answer</div>
+                        <textarea
+                          name="patienceAnswer"
+                          defaultValue={app.patienceAnswer ?? ''}
+                          className="h-24 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                        />
                       </div>
-
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                        <div className="text-sm font-semibold text-white">Decision</div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <form action={updateStatus}>
-                            <input type="hidden" name="id" value={app.id} />
-                            <input type="hidden" name="status" value="APPROVED" />
-                            <OtwButton type="submit" variant="outline" className="h-8 text-xs border-green-600/50 text-green-500 hover:bg-green-600/10 hover:text-green-400">
-                              Approve
-                            </OtwButton>
-                          </form>
-                          <form action={updateStatus}>
-                            <input type="hidden" name="id" value={app.id} />
-                            <input type="hidden" name="status" value="WAITLIST" />
-                            <OtwButton type="submit" variant="outline" className="h-8 text-xs border-yellow-500/50 text-yellow-300 hover:bg-yellow-600/10 hover:text-yellow-200">
-                              Waitlist
-                            </OtwButton>
-                          </form>
-                          <form action={updateStatus}>
-                            <input type="hidden" name="id" value={app.id} />
-                            <input type="hidden" name="status" value="DENIED" />
-                            <OtwButton type="submit" variant="red" className="h-8 text-xs">
-                              Deny
-                            </OtwButton>
-                          </form>
-                          <form action={updateStatus}>
-                            <input type="hidden" name="id" value={app.id} />
-                            <input type="hidden" name="status" value="PENDING" />
-                            <OtwButton type="submit" variant="outline" className="h-8 text-xs">
-                              Reset to Pending
-                            </OtwButton>
-                          </form>
-                        </div>
-
-                        <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3 text-sm text-white/80">
-                          <div className="text-xs uppercase tracking-wider text-white/50">Use This Verbatim</div>
-                          <div className="mt-2">
-                            OTW pays hourly for active time, plus bonuses for great service. Hit your times. Treat people right. Get 5 stars. You keep 100% of your tips.
-                          </div>
-                        </div>
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Customer Care Answer</div>
+                        <textarea
+                          name="customerCareAnswer"
+                          defaultValue={app.customerCareAnswer ?? ''}
+                          className="h-24 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Instructions Answer</div>
+                        <textarea
+                          name="instructionsAnswer"
+                          defaultValue={app.instructionsAnswer ?? ''}
+                          className="h-24 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 text-xs uppercase tracking-wider text-white/50">Interview / Updated Why OTW</div>
+                        <textarea
+                          name="whyOtwAnswer"
+                          defaultValue={app.whyOtwAnswer ?? app.message ?? ''}
+                          className="h-24 w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                        />
                       </div>
                     </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-white/50">
+                        Auto status from scores: <span className="text-white">{app.minScore ?? '-'}</span>
+                      </div>
+                      <OtwButton type="submit" variant="outline" className="h-8 text-xs">
+                        Save Scoring
+                      </OtwButton>
+                    </div>
+                  </form>
                 </div>
-            </OtwCard>
+
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-sm font-semibold text-white">Decision</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <form action={updateStatus}>
+                      <input type="hidden" name="id" value={app.id} />
+                      <input type="hidden" name="status" value="APPROVED" />
+                      <OtwButton type="submit" variant="outline" className="h-8 text-xs border-green-600/50 text-green-500 hover:bg-green-600/10 hover:text-green-400">
+                        Approve
+                      </OtwButton>
+                    </form>
+                    <form action={updateStatus}>
+                      <input type="hidden" name="id" value={app.id} />
+                      <input type="hidden" name="status" value="WAITLIST" />
+                      <OtwButton type="submit" variant="outline" className="h-8 text-xs border-yellow-500/50 text-yellow-300 hover:bg-yellow-600/10 hover:text-yellow-200">
+                        Waitlist
+                      </OtwButton>
+                    </form>
+                    <form action={updateStatus}>
+                      <input type="hidden" name="id" value={app.id} />
+                      <input type="hidden" name="status" value="DENIED" />
+                      <OtwButton type="submit" variant="red" className="h-8 text-xs">
+                        Deny
+                      </OtwButton>
+                    </form>
+                    <form action={updateStatus}>
+                      <input type="hidden" name="id" value={app.id} />
+                      <input type="hidden" name="status" value="PENDING" />
+                      <OtwButton type="submit" variant="outline" className="h-8 text-xs">
+                        Reset to Pending
+                      </OtwButton>
+                    </form>
+                  </div>
+
+                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3 text-sm text-white/80">
+                    <div className="text-xs uppercase tracking-wider text-white/50">Use This Verbatim</div>
+                    <div className="mt-2">
+                      OTW pays hourly for active time, plus bonuses for great service. Hit your times. Treat people right. Get 5 stars. You keep 100% of your tips.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </OtwCard>
         ))}
         {applications.length === 0 && (
             <OtwCard className="p-8 text-center">

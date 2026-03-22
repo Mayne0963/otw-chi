@@ -18,9 +18,18 @@ type ExistingDriverApplication = {
   vehicleType: string;
   fullName: string;
   email: string;
+  phone: string;
+  availability: string | null;
+  whyOtwAnswer: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+function formatApplicationDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown';
+  return date.toLocaleString();
+}
 
 export default function DriverApplyPage() {
   const { user } = useCurrentUser();
@@ -88,7 +97,7 @@ export default function DriverApplyPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -191,6 +200,15 @@ export default function DriverApplyPage() {
           ? 'text-red-200 border-red-500/30 bg-red-500/10'
           : 'text-white/80 border-white/20 bg-white/5';
 
+  const statusCopy = existingApplication
+    ? {
+        APPROVED: 'You have been approved. Watch your email for onboarding and next steps.',
+        WAITLIST: 'You are on the waitlist right now. We will reach back out if a spot opens.',
+        DENIED: 'This application is closed. You can submit a new one later if circumstances change.',
+        PENDING: 'Your application is in review. You can withdraw it if needed.',
+      }[existingApplication.status]
+    : '';
+
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Apply as OTW Driver" subtitle="Join the team and earn fair payouts." />
@@ -202,12 +220,12 @@ export default function DriverApplyPage() {
               Checking your application status...
             </div>
           ) : existingApplication ? (
-            <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4">
+            <div className="space-y-4 rounded-md border border-white/10 bg-black/20 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-white">Your Application</div>
+                  <div className="text-sm font-semibold text-white">{existingApplication.fullName}</div>
                   <div className="text-xs text-white/60">
-                    {existingApplication.city} • {existingApplication.vehicleType}
+                    Submitted {formatApplicationDate(existingApplication.createdAt)}
                   </div>
                 </div>
                 <span
@@ -216,11 +234,52 @@ export default function DriverApplyPage() {
                   {existingApplication.status}
                 </span>
               </div>
+
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                  Status
+                </div>
+                <div className="mt-2 text-sm text-white/80">{statusCopy}</div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">Email</div>
+                  <div className="mt-2 text-sm text-white">{existingApplication.email}</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">Phone</div>
+                  <div className="mt-2 text-sm text-white">{existingApplication.phone}</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">City</div>
+                  <div className="mt-2 text-sm text-white">{existingApplication.city}</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">Vehicle Type</div>
+                  <div className="mt-2 text-sm text-white">{existingApplication.vehicleType}</div>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/5 p-3 sm:col-span-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">Availability</div>
+                  <div className="mt-2 text-sm text-white">
+                    {existingApplication.availability || 'Not provided'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">Why OTW?</div>
+                <div className="mt-2 whitespace-pre-wrap text-sm text-white/85">
+                  {existingApplication.whyOtwAnswer || 'No response on file.'}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/55">
+                <span>Last updated {formatApplicationDate(existingApplication.updatedAt)}</span>
+              </div>
+
               {existingApplication.status === 'PENDING' ? (
                 <div className="space-y-2">
-                  <div className="text-xs text-white/65">
-                    Your application is in review. You can withdraw it if needed.
-                  </div>
                   <Button
                     type="button"
                     variant="outline"
