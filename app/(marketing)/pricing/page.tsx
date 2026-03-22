@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import PlanCheckoutButton from '@/components/membership/PlanCheckoutButton';
 import BusinessPlansGrid from '@/components/membership/BusinessPlansGrid';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -200,6 +201,14 @@ export default async function PricingPage() {
       <div className="text-center space-y-2">
         <h1 className="text-4xl font-bold">Membership Plans</h1>
         <p className="text-white/70">Life doesn’t charge by the mile. Neither do we.</p>
+        <div className="pt-1">
+          <Link
+            href="/pricing/compare"
+            className="inline-flex h-9 items-center rounded-md border border-white/20 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/10"
+          >
+            Compare Memberships
+          </Link>
+        </div>
         {!stripeReady && (
           <p className="text-xs text-amber-200">
             Stripe checkout is not fully configured. Plans are view-only for now.

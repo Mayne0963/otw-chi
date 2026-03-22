@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -126,10 +127,18 @@ export default async function MembershipPage() {
 
   return (
     <OtwPageShell>
-      <OtwSectionHeader 
-        title="Membership Plans" 
-        subtitle="Upgrade your OTW experience with exclusive benefits." 
+      <OtwSectionHeader
+        title="Membership Plans"
+        subtitle="Upgrade your OTW experience with exclusive benefits."
       />
+      <div className="mt-4">
+        <Link
+          href="/pricing/compare"
+          className="inline-flex h-9 items-center rounded-md border border-white/20 bg-white/5 px-3 text-xs font-semibold text-white/85 hover:bg-white/10"
+        >
+          Compare Memberships
+        </Link>
+      </div>
       {!stripeReady && (
         <div className="mt-4 rounded-lg border border-amber-200/30 bg-amber-200/10 p-3 text-sm text-amber-100">
           Stripe is not fully configured in this environment. Plan checkout is disabled.
