@@ -101,7 +101,7 @@ export default async function MembershipPage() {
     },
     {
       name: 'OTW TRUE',
-      price: '$1,499 / month',
+      price: 'Starting at $1,499 / month',
       miles: 1_200,
       users: 'Up to 50',
       rollover: 'Rollover up to 600',

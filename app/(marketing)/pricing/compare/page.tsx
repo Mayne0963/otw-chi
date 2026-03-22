@@ -88,7 +88,7 @@ const comparePlans: MembershipComparePlan[] = [
     id: 'otw-true',
     name: 'OTW TRUE',
     section: 'business',
-    price: '$1,499 / month',
+    price: 'Starting at $1,499 / month',
     serviceMiles: '1,200 / month',
     rollover: 'Rollover up to 600',
     users: 'Up to 50',
@@ -134,4 +134,3 @@ export default function CompareMembershipsPage() {
     </div>
   );
 }
-
