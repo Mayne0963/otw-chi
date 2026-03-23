@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { countPhoneDigits, formatPhoneNumber } from '@/lib/phone';
 
 export const BUSINESS_COUNTRY_VALUES = [
   'US',
@@ -129,10 +130,6 @@ function normalizeWebsiteUrl(value: string | null | undefined): string | null {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-function countPhoneDigits(value: string): number {
-  return value.replace(/\D/g, '').length;
-}
-
 export const businessMembershipProfileFormSchema = z.object({
   businessLegalName: z
     .string()
@@ -190,6 +187,7 @@ export const businessMembershipProfileFormSchema = z.object({
     .trim()
     .min(7, 'Enter a valid phone number.')
     .max(32, 'Phone number is too long.')
+    .transform((value) => formatPhoneNumber(value))
     .refine((value) => countPhoneDigits(value) >= 10, 'Phone number must include at least 10 digits.'),
   businessWebsiteUrl: z
     .string()

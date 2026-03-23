@@ -4,13 +4,18 @@ import { getPrisma } from '@/lib/db';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { DriverApplicationStatus } from '@prisma/client';
+import { countPhoneDigits, formatPhoneNumber } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
 const applicationSchema = z.object({
   fullName: z.string().trim().min(2),
   email: z.string().trim().email(),
-  phone: z.string().trim().min(10),
+  phone: z
+    .string()
+    .trim()
+    .transform((value) => formatPhoneNumber(value))
+    .refine((value) => countPhoneDigits(value) >= 10, 'Phone number must include at least 10 digits.'),
   city: z.string().trim().min(2),
   vehicleType: z.string().trim().min(2),
   availability: z.string().trim().min(1),

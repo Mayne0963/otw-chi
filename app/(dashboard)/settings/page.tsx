@@ -3,8 +3,10 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import PhoneInput from '@/components/ui/phone-input';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
+import { normalizeOptionalPhone } from '@/lib/phone';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -132,10 +134,9 @@ export default async function SettingsPage({
                 >
                   Phone
                 </label>
-                <Input
+                <PhoneInput
                   id="settings-phone"
                   name="phone"
-                  maxLength={FIELD_LIMITS.phone}
                   defaultValue={profile?.phone ?? ''}
                   placeholder="Phone number"
                 />
@@ -257,7 +258,7 @@ export async function saveSettings(formData: FormData) {
   }
 
   const name = normalizeOptionalText(formData.get('name'), FIELD_LIMITS.name);
-  const phone = normalizeOptionalText(formData.get('phone'), FIELD_LIMITS.phone);
+  const phone = normalizeOptionalPhone(formData.get('phone'));
   const defaultPickup = normalizeOptionalText(
     formData.get('defaultPickup'),
     FIELD_LIMITS.defaultPickup,

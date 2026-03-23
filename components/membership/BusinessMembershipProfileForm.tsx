@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { CheckCircle2, CircleAlert, PencilLine, Save } from 'lucide-react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { Input } from '@/components/ui/input';
+import PhoneInput from '@/components/ui/phone-input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import {
@@ -478,9 +479,8 @@ export default function BusinessMembershipProfileForm({
 
               <div className="md:col-span-2">
                 <Label htmlFor="primaryContactPhone">Phone Number</Label>
-                <Input
+                <PhoneInput
                   id="primaryContactPhone"
-                  type="tel"
                   value={values.primaryContactPhone}
                   onChange={(event) => handleChange('primaryContactPhone', event.target.value)}
                   placeholder="(260) 555-0123"

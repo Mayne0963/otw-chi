@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useCurrentUser } from '@/components/auth/use-current-user';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
+import PhoneInput from '@/components/ui/phone-input';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -337,10 +338,9 @@ export default function DriverApplyPage() {
 
             <div>
               <label htmlFor="phone" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground block mb-1">Phone</label>
-              <input 
+              <PhoneInput
                 id="phone"
                 name="phone"
-                type="tel"
                 required
                 value={formData.phone}
                 onChange={handleChange}

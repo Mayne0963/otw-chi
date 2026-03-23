@@ -3,8 +3,10 @@ import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import PhoneInput from '@/components/ui/phone-input';
 import { getPrisma } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { normalizeOptionalPhone } from '@/lib/phone';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Role } from '@prisma/client';
@@ -27,7 +29,7 @@ export async function updateCustomerAction(formData: FormData) {
   const id = String(formData.get('id') ?? '').trim();
   const nameInput = String(formData.get('name') ?? '').trim();
   const roleInput = String(formData.get('role') ?? '').trim();
-  const phoneInput = String(formData.get('phone') ?? '').trim();
+  const phoneInput = normalizeOptionalPhone(formData.get('phone'));
   const defaultPickupInput = String(formData.get('defaultPickup') ?? '').trim();
   const defaultDropoffInput = String(formData.get('defaultDropoff') ?? '').trim();
 
@@ -57,12 +59,12 @@ export async function updateCustomerAction(formData: FormData) {
     where: { userId: id },
     create: {
       userId: id,
-      phone: phoneInput || null,
+      phone: phoneInput,
       defaultPickup: defaultPickupInput || null,
       defaultDropoff: defaultDropoffInput || null
     },
     update: {
-      phone: phoneInput || null,
+      phone: phoneInput,
       defaultPickup: defaultPickupInput || null,
       defaultDropoff: defaultDropoffInput || null
     }
@@ -195,7 +197,7 @@ export default async function AdminCustomerEditPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-white/60">Phone</label>
-                <input
+                <PhoneInput
                   name="phone"
                   defaultValue={customer.customerProfile?.phone ?? ''}
                   className="mt-2 w-full rounded bg-otwBlack/40 border border-white/15 px-3 py-2 text-sm"
