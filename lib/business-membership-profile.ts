@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { countPhoneDigits, formatPhoneNumber } from '@/lib/phone';
+import type { GeocodedAddress } from '@/lib/geocoding';
 
 export const BUSINESS_COUNTRY_VALUES = [
   'US',
@@ -259,6 +260,16 @@ export function buildBusinessAddressSummary(values: {
   ]
     .filter(Boolean)
     .join(', ');
+}
+
+export function getBusinessAddressFieldsFromGeocodedAddress(address: GeocodedAddress) {
+  return {
+    primaryBusinessStreetAddress: address.streetAddress?.trim() || address.formattedAddress,
+    primaryBusinessCity: address.city?.trim() || '',
+    primaryBusinessStateProvince: address.state?.trim() || '',
+    primaryBusinessPostalCode: address.zipCode?.trim() || '',
+    primaryBusinessCountry: 'US' as const,
+  };
 }
 
 export function shouldValidateBusinessAddress(country: BusinessCountryValue): boolean {

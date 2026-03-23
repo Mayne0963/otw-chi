@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import PhoneInput from '@/components/ui/phone-input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { AddressSearch } from '@/components/ui/address-search';
 import {
   BUSINESS_COUNTRY_OPTIONS,
   BUSINESS_INDUSTRY_OPTIONS,
@@ -15,8 +16,10 @@ import {
   businessMembershipInvoiceRequestSchema,
   formatBusinessCountryLabel,
   formatBusinessIndustryLabel,
+  getBusinessAddressFieldsFromGeocodedAddress,
   getBusinessMembershipProfileFieldErrors,
 } from '@/lib/business-membership-profile';
+import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
 
 type InvoiceRequestPlan = {
   id?: string | null;
@@ -47,6 +50,14 @@ type InvoiceRequestDraft = {
   businessWebsiteUrl: string;
   taxIdVatNumber: string;
 };
+
+const BUSINESS_ADDRESS_FIELD_NAMES = new Set<keyof InvoiceRequestDraft>([
+  'primaryBusinessStreetAddress',
+  'primaryBusinessCity',
+  'primaryBusinessStateProvince',
+  'primaryBusinessPostalCode',
+  'primaryBusinessCountry',
+]);
 
 type InvoiceRequestResponse = {
   success?: boolean;
@@ -135,6 +146,7 @@ export default function BusinessMembershipInvoiceRequestDialog({
   const [isReviewing, setIsReviewing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validatedAddress, setValidatedAddress] = useState<string | null>(null);
+  const [searchedAddress, setSearchedAddress] = useState<GeocodedAddress | null>(null);
 
   const resetDialog = () => {
     setValues(buildInitialDraft(plan, requesterDefaults));
@@ -144,6 +156,7 @@ export default function BusinessMembershipInvoiceRequestDialog({
     setIsReviewing(false);
     setIsSubmitting(false);
     setValidatedAddress(null);
+    setSearchedAddress(null);
   };
 
   const reviewValues = useMemo(() => {
@@ -159,9 +172,35 @@ export default function BusinessMembershipInvoiceRequestDialog({
       delete next[name];
       return next;
     });
+    if (BUSINESS_ADDRESS_FIELD_NAMES.has(name)) {
+      setSearchedAddress(null);
+      setValidatedAddress(null);
+    }
     setFormError(null);
     setSuccessMessage(null);
   };
+
+  const handleBusinessAddressSelect = (address: GeocodedAddress) => {
+    setValues((current) => ({
+      ...current,
+      ...getBusinessAddressFieldsFromGeocodedAddress(address),
+    }));
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.primaryBusinessStreetAddress;
+      delete next.primaryBusinessCity;
+      delete next.primaryBusinessStateProvince;
+      delete next.primaryBusinessPostalCode;
+      delete next.primaryBusinessCountry;
+      return next;
+    });
+    setSearchedAddress(address);
+    setValidatedAddress(null);
+    setFormError(null);
+    setSuccessMessage(null);
+  };
+
+  const searchedAddressLines = searchedAddress ? formatAddressLines(searchedAddress) : null;
 
   const handleReview = (event: React.FormEvent) => {
     event.preventDefault();
@@ -406,6 +445,38 @@ export default function BusinessMembershipInvoiceRequestDialog({
                     </div>
 
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      {values.primaryBusinessCountry === 'US' ? (
+                        <div className="md:col-span-2">
+                          <Label className={formLabelClassName}>Search Address</Label>
+                          <AddressSearch
+                            ariaLabel="Search primary business address"
+                            placeholder="Search for the primary business address"
+                            onSelect={handleBusinessAddressSelect}
+                            className="w-full"
+                          />
+                          <FieldHelp>
+                            Select the official business address to autofill the fields below.
+                          </FieldHelp>
+                          {searchedAddressLines ? (
+                            <div className="mt-2 rounded-lg border border-border/70 bg-muted/40 p-3 text-xs text-foreground/80 dark:border-white/10 dark:bg-black/25 dark:text-white/80">
+                              <div className="font-medium text-foreground dark:text-white">
+                                {searchedAddressLines.primary}
+                              </div>
+                              {searchedAddressLines.secondary ? (
+                                <div className="mt-1 text-muted-foreground dark:text-white/55">
+                                  {searchedAddressLines.secondary}
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="md:col-span-2 rounded-lg border border-border/70 bg-muted/40 p-3 text-xs text-muted-foreground dark:border-white/10 dark:bg-black/25 dark:text-white/65">
+                          Address search is available for U.S. businesses. For other countries, enter the
+                          registered address manually below.
+                        </div>
+                      )}
+
                       <div className="md:col-span-2">
                         <Label className={formLabelClassName} htmlFor={`primaryBusinessStreetAddress-${plan.name}`}>
                           Street Address
