@@ -94,7 +94,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 type LatLng = { lat: number; lng: number };
-type Stop = LatLng & { id: string; label?: string; type?: "pickup" | "dropoff" };
+type Stop = LatLng & { id: string; label?: string; type?: "pickup" | "waypoint" | "dropoff" };
 type RouteResponse = {
   coordinates: Array<{ lat: number; lng: number }> | null;
   polyline: string | null;
@@ -105,7 +105,7 @@ type RouteResponse = {
 interface ApiStopRaw {
   id?: string;
   label?: string;
-  type?: "pickup" | "dropoff";
+  type?: "pickup" | "waypoint" | "dropoff";
   lat?: number;
   lng?: number;
 }
@@ -636,7 +636,13 @@ const DriverMapClient = () => {
     }
   }, [jobId, jobError, jobLoading, driverLocation, stops.length, jobStarted, startJob]);
 
-  const nextStopLabel = activeStop?.label || (activeStop?.type === "pickup" ? "Pickup" : "Dropoff");
+  const nextStopLabel =
+    activeStop?.label ||
+    (activeStop?.type === "pickup"
+      ? "Pickup"
+      : activeStop?.type === "waypoint"
+        ? "Stop"
+        : "Dropoff");
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">

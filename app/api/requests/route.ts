@@ -8,13 +8,18 @@ import {
   getMembershipBenefits,
   getPlanCodeFromSubscription,
 } from '@/lib/membership';
-import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
+import { getMembershipPlanPerks, resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import {
   DEFAULT_DISPATCH_LEAD_MINUTES,
   DEFAULT_SCHEDULE_WINDOW_MINUTES,
   submitDeliveryRequest,
 } from '@/lib/delivery-submit';
+import {
+  buildRequestRouteSnapshot,
+  calculateRequestRouteMiles,
+  getChargeableStopCount,
+} from '@/lib/request-stops';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
@@ -37,9 +42,22 @@ const pickupCodeTypeSchema = z.union([
   z.enum(['QR', 'BARCODE', 'PIN', 'CONFIRMATION']),
   z.literal(''),
 ]);
+const routeStopSchema = z.object({
+  address: z.string().min(5),
+  lat: z.number().finite(),
+  lng: z.number().finite(),
+  label: z.string().max(160).optional(),
+});
 const requestSchema = z.object({
   pickup: z.string().min(5),
   dropoff: z.string().min(5),
+  pickupLat: z.number().finite().optional(),
+  pickupLng: z.number().finite().optional(),
+  pickupLabel: z.string().max(160).optional(),
+  dropoffLat: z.number().finite().optional(),
+  dropoffLng: z.number().finite().optional(),
+  dropoffLabel: z.string().max(160).optional(),
+  intermediateStops: z.array(routeStopSchema).optional(),
   serviceType: z.enum(['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE']),
   notes: z.string().optional(),
   costEstimate: z.number().int().positive().optional(),
@@ -83,8 +101,7 @@ export async function POST(req: Request) {
       userId: user.id,
       email: user.email,
     });
-    const miles = Number(data.milesEstimate);
-    const milesEstimate = Math.max(0, Math.round(miles));
+    const intermediateStops = data.intermediateStops ?? [];
 
     let activeSubscription = null;
     let planCode = getPlanCodeFromSubscription(null);
@@ -98,6 +115,53 @@ export async function POST(req: Request) {
       benefits = getMembershipBenefits(planCode);
       activeSubscription = null;
     }
+
+    const planPerks = getMembershipPlanPerks(activeSubscription?.plan);
+    if (intermediateStops.length > 0 && !planPerks.canUseMultiStop) {
+      return NextResponse.json(
+        { error: 'Multi-stop requests require an active OTW Elite or higher membership.' },
+        { status: 403 },
+      );
+    }
+
+    const pickupLocation =
+      Number.isFinite(data.pickupLat) && Number.isFinite(data.pickupLng)
+        ? {
+            address: data.pickup,
+            lat: Number(data.pickupLat),
+            lng: Number(data.pickupLng),
+            label: data.pickupLabel,
+          }
+        : null;
+    const dropoffLocation =
+      Number.isFinite(data.dropoffLat) && Number.isFinite(data.dropoffLng)
+        ? {
+            address: data.dropoff,
+            lat: Number(data.dropoffLat),
+            lng: Number(data.dropoffLng),
+            label: data.dropoffLabel,
+          }
+        : null;
+    const routeStopsSnapshot = buildRequestRouteSnapshot({
+      pickup: pickupLocation,
+      intermediateStops,
+      dropoff: dropoffLocation,
+    });
+
+    if (intermediateStops.length > 0 && !routeStopsSnapshot) {
+      return NextResponse.json(
+        { error: 'Multi-stop requests require coordinates for every stop.' },
+        { status: 400 },
+      );
+    }
+
+    const miles = routeStopsSnapshot
+      ? calculateRequestRouteMiles(routeStopsSnapshot.stops)
+      : Number(data.milesEstimate);
+    const milesEstimate = Math.max(0, Math.round(miles));
+    const numberOfStops = routeStopsSnapshot
+      ? getChargeableStopCount(routeStopsSnapshot.stops.length)
+      : 1;
 
     const billingMode = activeSubscription?.plan?.overageBillingMode ?? OverageBillingMode.INSTANT;
     const isScheduled = data.isScheduled === true;
@@ -155,7 +219,7 @@ export async function POST(req: Request) {
         travelMinutes,
         waitMinutes: 0,
         sitAndWait: false,
-        numberOfStops: 1,
+        numberOfStops,
         returnOrExchange: false,
         cashHandling: false,
         peakHours: false,
@@ -163,6 +227,9 @@ export async function POST(req: Request) {
         overageBillingModeOverride,
         deliveryFeeCents: pricing.totalCents,
         otwTrueBenefitType: data.otwTrueBenefitType,
+        pickupLocation,
+        dropoffLocation,
+        intermediateStops,
       });
 
       await prisma.deliveryRequest.update({
@@ -254,6 +321,11 @@ export async function POST(req: Request) {
         paymentRequired,
         overageBillingMode: billingMode,
         serviceMilesFinal: milesEstimate,
+        quoteBreakdown: routeStopsSnapshot
+          ? {
+              routeStops: routeStopsSnapshot,
+            }
+          : undefined,
         scheduledStart,
         scheduledFor,
         isScheduled,

@@ -14,7 +14,9 @@ import { serverFeatureFlags } from '@/lib/featureFlags';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
 import RequestRatingPanel from '@/components/requests/RequestRatingPanel';
+import RequestRouteStopList from '@/components/requests/RequestRouteStopList';
 import { isDispatchBlockedByPayment } from '@/lib/request-payment';
+import { getRequestRouteStops } from '@/lib/request-stops';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
 import OrderConfirmationPanel from '@/components/order/OrderConfirmationPanel';
 
@@ -99,6 +101,10 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const canCancelAndRefund =
     isOwner &&
     ['REQUESTED', 'ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status);
+  const routeStops = getRequestRouteStops(request.quoteBreakdown, {
+    pickupAddress: request.pickupAddress,
+    dropoffAddress: request.dropoffAddress,
+  });
   const canOpenDispute = isOwner && request.status === 'DELIVERED';
   const disputeItems = Array.isArray(request.receiptItems)
     ? request.receiptItems.flatMap((rawItem, index) => {
@@ -311,27 +317,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 </div>
               )}
 
-              <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
-                <div className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className="h-2 w-2 rounded-full bg-otwGold mt-2" />
-                    <div className="h-full w-px bg-white/10 my-1" />
-                  </div>
-                  <div className="pb-4">
-                    <div className="text-sm font-medium text-white/60">Pickup</div>
-                    <div className="mt-1 text-white">{request.pickupAddress}</div>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className="h-2 w-2 rounded-full bg-otwGold mt-2" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-white/60">Dropoff</div>
-                    <div className="mt-1 text-white">{request.dropoffAddress}</div>
-                  </div>
-                </div>
-              </div>
+              <RequestRouteStopList stops={routeStops} />
 
               {request.notes && (
                 <div className="space-y-2">

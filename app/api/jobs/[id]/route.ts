@@ -3,6 +3,12 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/roles";
+import { validateAddress } from "@/lib/geocoding";
+import {
+  getRequestRouteStopLabel,
+  getRequestRouteStops,
+  hasRouteStopCoordinates,
+} from "@/lib/request-stops";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +34,7 @@ export async function GET(
         id: true,
         pickupAddress: true,
         dropoffAddress: true,
+        quoteBreakdown: true,
       },
     });
 
@@ -35,22 +42,37 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const stops = [
-      {
-        id: `${req.id}-pickup`,
-        label: req.pickupAddress,
-        type: "pickup" as const,
-        lat: null,
-        lng: null,
-      },
-      {
-        id: `${req.id}-dropoff`,
-        label: req.dropoffAddress,
-        type: "dropoff" as const,
-        lat: null,
-        lng: null,
-      },
-    ];
+    const requestStops = getRequestRouteStops(req.quoteBreakdown, {
+      pickupAddress: req.pickupAddress,
+      dropoffAddress: req.dropoffAddress,
+    });
+    const stops = [];
+
+    for (let index = 0; index < requestStops.length; index += 1) {
+      const stop = requestStops[index];
+      let lat = hasRouteStopCoordinates(stop) ? stop.lat : null;
+      let lng = hasRouteStopCoordinates(stop) ? stop.lng : null;
+      let label = getRequestRouteStopLabel(stop, index);
+
+      if ((lat === null || lng === null) && stop.address) {
+        const geocoded = await validateAddress(stop.address).catch(() => null);
+        if (geocoded) {
+          lat = geocoded.latitude;
+          lng = geocoded.longitude;
+          if (!stop.label && geocoded.placeName) {
+            label = geocoded.placeName;
+          }
+        }
+      }
+
+      stops.push({
+        id: `${req.id}-${stop.type}-${index + 1}`,
+        label,
+        type: stop.type,
+        lat,
+        lng,
+      });
+    }
 
     return NextResponse.json({ id: req.id, stops });
   } catch (error) {

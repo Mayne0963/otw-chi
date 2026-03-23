@@ -145,7 +145,7 @@ export async function POST(_request: Request) {
       },
       {
         name: 'OTW PLUS',
-        description: 'More miles for multi-stop runs, longer waits, and light priority.',
+        description: 'More miles for longer waits and higher delivery volume.',
         stripeEnvKey: 'price_1Su3DKDcrdanf6e5NsBJmYw8',
         publicMonthlyPriceCents: 16900,
         monthlyServiceMiles: 120,
@@ -173,7 +173,7 @@ export async function POST(_request: Request) {
       },
       {
         name: 'OTW ELITE',
-        description: 'Cash handling and peer-to-peer delivery included.',
+        description: 'Multi-stop, cash handling, and peer-to-peer delivery included.',
         stripeEnvKey: 'price_1Su3FZDcrdanf6e5bywNpGWD',
         publicMonthlyPriceCents: 42900,
         monthlyServiceMiles: 350,

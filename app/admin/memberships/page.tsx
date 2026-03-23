@@ -792,12 +792,6 @@ function BusinessProfileCell({ membership }: { membership: MembershipRow }) {
 
       <div className="text-xs leading-5 text-white/60">{addressSummary}</div>
 
-      {profile.validatedAddress ? (
-        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5 text-xs leading-5 text-emerald-200">
-          Verified address: {profile.validatedAddress}
-        </div>
-      ) : null}
-
       <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">Primary Contact</div>
         <div className="mt-2 text-xs text-white/85">{profile.primaryContactFullName}</div>
@@ -1021,8 +1015,8 @@ function InvoiceRequestsCard({ invoiceRequests }: { invoiceRequests: BusinessInv
                     <td className="px-4 py-3">
                       <div className="max-w-[280px] text-xs leading-5 text-white/60">{addressSummary}</div>
                       {request.validatedAddress ? (
-                        <div className="mt-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-[11px] leading-5 text-emerald-200">
-                          Verified: {request.validatedAddress}
+                        <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-emerald-300">
+                          Address verified
                         </div>
                       ) : null}
                     </td>

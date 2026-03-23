@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Plus, X } from 'lucide-react';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
 import { downscaleImage } from '@/lib/image/downscale';
 import { getMembershipPlanPerks } from '@/lib/membership-perks';
+import { calculateRequestRouteMiles } from '@/lib/request-stops';
 
 const PICKUP_CODE_TYPES = [
   { value: '', label: 'None' },
@@ -66,19 +67,6 @@ type ServiceMilesWalletResponse = {
 const DEFAULT_SCHEDULE_WINDOW_MINUTES = 30;
 const DEFAULT_SCHEDULE_PRESET_MINUTES_AHEAD = 120;
 
-function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-  const earthRadiusMiles = 3959;
-
-  const dLat = toRadians(lat2 - lat1);
-  const dLng = toRadians(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-  return Math.max(0.1, 2 * earthRadiusMiles * Math.asin(Math.min(1, Math.sqrt(a))));
-}
-
 function toLocalDateValue(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -108,6 +96,7 @@ export default function OrderPage() {
 
   const [pickupAddress, setPickupAddress] = useState<GeocodedAddress | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState<GeocodedAddress | null>(null);
+  const [intermediateStops, setIntermediateStops] = useState<Array<GeocodedAddress | null>>([]);
   const [serviceType, setServiceType] = useState<ServiceType>('FOOD');
   const [notes, setNotes] = useState('');
 
@@ -125,6 +114,7 @@ export default function OrderPage() {
   const [paymentPreference, setPaymentPreference] = useState<PaymentPreference>('INSTANT');
   const [canChooseMonthlyPayments, setCanChooseMonthlyPayments] = useState(false);
   const [isCheckingPaymentPolicy, setIsCheckingPaymentPolicy] = useState(false);
+  const [membershipPlan, setMembershipPlan] = useState<ServiceMilesWalletResponse['plan']>(null);
   const [otwTrueEntitlement, setOtwTrueEntitlement] = useState<ServiceMilesWalletResponse['otwTrue']>(null);
   const [otwTrueBenefitType, setOtwTrueBenefitType] = useState<OtwTrueBenefitType | ''>('');
   const [deliveryTiming, setDeliveryTiming] = useState<'ASAP' | 'SCHEDULED'>('ASAP');
@@ -142,6 +132,12 @@ export default function OrderPage() {
     () => (dropoffAddress ? formatAddressLines(dropoffAddress) : null),
     [dropoffAddress],
   );
+  const planPerks = useMemo(() => getMembershipPlanPerks(membershipPlan), [membershipPlan]);
+  const resolvedIntermediateStops = useMemo(
+    () => intermediateStops.filter((stop): stop is GeocodedAddress => Boolean(stop)),
+    [intermediateStops],
+  );
+  const hasIncompleteIntermediateStops = intermediateStops.some((stop) => !stop);
 
   useEffect(() => {
     if (!pickupPassFile) {
@@ -206,6 +202,7 @@ export default function OrderPage() {
     if (!isSignedIn) {
       setCanChooseMonthlyPayments(false);
       setPaymentPreference('INSTANT');
+      setMembershipPlan(null);
       setOtwTrueEntitlement(null);
       setOtwTrueBenefitType('');
       setIsCheckingPaymentPolicy(false);
@@ -232,6 +229,7 @@ export default function OrderPage() {
         }
 
         const monthlyAllowed = getMembershipPlanPerks(payload?.plan).canUseMonthlyBilling;
+        setMembershipPlan(payload?.plan ?? null);
         setCanChooseMonthlyPayments(monthlyAllowed);
         if (!monthlyAllowed) {
           setPaymentPreference('INSTANT');
@@ -245,6 +243,7 @@ export default function OrderPage() {
         if (!isActive) {
           return;
         }
+        setMembershipPlan(null);
         setCanChooseMonthlyPayments(false);
         setPaymentPreference('INSTANT');
         setOtwTrueEntitlement(null);
@@ -261,6 +260,12 @@ export default function OrderPage() {
       controller.abort();
     };
   }, [isSignedIn]);
+
+  useEffect(() => {
+    if (!planPerks.canUseMultiStop && intermediateStops.length > 0) {
+      setIntermediateStops([]);
+    }
+  }, [intermediateStops.length, planPerks.canUseMultiStop]);
 
   useEffect(() => {
     if (deliveryTiming !== 'SCHEDULED') {
@@ -313,6 +318,14 @@ export default function OrderPage() {
       });
       return;
     }
+    if (hasIncompleteIntermediateStops) {
+      toast({
+        title: 'Finish your stop list',
+        description: 'Select an address for each added stop or remove the empty stop before submitting.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const isScheduled = deliveryTiming === 'SCHEDULED';
     let scheduledForIso: string | null = null;
@@ -339,12 +352,11 @@ export default function OrderPage() {
     setIsSubmitting(true);
 
     try {
-      const milesEstimate = haversineMiles(
-        pickupAddress.latitude,
-        pickupAddress.longitude,
-        dropoffAddress.latitude,
-        dropoffAddress.longitude,
-      );
+      const routePoints = [pickupAddress, ...resolvedIntermediateStops, dropoffAddress].map((stop) => ({
+        lat: stop.latitude,
+        lng: stop.longitude,
+      }));
+      const milesEstimate = calculateRequestRouteMiles(routePoints);
 
       const createResponse = await fetch('/api/requests', {
         method: 'POST',
@@ -355,6 +367,18 @@ export default function OrderPage() {
         body: JSON.stringify({
           pickup: pickupAddress.formattedAddress,
           dropoff: dropoffAddress.formattedAddress,
+          pickupLat: pickupAddress.latitude,
+          pickupLng: pickupAddress.longitude,
+          pickupLabel: pickupAddress.placeName || undefined,
+          dropoffLat: dropoffAddress.latitude,
+          dropoffLng: dropoffAddress.longitude,
+          dropoffLabel: dropoffAddress.placeName || undefined,
+          intermediateStops: resolvedIntermediateStops.map((stop) => ({
+            address: stop.formattedAddress,
+            lat: stop.latitude,
+            lng: stop.longitude,
+            label: stop.placeName || undefined,
+          })),
           serviceType,
           notes: notes.trim() || undefined,
           milesEstimate,
@@ -486,7 +510,7 @@ export default function OrderPage() {
       </div>
       <OtwSectionHeader
         title="Order Delivery"
-        subtitle="Create a core pickup-and-delivery request"
+        subtitle={planPerks.canUseMultiStop ? 'Create a delivery request with optional intermediate stops' : 'Create a core pickup-and-delivery request'}
       />
 
       <div className="mt-6 mx-auto w-full max-w-3xl space-y-6">
@@ -496,6 +520,9 @@ export default function OrderPage() {
             OTW does not place or pay for your order.
             Please order and pay directly with the restaurant or store before requesting delivery.
             Add the order name/number or upload a pickup QR code so your driver can pick it up smoothly.
+            {planPerks.canUseMultiStop
+              ? ' OTW Elite+ members can also add intermediate stops before the final dropoff.'
+              : null}
           </p>
         </OtwCard>
 
@@ -538,6 +565,94 @@ export default function OrderPage() {
                 </div>
               ) : null}
             </div>
+
+            {planPerks.canUseMultiStop ? (
+              <div className="space-y-3 rounded-lg border border-otwGold/25 bg-otwGold/10 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Intermediate Stops</h3>
+                    <p className="mt-1 text-xs text-white/70">
+                      Add any extra stops between pickup and the final dropoff. Each extra stop adds Service Miles.
+                    </p>
+                  </div>
+                  <OtwButton
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIntermediateStops((current) => [...current, null])}
+                    className="border-white/20 bg-black/20 text-white hover:bg-black/30"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add stop
+                  </OtwButton>
+                </div>
+
+                {intermediateStops.length > 0 ? (
+                  <div className="space-y-3">
+                    {intermediateStops.map((stop, index) => {
+                      const stopLines = stop ? formatAddressLines(stop) : null;
+                      return (
+                        <div key={`stop-${index}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <div className="mb-2 flex items-center justify-between gap-3">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                              Stop {index + 1}
+                            </div>
+                            <OtwButton
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setIntermediateStops((current) =>
+                                  current.filter((_entry, currentIndex) => currentIndex !== index),
+                                )
+                              }
+                              className="h-8 px-2 text-white/70 hover:text-white"
+                            >
+                              <X className="h-4 w-4" />
+                            </OtwButton>
+                          </div>
+                          <AddressSearch
+                            ariaLabel={`Intermediate stop ${index + 1}`}
+                            enableCurrentLocation
+                            onSelect={(address) => {
+                              setIntermediateStops((current) =>
+                                current.map((entry, currentIndex) =>
+                                  currentIndex === index ? address : entry,
+                                ),
+                              );
+                            }}
+                            className="w-full"
+                          />
+                          {stopLines ? (
+                            <div className="mt-2 rounded-lg border border-white/10 bg-black/30 p-2 text-xs text-white/75">
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-3.5 w-3.5 text-otwGold" />
+                                {stopLines.primary}
+                              </div>
+                              {stopLines.secondary ? (
+                                <div className="mt-1 text-white/55">{stopLines.secondary}</div>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="mt-2 text-xs text-white/50">
+                              Select the address for this stop.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-white/15 bg-black/10 p-3 text-xs text-white/55">
+                    No intermediate stops added. Your route will go straight from pickup to the final dropoff.
+                  </div>
+                )}
+              </div>
+            ) : isSignedIn && !isCheckingPaymentPolicy ? (
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/60">
+                Multi-stop requests unlock on OTW Elite and above.
+              </div>
+            ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -785,7 +900,13 @@ export default function OrderPage() {
               <OtwButton
                 type="submit"
                 variant="gold"
-                disabled={isSubmitting || isLoading || !isSignedIn || isOptimizingPickupPass}
+                disabled={
+                  isSubmitting ||
+                  isLoading ||
+                  !isSignedIn ||
+                  isOptimizingPickupPass ||
+                  hasIncompleteIntermediateStops
+                }
               >
                 {isSubmitting ? (
                   <><Loader2 className="h-4 w-4 animate-spin" />Submitting...</>

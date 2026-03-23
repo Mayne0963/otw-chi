@@ -65,7 +65,10 @@ export async function POST(req: Request) {
     const numberOfStops = Math.max(1, Math.round(Math.max(1, parsed.data.numberOfStops ?? 1)));
 
     if (!planPerks.canUseMultiStop && numberOfStops > 1) {
-      return NextResponse.json({ error: 'Multi-stop requests are not enabled for this plan' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Multi-stop requests require an active OTW Elite or higher membership' },
+        { status: 403 },
+      );
     }
     if (!planPerks.canUseSitAndWait && parsed.data.sitAndWait) {
       return NextResponse.json({ error: 'Sit-and-wait requests are not enabled for this plan' }, { status: 403 });

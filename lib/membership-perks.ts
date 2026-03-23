@@ -9,7 +9,7 @@ export type MembershipPlanPerkSnapshot = {
   overageBillingMode?: string | null;
 } | null | undefined;
 
-const MULTI_STOP_MIN_PRIORITY_LEVEL = 1; // OTW PLUS+
+const MULTI_STOP_MIN_PRIORITY_LEVEL = 3; // OTW ELITE+
 const ADVANCED_WORKFLOW_MIN_PRIORITY_LEVEL = 2; // OTW PRO+
 const LOCKED_DRIVER_MIN_PRIORITY_LEVEL = 3; // OTW ELITE+
 const CONSUMER_PLAN_ORDER = ['OTW BASIC', 'OTW PLUS', 'OTW PRO', 'OTW ELITE', 'OTW BLACK'] as const;
@@ -17,9 +17,9 @@ type ConsumerPlanName = (typeof CONSUMER_PLAN_ORDER)[number];
 
 const CONSUMER_PLAN_PERK_DELTAS: Record<ConsumerPlanName, string[]> = {
   'OTW BASIC': ['Food', 'Groceries', 'Quick errands'],
-  'OTW PLUS': ['Multi-stop', 'Longer waits', 'Light priority'],
+  'OTW PLUS': ['Longer waits', 'Light priority'],
   'OTW PRO': ['Returns & exchanges', 'Sit-and-wait', 'No item markups', 'Priority routing'],
-  'OTW ELITE': ['Peer-to-peer delivery', 'Cash handling', 'Priority support'],
+  'OTW ELITE': ['Multi-stop', 'Peer-to-peer delivery', 'Cash handling', 'Priority support'],
   'OTW BLACK': ['Emergency requests', 'Same rep when possible', 'Handle it mode'],
 };
 

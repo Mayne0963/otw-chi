@@ -8,6 +8,11 @@ import { computeOverage } from './overage';
 import { addLineItem, getPeriodKey, recomputePeriodTotal, upsertPeriod } from './overage-invoice';
 import { consumeOtwTrueBenefit, isOtwTrueBenefitType } from './otw-true';
 import {
+  buildRequestRouteSnapshot,
+  getChargeableStopCount,
+  type RequestRouteStopInput,
+} from './request-stops';
+import {
   Prisma,
   DeliveryRequestStatus,
   OverageBillingMode,
@@ -22,6 +27,9 @@ export interface SubmitDeliveryRequestInput {
   serviceType: ServiceType;
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLocation?: RequestRouteStopInput | null;
+  dropoffLocation?: RequestRouteStopInput | null;
+  intermediateStops?: RequestRouteStopInput[];
   notes?: string;
   scheduledStart: Date;
   scheduledFor?: Date | null;
@@ -219,9 +227,16 @@ export async function submitDeliveryRequest(
         : null;
       let consumedOtwTrueBenefit: Awaited<ReturnType<typeof consumeOtwTrueBenefit>> | null = null;
 
-      const numberOfStops = Math.max(1, Math.round(Math.max(1, input.numberOfStops ?? 1)));
+      const routeStopsSnapshot = buildRequestRouteSnapshot({
+        pickup: input.pickupLocation ?? undefined,
+        intermediateStops: input.intermediateStops,
+        dropoff: input.dropoffLocation ?? undefined,
+      });
+      const numberOfStops = routeStopsSnapshot
+        ? getChargeableStopCount(routeStopsSnapshot.stops.length)
+        : Math.max(1, Math.round(Math.max(1, input.numberOfStops ?? 1)));
       if (numberOfStops > 1 && !planPerks.canUseMultiStop) {
-        throw new Error('Multi-stop requests are not enabled for this plan');
+        throw new Error('Multi-stop requests require an active OTW Elite or higher membership');
       }
       if (input.sitAndWait && !planPerks.canUseSitAndWait) {
         throw new Error('Sit-and-wait requests are not enabled for this plan');
@@ -388,6 +403,7 @@ export async function submitDeliveryRequest(
       const effectivePaymentRequired = consumedOtwTrueBenefit ? false : paymentRequired;
       const quoteBreakdown = {
         ...quote.quoteBreakdown,
+        routeStops: routeStopsSnapshot,
         dispatchPreferences: {
           prioritySlot: Boolean(input.prioritySlot),
           preferredDriverId: input.preferredDriverId ?? null,

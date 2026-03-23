@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const stopSchema = z.object({
   lat: z.number().finite(),
   lng: z.number().finite(),
-  type: z.enum(["pickup", "dropoff"]).optional(),
+  type: z.enum(["pickup", "waypoint", "dropoff"]).optional(),
 });
 
 type Stop = z.infer<typeof stopSchema>;

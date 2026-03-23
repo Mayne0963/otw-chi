@@ -11,10 +11,12 @@ import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import { closeRequestChat } from '@/lib/request-chat';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
+import RequestRouteStopList from '@/components/requests/RequestRouteStopList';
 import { formatDistanceToNow } from 'date-fns';
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { getRequestRouteStops } from '@/lib/request-stops';
 
 async function refundRequestAction(formData: FormData) {
   'use server';
@@ -59,6 +61,7 @@ async function getRequest(id: string) {
       status: true,
       serviceType: true,
       serviceMilesFinal: true,
+      quoteBreakdown: true,
       isScheduled: true,
       scheduledFor: true,
       scheduleWindowMinutes: true,
@@ -162,6 +165,12 @@ export default async function AdminRequestDetailPage({
   }
 
   const request = await getRequest(resolvedId) as any;
+  const routeStops = request
+    ? getRequestRouteStops(request.quoteBreakdown, {
+        pickupAddress: request.pickupAddress,
+        dropoffAddress: request.dropoffAddress,
+      })
+    : [];
 
   return (
     <OtwPageShell>
@@ -263,16 +272,7 @@ export default async function AdminRequestDetailPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-white/5">
-                <div className="text-xs text-white/50">Pickup</div>
-                <div className="mt-2 text-sm text-white">{request.pickupAddress}</div>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5">
-                <div className="text-xs text-white/50">Dropoff</div>
-                <div className="mt-2 text-sm text-white">{request.dropoffAddress}</div>
-              </div>
-            </div>
+            <RequestRouteStopList stops={routeStops} className="bg-white/5" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-white/5">

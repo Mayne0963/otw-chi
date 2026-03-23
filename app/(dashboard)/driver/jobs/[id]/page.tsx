@@ -14,6 +14,8 @@ import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import PickupVerificationPanel from '@/components/requests/PickupVerificationPanel';
 import RequestChat from '@/components/messages/RequestChat';
 import DriverAcceptJobButton from '@/components/driver/DriverAcceptJobButton';
+import RequestRouteStopList from '@/components/requests/RequestRouteStopList';
+import { getRequestRouteStops } from '@/lib/request-stops';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -54,6 +56,7 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
       status: true,
       pickupAddress: true,
       dropoffAddress: true,
+      quoteBreakdown: true,
       notes: true,
       serviceType: true,
       paymentRequired: true,
@@ -156,6 +159,10 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
     req.pickupPassUploadedAt = null;
     req.pickupPassExpiresAt = null;
   }
+  const routeStops = getRequestRouteStops(req.quoteBreakdown, {
+    pickupAddress: req.pickupAddress,
+    dropoffAddress: req.dropoffAddress,
+  });
 
   const canAccept =
     !!driver &&
@@ -174,9 +181,8 @@ export default async function DriverJobDetailPage({ params }: { params: Promise<
         <OtwCard>
           <div className="text-sm font-medium">Details</div>
           <div className="mt-2 text-sm opacity-90">Status: {req.status}</div>
-          <div className="mt-1 text-sm opacity-90">Pickup: {req.pickupAddress}</div>
-          <div className="mt-1 text-sm opacity-90">Dropoff: {req.dropoffAddress}</div>
           <div className="mt-1 text-sm opacity-80">Customer: {req.user?.name ?? req.user?.email}</div>
+          <RequestRouteStopList stops={routeStops} className="mt-4" />
           <div className="mt-3 flex flex-wrap gap-2">
             {canAccept && (
               <DriverAcceptJobButton requestId={req.id} label="Accept" variant="outline" />
