@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { Route as RouteIcon, ArrowLeft, Clock, MapPin } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/roles";
 import { getPrisma } from "@/lib/db";
-import { validateAddress } from "@/lib/geocoding";
 import { purgeExpiredPickupPassForRequest } from "@/lib/pickup-pass";
 import TrackMapWrapper from "@/components/otw/TrackMapWrapper";
 import OtwPageShell from "@/components/ui/otw/OtwPageShell";
@@ -11,7 +10,10 @@ import OtwCard from "@/components/ui/otw/OtwCard";
 import OtwButton from "@/components/ui/otw/OtwButton";
 import { formatDate } from "@/lib/utils";
 import type { OtwDriverLocation } from "@/lib/otw/otwDriverLocation";
-import type { OtwLocation } from "@/lib/otw/otwTypes";
+import {
+  resolveRequestRouteLocations,
+  splitResolvedRequestRouteLocations,
+} from "@/lib/request-route-locations";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,7 @@ export default async function TrackDetailPage({
       status: true,
       pickupAddress: true,
       dropoffAddress: true,
+      quoteBreakdown: true,
       createdAt: true,
       lastKnownLat: true,
       lastKnownLng: true,
@@ -96,29 +99,16 @@ export default async function TrackDetailPage({
   const driverLabel =
     record.assignedDriver?.user?.name || record.assignedDriver?.id || "Driver";
 
-  let pickupLocation: OtwLocation | null = null;
-  let dropoffLocation: OtwLocation | null = null;
-  const toOtwLocation = (addr: Awaited<ReturnType<typeof validateAddress>> | null, label: string) =>
-    addr
-      ? {
-          lat: addr.latitude,
-          lng: addr.longitude,
-          label: addr.placeName || addr.formattedAddress || label,
-        }
-      : null;
-
-  try {
-    const geo = pickupText ? await validateAddress(pickupText).catch(() => null) : null;
-    pickupLocation = toOtwLocation(geo, "Pickup");
-  } catch (_error) {
-    pickupLocation = null;
-  }
-  try {
-    const geo = dropoffText ? await validateAddress(dropoffText).catch(() => null) : null;
-    dropoffLocation = toOtwLocation(geo, "Dropoff");
-  } catch (_error) {
-    dropoffLocation = null;
-  }
+  const resolvedRouteLocations = await resolveRequestRouteLocations({
+    quoteBreakdown: record.quoteBreakdown,
+    pickupAddress: record.pickupAddress,
+    dropoffAddress: record.dropoffAddress,
+  });
+  const {
+    pickup: pickupLocation,
+    waypoints: routeWaypoints,
+    dropoff: dropoffLocation,
+  } = splitResolvedRequestRouteLocations(resolvedRouteLocations);
 
   const driverLocations: OtwDriverLocation[] =
     typeof lastKnownLat === "number" &&
@@ -164,17 +154,18 @@ export default async function TrackDetailPage({
                 <p className="text-sm text-white/50 mt-1">Read-only view of your current trip.</p>
               </div>
               <div className="p-0 overflow-hidden">
-                {pickupLocation || dropoffLocation ? (
+                {pickupLocation || dropoffLocation || routeWaypoints.length ? (
                   <div className="h-[500px] w-full relative">
                       <TrackMapWrapper
                         pickup={pickupLocation ?? undefined}
+                        waypoints={routeWaypoints}
                         dropoff={dropoffLocation ?? undefined}
                         customer={dropoffLocation ?? undefined}
                         requestId={record.id}
                         initialStatus={statusText}
                         drivers={driverLocations}
                         focusDriverId={driverLocations[0]?.driverId}
-                        useExternalRoutes
+                        followDriver={false}
                       />
                   </div>
                 ) : (
@@ -184,7 +175,8 @@ export default async function TrackDetailPage({
                   </div>
                 )}
               </div>
-              {driverLocations.length === 0 && (pickupLocation || dropoffLocation) && (
+              {driverLocations.length === 0 &&
+                (pickupLocation || dropoffLocation || routeWaypoints.length > 0) && (
                   <div className="p-3 text-xs text-white/50 bg-otwGold/10 border-t border-otwGold/20 text-center">
                     Waiting for driver location updates. You’ll see live position once the driver starts sharing.
                   </div>

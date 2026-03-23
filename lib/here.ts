@@ -67,10 +67,8 @@ export const safeFetchJson = async <T = unknown>(url: string, init?: RequestInit
 };
 
 export const parseHereRouteToOtw = (payload: HereRouteResponse, stopCount: number) => {
-  const section = payload.routes?.[0]?.sections;
-  const first = section?.[0];
-  const polyline = first?.polyline;
-  if (!polyline) {
+  const sections = payload.routes?.[0]?.sections ?? [];
+  if (!sections.length) {
     return {
       coordinates: null,
       polyline: null,
@@ -80,33 +78,51 @@ export const parseHereRouteToOtw = (payload: HereRouteResponse, stopCount: numbe
     };
   }
 
-  let coords: [number, number][] = [];
-  try {
-    coords = decodeFlexiblePolyline(polyline);
-  } catch (err) {
+  const decodeSectionPolyline = (polyline: string) => {
     try {
-      coords = decodeEncodedPolyline(polyline);
-    } catch (_err) {
-      console.error("Failed to decode HERE polyline", err);
-      coords = [];
+      return decodeFlexiblePolyline(polyline);
+    } catch (err) {
+      try {
+        return decodeEncodedPolyline(polyline);
+      } catch (_err) {
+        console.error("Failed to decode HERE polyline", err);
+        return [];
+      }
     }
-  }
+  };
+
+  const coords = sections.reduce<[number, number][]>((allCoords, section) => {
+    if (!section.polyline) return allCoords;
+    const nextCoords = decodeSectionPolyline(section.polyline);
+    if (!nextCoords.length) return allCoords;
+    if (!allCoords.length) return [...nextCoords];
+
+    const [lastLng, lastLat] = allCoords[allCoords.length - 1];
+    const [firstLng, firstLat] = nextCoords[0];
+    const startsAtExistingEndpoint =
+      Math.abs(lastLng - firstLng) < 0.0000001 && Math.abs(lastLat - firstLat) < 0.0000001;
+
+    allCoords.push(...(startsAtExistingEndpoint ? nextCoords.slice(1) : nextCoords));
+    return allCoords;
+  }, []);
+
+  const polyline = sections.find((section) => section.polyline)?.polyline ?? null;
 
   // const summary = first.summary || {};
   const legs =
-    section?.map((sec, idx) => ({
+    sections.map((sec, idx) => ({
       toStopIndex: Math.min(idx + 1, Math.max(stopCount - 1, 0)),
       distanceMeters: sec.summary?.length ?? 0,
       durationSeconds: sec.summary?.duration ?? 0,
-    })) || [];
+    }));
 
   const distanceMeters =
-    section?.reduce((sum, sec) => sum + (sec.summary?.length ?? 0), 0) ?? 0;
+    sections.reduce((sum, sec) => sum + (sec.summary?.length ?? 0), 0);
   const durationSeconds =
-    section?.reduce((sum, sec) => sum + (sec.summary?.duration ?? 0), 0) ?? 0;
+    sections.reduce((sum, sec) => sum + (sec.summary?.duration ?? 0), 0);
 
   return {
-    coordinates: coords.map(([lng, lat]) => ({ lat, lng })),
+    coordinates: coords.length ? coords.map(([lng, lat]) => ({ lat, lng })) : null,
     polyline,
     distanceMeters,
     durationSeconds,

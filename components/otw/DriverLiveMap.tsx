@@ -18,6 +18,7 @@ interface DriverLiveMapProps {
   requestType?: "delivery" | "legacy";
   jobStatus?: string;
   pickup?: OtwLocation;
+  waypoints?: OtwLocation[];
   dropoff?: OtwLocation;
   customer?: OtwLocation;
   initialDriverLocation?: OtwDriverLocation | null;
@@ -61,6 +62,20 @@ type BatteryManager = {
 type RouteSummary = {
   distanceText: string;
   durationText: string;
+};
+
+type RouteOverview = {
+  geometry: GeoJSON.Feature<GeoJSON.LineString>;
+  summary?: {
+    length?: number;
+    duration?: number;
+  };
+};
+
+type RouteApiResponse = {
+  coordinates?: Array<{ lat: number; lng: number }> | null;
+  distanceMeters?: number;
+  durationSeconds?: number;
 };
 
 const DEFAULT_SETTINGS: DriverNavigationSettings = {
@@ -192,6 +207,59 @@ const computeBearing = (from: OtwLocation, to: OtwLocation) => {
   return (bearing + 360) % 360;
 };
 
+const coordsEqual = (a?: OtwLocation | null, b?: OtwLocation | null) =>
+  !!a &&
+  !!b &&
+  Math.abs(a.lat - b.lat) < 0.00001 &&
+  Math.abs(a.lng - b.lng) < 0.00001;
+
+const dedupeLocations = (locations: Array<OtwLocation | null | undefined>) =>
+  locations.reduce<OtwLocation[]>((acc, location) => {
+    if (!location) return acc;
+    const previous = acc[acc.length - 1];
+    if (previous && coordsEqual(previous, location)) {
+      return acc;
+    }
+    acc.push(location);
+    return acc;
+  }, []);
+
+const buildRouteFeature = (
+  coordinates?: Array<{ lat: number; lng: number }> | null
+): GeoJSON.Feature<GeoJSON.LineString> | null => {
+  if (!coordinates?.length) return null;
+  const lineCoordinates = coordinates
+    .filter((coord) => Number.isFinite(coord.lat) && Number.isFinite(coord.lng))
+    .map((coord) => [coord.lng, coord.lat] as [number, number]);
+  if (lineCoordinates.length < 2) return null;
+  return {
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: lineCoordinates,
+    },
+    properties: {},
+  };
+};
+
+const makeFallbackRouteOverview = (locations: OtwLocation[]): RouteOverview | null => {
+  const coordinates = locations
+    .filter((location) => Number.isFinite(location.lat) && Number.isFinite(location.lng))
+    .map((location) => [location.lng, location.lat] as [number, number]);
+  if (coordinates.length < 2) return null;
+  return {
+    geometry: {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates,
+      },
+      properties: {},
+    },
+    summary: undefined,
+  };
+};
+
 const getJobPhase = (status?: string): "TO_PICKUP" | "TO_DROPOFF" | "NONE" => {
   const normalized = String(status || "")
     .trim()
@@ -258,6 +326,7 @@ const DriverLiveMap = ({
   requestType = "delivery",
   jobStatus,
   pickup,
+  waypoints = [],
   dropoff,
   customer,
   initialDriverLocation,
@@ -275,7 +344,7 @@ const DriverLiveMap = ({
   const [navSettings, setNavSettings] = useState<DriverNavigationSettings | null>(null);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [routeOptions, setRouteOptions] = useState<NavigationRoute[]>([]);
-  const [mainRoute, setMainRoute] = useState<NavigationRoute | null>(null);
+  const [mainRoute, setMainRoute] = useState<RouteOverview | null>(null);
   const [guidance, setGuidance] = useState<GuidanceState | null>(null);
   const [voiceGestureHint, setVoiceGestureHint] = useState(false);
   const [trafficFlow, setTrafficFlow] = useState<GeoJSON.FeatureCollection<GeoJSON.LineString> | null>(
@@ -350,12 +419,16 @@ const DriverLiveMap = ({
   const navigationStartedRef = useRef(false);
 
   const jobPhase = getJobPhase(jobStatus);
+  const dropoffRouteStops = useMemo(
+    () => dedupeLocations([...waypoints, customer ?? dropoff]),
+    [customer, dropoff, waypoints]
+  );
   const targetLocation = useMemo(() => {
     if (jobPhase === "NONE") return null;
-    if (jobPhase === "TO_DROPOFF") return customer ?? dropoff ?? pickup;
-    if (jobPhase === "TO_PICKUP") return pickup ?? customer ?? dropoff;
-    return pickup ?? customer ?? dropoff;
-  }, [customer, dropoff, jobPhase, pickup]);
+    if (jobPhase === "TO_DROPOFF") return dropoffRouteStops[0] ?? customer ?? dropoff ?? pickup;
+    if (jobPhase === "TO_PICKUP") return pickup ?? dropoffRouteStops[0] ?? customer ?? dropoff;
+    return pickup ?? dropoffRouteStops[0] ?? customer ?? dropoff;
+  }, [customer, dropoff, dropoffRouteStops, jobPhase, pickup]);
 
   const activeDriverLocation = driverLocations[0]?.location;
   const activeRoute = routeOptions[0] ?? null;
@@ -881,35 +954,67 @@ const DriverLiveMap = ({
   }, [activeDriverLocation, targetLocation, refreshDriverRoute]);
 
   useEffect(() => {
-    if (!pickup || !dropoff) {
+    if (!pickup || dropoffRouteStops.length === 0) {
       setMainRoute(null);
       return;
     }
+
+    const fallbackLocations = dedupeLocations([pickup, ...dropoffRouteStops]);
+    if (fallbackLocations.length < 2) {
+      setMainRoute(null);
+      return;
+    }
+
     const controller = new AbortController();
+
     const load = async () => {
       try {
-        const params = new URLSearchParams({
-          origin: `${pickup.lat},${pickup.lng}`,
-          destination: `${(customer ?? dropoff).lat},${(customer ?? dropoff).lng}`,
-          alternatives: "0",
-          lang: settings.voiceLocale,
-        });
-        const res = await fetch(`/api/navigation/route?${params.toString()}`, {
+        const res = await fetch("/api/route", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           cache: "no-store",
           signal: controller.signal,
+          body: JSON.stringify({
+            origin: {
+              lat: pickup.lat,
+              lng: pickup.lng,
+              type: "pickup",
+            },
+            stops: dropoffRouteStops.map((stop, index) => ({
+              lat: stop.lat,
+              lng: stop.lng,
+              type: index === dropoffRouteStops.length - 1 ? "dropoff" : "waypoint",
+            })),
+            mode: "car",
+          }),
         });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data?.route) {
-          setMainRoute(data.route);
+
+        if (!res.ok) {
+          throw new Error(`Overview route failed: ${res.status}`);
         }
+
+        const data = (await res.json()) as RouteApiResponse;
+        const geometry = buildRouteFeature(data.coordinates);
+        if (!geometry) {
+          throw new Error("Overview route response was missing geometry.");
+        }
+
+        setMainRoute({
+          geometry,
+          summary: {
+            length: data.distanceMeters,
+            duration: data.durationSeconds,
+          },
+        });
       } catch (_error) {
-        // ignore
+        if (controller.signal.aborted) return;
+        setMainRoute(makeFallbackRouteOverview(fallbackLocations));
       }
     };
+
     load();
     return () => controller.abort();
-  }, [customer, dropoff, pickup, settings.voiceLocale]);
+  }, [dropoffRouteStops, pickup]);
 
   useEffect(() => {
     if (!activeRoute || !activeDriverLocation) {
@@ -1378,6 +1483,7 @@ const DriverLiveMap = ({
       <OtwLiveMap
         customer={customer}
         pickup={pickup}
+        waypoints={waypoints}
         dropoff={dropoff}
         requestId={requestId}
         jobStatus={jobStatus}

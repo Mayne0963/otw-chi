@@ -17,6 +17,10 @@ import RequestRatingPanel from '@/components/requests/RequestRatingPanel';
 import RequestRouteStopList from '@/components/requests/RequestRouteStopList';
 import { isDispatchBlockedByPayment } from '@/lib/request-payment';
 import { getRequestRouteStops } from '@/lib/request-stops';
+import {
+  resolveRequestRouteLocations,
+  splitResolvedRequestRouteLocations,
+} from '@/lib/request-route-locations';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
 import OrderConfirmationPanel from '@/components/order/OrderConfirmationPanel';
 
@@ -155,6 +159,19 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
       request.isLocked ||
       Boolean(request.orderConfirmation)
     );
+  const showLiveTracking = ['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status);
+  const resolvedRouteLocations = showLiveTracking
+    ? await resolveRequestRouteLocations({
+        quoteBreakdown: request.quoteBreakdown,
+        pickupAddress: request.pickupAddress,
+        dropoffAddress: request.dropoffAddress,
+      })
+    : [];
+  const {
+    pickup: routePickup,
+    waypoints: routeWaypoints,
+    dropoff: routeDropoff,
+  } = splitResolvedRequestRouteLocations(resolvedRouteLocations);
 
   return (
     <OtwPageShell>
@@ -387,7 +404,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
               ) : null}
 
               {/* Driver Tracking Section */}
-              {['ASSIGNED', 'PICKED_UP', 'EN_ROUTE'].includes(request.status) && (
+              {showLiveTracking && (
                 <div className="space-y-4 pt-4 border-t border-white/10">
                   <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
                     <MapPin className="h-5 w-5 text-otwGold" />
@@ -398,9 +415,14 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                     <div className="space-y-3">
                       <div className="h-[300px] w-full rounded-lg overflow-hidden border border-white/10">
                           <TrackMapWrapper
+                            pickup={routePickup ?? undefined}
+                            waypoints={routeWaypoints}
+                            dropoff={routeDropoff ?? undefined}
+                            customer={routeDropoff ?? undefined}
                             drivers={driverLocations}
                             requestId={request.id}
                             initialStatus={request.status}
+                            followDriver={false}
                           />
                       </div>
                       <div className="text-center space-y-2">

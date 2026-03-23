@@ -19,6 +19,10 @@ import { serverFeatureFlags } from '@/lib/featureFlags';
 import RequestChat from '@/components/messages/RequestChat';
 import DriverAcceptJobButton from '@/components/driver/DriverAcceptJobButton';
 import DriverPickupPassButton from '@/components/driver/DriverPickupPassButton';
+import {
+  resolveRequestRouteLocations,
+  splitResolvedRequestRouteLocations,
+} from '@/lib/request-route-locations';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -36,33 +40,6 @@ function getDispatchPreferences(quoteBreakdown: unknown): DispatchPreferences {
   const prefs = obj.dispatchPreferences;
   if (!prefs || typeof prefs !== 'object') return {};
   return prefs as DispatchPreferences;
-}
-
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function geocodeAddressWithFallback(address: string) {
-  const normalized = address.replace(/\s+/g, ' ').trim();
-  if (!normalized) return null;
-
-  const withoutCountry = normalized.replace(/,\s*United States$/i, '').trim();
-  const parts = withoutCountry.split(',').map((part) => part.trim()).filter(Boolean);
-  const withoutVenue = parts.length > 1 ? parts.slice(1).join(', ') : withoutCountry;
-  const localityTail = parts.length > 4 ? parts.slice(parts.length - 4).join(', ') : withoutCountry;
-
-  const candidates = Array.from(
-    new Set([normalized, withoutCountry, withoutVenue, localityTail].filter((value) => value.length >= 5))
-  );
-
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    const result = await validateAddress(candidate).catch(() => null);
-    if (result) return result;
-    if (index < candidates.length - 1) {
-      await wait(250);
-    }
-  }
-
-  return null;
 }
 
 async function updateStatus(formData: FormData) {
@@ -195,6 +172,7 @@ export default async function DriverDashboardPage() {
       serviceType: true,
       pickupAddress: true,
       dropoffAddress: true,
+      quoteBreakdown: true,
       notes: true,
       lastKnownLat: true,
       lastKnownLng: true,
@@ -267,35 +245,26 @@ export default async function DriverDashboardPage() {
 
   let customerLocation: OtwLocation | undefined;
   let pickupLocation: OtwLocation | undefined;
+  let waypointLocations: OtwLocation[] = [];
   let dropoffLocation: OtwLocation | undefined;
   let driverLocations: OtwDriverLocation[] = [];
 
   if (activeRequest) {
-    // Geocode sequentially with retries/fallback queries to reduce route gaps.
-    const pickup = await geocodeAddressWithFallback(activeRequest.pickupAddress);
-    const dropoff = await geocodeAddressWithFallback(activeRequest.dropoffAddress);
+    const resolvedRouteLocations = await resolveRequestRouteLocations({
+      quoteBreakdown: activeRequest.quoteBreakdown,
+      pickupAddress: activeRequest.pickupAddress,
+      dropoffAddress: activeRequest.dropoffAddress,
+    });
+    const {
+      pickup,
+      waypoints,
+      dropoff,
+    } = splitResolvedRequestRouteLocations(resolvedRouteLocations);
 
-    if (pickup) {
-      pickupLocation = {
-        lat: pickup.latitude,
-        lng: pickup.longitude,
-        label: 'Pickup',
-      };
-    }
-
-    if (dropoff) {
-      dropoffLocation = {
-        lat: dropoff.latitude,
-        lng: dropoff.longitude,
-        label: 'Dropoff',
-      };
-
-      customerLocation = {
-        lat: dropoff.latitude,
-        lng: dropoff.longitude,
-        label: 'Customer',
-      };
-    }
+    pickupLocation = pickup ?? undefined;
+    waypointLocations = waypoints;
+    dropoffLocation = dropoff ?? undefined;
+    customerLocation = dropoff ?? undefined;
 
     if (
       typeof activeRequest.lastKnownLat === 'number' &&
@@ -340,6 +309,7 @@ export default async function DriverDashboardPage() {
                           driverId={driverProfile.id}
                           customer={customerLocation}
                           pickup={pickupLocation}
+                          waypoints={waypointLocations}
                           dropoff={dropoffLocation}
                           requestId={activeRequest.id}
                           requestType={'delivery'}
