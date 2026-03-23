@@ -33,8 +33,20 @@ export interface OtwLiveMapProps {
   followDriver?: boolean;
 }
 
-const MAP_STYLE_URL =
-  process.env.NEXT_PUBLIC_MAP_STYLE_URL || "/maps/style.json";
+const APPLE_INSPIRED_MAP_STYLE_URL = "/styles/bright/style.json";
+const DEMO_MAP_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+const LEGACY_BASIC_MAP_STYLE_URL = "/maps/style.json";
+const MAP_STYLE_URL = (() => {
+  const configuredStyleUrl = process.env.NEXT_PUBLIC_MAP_STYLE_URL?.trim();
+  if (
+    !configuredStyleUrl ||
+    configuredStyleUrl === DEMO_MAP_STYLE_URL ||
+    configuredStyleUrl === LEGACY_BASIC_MAP_STYLE_URL
+  ) {
+    return APPLE_INSPIRED_MAP_STYLE_URL;
+  }
+  return configuredStyleUrl;
+})();
 const DEFAULT_CENTER: [number, number] = [-85.1394, 41.0793];
 const DEFAULT_ZOOM = 16;
 const ROUTE_SOURCE_ID = "otw-route-source";
@@ -53,8 +65,8 @@ const POI_LABEL_LAYER_ID = "otw-poi-label-layer";
 const MARKER_SOURCE_ID = "otw-marker-source";
 const MARKER_LAYER_ID = "otw-marker-layer";
 const MARKER_LABEL_LAYER_ID = "otw-marker-label-layer";
-const ROUTE_BASE_WIDTH = 5;
-const DRIVER_ROUTE_BASE_WIDTH = 4;
+const ROUTE_BASE_WIDTH = 6;
+const DRIVER_ROUTE_BASE_WIDTH = 4.5;
 
 type MapMarker = {
   id: string;
@@ -764,9 +776,9 @@ const OtwLiveMap = ({
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 6, 18, 10],
           "circle-color": ["get", "color"],
-          "circle-stroke-color": "#0f172a",
-          "circle-stroke-width": 1,
-          "circle-opacity": 0.95,
+          "circle-stroke-color": "rgba(255,255,255,0.96)",
+          "circle-stroke-width": 2,
+          "circle-opacity": 0.96,
           "circle-radius-transition": { duration: 250 },
           "circle-opacity-transition": { duration: 250 },
         },
@@ -785,10 +797,10 @@ const OtwLiveMap = ({
           "text-allow-overlap": true,
         },
         paint: {
-          "text-color": "#f8fafc",
-          "text-halo-color": "#0f172a",
-          "text-halo-width": 1,
-          "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 12, 0.75, 14, 0.92],
+          "text-color": "#1c1c1e",
+          "text-halo-color": "rgba(255,255,255,0.96)",
+          "text-halo-width": 1.5,
+          "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 12, 0.8, 14, 0.96],
           "text-opacity-transition": { duration: 250 },
         },
       });
@@ -833,7 +845,8 @@ const OtwLiveMap = ({
         paint: {
           "line-color": "#0a84ff",
           "line-width": ROUTE_BASE_WIDTH,
-          "line-opacity": 0.9,
+          "line-opacity": 0.94,
+          "line-blur": 0.2,
           "line-color-transition": { duration: 220 },
           "line-width-transition": { duration: 220 },
           "line-opacity-transition": { duration: 220 },
@@ -845,10 +858,10 @@ const OtwLiveMap = ({
         layerId: DRIVER_ROUTE_LAYER_ID,
         data: resolvedDriverRoute,
         paint: {
-          "line-color": "#5e5ce6",
+          "line-color": "#64d2ff",
           "line-width": DRIVER_ROUTE_BASE_WIDTH,
-          "line-opacity": 0.7,
-          "line-dasharray": [2, 1.5],
+          "line-opacity": 0.76,
+          "line-dasharray": [1.6, 1.2],
           "line-color-transition": { duration: 220 },
           "line-width-transition": { duration: 220 },
           "line-opacity-transition": { duration: 220 },
@@ -861,10 +874,10 @@ const OtwLiveMap = ({
         data: driverRoutes ?? null,
         type: "line",
         paint: {
-          "line-color": ["coalesce", ["get", "color"], "#5e5ce6"],
+          "line-color": ["coalesce", ["get", "color"], "#64d2ff"],
           "line-width": DRIVER_ROUTE_BASE_WIDTH,
-          "line-opacity": 0.7,
-          "line-dasharray": [2, 1.5],
+          "line-opacity": 0.76,
+          "line-dasharray": [1.6, 1.2],
         },
       });
 
@@ -1078,12 +1091,12 @@ const OtwLiveMap = ({
   return (
     <div className={styles.mapShell}>
       <div className={styles.mapHeaderRow}>
-        <span className={styles.mapTitle}>Live OTW Map</span>
+        <span className={styles.mapTitle}>Live Map</span>
         <span className={styles.mapHint}>
           {markerView === "navigation"
-            ? "Driver-focused navigation view"
+            ? "Navigation"
             : markerView === "pickup"
-              ? "Pickup focus view"
+              ? "Pickup focus"
               : "Route overview"}
         </span>
       </div>
