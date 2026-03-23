@@ -5,11 +5,9 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const prisma = getPrisma();
-  const names = ["OTW BASIC", "OTW PLUS", "OTW PRO", "OTW ELITE", "OTW BLACK"];
 
   const plans = await prisma.membershipPlan.findMany({
-    where: { name: { in: names } },
-    orderBy: { priorityLevel: "asc" },
+    orderBy: [{ priorityLevel: "asc" }, { name: "asc" }],
     select: {
       id: true,
       name: true,
