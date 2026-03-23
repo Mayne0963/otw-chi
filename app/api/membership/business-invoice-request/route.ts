@@ -7,6 +7,8 @@ import {
   buildBusinessAddressSummary,
   businessMembershipInvoiceRequestSchema,
   getBusinessMembershipProfileFieldErrors,
+  selectedBusinessAddressMatchesForm,
+  selectedBusinessAddressSchema,
   shouldValidateBusinessAddress,
 } from '@/lib/business-membership-profile';
 import { isBusinessMembershipPlanName } from '@/lib/membership';
@@ -18,6 +20,11 @@ export async function POST(req: Request) {
     const currentUser = await getCurrentUser();
     const body = await req.json().catch(() => null);
     const parsed = businessMembershipInvoiceRequestSchema.safeParse(body);
+    const selectedAddress = selectedBusinessAddressSchema.safeParse(
+      body && typeof body === 'object' && 'selectedBusinessAddress' in body
+        ? (body as Record<string, unknown>).selectedBusinessAddress
+        : undefined,
+    );
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -53,23 +60,34 @@ export async function POST(req: Request) {
     let addressValidatedAt: Date | null = null;
 
     if (shouldValidateBusinessAddress(data.primaryBusinessCountry)) {
-      const validationCandidate = buildBusinessAddressSummary(data);
-      const verifiedAddress = await validateAddress(validationCandidate).catch(() => null);
-      if (!verifiedAddress) {
-        return NextResponse.json(
-          {
-            error: 'We could not verify the business address provided.',
-            fieldErrors: {
-              primaryBusinessStreetAddress:
-                'We could not verify this U.S. address. Check the street, city, state, and postal code.',
-            },
-          },
-          { status: 400 },
-        );
-      }
+      const matchedSelectedAddress =
+        selectedAddress.success &&
+        selectedBusinessAddressMatchesForm(data, selectedAddress.data)
+          ? selectedAddress.data
+          : null;
 
-      validatedAddress = verifiedAddress.formattedAddress;
-      addressValidatedAt = new Date();
+      if (matchedSelectedAddress) {
+        validatedAddress = matchedSelectedAddress.formattedAddress;
+        addressValidatedAt = new Date();
+      } else {
+        const validationCandidate = buildBusinessAddressSummary(data);
+        const verifiedAddress = await validateAddress(validationCandidate).catch(() => null);
+        if (!verifiedAddress) {
+          return NextResponse.json(
+            {
+              error: 'We could not verify the business address provided.',
+              fieldErrors: {
+                primaryBusinessStreetAddress:
+                  'We could not verify this U.S. address. Check the street, city, state, and postal code.',
+              },
+            },
+            { status: 400 },
+          );
+        }
+
+        validatedAddress = verifiedAddress.formattedAddress;
+        addressValidatedAt = new Date();
+      }
     }
 
     const invoiceRequest = await prisma.businessMembershipInvoiceRequest.create({

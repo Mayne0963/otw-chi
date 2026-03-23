@@ -235,7 +235,10 @@ export default function BusinessMembershipInvoiceRequestDialog({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          selectedBusinessAddress: searchedAddress ?? undefined,
+        }),
       });
       const payload = (await response.json().catch(() => null)) as InvoiceRequestResponse | null;
 

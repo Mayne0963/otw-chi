@@ -210,6 +210,23 @@ export const businessMembershipProfileFormSchema = z.object({
 export type BusinessMembershipProfileFormInput = z.input<typeof businessMembershipProfileFormSchema>;
 export type BusinessMembershipProfileFormValues = z.output<typeof businessMembershipProfileFormSchema>;
 
+export const selectedBusinessAddressSchema = z.object({
+  formattedAddress: z.string().trim().min(5).max(500),
+  placeName: z.string().trim().max(160).optional(),
+  streetAddress: z.string().trim().min(1).max(200),
+  city: z.string().trim().min(1).max(100),
+  state: z.string().trim().min(1).max(100),
+  zipCode: z.string().trim().min(1).max(20),
+  latitude: z.number().finite(),
+  longitude: z.number().finite(),
+  serviceAreaName: z.string().trim().max(120),
+  distanceFromServiceArea: z.number().finite(),
+  distanceFromFortWayne: z.number().finite(),
+  isWithinServiceArea: z.boolean(),
+});
+
+export type SelectedBusinessAddress = z.output<typeof selectedBusinessAddressSchema>;
+
 export const businessMembershipInvoiceRequestSchema = businessMembershipProfileFormSchema.extend({
   planName: z
     .string()
@@ -262,14 +279,82 @@ export function buildBusinessAddressSummary(values: {
     .join(', ');
 }
 
+function normalizeComparableAddressValue(value: string | null | undefined) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function deriveStreetAddressFromFormattedAddress(address: GeocodedAddress) {
+  const formattedParts = address.formattedAddress
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (formattedParts.length === 0) {
+    return address.streetAddress?.trim() || address.formattedAddress;
+  }
+
+  const firstPart = formattedParts[0] ?? '';
+  const secondPart = formattedParts[1] ?? '';
+  const placeName = address.placeName?.trim();
+
+  if (placeName && normalizeComparableAddressValue(firstPart) === normalizeComparableAddressValue(placeName)) {
+    return secondPart || firstPart;
+  }
+
+  return firstPart;
+}
+
 export function getBusinessAddressFieldsFromGeocodedAddress(address: GeocodedAddress) {
+  const rawStreetAddress = address.streetAddress?.trim() || '';
+  const fallbackStreetAddress = deriveStreetAddressFromFormattedAddress(address);
+  const shouldUseFallbackStreetAddress =
+    rawStreetAddress.length < 5 || !/[a-z]/i.test(rawStreetAddress);
+
   return {
-    primaryBusinessStreetAddress: address.streetAddress?.trim() || address.formattedAddress,
+    primaryBusinessStreetAddress: shouldUseFallbackStreetAddress
+      ? fallbackStreetAddress
+      : rawStreetAddress,
     primaryBusinessCity: address.city?.trim() || '',
     primaryBusinessStateProvince: address.state?.trim() || '',
     primaryBusinessPostalCode: address.zipCode?.trim() || '',
     primaryBusinessCountry: 'US' as const,
   };
+}
+
+export function selectedBusinessAddressMatchesForm(
+  values: {
+    primaryBusinessStreetAddress: string | null | undefined;
+    primaryBusinessCity: string | null | undefined;
+    primaryBusinessStateProvince: string | null | undefined;
+    primaryBusinessPostalCode: string | null | undefined;
+    primaryBusinessCountry: string | null | undefined;
+  },
+  selectedAddress: SelectedBusinessAddress | null | undefined,
+) {
+  if (!selectedAddress || !selectedAddress.isWithinServiceArea) {
+    return false;
+  }
+
+  if (values.primaryBusinessCountry !== 'US') {
+    return false;
+  }
+
+  const streetMatches =
+    normalizeComparableAddressValue(values.primaryBusinessStreetAddress) ===
+    normalizeComparableAddressValue(selectedAddress.streetAddress);
+  const cityMatches =
+    normalizeComparableAddressValue(values.primaryBusinessCity) ===
+    normalizeComparableAddressValue(selectedAddress.city);
+  const stateMatches =
+    normalizeComparableAddressValue(values.primaryBusinessStateProvince) ===
+    normalizeComparableAddressValue(selectedAddress.state);
+  const postalMatches =
+    normalizeComparableAddressValue(values.primaryBusinessPostalCode) ===
+    normalizeComparableAddressValue(selectedAddress.zipCode);
+
+  return streetMatches && cityMatches && stateMatches && postalMatches;
 }
 
 export function shouldValidateBusinessAddress(country: BusinessCountryValue): boolean {
