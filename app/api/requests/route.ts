@@ -23,7 +23,11 @@ import {
 import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
-import { syncOtwTrueEmployeeAccessForUser } from '@/lib/otw-true';
+import {
+  buildOtwTrueJobSiteBusinessAddress,
+  syncOtwTrueEmployeeAccessForUser,
+} from '@/lib/otw-true';
+import { validateAddress } from '@/lib/geocoding';
 
 export const runtime = 'nodejs';
 
@@ -97,7 +101,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const data = requestSchema.parse(body);
-    await syncOtwTrueEmployeeAccessForUser(prisma, {
+    const otwTrueEntitlement = await syncOtwTrueEmployeeAccessForUser(prisma, {
       userId: user.id,
       email: user.email,
     });
@@ -133,7 +137,8 @@ export async function POST(req: Request) {
             label: data.pickupLabel,
           }
         : null;
-    const dropoffLocation =
+    let effectiveDropoffAddress = data.dropoff;
+    let dropoffLocation =
       Number.isFinite(data.dropoffLat) && Number.isFinite(data.dropoffLng)
         ? {
             address: data.dropoff,
@@ -142,6 +147,41 @@ export async function POST(req: Request) {
             label: data.dropoffLabel,
           }
         : null;
+
+    if (data.otwTrueBenefitType === 'FOOD_JOB_SITE') {
+      const jobSiteBusiness = otwTrueEntitlement?.jobSiteBusiness;
+      if (!jobSiteBusiness) {
+        return NextResponse.json(
+          {
+            error:
+              'Your linked OTW True business has not saved a job-site address yet. Ask the business owner to update Membership Manage before placing this request.',
+          },
+          { status: 400 },
+        );
+      }
+
+      const resolvedJobSite = await validateAddress(
+        buildOtwTrueJobSiteBusinessAddress(jobSiteBusiness),
+      ).catch(() => null);
+      if (!resolvedJobSite) {
+        return NextResponse.json(
+          {
+            error:
+              'We could not verify the saved OTW True business address. Ask the business owner to review the business profile address before placing this request.',
+          },
+          { status: 400 },
+        );
+      }
+
+      effectiveDropoffAddress = resolvedJobSite.formattedAddress;
+      dropoffLocation = {
+        address: resolvedJobSite.formattedAddress,
+        lat: resolvedJobSite.latitude,
+        lng: resolvedJobSite.longitude,
+        label: jobSiteBusiness.businessLegalName,
+      };
+    }
+
     const routeStopsSnapshot = buildRequestRouteSnapshot({
       pickup: pickupLocation,
       intermediateStops,
@@ -210,7 +250,7 @@ export async function POST(req: Request) {
         userId: user.id,
         serviceType: data.serviceType,
         pickupAddress: data.pickup,
-        dropoffAddress: data.dropoff,
+        dropoffAddress: effectiveDropoffAddress,
         notes: data.notes,
         scheduledStart,
         scheduledFor,
@@ -304,12 +344,12 @@ export async function POST(req: Request) {
     }
 
     const request = await prisma.deliveryRequest.create({
-      data: {
-        userId: user.id,
-        pickupAddress: data.pickup,
-        dropoffAddress: data.dropoff,
-        serviceType: data.serviceType as ServiceType,
-        notes: data.notes,
+        data: {
+          userId: user.id,
+          pickupAddress: data.pickup,
+          dropoffAddress: effectiveDropoffAddress,
+          serviceType: data.serviceType as ServiceType,
+          notes: data.notes,
         orderReference: data.orderReference?.trim() || null,
         pickupInstructions: data.pickupInstructions?.trim() || null,
         dropoffInstructions: data.dropoffInstructions?.trim() || null,

@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Loader2, Plus, X } from 'lucide-react';
+import { Building2, Loader2, MapPin, Plus, Search, X } from 'lucide-react';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
+import { formatAddressLines, validateAddress, type GeocodedAddress } from '@/lib/geocoding';
 import { downscaleImage } from '@/lib/image/downscale';
 import { getMembershipPlanPerks } from '@/lib/membership-perks';
 import { calculateRequestRouteMiles } from '@/lib/request-stops';
@@ -37,6 +37,17 @@ type Base64StatusResponse = {
 
 type PaymentPreference = 'INSTANT' | 'MONTHLY';
 
+type OtwTrueJobSiteBusiness = {
+  ownerUserId: string;
+  businessLegalName: string;
+  validatedAddress?: string | null;
+  primaryBusinessStreetAddress: string;
+  primaryBusinessCity: string;
+  primaryBusinessStateProvince: string;
+  primaryBusinessPostalCode: string;
+  primaryBusinessCountry: string;
+};
+
 type ServiceMilesWalletResponse = {
   plan?: {
     name?: string | null;
@@ -51,6 +62,7 @@ type ServiceMilesWalletResponse = {
     ownerUserId: string;
     ownerName: string | null;
     ownerEmail: string;
+    jobSiteBusiness?: OtwTrueJobSiteBusiness | null;
     benefitYear: number;
     usage: {
       freeFoodDeliveriesUsed: number;
@@ -87,6 +99,59 @@ function buildScheduledForIso(dateValue: string, timeValue: string): string | nu
   return candidate.toISOString();
 }
 
+function buildJobSiteBusinessAddressLabel(business: OtwTrueJobSiteBusiness): string {
+  const validatedAddress = business.validatedAddress?.trim();
+  if (validatedAddress) {
+    return validatedAddress;
+  }
+
+  const cityStatePostal = [
+    business.primaryBusinessCity,
+    business.primaryBusinessStateProvince,
+    business.primaryBusinessPostalCode,
+  ]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(' ');
+
+  return [
+    business.primaryBusinessStreetAddress,
+    cityStatePostal,
+    business.primaryBusinessCountry && business.primaryBusinessCountry !== 'US'
+      ? business.primaryBusinessCountry
+      : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(', ');
+}
+
+function buildJobSiteBusinessSearchText(business: OtwTrueJobSiteBusiness): string {
+  return [
+    business.businessLegalName,
+    business.validatedAddress,
+    business.primaryBusinessStreetAddress,
+    business.primaryBusinessCity,
+    business.primaryBusinessStateProvince,
+    business.primaryBusinessPostalCode,
+    business.primaryBusinessCountry,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+function isSameJobSiteBusiness(
+  left: OtwTrueJobSiteBusiness | null | undefined,
+  right: OtwTrueJobSiteBusiness | null | undefined,
+): boolean {
+  if (!left || !right) return false;
+  return (
+    left.ownerUserId === right.ownerUserId &&
+    left.businessLegalName === right.businessLegalName &&
+    left.primaryBusinessStreetAddress === right.primaryBusinessStreetAddress
+  );
+}
+
 export default function OrderPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -117,6 +182,9 @@ export default function OrderPage() {
   const [membershipPlan, setMembershipPlan] = useState<ServiceMilesWalletResponse['plan']>(null);
   const [otwTrueEntitlement, setOtwTrueEntitlement] = useState<ServiceMilesWalletResponse['otwTrue']>(null);
   const [otwTrueBenefitType, setOtwTrueBenefitType] = useState<OtwTrueBenefitType | ''>('');
+  const [jobSiteBusinessQuery, setJobSiteBusinessQuery] = useState('');
+  const [selectedJobSiteBusiness, setSelectedJobSiteBusiness] = useState<OtwTrueJobSiteBusiness | null>(null);
+  const [isResolvingJobSiteBusiness, setIsResolvingJobSiteBusiness] = useState(false);
   const [deliveryTiming, setDeliveryTiming] = useState<'ASAP' | 'SCHEDULED'>('ASAP');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
@@ -138,6 +206,27 @@ export default function OrderPage() {
     [intermediateStops],
   );
   const hasIncompleteIntermediateStops = intermediateStops.some((stop) => !stop);
+  const isFoodJobSiteBenefit = otwTrueBenefitType === 'FOOD_JOB_SITE';
+  const availableJobSiteBusinesses = useMemo(
+    () => (otwTrueEntitlement?.jobSiteBusiness ? [otwTrueEntitlement.jobSiteBusiness] : []),
+    [otwTrueEntitlement?.jobSiteBusiness],
+  );
+  const filteredJobSiteBusinesses = useMemo(() => {
+    const normalizedQuery = jobSiteBusinessQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return availableJobSiteBusinesses;
+    }
+
+    return availableJobSiteBusinesses.filter((business) =>
+      buildJobSiteBusinessSearchText(business).includes(normalizedQuery),
+    );
+  }, [availableJobSiteBusinesses, jobSiteBusinessQuery]);
+  const isBusinessSearchEmpty =
+    isFoodJobSiteBenefit &&
+    jobSiteBusinessQuery.trim().length > 0 &&
+    filteredJobSiteBusinesses.length === 0;
+  const missingJobSiteBusinessProfile =
+    isFoodJobSiteBenefit && availableJobSiteBusinesses.length === 0;
 
   useEffect(() => {
     if (!pickupPassFile) {
@@ -302,11 +391,128 @@ export default function OrderPage() {
     }
   }, [otwTrueBenefitType, serviceType]);
 
+  useEffect(() => {
+    if (!isFoodJobSiteBenefit) {
+      setJobSiteBusinessQuery('');
+      setSelectedJobSiteBusiness(null);
+      setIsResolvingJobSiteBusiness(false);
+      return;
+    }
+
+    const defaultBusiness = availableJobSiteBusinesses[0] ?? null;
+    if (!defaultBusiness) {
+      setSelectedJobSiteBusiness(null);
+      setDropoffAddress(null);
+      return;
+    }
+
+    if (isSameJobSiteBusiness(selectedJobSiteBusiness, defaultBusiness)) {
+      return;
+    }
+
+    let isActive = true;
+    setSelectedJobSiteBusiness(defaultBusiness);
+    setJobSiteBusinessQuery((current) => current || defaultBusiness.businessLegalName);
+    setIsResolvingJobSiteBusiness(true);
+
+    void validateAddress(buildJobSiteBusinessAddressLabel(defaultBusiness))
+      .then((resolvedAddress) => {
+        if (!isActive) return;
+        if (!resolvedAddress) {
+          setDropoffAddress(null);
+          toast({
+            title: 'Business address unavailable',
+            description:
+              'We could not verify the saved OTW True business address. Ask the business owner to update Membership Manage.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setDropoffAddress({
+          ...resolvedAddress,
+          placeName: defaultBusiness.businessLegalName,
+        });
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setDropoffAddress(null);
+        toast({
+          title: 'Business address unavailable',
+          description:
+            'We could not verify the saved OTW True business address. Ask the business owner to update Membership Manage.',
+          variant: 'destructive',
+        });
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsResolvingJobSiteBusiness(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [availableJobSiteBusinesses, isFoodJobSiteBenefit, selectedJobSiteBusiness, toast]);
+
+  const handleJobSiteBusinessSelect = async (business: OtwTrueJobSiteBusiness) => {
+    setSelectedJobSiteBusiness(business);
+    setJobSiteBusinessQuery(business.businessLegalName);
+    setIsResolvingJobSiteBusiness(true);
+
+    try {
+      const resolvedAddress = await validateAddress(buildJobSiteBusinessAddressLabel(business));
+      if (!resolvedAddress) {
+        setDropoffAddress(null);
+        toast({
+          title: 'Business address unavailable',
+          description:
+            'We could not verify the saved OTW True business address. Ask the business owner to update Membership Manage.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setDropoffAddress({
+        ...resolvedAddress,
+        placeName: business.businessLegalName,
+      });
+    } catch {
+      setDropoffAddress(null);
+      toast({
+        title: 'Business address unavailable',
+        description:
+          'We could not verify the saved OTW True business address. Ask the business owner to update Membership Manage.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResolvingJobSiteBusiness(false);
+    }
+  };
+
   const submitRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!isSignedIn || !user) {
       router.push('/sign-in');
+      return;
+    }
+
+    if (isFoodJobSiteBenefit && !selectedJobSiteBusiness) {
+      toast({
+        title: 'Business required',
+        description: 'Select your OTW True job-site business before submitting this request.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (isFoodJobSiteBenefit && isResolvingJobSiteBusiness) {
+      toast({
+        title: 'Verifying business address',
+        description: 'Please wait for the saved business dropoff address to finish loading.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -550,21 +756,110 @@ export default function OrderPage() {
               ) : null}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Dropoff Address</label>
-              <AddressSearch
-                ariaLabel="Dropoff address"
-                enableCurrentLocation
-                onSelect={setDropoffAddress}
-                className="w-full"
-              />
-              {dropoffLines ? (
-                <div className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs text-white/75">
-                  <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-otwGold" />{dropoffLines.primary}</div>
-                  {dropoffLines.secondary ? <div className="mt-1 text-white/55">{dropoffLines.secondary}</div> : null}
+            {isFoodJobSiteBenefit ? (
+              <div className="space-y-4 rounded-lg border border-emerald-400/25 bg-emerald-500/10 p-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                    Job-Site Business
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-100/70" />
+                    <Input
+                      value={jobSiteBusinessQuery}
+                      onChange={(event) => setJobSiteBusinessQuery(event.target.value)}
+                      placeholder="Search by business name or saved address"
+                      className="border-emerald-300/20 bg-black/20 pl-10 pr-10 text-white placeholder:text-white/40"
+                    />
+                    {isResolvingJobSiteBusiness ? (
+                      <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald-100/70" />
+                    ) : null}
+                  </div>
+
+                  {missingJobSiteBusinessProfile ? (
+                    <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-xs text-red-200">
+                      Your linked OTW True business has not saved a job-site address yet. Ask the business owner to
+                      update Membership Manage before using this benefit.
+                    </div>
+                  ) : filteredJobSiteBusinesses.length > 0 ? (
+                    <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-2">
+                      {filteredJobSiteBusinesses.map((business) => {
+                        const isSelected = isSameJobSiteBusiness(selectedJobSiteBusiness, business);
+                        return (
+                          <button
+                            key={`${business.ownerUserId}-${business.businessLegalName}`}
+                            type="button"
+                            onClick={() => {
+                              void handleJobSiteBusinessSelect(business);
+                            }}
+                            className={`w-full rounded-lg border px-3 py-3 text-left transition ${
+                              isSelected
+                                ? 'border-emerald-300/40 bg-emerald-500/10'
+                                : 'border-white/10 bg-black/20 hover:border-white/20 hover:bg-black/30'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <Building2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-200" />
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-white">
+                                  {business.businessLegalName}
+                                </div>
+                                <div className="mt-1 text-xs text-white/65">
+                                  {buildJobSiteBusinessAddressLabel(business)}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : isBusinessSearchEmpty ? (
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/60">
+                      No linked OTW True business matches that search. Try the business name or saved address.
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                    Dropoff Address
+                  </label>
+                  {dropoffLines ? (
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/80">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-otwGold" />
+                        {dropoffLines.primary}
+                      </div>
+                      {dropoffLines.secondary ? (
+                        <div className="mt-1 text-white/55">{dropoffLines.secondary}</div>
+                      ) : null}
+                      <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-emerald-200/80">
+                        Locked to the business profile location on file
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-white/15 bg-black/10 p-3 text-xs text-white/55">
+                      Select your job-site business to load the saved dropoff location.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Dropoff Address</label>
+                <AddressSearch
+                  ariaLabel="Dropoff address"
+                  enableCurrentLocation
+                  onSelect={setDropoffAddress}
+                  className="w-full"
+                />
+                {dropoffLines ? (
+                  <div className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs text-white/75">
+                    <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-otwGold" />{dropoffLines.primary}</div>
+                    {dropoffLines.secondary ? <div className="mt-1 text-white/55">{dropoffLines.secondary}</div> : null}
+                  </div>
+                ) : null}
+              </div>
+            )}
 
             {planPerks.canUseMultiStop ? (
               <div className="space-y-3 rounded-lg border border-otwGold/25 bg-otwGold/10 p-4">
@@ -905,7 +1200,9 @@ export default function OrderPage() {
                   isLoading ||
                   !isSignedIn ||
                   isOptimizingPickupPass ||
-                  hasIncompleteIntermediateStops
+                  hasIncompleteIntermediateStops ||
+                  isResolvingJobSiteBusiness ||
+                  missingJobSiteBusinessProfile
                 }
               >
                 {isSubmitting ? (

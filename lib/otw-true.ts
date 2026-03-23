@@ -9,6 +9,17 @@ const ACTIVE_MEMBERSHIP_STATUSES: MembershipStatus[] = ['ACTIVE', 'TRIALING'];
 export const OTW_TRUE_BENEFIT_TYPES = ['FOOD_JOB_SITE', 'COMMUTE_RIDE', 'ROADSIDE_ASSIST'] as const;
 export type OtwTrueBenefitType = (typeof OTW_TRUE_BENEFIT_TYPES)[number];
 
+export type OtwTrueJobSiteBusinessSummary = {
+  ownerUserId: string;
+  businessLegalName: string;
+  validatedAddress: string | null;
+  primaryBusinessStreetAddress: string;
+  primaryBusinessCity: string;
+  primaryBusinessStateProvince: string;
+  primaryBusinessPostalCode: string;
+  primaryBusinessCountry: string;
+};
+
 const OTW_TRUE_YEARLY_LIMITS = {
   COMMUTE_RIDE: 2,
   ROADSIDE_ASSIST: 2,
@@ -42,6 +53,15 @@ type OtwTrueLinkWithOwner = {
     name: string | null;
     email: string;
     membership: ActiveOwnerMembership;
+    businessMembershipProfile: {
+      businessLegalName: string;
+      validatedAddress: string | null;
+      primaryBusinessStreetAddress: string;
+      primaryBusinessCity: string;
+      primaryBusinessStateProvince: string;
+      primaryBusinessPostalCode: string;
+      primaryBusinessCountry: string;
+    } | null;
   };
   yearlyBenefits: Array<{
     freeFoodDeliveriesUsed: number;
@@ -55,6 +75,7 @@ export type OtwTrueEntitlementSummary = {
   ownerUserId: string;
   ownerName: string | null;
   ownerEmail: string;
+  jobSiteBusiness: OtwTrueJobSiteBusinessSummary | null;
   benefitYear: number;
   usage: {
     freeFoodDeliveriesUsed: number;
@@ -66,6 +87,37 @@ export type OtwTrueEntitlementSummary = {
     roadsideAssists: number;
   };
 };
+
+export function buildOtwTrueJobSiteBusinessAddress(
+  business: OtwTrueJobSiteBusinessSummary | null | undefined,
+): string {
+  if (!business) return '';
+
+  const validatedAddress = business.validatedAddress?.trim();
+  if (validatedAddress) {
+    return validatedAddress;
+  }
+
+  const cityStatePostal = [
+    business.primaryBusinessCity,
+    business.primaryBusinessStateProvince,
+    business.primaryBusinessPostalCode,
+  ]
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .join(' ');
+
+  return [
+    business.primaryBusinessStreetAddress,
+    cityStatePostal,
+    business.primaryBusinessCountry && business.primaryBusinessCountry !== 'US'
+      ? business.primaryBusinessCountry
+      : null,
+  ]
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .join(', ');
+}
 
 export type ConsumedOtwTrueBenefit = {
   benefitType: OtwTrueBenefitType;
@@ -101,6 +153,20 @@ function mapEntitlement(link: OtwTrueLinkWithOwner, year: number): OtwTrueEntitl
     ownerUserId: link.ownerUserId,
     ownerName: link.owner.name,
     ownerEmail: link.owner.email,
+    jobSiteBusiness: link.owner.businessMembershipProfile
+      ? {
+          ownerUserId: link.ownerUserId,
+          businessLegalName: link.owner.businessMembershipProfile.businessLegalName,
+          validatedAddress: link.owner.businessMembershipProfile.validatedAddress,
+          primaryBusinessStreetAddress:
+            link.owner.businessMembershipProfile.primaryBusinessStreetAddress,
+          primaryBusinessCity: link.owner.businessMembershipProfile.primaryBusinessCity,
+          primaryBusinessStateProvince:
+            link.owner.businessMembershipProfile.primaryBusinessStateProvince,
+          primaryBusinessPostalCode: link.owner.businessMembershipProfile.primaryBusinessPostalCode,
+          primaryBusinessCountry: link.owner.businessMembershipProfile.primaryBusinessCountry,
+        }
+      : null,
     benefitYear: year,
     usage: {
       freeFoodDeliveriesUsed: usage.freeFoodDeliveriesUsed,
@@ -140,6 +206,17 @@ async function findActiveOtwTrueLink(
               status: true,
               currentPeriodEnd: true,
               plan: { select: { name: true } },
+            },
+          },
+          businessMembershipProfile: {
+            select: {
+              businessLegalName: true,
+              validatedAddress: true,
+              primaryBusinessStreetAddress: true,
+              primaryBusinessCity: true,
+              primaryBusinessStateProvince: true,
+              primaryBusinessPostalCode: true,
+              primaryBusinessCountry: true,
             },
           },
         },

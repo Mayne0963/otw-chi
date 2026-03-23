@@ -15,7 +15,11 @@ import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
-import { syncOtwTrueEmployeeAccessForUser } from '@/lib/otw-true';
+import {
+  buildOtwTrueJobSiteBusinessAddress,
+  syncOtwTrueEmployeeAccessForUser,
+} from '@/lib/otw-true';
+import { validateAddress } from '@/lib/geocoding';
 
 export const runtime = 'nodejs';
 
@@ -59,7 +63,7 @@ export async function POST(req: Request) {
     }
 
     const prisma = getPrisma();
-    await syncOtwTrueEmployeeAccessForUser(prisma, {
+    const otwTrueEntitlement = await syncOtwTrueEmployeeAccessForUser(prisma, {
       userId: user.id,
       email: user.email,
     });
@@ -93,6 +97,50 @@ export async function POST(req: Request) {
     const scheduleWindowMinutes = Number.isFinite(parsed.data.scheduleWindowMinutes)
       ? Math.min(180, Math.max(5, Math.round(Number(parsed.data.scheduleWindowMinutes))))
       : DEFAULT_SCHEDULE_WINDOW_MINUTES;
+
+    let effectiveDropoffAddress = parsed.data.dropoffAddress;
+    let dropoffLocation:
+      | {
+          address: string;
+          lat: number;
+          lng: number;
+          label?: string;
+        }
+      | undefined;
+
+    if (parsed.data.otwTrueBenefitType === 'FOOD_JOB_SITE') {
+      const jobSiteBusiness = otwTrueEntitlement?.jobSiteBusiness;
+      if (!jobSiteBusiness) {
+        return NextResponse.json(
+          {
+            error:
+              'Your linked OTW True business has not saved a job-site address yet. Ask the business owner to update Membership Manage before placing this request.',
+          },
+          { status: 400 },
+        );
+      }
+
+      const resolvedJobSite = await validateAddress(
+        buildOtwTrueJobSiteBusinessAddress(jobSiteBusiness),
+      ).catch(() => null);
+      if (!resolvedJobSite) {
+        return NextResponse.json(
+          {
+            error:
+              'We could not verify the saved OTW True business address. Ask the business owner to review the business profile address before placing this request.',
+          },
+          { status: 400 },
+        );
+      }
+
+      effectiveDropoffAddress = resolvedJobSite.formattedAddress;
+      dropoffLocation = {
+        address: resolvedJobSite.formattedAddress,
+        lat: resolvedJobSite.latitude,
+        lng: resolvedJobSite.longitude,
+        label: jobSiteBusiness.businessLegalName,
+      };
+    }
 
     let quotedAt: Date | undefined;
     let prioritySlot = parsed.data.prioritySlot ?? false;
@@ -141,7 +189,8 @@ export async function POST(req: Request) {
       userId: user.id,
       serviceType: parsed.data.serviceType,
       pickupAddress: parsed.data.pickupAddress,
-      dropoffAddress: parsed.data.dropoffAddress,
+      dropoffAddress: effectiveDropoffAddress,
+      dropoffLocation,
       notes: parsed.data.notes,
       scheduledStart: scheduledStart,
       scheduledFor,
