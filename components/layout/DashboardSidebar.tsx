@@ -190,7 +190,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
         <OtwBrandLink
           imageClassName="h-24 w-24 rounded-xl"
           labelClassName="text-sm tracking-[0.28em] text-white"
-          subtitle="App"
+          subtitle="On The Way"
         />
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
