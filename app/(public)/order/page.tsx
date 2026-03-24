@@ -105,6 +105,11 @@ function buildJobSiteBusinessAddressLabel(business: OtwTrueJobSiteBusiness): str
     return validatedAddress;
   }
 
+  const addressParts = buildJobSiteBusinessValidationAddressParts(business);
+  return addressParts.join(', ');
+}
+
+function buildJobSiteBusinessValidationAddressParts(business: OtwTrueJobSiteBusiness): string[] {
   const cityStatePostal = [
     business.primaryBusinessCity,
     business.primaryBusinessStateProvince,
@@ -121,8 +126,13 @@ function buildJobSiteBusinessAddressLabel(business: OtwTrueJobSiteBusiness): str
       ? business.primaryBusinessCountry
       : null,
   ]
-    .filter((value): value is string => Boolean(value))
-    .join(', ');
+    .map((value) => value?.trim() ?? '')
+    .filter(Boolean);
+}
+
+function buildJobSiteBusinessValidationAddress(business: OtwTrueJobSiteBusiness): string {
+  const addressParts = buildJobSiteBusinessValidationAddressParts(business);
+  return addressParts.length > 0 ? addressParts.join(', ') : buildJobSiteBusinessAddressLabel(business);
 }
 
 function buildJobSiteBusinessSearchText(business: OtwTrueJobSiteBusiness): string {
@@ -148,7 +158,12 @@ function isSameJobSiteBusiness(
   return (
     left.ownerUserId === right.ownerUserId &&
     left.businessLegalName === right.businessLegalName &&
-    left.primaryBusinessStreetAddress === right.primaryBusinessStreetAddress
+    left.validatedAddress === right.validatedAddress &&
+    left.primaryBusinessStreetAddress === right.primaryBusinessStreetAddress &&
+    left.primaryBusinessCity === right.primaryBusinessCity &&
+    left.primaryBusinessStateProvince === right.primaryBusinessStateProvince &&
+    left.primaryBusinessPostalCode === right.primaryBusinessPostalCode &&
+    left.primaryBusinessCountry === right.primaryBusinessCountry
   );
 }
 
@@ -415,7 +430,7 @@ export default function OrderPage() {
     setJobSiteBusinessQuery((current) => current || defaultBusiness.businessLegalName);
     setIsResolvingJobSiteBusiness(true);
 
-    void validateAddress(buildJobSiteBusinessAddressLabel(defaultBusiness))
+    void validateAddress(buildJobSiteBusinessValidationAddress(defaultBusiness))
       .then((resolvedAddress) => {
         if (!isActive) return;
         if (!resolvedAddress) {
@@ -461,7 +476,7 @@ export default function OrderPage() {
     setIsResolvingJobSiteBusiness(true);
 
     try {
-      const resolvedAddress = await validateAddress(buildJobSiteBusinessAddressLabel(business));
+      const resolvedAddress = await validateAddress(buildJobSiteBusinessValidationAddress(business));
       if (!resolvedAddress) {
         setDropoffAddress(null);
         toast({

@@ -88,15 +88,10 @@ export type OtwTrueEntitlementSummary = {
   };
 };
 
-export function buildOtwTrueJobSiteBusinessAddress(
+function buildOtwTrueJobSiteBusinessAddressParts(
   business: OtwTrueJobSiteBusinessSummary | null | undefined,
-): string {
-  if (!business) return '';
-
-  const validatedAddress = business.validatedAddress?.trim();
-  if (validatedAddress) {
-    return validatedAddress;
-  }
+): string[] {
+  if (!business) return [];
 
   const cityStatePostal = [
     business.primaryBusinessCity,
@@ -115,8 +110,27 @@ export function buildOtwTrueJobSiteBusinessAddress(
       : null,
   ]
     .map((value) => String(value ?? '').trim())
-    .filter(Boolean)
-    .join(', ');
+    .filter(Boolean);
+}
+
+export function buildOtwTrueJobSiteBusinessAddress(
+  business: OtwTrueJobSiteBusinessSummary | null | undefined,
+): string {
+  if (!business) return '';
+
+  const validatedAddress = business.validatedAddress?.trim();
+  if (validatedAddress) {
+    return validatedAddress;
+  }
+
+  return buildOtwTrueJobSiteBusinessAddressParts(business).join(', ');
+}
+
+export function buildOtwTrueJobSiteBusinessValidationAddress(
+  business: OtwTrueJobSiteBusinessSummary | null | undefined,
+): string {
+  const addressParts = buildOtwTrueJobSiteBusinessAddressParts(business);
+  return addressParts.length > 0 ? addressParts.join(', ') : buildOtwTrueJobSiteBusinessAddress(business);
 }
 
 export type ConsumedOtwTrueBenefit = {

@@ -24,7 +24,7 @@ import {
   ensureDeliveryFeePaymentIntentForRequest,
 } from '@/lib/delivery-payment';
 import {
-  buildOtwTrueJobSiteBusinessAddress,
+  buildOtwTrueJobSiteBusinessValidationAddress,
   syncOtwTrueEmployeeAccessForUser,
 } from '@/lib/otw-true';
 import { validateAddress } from '@/lib/geocoding';
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
       }
 
       const resolvedJobSite = await validateAddress(
-        buildOtwTrueJobSiteBusinessAddress(jobSiteBusiness),
+        buildOtwTrueJobSiteBusinessValidationAddress(jobSiteBusiness),
       ).catch(() => null);
       if (!resolvedJobSite) {
         return NextResponse.json(
