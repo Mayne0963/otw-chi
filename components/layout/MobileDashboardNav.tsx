@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { 
   LayoutDashboard, 
   Package, 
-  CreditCard,
   Wallet,
   Truck, 
   Menu as MenuIcon 
@@ -28,7 +27,6 @@ export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
   const commonTabs = [
     { label: "Home", href: "/dashboard", icon: LayoutDashboard },
     { label: "Requests", href: "/requests", icon: Package },
-    { label: "Miles", href: "/service-miles", icon: CreditCard },
   ]
   if (capabilities.canSeeNip) {
     commonTabs.push({ label: "Wallet", href: "/wallet/nip", icon: Wallet })

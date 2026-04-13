@@ -62,7 +62,6 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { label: "My Requests", href: "/requests", icon: Package },
       { label: "Membership", href: "/membership/manage", icon: CreditCard },
-      { label: "Service Miles", href: "/service-miles", icon: CreditCard },
       { label: "Support", href: "/support", icon: LifeBuoy },
       { label: "Settings", href: "/settings", icon: Settings },
     ]
