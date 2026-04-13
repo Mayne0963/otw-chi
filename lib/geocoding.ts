@@ -1434,7 +1434,7 @@ const FEATURED_LOCATION_INDEX = FEATURED_FORT_WAYNE_LOCATIONS.map((location) => 
 
 function getFeaturedLocationSuggestions(
   query: string,
-  options?: { allowDefaultWhenNoMatch?: boolean }
+  options?: { allowDefaultWhenNoMatch?: boolean; exactOnly?: boolean }
 ): GeocodedAddress[] {
   const normalized = normalizeQuery(query);
   const tokens = tokenizeQuery(query, { minLength: 2 });
@@ -1453,6 +1453,23 @@ function getFeaturedLocationSuggestions(
 
     if (!allowDefaultWhenNoMatch) return [];
     return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+  }
+
+  if (options?.exactOnly) {
+    const exactMatches = FEATURED_LOCATION_INDEX.filter(({ location, haystack }) => {
+      const placeName = normalizeQuery(location.placeName);
+      const streetAddress = normalizeQuery(location.streetAddress);
+
+      return (
+        normalized === placeName ||
+        normalized.includes(placeName) ||
+        normalized === streetAddress ||
+        normalized.includes(streetAddress) ||
+        countMatchedTokens(haystack, tokens) === tokens.length
+      );
+    }).map(({ location }) => location);
+
+    return exactMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
 
   const exactTokenMatches = FEATURED_LOCATION_INDEX.filter(({ haystack }) =>
@@ -1497,14 +1514,19 @@ export async function searchAddress(
   query: string
 ): Promise<GeocodedAddress[]> {
   const trimmedQuery = query.trim();
-  const featuredSuggestions = getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: true });
+  const normalizedQuery = normalizeQuery(trimmedQuery);
+  const queryTokens = tokenizeQuery(trimmedQuery, { minLength: 2 });
+  const specificAddressQuery = isSpecificAddressQuery(normalizedQuery, queryTokens);
+  const featuredSuggestions = specificAddressQuery
+    ? []
+    : getFeaturedLocationSuggestions(trimmedQuery, { allowDefaultWhenNoMatch: true });
   const featuredMatches = getFeaturedLocationSuggestions(trimmedQuery, {
     allowDefaultWhenNoMatch: false,
+    exactOnly: specificAddressQuery,
   });
 
   if (!trimmedQuery) return featuredSuggestions;
 
-  const normalizedQuery = normalizeQuery(trimmedQuery);
   const cacheKey = normalizedQuery || trimmedQuery.toLowerCase();
   const cachedResults = getCachedSearchResults(cacheKey);
   if (cachedResults) return cachedResults;
@@ -1514,8 +1536,6 @@ export async function searchAddress(
     return featuredSuggestions;
   }
 
-  const queryTokens = tokenizeQuery(trimmedQuery, { minLength: 2 });
-  const specificAddressQuery = isSpecificAddressQuery(normalizedQuery, queryTokens);
   const requiredTokenMatches = getRequiredTokenMatches(queryTokens);
 
   try {
