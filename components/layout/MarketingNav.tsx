@@ -3,7 +3,7 @@ import OtwButton from "@/components/ui/otw/OtwButton"
 import { UserButton } from "@neondatabase/auth/react"
 import { SignedIn, SignedOut } from "@/components/auth/auth-helpers"
 import { Menu } from "lucide-react"
-import { ModeToggle } from "@/components/mode-toggle"
+import { MobileThemeSwitch, ModeToggle } from "@/components/mode-toggle"
 import { BackNavButton } from "@/components/layout/BackNavButton"
 import {
   Sheet,
@@ -146,6 +146,8 @@ export function MarketingNav() {
                   </nav>
                   
                   <div className="flex flex-col gap-3 pt-4 border-t border-border/70">
+                    <MobileThemeSwitch />
+
                     <SheetClose asChild>
                       <OtwButton as="a" href="/order" className="w-full">
                         Order Now
