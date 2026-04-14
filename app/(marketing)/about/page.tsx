@@ -46,7 +46,7 @@ const TIMELINE = [
 export default function AboutPage() {
   return (
     <div className="otw-container otw-section space-y-16">
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-otwBlack via-black to-otwGold/20 p-10 sm:p-14">
+      <section className="otw-inverse-surface relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,#141518_0%,#050506_58%,rgba(191,149,63,0.28)_100%)] p-10 sm:p-14 shadow-otwElevated">
         <div className="absolute -top-20 right-0 h-56 w-56 rounded-full bg-otwGold/20 blur-3xl" />
         <div className="absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-secondary/12 blur-3xl" />
         <div className="relative space-y-6 max-w-2xl">
@@ -54,7 +54,7 @@ export default function AboutPage() {
             <Package className="h-3.5 w-3.5 text-otwGold" />
             On The Way
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-otwOffWhite">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white">
             Built for premium deliveries that never feel random.
           </h1>
           <p className="text-lg text-white/70">
