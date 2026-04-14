@@ -22,24 +22,16 @@ const VALUE_CARDS = [
 
 const TIMELINE = [
   {
-    step: 'Step 01',
     title: 'Request arrives',
-    body: 'Members and one-time customers submit details and pickup windows.',
   },
   {
-    step: 'Step 02',
     title: 'Driver matched',
-    body: 'The closest qualified driver is assigned and notified instantly.',
   },
   {
-    step: 'Step 03',
     title: 'Live tracking',
-    body: 'Customers see status updates and location pings in real time.',
   },
   {
-    step: 'Step 04',
     title: 'Delivery complete',
-    body: 'Proof of completion and follow-up notes are captured.',
   },
 ];
 
@@ -137,10 +129,8 @@ export default function AboutPage() {
         </OtwCard>
         <div className="grid gap-4">
           {TIMELINE.map((step) => (
-            <OtwCard key={step.step} className="bg-black/40">
-              <div className="text-xs uppercase tracking-[0.2em] text-otwGold">{step.step}</div>
-              <div className="mt-2 text-lg font-semibold text-otwOffWhite">{step.title}</div>
-              <div className="mt-1 text-sm text-white/70">{step.body}</div>
+            <OtwCard key={step.title} className="bg-black/40">
+              <h3 className="text-lg font-semibold text-otwOffWhite">{step.title}</h3>
             </OtwCard>
           ))}
         </div>
