@@ -66,6 +66,10 @@ export async function POST(req: Request) {
     const session = await getNeonSession();
     const userId = extractNeonAuthUserId(session);
 
+    if (!userId) {
+      return new NextResponse('You must be signed in before applying as a driver.', { status: 401 });
+    }
+
     const prisma = getPrisma();
 
     const body = await req.json();
@@ -82,7 +86,6 @@ export async function POST(req: Request) {
 
     const normalizedEmail = data.email.toLowerCase();
 
-    // Guest users can apply, but their email must not be attached to a different account.
     const accountWithEmail = await prisma.user.findFirst({
       where: {
         email: { equals: normalizedEmail, mode: 'insensitive' },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useCurrentUser } from '@/components/auth/use-current-user';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
@@ -33,7 +34,7 @@ function formatApplicationDate(value: string) {
 }
 
 export default function DriverApplyPage() {
-  const { user } = useCurrentUser();
+  const { isLoading: userLoading, isSignedIn, user } = useCurrentUser();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -145,6 +146,16 @@ export default function DriverApplyPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isSignedIn) {
+      toast({
+        title: 'Sign in required',
+        description: 'You must be signed in before applying as a driver.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -216,6 +227,13 @@ export default function DriverApplyPage() {
       
       <div className="mt-6 max-w-xl mx-auto">
         <Card className="space-y-4 p-5 sm:p-6">
+          <div className="rounded-xl border border-otwGold/35 bg-otwGold/10 p-4 text-sm text-foreground">
+            <p className="font-semibold">You must be signed in before applying as a driver.</p>
+            <p className="mt-1 text-muted-foreground">
+              Sign in first so your driver application can be attached to your OTW account and reviewed correctly.
+            </p>
+          </div>
+
           {statusLoading ? (
             <div className="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-white/70">
               Checking your application status...
@@ -295,7 +313,21 @@ export default function DriverApplyPage() {
             </div>
           ) : null}
 
-          {submitted ? (
+          {userLoading ? (
+            <div className="rounded-md border border-white/10 bg-black/20 p-3 text-sm text-white/70">
+              Checking your sign-in status...
+            </div>
+          ) : !isSignedIn ? (
+            <div className="space-y-3 rounded-md border border-white/10 bg-black/20 p-4 text-center">
+              <h2 className="text-lg font-semibold text-foreground">Sign in to continue</h2>
+              <p className="text-sm text-muted-foreground">
+                Driver applications are only accepted from signed-in users.
+              </p>
+              <Button asChild variant="gold" className="w-full h-12 text-base font-semibold">
+                <Link href="/sign-in?redirect_url=/driver/apply">Sign In to Apply</Link>
+              </Button>
+            </div>
+          ) : submitted ? (
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-semibold text-foreground">Thanks for applying!</h2>
               <p className="text-sm text-muted-foreground">
