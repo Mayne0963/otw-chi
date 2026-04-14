@@ -8,7 +8,6 @@ import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
-import { UNLIMITED_SERVICE_MILES } from '@/lib/membership-miles';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +15,8 @@ const TYPE_LABELS: Record<ServiceMilesTransactionType, string> = {
   ADD_MONTHLY: 'Monthly Credit',
   DEDUCT_REQUEST: 'Request Deduction',
   ADJUST: 'Adjustment',
-  EXPIRE: 'Miles Expired',
-  ROLL_IN: 'Rollover',
+  EXPIRE: 'Expired Credit',
+  ROLL_IN: 'Carried Forward',
 };
 
 function formatTransactionType(type: ServiceMilesTransactionType) {
@@ -47,13 +46,13 @@ export default async function ServiceMilesHistoryPage() {
     return (
       <OtwPageShell>
         <OtwSectionHeader
-          title="Service Miles History"
-          subtitle="Review your wallet activity and deductions."
+          title="Membership Balance History"
+          subtitle="Review your account activity."
         />
         <OtwCard className="mt-3">
           <OtwEmptyState
-            title="Sign in to view Service Miles history"
-            subtitle="Track monthly credits, deductions, and adjustments in your wallet."
+            title="Sign in to view membership balance history"
+            subtitle="Track monthly credits, deductions, and adjustments."
             actionHref="/sign-in"
             actionLabel="Sign In"
           />
@@ -67,14 +66,11 @@ export default async function ServiceMilesHistoryPage() {
     where: { userId: user.id },
     select: {
       id: true,
-      balanceMiles: true,
-      rolloverBankMiles: true,
       ledgerEntries: {
         orderBy: { createdAt: 'desc' },
         take: 100,
         select: {
           id: true,
-          amount: true,
           transactionType: true,
           description: true,
           createdAt: true,
@@ -91,54 +87,22 @@ export default async function ServiceMilesHistoryPage() {
   });
 
   const entries = wallet?.ledgerEntries ?? [];
-  const totalEarned = entries
-    .filter((entry) => entry.amount > 0)
-    .reduce((sum, entry) => sum + entry.amount, 0);
-  const totalUsed = Math.abs(
-    entries.filter((entry) => entry.amount < 0).reduce((sum, entry) => sum + entry.amount, 0)
-  );
-  const balanceMiles = wallet?.balanceMiles ?? 0;
-  const isUnlimited = balanceMiles === UNLIMITED_SERVICE_MILES;
-
   return (
     <OtwPageShell>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <OtwSectionHeader
-          title="Service Miles History"
-          subtitle="Review your latest wallet activity. Showing up to 100 most recent entries."
+          title="Membership Balance History"
+          subtitle="Review your latest account activity. Showing up to 100 most recent entries."
         />
         <OtwButton href="/service-miles" variant="outline" size="sm">
-          Back To Service Miles
+          Back To Member Request
         </OtwButton>
       </div>
 
       <OtwCard className="mt-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-lg bg-white/5 p-4">
-            <div className="text-xs uppercase tracking-wide text-white/60">Current Balance</div>
-            <div className="mt-1 text-2xl font-semibold text-otwGold">
-              {isUnlimited ? 'Unlimited' : balanceMiles.toLocaleString()}
-            </div>
-          </div>
-          <div className="rounded-lg bg-white/5 p-4">
-            <div className="text-xs uppercase tracking-wide text-white/60">Miles Added</div>
-            <div className="mt-1 text-2xl font-semibold text-green-400">
-              +{totalEarned.toLocaleString()}
-            </div>
-          </div>
-          <div className="rounded-lg bg-white/5 p-4">
-            <div className="text-xs uppercase tracking-wide text-white/60">Miles Used/Expired</div>
-            <div className="mt-1 text-2xl font-semibold text-red-400">
-              -{totalUsed.toLocaleString()}
-            </div>
-          </div>
-        </div>
-      </OtwCard>
-
-      <OtwCard className="mt-4">
         {entries.length === 0 ? (
           <OtwEmptyState
-            title="No Service Miles history yet"
+            title="No membership balance history yet"
             subtitle="Your monthly credits and request deductions will appear here."
             actionHref="/order"
             actionLabel="Create Request"
@@ -150,7 +114,6 @@ export default async function ServiceMilesHistoryPage() {
                 <tr>
                   <th className="px-4 py-3">Time</th>
                   <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Amount</th>
                   <th className="px-4 py-3">Details</th>
                   <th className="px-4 py-3">Request</th>
                 </tr>
@@ -169,14 +132,6 @@ export default async function ServiceMilesHistoryPage() {
                       >
                         {formatTransactionType(entry.transactionType)}
                       </span>
-                    </td>
-                    <td
-                      className={`px-4 py-3 font-semibold ${
-                        entry.amount >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}
-                    >
-                      {entry.amount >= 0 ? '+' : ''}
-                      {entry.amount.toLocaleString()}
                     </td>
                     <td className="max-w-xl px-4 py-3 text-white/80">
                       {entry.description || 'No description'}

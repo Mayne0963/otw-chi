@@ -267,7 +267,7 @@ export default async function AdminOtwOsPage() {
 
       <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <OtwCard className="p-5 sm:p-6">
-          <div className="text-sm font-medium">Service Miles Charged</div>
+          <div className="text-sm font-medium">Delivery Units</div>
           <div className="mt-2 text-2xl font-semibold">{totalMiles.toLocaleString()}</div>
           <div className="mt-1 text-xs text-white/60">Delivered requests only</div>
         </OtwCard>
@@ -277,9 +277,9 @@ export default async function AdminOtwOsPage() {
           <div className="mt-1 text-xs text-white/60">Excludes tips</div>
         </OtwCard>
         <OtwCard className="p-5 sm:p-6">
-          <div className="text-sm font-medium">Cost / Service Mile</div>
+          <div className="text-sm font-medium">Efficiency Index</div>
           <div className="mt-2 text-2xl font-semibold">{formatUsd(costPerMileCents)}</div>
-          <div className="mt-1 text-xs text-white/60">Driver cost ÷ miles</div>
+          <div className="mt-1 text-xs text-white/60">Delivered requests only</div>
         </OtwCard>
         <OtwCard className="p-5 sm:p-6">
           <div className="text-sm font-medium">Cost / Driver Hour</div>
@@ -309,13 +309,13 @@ export default async function AdminOtwOsPage() {
         </OtwCard>
 
         <OtwCard className="p-5 sm:p-6 lg:col-span-2">
-          <div className="text-sm font-medium">Bonus Leakage (Proxy)</div>
+          <div className="text-sm font-medium">Bonus Review</div>
           <div className="mt-2 flex items-center justify-between">
-            <div className="text-xs text-white/60">Driver cost minus hourly-base estimate</div>
+            <div className="text-xs text-white/60">Driver incentives review</div>
             <div className="text-sm font-semibold">{formatUsd(bonusLeakageCents)}</div>
           </div>
           <div className="mt-2 text-xs text-white/60">
-            Base estimate uses each driver’s current hourly rate and logged active minutes.
+            Uses active request logs and current driver rates.
           </div>
         </OtwCard>
       </div>
@@ -330,12 +330,12 @@ export default async function AdminOtwOsPage() {
                   <div>
                     <div className="font-semibold">{r.serviceType}</div>
                     <div className="text-xs text-white/60">
-                      {r.jobs} jobs • {r.miles.toLocaleString()} miles • {(r.complaintRate * 100).toFixed(0)}% complaints
+                      {r.jobs} jobs • {(r.complaintRate * 100).toFixed(0)}% complaints
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-semibold">{formatUsd(r.costPerMile)}</div>
-                    <div className="text-xs text-white/60">per mile</div>
+                    <div className="text-xs text-white/60">index</div>
                   </div>
                 </div>
               ))

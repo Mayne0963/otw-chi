@@ -10,11 +10,11 @@ export default function ServiceMilesPage() {
     <OtwPageShell>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <OtwSectionHeader
-          title="Service Miles Calculator"
-          subtitle="Quote and submit a member request using your Service Miles balance."
+          title="Member Request"
+          subtitle="Quote and submit a member request."
         />
         <OtwButton href="/service-miles/history" variant="outline" size="sm">
-          View Miles History
+          View History
         </OtwButton>
       </div>
       <div className="mt-6">

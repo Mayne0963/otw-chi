@@ -88,7 +88,7 @@ export default async function RequestsPage() {
                             typeof request.serviceMilesPaid === 'number' &&
                             request.serviceMilesPaid > 0 ? (
                               <div className="font-medium text-otwGold">
-                                {request.serviceMilesPaid.toLocaleString()} Service Miles
+                                Membership balance
                               </div>
                             ) : (
                               <>
@@ -96,7 +96,7 @@ export default async function RequestsPage() {
                                 {typeof request.serviceMilesPaid === 'number' &&
                                 request.serviceMilesPaid > 0 ? (
                                   <div className="text-[11px] font-medium text-otwGold">
-                                    + {request.serviceMilesPaid.toLocaleString()} SM
+                                    + membership balance
                                   </div>
                                 ) : null}
                               </>

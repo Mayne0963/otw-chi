@@ -882,7 +882,7 @@ export default function OrderPage() {
                   <div>
                     <h3 className="text-sm font-semibold text-white">Intermediate Stops</h3>
                     <p className="mt-1 text-xs text-white/70">
-                      Add any extra stops between pickup and the final dropoff. Each extra stop adds Service Miles.
+                      Add any extra stops between pickup and the final dropoff.
                     </p>
                   </div>
                   <OtwButton
@@ -1064,15 +1064,15 @@ export default function OrderPage() {
                     className="bg-black/30 text-white"
                   >
                     <option value="INSTANT">Pay instantly (required before dispatch)</option>
-                    <option value="MONTHLY">Monthly billing (use service miles first)</option>
+                    <option value="MONTHLY">Monthly billing</option>
                   </Select>
                   <p className="text-xs text-white/55">
-                    Plans with invoice overage billing can choose instant payment or monthly billing.
+                    Eligible plans can choose instant payment or monthly billing.
                   </p>
                 </div>
               ) : (
                 <p className="text-xs text-white/65">
-                  Your current plan uses Service Miles first and requires instant settlement when miles run out.
+                  Your current plan requires payment before dispatch when a balance is due.
                 </p>
               )}
             </div>

@@ -11,8 +11,6 @@ export type MembershipComparePlan = {
   name: string;
   section: PlanSection;
   price: string;
-  serviceMiles: string;
-  rollover: string;
   users: string;
   billing: string;
   perks: string[];
@@ -174,22 +172,6 @@ export default function MembershipCompareBuilder({ plans }: MembershipCompareBui
             </thead>
             <tbody>
               <tr className="border-b border-white/10">
-                <td className="p-4 text-white/70">Service Miles</td>
-                {selectedPlans.map((plan) => (
-                  <td key={`${plan.id}-miles`} className="p-4 text-white">
-                    {plan.serviceMiles}
-                  </td>
-                ))}
-              </tr>
-              <tr className="border-b border-white/10">
-                <td className="p-4 text-white/70">Rollover</td>
-                {selectedPlans.map((plan) => (
-                  <td key={`${plan.id}-rollover`} className="p-4 text-white">
-                    {plan.rollover}
-                  </td>
-                ))}
-              </tr>
-              <tr className="border-b border-white/10">
                 <td className="p-4 text-white/70">Users</td>
                 {selectedPlans.map((plan) => (
                   <td key={`${plan.id}-users`} className="p-4 text-white">
@@ -226,4 +208,3 @@ export default function MembershipCompareBuilder({ plans }: MembershipCompareBui
     </div>
   );
 }
-

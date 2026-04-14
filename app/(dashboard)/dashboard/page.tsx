@@ -58,7 +58,7 @@ export default async function DashboardPage() {
         <Card className="mt-3 p-5 sm:p-6">
           <OtwEmptyState
             title="Sign in to view your dashboard"
-            subtitle="Access requests, membership, and Service Miles."
+            subtitle="Access requests, membership, and account details."
             actionLabel="Sign In"
             actionHref="/sign-in"
           />
@@ -104,12 +104,12 @@ export default async function DashboardPage() {
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="h-4 w-4 text-otwGold" />
-            <h3 className="text-sm font-medium text-otwGold">Service Miles Wallet</h3>
+            <h3 className="text-sm font-medium text-otwGold">Membership Balance</h3>
           </div>
           <div className="space-y-4">
             <div>
               <div className="text-2xl font-bold text-white">{serviceMilesBalance}</div>
-              <div className="text-sm text-white/60 mt-1">Miles Available</div>
+              <div className="text-sm text-white/60 mt-1">Available</div>
             </div>
             <Button asChild variant="outline" className="w-full">
               <Link href="/service-miles">

@@ -13,7 +13,6 @@ type PayWithServiceMilesButtonProps = {
 
 export default function PayWithServiceMilesButton({
   deliveryRequestId,
-  requiredMiles,
 }: PayWithServiceMilesButtonProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -42,18 +41,11 @@ export default function PayWithServiceMilesButton({
       } | null;
 
       if (!response.ok) {
-        const missingMiles =
-          typeof payload?.requiredMiles === 'number' && typeof payload?.availableMiles === 'number'
-            ? Math.max(0, payload.requiredMiles - payload.availableMiles)
-            : null;
-
         toast({
-          title: 'Unable to pay with Service Miles',
+          title: 'Unable to use membership balance',
           description:
             payload?.error ||
-            (missingMiles !== null
-              ? `You need ${missingMiles} more Service Miles for this request.`
-              : 'Please try again.'),
+            'Please try again or use card payment.',
           variant: 'destructive',
         });
         return;
@@ -69,20 +61,18 @@ export default function PayWithServiceMilesButton({
         return;
       }
 
-      const settledMiles =
-        typeof payload?.settledWithMiles === 'number' ? payload.settledWithMiles : requiredMiles;
       const settledLabel =
         payload?.settledType === 'DELIVERY_FEE' ? 'delivery fee' : 'overage balance';
 
       toast({
-        title: 'Paid with Service Miles',
-        description: `Used ${settledMiles} Service Miles to settle your ${settledLabel}.`,
+        title: 'Paid with membership balance',
+        description: `Your ${settledLabel} is settled.`,
       });
       router.push(`/requests/${deliveryRequestId}`);
       router.refresh();
     } catch {
       toast({
-        title: 'Unable to pay with Service Miles',
+        title: 'Unable to use membership balance',
         description: 'Please try again.',
         variant: 'destructive',
       });
@@ -105,7 +95,7 @@ export default function PayWithServiceMilesButton({
           Processing...
         </>
       ) : (
-        `Pay with ${requiredMiles} Service Miles`
+        'Use membership balance'
       )}
     </Button>
   );

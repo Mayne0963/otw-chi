@@ -111,7 +111,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   });
   const canOpenDispute = isOwner && request.status === 'DELIVERED';
   const disputeItems = Array.isArray(request.receiptItems)
-    ? request.receiptItems.flatMap((rawItem, index) => {
+    ? request.receiptItems.flatMap((rawItem) => {
         if (!rawItem || typeof rawItem !== 'object') return [];
         const item = rawItem as Record<string, unknown>;
         const rawName =
@@ -244,7 +244,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   <div className="text-sm font-medium text-white/60">Cost</div>
                   <div className="text-xl font-bold text-white">
                     {paidWithServiceMilesOnly
-                      ? `${serviceMilesPaid?.toLocaleString()} Service Miles`
+                      ? 'Membership balance'
                       : typeof request.deliveryFeeCents === 'number'
                         ? formatCurrency(request.deliveryFeeCents)
                         : '-'}
@@ -253,7 +253,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   serviceMilesPaid !== null &&
                   serviceMilesPaid > 0 ? (
                     <div className="text-xs font-medium text-otwGold">
-                      + {serviceMilesPaid.toLocaleString()} Service Miles paid
+                      + membership balance paid
                     </div>
                   ) : null}
                   <div className="mt-2 flex items-center justify-end gap-2">

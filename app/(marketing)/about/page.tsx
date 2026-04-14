@@ -64,7 +64,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-start">
+      <section className="max-w-3xl">
         <div className="space-y-4">
           <h2 className="text-3xl font-semibold text-otwOffWhite">Our mission</h2>
           <p className="text-white/70">
@@ -81,23 +81,6 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-        <OtwCard className="bg-white/5">
-          <h3 className="text-xl font-semibold text-otwOffWhite mb-4">Fast facts</h3>
-          <div className="space-y-4 text-sm text-white/70">
-            <div className="flex items-center justify-between">
-              <span>Average dispatch time</span>
-              <span className="text-otwGold font-semibold">Under 5 min</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Service radius</span>
-              <span className="text-otwGold font-semibold">25 miles</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Delivery status updates</span>
-              <span className="text-otwGold font-semibold">Real-time</span>
-            </div>
-          </div>
-        </OtwCard>
       </section>
 
       <section className="space-y-6">

@@ -9,10 +9,6 @@ type BusinessPlan = {
   id?: string | null;
   name: string;
   price: string;
-  miles: number | string;
-  users: string;
-  rollover: string;
-  billing: string;
   features: string[];
 };
 
@@ -60,21 +56,6 @@ export default function BusinessPlansGrid({ plans, requesterDefaults }: Business
                     {plan.name}
                   </h3>
                   <p className="text-base text-white/65">{plan.price}</p>
-                </div>
-
-                <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/75">
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                    <span>Service Miles</span>
-                    <span className="text-right text-white">
-                      {typeof plan.miles === 'number' ? plan.miles.toLocaleString() : plan.miles}
-                    </span>
-                    <span>Users</span>
-                    <span className="text-right text-white">{plan.users}</span>
-                    <span>Rollover</span>
-                    <span className="text-right text-white">{plan.rollover}</span>
-                    <span>Billing</span>
-                    <span className="text-right text-white">{plan.billing}</span>
-                  </div>
                 </div>
 
                 <ul className={`flex-1 ${expanded ? 'mb-8 space-y-2.5' : 'mb-6 space-y-2'}`}>

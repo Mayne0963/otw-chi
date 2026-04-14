@@ -213,7 +213,7 @@ export default async function DeliveryFeePaymentPage({
                 {deliveryFeeMilesRequired > 0 ? (
                   <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">
                     <p className="text-sm text-white/85">
-                      You can settle this delivery fee with Service Miles instead of card payment.
+                      You can settle this delivery fee with your membership balance instead of card payment.
                     </p>
                     <div className="mt-3">
                       <PayWithServiceMilesButton
@@ -229,7 +229,7 @@ export default async function DeliveryFeePaymentPage({
               <div className="space-y-4">
                 <div className="rounded-lg border border-otwGold/30 bg-otwGold/10 p-4">
                   <p className="text-sm text-white/85">
-                    You can settle this overage with Service Miles instead of card payment.
+                    You can settle this balance with your membership balance instead of card payment.
                   </p>
                   <div className="mt-3">
                     <PayWithServiceMilesButton

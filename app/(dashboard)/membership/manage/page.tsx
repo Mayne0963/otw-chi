@@ -135,41 +135,29 @@ export default async function MembershipManagePage({
     : [];
 
   const consumerPlans = [
-    { name: 'OTW BASIC', code: 'basic' as const, label: '$99 / month • 60 miles' },
-    { name: 'OTW PLUS', code: 'plus' as const, label: '$169 / month • 120 miles' },
-    { name: 'OTW PRO', code: 'pro' as const, label: '$269 / month • 200 miles' },
-    { name: 'OTW ELITE', code: 'elite' as const, label: '$429 / month • 350 miles' },
-    { name: 'OTW BLACK', code: 'black' as const, label: '$699 / month • 600 miles' },
+    { name: 'OTW BASIC', code: 'basic' as const, label: '$99 / month' },
+    { name: 'OTW PLUS', code: 'plus' as const, label: '$169 / month' },
+    { name: 'OTW PRO', code: 'pro' as const, label: '$269 / month' },
+    { name: 'OTW ELITE', code: 'elite' as const, label: '$429 / month' },
+    { name: 'OTW BLACK', code: 'black' as const, label: '$699 / month' },
   ];
   const businessPlans = [
     {
       id: planMap.get('OTW BUSINESS CORE')?.id ?? null,
       name: 'OTW BUSINESS CORE',
       price: '$699 / month',
-      miles: 500,
-      users: 'Up to 5',
-      rollover: 'Rollover up to 250',
-      billing: 'Monthly invoice',
-      features: ['Up to 5 users', 'Rollover up to 250', 'Monthly invoice'],
+      features: ['Up to 5 users', 'Monthly invoice'],
     },
     {
       id: planMap.get('OTW BUSINESS PRO')?.id ?? null,
       name: 'OTW BUSINESS PRO',
       price: '$1,199 / month',
-      miles: 1_000,
-      users: 'Up to 15',
-      rollover: 'Rollover up to 500',
-      billing: 'Monthly invoice',
-      features: ['Up to 15 users', 'Rollover up to 500', 'Dedicated rep'],
+      features: ['Up to 15 users', 'Dedicated rep'],
     },
     {
       id: planMap.get('OTW TRUE')?.id ?? null,
       name: 'OTW TRUE',
       price: 'Starting at $1,499 / month',
-      miles: 1_200,
-      users: 'Up to 50',
-      rollover: 'Rollover up to 600',
-      billing: 'Monthly invoice',
       features: [
         'Add and remove employees under one membership',
         'Each employee gets a free OTW BASIC home-delivery membership',
@@ -182,10 +170,6 @@ export default async function MembershipManagePage({
       id: planMap.get('OTW ENTERPRISE')?.id ?? null,
       name: 'OTW ENTERPRISE',
       price: 'Custom',
-      miles: 'Custom',
-      users: 'Custom',
-      rollover: 'Custom',
-      billing: 'Contract / SLA',
       features: ['SLA contracts', 'Guaranteed response times', 'Multi-location support'],
     },
   ];

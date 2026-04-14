@@ -14,20 +14,20 @@ export default function HowItWorksPage() {
     <OtwPageShell>
       <div className="space-y-8">
         <OtwCard variant="red">
-          <OtwSectionHeader title="How OTW Works" subtitle="Subscription-first concierge with Service Miles." />
+          <OtwSectionHeader title="How OTW Works" subtitle="Subscription-first concierge for everyday requests." />
           <div className="mt-3 grid sm:grid-cols-2 gap-4">
             <OtwCard variant="ghost"><p className="text-sm">1. Pick a monthly plan.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">2. Use Service Miles for any request.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">3. Approve the cost before service starts.</p></OtwCard>
+            <OtwCard variant="ghost"><p className="text-sm">2. Submit the request details.</p></OtwCard>
+            <OtwCard variant="ghost"><p className="text-sm">3. Confirm before service starts.</p></OtwCard>
             <OtwCard variant="ghost"><p className="text-sm">4. Relax — it’s handled.</p></OtwCard>
           </div>
         </OtwCard>
 
         <section>
-          <OtwSectionHeader title="Service Miles" subtitle="One definition, everywhere." />
+          <OtwSectionHeader title="Clear Requests" subtitle="One flow for every service." />
           <OtwCard variant="default" className="p-4">
-            <div className="text-sm opacity-80">1 Service Mile</div>
-            <div className="text-2xl font-bold mt-1">5 minutes of human time + effort absorbed on your behalf</div>
+            <div className="text-sm opacity-80">Simple handoff</div>
+            <div className="text-2xl font-bold mt-1">Tell us what you need and confirm before dispatch.</div>
           </OtwCard>
         </section>
 

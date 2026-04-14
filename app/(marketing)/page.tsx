@@ -25,8 +25,8 @@ export default function HomePage() {
           </h1>
           
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl leading-relaxed">
-            OTW is a subscription-based concierge service powered by Service Miles — not distance.
-            You choose the service. We handle the inconvenience.
+            OTW is a subscription-based concierge service for the errands, pickups, and handoffs that
+            slow your day down.
           </p>
           
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6 pt-4">
@@ -67,8 +67,8 @@ export default function HomePage() {
       <section>
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Use Service Miles for any request</h2>
-            <p className="text-muted-foreground mt-2">Time is universal. Distance varies. OTW charges by time.</p>
+            <h2 className="text-3xl font-bold tracking-tight">Use OTW for any request</h2>
+            <p className="text-muted-foreground mt-2">From errands to handoffs, our team keeps your day moving.</p>
           </div>
           <OtwButton as="a" href="/pricing" variant="ghost" className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80">
             View plans <ArrowRight className="ml-2 h-4 w-4" />
@@ -129,17 +129,17 @@ export default function HomePage() {
         {[
           {
             title: "Clear Pricing",
-            desc: "See the Service Miles cost before the work starts. Accept or decline — no disputes.",
+            desc: "Confirm your request before the work starts.",
             icon: ShieldCheck
           },
           {
-            title: "Time-Based Economy",
-            desc: "1 Service Mile = 5 minutes of human time + effort absorbed on your behalf.",
+            title: "Flexible Support",
+            desc: "A simple request flow keeps everything clear before dispatch.",
             icon: Clock
           },
           {
             title: "Retention-Safe Drivers",
-            desc: "Drivers are paid per Service Mile with clear bonuses for tough jobs and 5-star service.",
+            desc: "Drivers are supported with clear incentives for tough jobs and 5-star service.",
             icon: Truck
           }
         ].map((feature, i) => (
@@ -159,9 +159,9 @@ export default function HomePage() {
       
       {/* Footer CTA */}
       <section className="rounded-[2rem] bg-otwGold/10 border border-otwGold/20 px-6 py-16 text-center backdrop-blur-sm">
-        <h2 className="text-3xl font-bold mb-4">Life doesn’t charge by the mile. Neither do we.</h2>
+        <h2 className="text-3xl font-bold mb-4">Reliable help when the day gets full.</h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Pick a plan, approve the Service Miles cost, and let OTW handle it.
+          Pick a plan, submit the request, and let OTW handle it.
         </p>
         <OtwButton as="a" href="/pricing" variant="gold" className="h-12 px-8 text-base rounded-full">
           View Plans

@@ -260,14 +260,6 @@ export function ServiceMilesCalculator() {
       (!eligibleForPriority || !lockToPreferred || preferredDriverId)
   );
 
-  const advanceLabel = useMemo(() => {
-    const pct = quote?.quote?.quoteBreakdown?.discount?.percentage ?? 0;
-    if (pct >= 0.2) return "72+ hrs";
-    if (pct >= 0.15) return "48 hrs";
-    if (pct >= 0.1) return "24 hrs";
-    return "Same-day";
-  }, [quote?.quote?.quoteBreakdown?.discount?.percentage]);
-
   async function getQuote() {
     if (!canQuote || !scheduledStartIso || !travelMinutes) return;
 
@@ -371,7 +363,7 @@ export function ServiceMilesCalculator() {
         });
         return;
       }
-      toast({ title: 'Request submitted', description: 'Your Service Miles request is now queued.' });
+      toast({ title: 'Request submitted', description: 'Your request is now queued.' });
       router.push(`/order/${data.id}`);
     } catch (error) {
       toast({
@@ -589,11 +581,11 @@ export function ServiceMilesCalculator() {
               onChange={(event) => setPaymentPreference(event.target.value as PaymentPreference)}
             >
               <option value="INSTANT">Pay instantly (required before dispatch)</option>
-              <option value="MONTHLY">Monthly billing (use service miles first)</option>
+              <option value="MONTHLY">Monthly billing</option>
             </select>
           ) : (
             <div className="text-sm text-muted-foreground">
-              Your current plan uses Service Miles first and requires instant settlement when miles run out.
+              Your current plan requires payment before dispatch when a balance is due.
             </div>
           )}
         </div>
@@ -661,7 +653,7 @@ export function ServiceMilesCalculator() {
 
         <div className="flex flex-wrap gap-3">
           <Button type="button" onClick={getQuote} disabled={!canQuote || quoteLoading}>
-            {quoteLoading ? 'Quoting…' : 'Get Service Miles Quote'}
+            {quoteLoading ? 'Quoting...' : 'Get Quote'}
           </Button>
           {quote ? (
             <>
@@ -680,7 +672,7 @@ export function ServiceMilesCalculator() {
           ) : null}
           {!wallet?.unlimited && quote && milesShortfall > 0 ? (
             <div className="text-sm text-amber-500 self-center">
-              {wallet?.wallet.balanceMiles ?? 0} miles available. {milesShortfall} overage miles will be billed.
+              Additional billing may apply before dispatch.
             </div>
           ) : null}
         </div>
@@ -709,24 +701,10 @@ export function ServiceMilesCalculator() {
 
       {quote ? (
         <Card className="p-5 sm:p-6 space-y-2">
-          <div className="text-sm font-semibold">Quote</div>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Service Cost</span>
-              <span className="text-foreground font-medium">{quote.quote.quoteBreakdown.subtotal} Service Miles</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">
-                Advance Booking Discount
-                {` (${advanceLabel})`}
-              </span>
-              <span className="text-foreground font-medium">-{quote.quote.quoteBreakdown.discount.amount} Miles</span>
-            </div>
-            <div className="flex items-center justify-between border-t border-border/60 pt-2">
-              <span className="text-muted-foreground">Final Cost</span>
-              <span className="text-foreground font-semibold">{quote.quote.serviceMilesFinal} Service Miles</span>
-            </div>
-          </div>
+          <div className="text-sm font-semibold">Quote ready</div>
+          <p className="text-sm text-muted-foreground">
+            Review your request details, then accept to continue.
+          </p>
         </Card>
       ) : null}
     </div>

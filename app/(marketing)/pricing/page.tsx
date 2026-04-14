@@ -49,50 +49,30 @@ export default async function PricingPage() {
       name: 'OTW BASIC',
       code: 'basic' as const,
       price: '$99 / month',
-      miles: 60,
-      rollover: 'No rollover',
-      markupFree: false,
-      cashPay: false,
       features: getConsumerPlanDisplayPerks('OTW BASIC'),
     },
     {
       name: 'OTW PLUS',
       code: 'plus' as const,
       price: '$169 / month',
-      miles: 120,
-      rollover: 'Rollover up to 30',
-      markupFree: false,
-      cashPay: false,
       features: getConsumerPlanDisplayPerks('OTW PLUS'),
     },
     {
       name: 'OTW PRO',
       code: 'pro' as const,
       price: '$269 / month',
-      miles: 200,
-      rollover: 'Rollover up to 75',
-      markupFree: true,
-      cashPay: false,
       features: getConsumerPlanDisplayPerks('OTW PRO'),
     },
     {
       name: 'OTW ELITE',
       code: 'elite' as const,
       price: '$429 / month',
-      miles: 350,
-      rollover: 'Rollover up to 150',
-      markupFree: true,
-      cashPay: true,
       features: getConsumerPlanDisplayPerks('OTW ELITE'),
     },
     {
       name: 'OTW BLACK',
       code: 'black' as const,
       price: '$699 / month',
-      miles: 600,
-      rollover: 'Unlimited rollover',
-      markupFree: true,
-      cashPay: true,
       features: getConsumerPlanDisplayPerks('OTW BLACK'),
     },
   ];
@@ -102,30 +82,18 @@ export default async function PricingPage() {
       id: planMap.get('OTW BUSINESS CORE')?.id ?? null,
       name: 'OTW BUSINESS CORE',
       price: '$699 / month',
-      miles: 500,
-      users: 'Up to 5',
-      rollover: 'Rollover up to 250',
-      billing: 'Monthly invoice',
       features: ['Offices', 'Realtors', 'Clinics', 'Auto dealers'],
     },
     {
       id: planMap.get('OTW BUSINESS PRO')?.id ?? null,
       name: 'OTW BUSINESS PRO',
       price: '$1,199 / month',
-      miles: 1_000,
-      users: 'Up to 15',
-      rollover: 'Rollover up to 500',
-      billing: 'Monthly invoice',
       features: ['Priority dispatch', 'Dedicated rep', 'Custom rules'],
     },
     {
       id: planMap.get('OTW TRUE')?.id ?? null,
       name: 'OTW TRUE',
       price: 'Starting at $1,499 / month',
-      miles: 1_200,
-      users: 'Up to 50',
-      rollover: 'Rollover up to 600',
-      billing: 'Monthly invoice',
       features: [
         'Add/remove employees under one membership',
         'Free OTW BASIC home deliveries for all added employees',
@@ -138,10 +106,6 @@ export default async function PricingPage() {
       id: planMap.get('OTW ENTERPRISE')?.id ?? null,
       name: 'OTW ENTERPRISE',
       price: 'Custom',
-      miles: 'Custom',
-      users: 'Custom',
-      rollover: 'Custom',
-      billing: 'Contract / SLA',
       features: ['Guaranteed response times', 'White-label potential', 'Multi-location support'],
     },
   ];
@@ -159,25 +123,6 @@ export default async function PricingPage() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-2xl font-semibold text-white">{plan.name}</h3>
                   <span className="text-lg text-white/60">{plan.price}</span>
-                </div>
-
-                <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70">
-                  <div className="flex items-center justify-between">
-                    <span>Service Miles</span>
-                    <span className="text-white">{plan.miles.toLocaleString()} / month</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span>Rollover</span>
-                    <span className="text-white">{plan.rollover}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span>Markup-Free</span>
-                    <span className="text-white">{plan.markupFree ? 'Yes' : 'No'}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span>Cash Pay</span>
-                    <span className="text-white">{plan.cashPay ? 'Yes' : 'No'}</span>
-                  </div>
                 </div>
 
                 <ul className="space-y-3 mb-8 flex-1">
@@ -212,7 +157,7 @@ export default async function PricingPage() {
     <div className="space-y-8">
       <div className="text-center space-y-2">
         <h1 className="text-4xl font-bold">Membership Plans</h1>
-        <p className="text-white/70">Life doesn’t charge by the mile. Neither do we.</p>
+        <p className="text-white/70">Flexible memberships for reliable delivery support.</p>
         <div className="pt-1">
           <Link
             href="/pricing/compare"

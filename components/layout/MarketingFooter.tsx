@@ -17,7 +17,7 @@ export function MarketingFooter() {
           <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">Service</h4>
           <ul className="space-y-2 text-sm">
             <li><Link href="/how-it-works" className="hover:text-secondary transition-colors duration-300">How It Works</Link></li>
-            <li><Link href="/pricing" className="hover:text-secondary transition-colors duration-300">Pricing</Link></li>
+            <li><Link href="/pricing" className="hover:text-secondary transition-colors duration-300">Plans</Link></li>
             <li><Link href="/cities" className="hover:text-secondary transition-colors duration-300">Cities</Link></li>
           </ul>
         </div>

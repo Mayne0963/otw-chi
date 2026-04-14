@@ -6,7 +6,7 @@ import OtwButton from "@/components/ui/otw/OtwButton"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { AddressSearch } from "@/components/ui/address-search"
-import { ArrowRight, Clock, DollarSign, Loader2, MapPin, Package } from "lucide-react"
+import { ArrowRight, Loader2, MapPin, Package } from "lucide-react"
 import { formatAddressLines, type GeocodedAddress } from "@/lib/geocoding"
 
 type Estimate = {
@@ -267,20 +267,9 @@ export function NewRequestForm() {
 
           {estimate && step === "estimate" && (
             <div className="bg-secondary/10 border border-secondary/20 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-secondary">
-                  <DollarSign className="h-5 w-5" />
-                  <span className="font-bold text-lg">
-                    ${(estimate.priceMin / 100).toFixed(2)} - ${(estimate.priceMax / 100).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-sm font-medium">{estimate.eta}</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Distance: {estimate.miles} miles - Estimated price range and time window
+              <p className="text-sm font-semibold text-secondary">Request details ready</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Confirm your request to continue.
               </p>
             </div>
           )}
@@ -328,7 +317,7 @@ export function NewRequestForm() {
           </div>
 
           <p className="text-xs text-center text-muted-foreground">
-            Estimated price is calculated based on distance and service type.
+            Final details are confirmed before dispatch.
           </p>
         </form>
       </div>
