@@ -70,7 +70,10 @@ export function MobileDashboardNav({ role }: MobileDashboardNavProps) {
               <span>Menu</span>
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 border-r border-white/10 bg-otwBlack w-[280px]">
+          <SheetContent
+            side="left"
+            className="h-dvh max-h-dvh w-[280px] touch-pan-y overflow-y-auto overscroll-contain border-r border-white/10 bg-otwBlack p-0 [-webkit-overflow-scrolling:touch]"
+          >
             <DashboardSidebar role={role} onLinkClick={() => setOpen(false)} />
           </SheetContent>
         </Sheet>

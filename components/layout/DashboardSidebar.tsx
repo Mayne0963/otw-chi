@@ -184,15 +184,15 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
   }
 
   return (
-    <div className="relative z-40 flex h-full w-64 flex-col border-r border-white/10 bg-otwBlack">
-      <div className="flex h-32 items-center px-6">
+    <div className="relative z-40 flex h-full max-h-dvh w-64 touch-pan-y flex-col overflow-y-auto overscroll-contain border-r border-white/10 bg-otwBlack [-webkit-overflow-scrolling:touch]">
+      <div className="flex h-32 shrink-0 items-center px-6">
         <OtwBrandLink
           imageClassName="h-24 w-24 rounded-xl"
           labelClassName="text-sm tracking-[0.28em] text-white"
           subtitle="On The Way"
         />
       </div>
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="space-y-1 px-3 py-4">
         {commonRoutes.map((route) => renderRoute(route))}
 
         {role === "DRIVER" && (
@@ -245,7 +245,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
           Logout
         </SignOutButton>
       </nav>
-      <div className="border-t border-white/10 p-4">
+      <div className="mt-auto shrink-0 border-t border-white/10 p-4">
         <div className="rounded-lg bg-white/5 p-4">
           <p className="text-xs font-medium text-otwOffWhite">Need help?</p>
           <p className="text-xs text-white/50 mt-1">Contact support anytime.</p>
