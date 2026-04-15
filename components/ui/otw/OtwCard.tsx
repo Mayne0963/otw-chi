@@ -15,9 +15,9 @@ const variants: Record<Variant, string> = {
   default:
     'bg-card/90 border border-border/70 shadow-otwSoft hover:-translate-y-0.5 hover:shadow-otwElevated',
   red:
-    'bg-otwRed text-otwOffWhite border border-otwRed/40 shadow-otwGlow hover:shadow-otwElevated',
+    'bg-primary text-primary-foreground border border-primary/40 shadow-otwGlow hover:shadow-otwElevated [&_h2]:text-primary-foreground [&_h3]:text-primary-foreground [&_p]:text-primary-foreground/85 [&_section]:border-primary-foreground/25 [&_section]:bg-primary-foreground/5',
   gold:
-    'bg-otwGold text-otwBlack border border-otwGold/60 shadow-otwGlow hover:shadow-otwElevated',
+    'bg-secondary text-secondary-foreground border border-secondary/60 shadow-otwGlow hover:shadow-otwElevated [&_h2]:text-secondary-foreground [&_h3]:text-secondary-foreground [&_p]:text-secondary-foreground/85',
   ghost:
     'bg-transparent border border-border/60 hover:border-secondary/60'
 };
