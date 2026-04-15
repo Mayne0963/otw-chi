@@ -13,13 +13,24 @@ export default function HowItWorksPage() {
   return (
     <OtwPageShell>
       <div className="space-y-8">
-        <OtwCard variant="red">
+        <OtwCard
+          variant="red"
+          className="border-[#f9f5ec]/20 bg-[#b00017] text-[#f9f5ec] [&_h2]:text-[#f9f5ec] [&_p]:text-[#f9f5ec]/85 [&_section]:border-[#f9f5ec]/25 [&_section]:bg-[#f9f5ec]/10"
+        >
           <OtwSectionHeader title="How OTW Works" subtitle="Subscription-first concierge for everyday requests." />
           <div className="mt-3 grid sm:grid-cols-2 gap-4">
-            <OtwCard variant="ghost"><p className="text-sm">1. Pick a monthly plan.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">2. Submit the request details.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">3. Confirm before service starts.</p></OtwCard>
-            <OtwCard variant="ghost"><p className="text-sm">4. Relax — it’s handled.</p></OtwCard>
+            <OtwCard variant="ghost" className="text-[#f9f5ec]">
+              <p className="text-sm">1. Pick a monthly plan.</p>
+            </OtwCard>
+            <OtwCard variant="ghost" className="text-[#f9f5ec]">
+              <p className="text-sm">2. Submit the request details.</p>
+            </OtwCard>
+            <OtwCard variant="ghost" className="text-[#f9f5ec]">
+              <p className="text-sm">3. Confirm before service starts.</p>
+            </OtwCard>
+            <OtwCard variant="ghost" className="text-[#f9f5ec]">
+              <p className="text-sm">4. Relax — it’s handled.</p>
+            </OtwCard>
           </div>
         </OtwCard>
 
