@@ -187,8 +187,8 @@ export default async function DeliveryFeePaymentPage({
             </div>
 
             <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
-              <h3 className="text-sm font-semibold text-amber-200">Pickup &amp; Delivery Only</h3>
-              <p className="mt-2 text-sm text-amber-100/90">
+              <h3 className="text-sm font-semibold text-amber-800">Pickup &amp; Delivery Only</h3>
+              <p className="mt-2 text-sm text-amber-700">
                 Please order and prepay directly with the restaurant or store first. OTW handles pickup
                 and delivery only.
               </p>
