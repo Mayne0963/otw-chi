@@ -42,7 +42,7 @@ export default function PayWithServiceMilesButton({
 
       if (!response.ok) {
         toast({
-          title: 'Unable to use membership balance',
+          title: 'Unable to use service miles',
           description:
             payload?.error ||
             'Please try again or use card payment.',
@@ -65,14 +65,14 @@ export default function PayWithServiceMilesButton({
         payload?.settledType === 'DELIVERY_FEE' ? 'delivery fee' : 'overage balance';
 
       toast({
-        title: 'Paid with membership balance',
+        title: 'Paid with service miles',
         description: `Your ${settledLabel} is settled.`,
       });
       router.push(`/requests/${deliveryRequestId}`);
       router.refresh();
     } catch {
       toast({
-        title: 'Unable to use membership balance',
+        title: 'Unable to use service miles',
         description: 'Please try again.',
         variant: 'destructive',
       });
@@ -95,7 +95,7 @@ export default function PayWithServiceMilesButton({
           Processing...
         </>
       ) : (
-        'Use membership balance'
+        'Use service miles'
       )}
     </Button>
   );

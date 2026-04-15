@@ -46,12 +46,12 @@ export default async function ServiceMilesHistoryPage() {
     return (
       <OtwPageShell>
         <OtwSectionHeader
-          title="Membership Balance History"
+          title="Service Miles History"
           subtitle="Review your account activity."
         />
         <OtwCard className="mt-3">
           <OtwEmptyState
-            title="Sign in to view membership balance history"
+            title="Sign in to view service miles history"
             subtitle="Track monthly credits, deductions, and adjustments."
             actionHref="/sign-in"
             actionLabel="Sign In"
@@ -91,7 +91,7 @@ export default async function ServiceMilesHistoryPage() {
     <OtwPageShell>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <OtwSectionHeader
-          title="Membership Balance History"
+          title="Service Miles History"
           subtitle="Review your latest account activity. Showing up to 100 most recent entries."
         />
         <OtwButton href="/service-miles" variant="outline" size="sm">
@@ -102,7 +102,7 @@ export default async function ServiceMilesHistoryPage() {
       <OtwCard className="mt-6">
         {entries.length === 0 ? (
           <OtwEmptyState
-            title="No membership balance history yet"
+            title="No service miles history yet"
             subtitle="Your monthly credits and request deductions will appear here."
             actionHref="/order"
             actionLabel="Create Request"

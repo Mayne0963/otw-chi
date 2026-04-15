@@ -88,7 +88,7 @@ export default async function RequestsPage() {
                             typeof request.serviceMilesPaid === 'number' &&
                             request.serviceMilesPaid > 0 ? (
                               <div className="font-medium text-otwGold">
-                                Membership balance
+                                Service miles
                               </div>
                             ) : (
                               <>
@@ -96,7 +96,7 @@ export default async function RequestsPage() {
                                 {typeof request.serviceMilesPaid === 'number' &&
                                 request.serviceMilesPaid > 0 ? (
                                   <div className="text-[11px] font-medium text-otwGold">
-                                    + membership balance
+                                    + service miles
                                   </div>
                                 ) : null}
                               </>

@@ -244,7 +244,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   <div className="text-sm font-medium text-white/60">Cost</div>
                   <div className="text-xl font-bold text-white">
                     {paidWithServiceMilesOnly
-                      ? 'Membership balance'
+                      ? 'Service miles'
                       : typeof request.deliveryFeeCents === 'number'
                         ? formatCurrency(request.deliveryFeeCents)
                         : '-'}
@@ -253,7 +253,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   serviceMilesPaid !== null &&
                   serviceMilesPaid > 0 ? (
                     <div className="text-xs font-medium text-otwGold">
-                      + membership balance paid
+                      + service miles paid
                     </div>
                   ) : null}
                   <div className="mt-2 flex items-center justify-end gap-2">

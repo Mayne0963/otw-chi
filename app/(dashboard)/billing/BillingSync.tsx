@@ -28,7 +28,7 @@ export function BillingSync({ success }: { success?: boolean }) {
               router.refresh();
               toast({
                   title: "Membership Active",
-                  description: 'Your membership balance is ready.',
+                  description: 'Your service miles is ready.',
               });
               return true; // Done
           }

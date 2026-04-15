@@ -104,7 +104,7 @@ export default async function DashboardPage() {
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <Wallet className="h-4 w-4 text-otwGold" />
-            <h3 className="text-sm font-medium text-otwGold">Membership Balance</h3>
+            <h3 className="text-sm font-medium text-otwGold">Service Miles</h3>
           </div>
           <div className="space-y-4">
             <div>
