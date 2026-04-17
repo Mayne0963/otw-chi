@@ -13,9 +13,6 @@ import {
 } from '@/lib/membership';
 import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import {
-  ensureDeliveryFeePaymentIntentForRequest,
-} from '@/lib/delivery-payment';
-import {
   buildOtwTrueJobSiteBusinessValidationAddress,
   syncOtwTrueEmployeeAccessForUser,
 } from '@/lib/otw-true';
@@ -221,24 +218,8 @@ export async function POST(req: Request) {
       deliveryFeeCents > 0 &&
       result.request.deliveryFeePaid !== true;
 
-    let deliveryPaymentIntentId = result.request.deliveryPaymentIntentId ?? null;
-    let deliveryClientSecret: string | null = null;
-
-    if (deliveryPaymentRequired) {
-      try {
-        const intent = await ensureDeliveryFeePaymentIntentForRequest(result.request.id);
-        deliveryPaymentIntentId = intent.paymentIntentId;
-        deliveryClientSecret = intent.clientSecret;
-      } catch (deliveryIntentError) {
-        console.error('[delivery-requests/submit] Failed to initialize delivery payment intent', {
-          requestId: result.request.id,
-          message:
-            deliveryIntentError instanceof Error
-              ? deliveryIntentError.message
-              : deliveryIntentError,
-        });
-      }
-    }
+    const deliveryPaymentIntentId = result.request.deliveryPaymentIntentId ?? null;
+    const deliveryClientSecret: string | null = null;
 
     const paymentRequired = result.paymentRequired || deliveryPaymentRequired;
 

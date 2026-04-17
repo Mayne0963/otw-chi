@@ -1,5 +1,8 @@
 
-import { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
+import { normalizeCouponCode } from "@/lib/coupons";
+
+type PromoCodeClient = Pick<PrismaClient, "promoCode" | "promoRedemption" | "$transaction">;
 
 export type PromoCodeValidationResult = 
   | { valid: true; promoCode: { id: string; code: string; percentOff: number | null; amountOffCents: number | null } }
@@ -8,15 +11,17 @@ export type PromoCodeValidationResult =
 export async function validatePromoCode(
   code: string,
   userId: string,
-  prisma: PrismaClient | any // Allow any for mocking ease if needed
+  prisma: PromoCodeClient
 ): Promise<PromoCodeValidationResult> {
-  if (!code) {
+  const normalizedCode = normalizeCouponCode(code);
+
+  if (!normalizedCode) {
     return { valid: false, error: "Code is required" };
   }
 
   // 1. Find the code
   const promo = await prisma.promoCode.findUnique({
-    where: { code },
+    where: { code: normalizedCode },
   });
 
   if (!promo) {

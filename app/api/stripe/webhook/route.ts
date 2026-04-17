@@ -2,7 +2,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { MembershipStatus, OverageStatus, Prisma } from '@prisma/client';
+import { MembershipStatus, OverageBillingMode, OverageStatus, Prisma } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { constructStripeEvent, getStripe } from '@/lib/stripe';
 import { redeemPromoCode } from '@/lib/promo-code';
@@ -479,13 +479,27 @@ export async function POST(req: Request) {
           
           if (draft) {
              const couponCode = session.metadata.couponCode || null;
-             const discountCents = session.metadata.discountCents ? parseInt(session.metadata.discountCents) : null;
+             const metadataDiscountCents = session.metadata.discountCents
+               ? parseInt(session.metadata.discountCents, 10)
+               : null;
+             const checkoutDiscountCents = session.total_details?.amount_discount ?? 0;
+             const discountCents =
+               metadataDiscountCents && metadataDiscountCents > 0
+                 ? metadataDiscountCents
+                 : checkoutDiscountCents > 0
+                   ? checkoutDiscountCents
+                   : null;
              const promoCodeId = session.metadata.promoCodeId || null;
 
              await prisma.deliveryRequest.update({
                where: { id: draft.id },
                data: { 
                  deliveryFeePaid: true,
+                 paymentRequired:
+                   draft.overageBillingMode === OverageBillingMode.INSTANT &&
+                   draft.overageStatus !== OverageStatus.PAID &&
+                   draft.overageMiles > 0 &&
+                   (draft.overageCents ?? 0) > 0,
                  ...(couponCode ? { couponCode } : {}),
                  ...(discountCents !== null ? { discountCents } : {})
                }

@@ -21,9 +21,6 @@ import {
   getChargeableStopCount,
 } from '@/lib/request-stops';
 import {
-  ensureDeliveryFeePaymentIntentForRequest,
-} from '@/lib/delivery-payment';
-import {
   buildOtwTrueJobSiteBusinessValidationAddress,
   syncOtwTrueEmployeeAccessForUser,
 } from '@/lib/otw-true';
@@ -291,21 +288,8 @@ export async function POST(req: Request) {
         deliveryFeeCents > 0 &&
         result.request.deliveryFeePaid !== true;
 
-      let deliveryPaymentIntentId: string | null = result.request.deliveryPaymentIntentId ?? null;
-      let deliveryClientSecret: string | null = null;
-
-      if (deliveryPaymentRequired) {
-        try {
-          const intent = await ensureDeliveryFeePaymentIntentForRequest(result.request.id);
-          deliveryPaymentIntentId = intent.paymentIntentId;
-          deliveryClientSecret = intent.clientSecret;
-        } catch (intentError) {
-          console.error('[CREATE_REQUEST_DELIVERY_PAYMENT_INTENT]', {
-            requestId: result.request.id,
-            message: intentError instanceof Error ? intentError.message : intentError,
-          });
-        }
-      }
+      const deliveryPaymentIntentId: string | null = result.request.deliveryPaymentIntentId ?? null;
+      const deliveryClientSecret: string | null = null;
 
       const paymentRequired = result.paymentRequired || deliveryPaymentRequired;
 
@@ -374,21 +358,8 @@ export async function POST(req: Request) {
       },
     });
 
-    let deliveryClientSecret: string | null = null;
-    let deliveryPaymentIntentId: string | null = request.deliveryPaymentIntentId ?? null;
-
-    if (paymentRequired) {
-      try {
-        const paymentIntent = await ensureDeliveryFeePaymentIntentForRequest(request.id);
-        deliveryClientSecret = paymentIntent.clientSecret;
-        deliveryPaymentIntentId = paymentIntent.paymentIntentId;
-      } catch (intentError) {
-        console.error('[CREATE_REQUEST_DELIVERY_PAYMENT_INTENT]', {
-          requestId: request.id,
-          message: intentError instanceof Error ? intentError.message : intentError,
-        });
-      }
-    }
+    const deliveryClientSecret: string | null = null;
+    const deliveryPaymentIntentId: string | null = request.deliveryPaymentIntentId ?? null;
 
     return NextResponse.json({
       id: request.id,

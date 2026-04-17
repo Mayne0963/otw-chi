@@ -10,7 +10,6 @@ import {
 import { resolveDeliveryPaymentPreferenceByPlan } from '@/lib/membership-perks';
 import { calculatePriceBreakdownCents } from '@/lib/pricing';
 import { cancelDeliveryRequest, submitDeliveryRequest } from '@/lib/delivery-submit';
-import { ensureDeliveryFeePaymentIntentForRequest } from '@/lib/delivery-payment';
 import { purgeExpiredPickupPassForRequest } from '@/lib/pickup-pass';
 import { closeRequestChat } from '@/lib/request-chat';
 import { syncOtwTrueEmployeeAccessForUser, isOtwTrueBenefitType } from '@/lib/otw-true';
@@ -285,17 +284,6 @@ export async function createRequestAction(formData: FormData) {
     });
   }
 
-  if (deliveryPaymentRequired) {
-    try {
-      await ensureDeliveryFeePaymentIntentForRequest(created.id);
-    } catch (paymentError) {
-      console.error('[createRequestAction] Failed to initialize delivery payment intent', {
-        requestId: created.id,
-        error: paymentError instanceof Error ? paymentError.message : paymentError,
-      });
-    }
-  }
-  
   // Award NIP to user
   try {
     await prisma.nipTransaction.create({

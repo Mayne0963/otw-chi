@@ -40,6 +40,35 @@ function resolveDeliveryFeeMilesRequired(params: {
   return Math.max(1, Math.ceil(deliveryFeeCents / rateCentsPerMile));
 }
 
+async function hasAvailableCouponForUser(prisma: ReturnType<typeof getPrisma>, userId: string) {
+  const now = new Date();
+  const coupons = await prisma.promoCode.findMany({
+    where: {
+      active: true,
+      OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+      AND: [
+        {
+          OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+        },
+        {
+          redemptionsLog: {
+            none: { userId },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      maxRedemptions: true,
+      redemptions: true,
+    },
+  });
+
+  return coupons.some(
+    (coupon) => coupon.maxRedemptions === null || coupon.redemptions < coupon.maxRedemptions,
+  );
+}
+
 export default async function DeliveryFeePaymentPage({
   params,
 }: {
@@ -124,6 +153,8 @@ export default async function DeliveryFeePaymentPage({
 
   const amountCents = requiresDeliveryPayment ? deliveryAmountCents : overageAmountCents;
   const chargeLabel = requiresDeliveryPayment ? 'Delivery Fee' : 'Overage Balance';
+  const couponEntryEnabled =
+    requiresDeliveryPayment && (user.role === 'ADMIN' || (await hasAvailableCouponForUser(prisma, user.id)));
   const deliveryFeeMilesRequired = resolveDeliveryFeeMilesRequired({
     serviceMilesFinal: request.serviceMilesFinal,
     deliveryFeeCents: request.deliveryFeeCents,
@@ -223,7 +254,11 @@ export default async function DeliveryFeePaymentPage({
                     </div>
                   </div>
                 ) : null}
-                <DeliveryFeePaymentPanel deliveryRequestId={request.id} amountCents={amountCents} />
+                <DeliveryFeePaymentPanel
+                  deliveryRequestId={request.id}
+                  amountCents={amountCents}
+                  couponEntryEnabled={couponEntryEnabled}
+                />
               </div>
             ) : (
               <div className="space-y-4">
