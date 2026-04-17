@@ -171,6 +171,7 @@ export async function POST(req: Request) {
 
     let discountCents = 0;
     let resolvedCouponCode: string | undefined;
+    let stripeDiscounts: Array<{ promotion_code: string }> | undefined;
     let couponSource: "internal" | "stripe" | "" = "";
     let promoCodeId: string | undefined;
 
@@ -186,15 +187,34 @@ export async function POST(req: Request) {
       } else {
         // 2. Check Database Promo Code
         const validation = await validatePromoCode(requestedCouponCode, dbUser.id, prisma);
-        if (!validation.valid) {
-          return NextResponse.json({ error: validation.error }, { status: 400 });
+        if (validation.valid) {
+          const discountableCents = deliveryRequest ? baseTotal : checkedSubtotalCents;
+          discountCents = calculateDiscount(discountableCents, validation.promoCode);
+          resolvedCouponCode = validation.promoCode.code;
+          promoCodeId = validation.promoCode.id;
+          couponSource = "internal";
+        } else {
+          // 3. Fallback to Stripe Promotion Codes so dashboard coupon entry
+          // can accept Stripe-native codes consistently.
+          const stripePromotionCodes = await stripe.promotionCodes.list({
+            code: requestedCouponCode,
+            active: true,
+            limit: 5,
+          });
+
+          const matchedPromotionCode = stripePromotionCodes.data.find(
+            (promotionCode) =>
+              promotionCode.code.toUpperCase() === requestedCouponCode.toUpperCase(),
+          );
+
+          if (!matchedPromotionCode) {
+            return NextResponse.json({ error: validation.error }, { status: 400 });
+          }
+
+          resolvedCouponCode = matchedPromotionCode.code;
+          stripeDiscounts = [{ promotion_code: matchedPromotionCode.id }];
+          couponSource = "stripe";
         }
-        
-        const discountableCents = deliveryRequest ? baseTotal : checkedSubtotalCents;
-        discountCents = calculateDiscount(discountableCents, validation.promoCode);
-        resolvedCouponCode = validation.promoCode.code;
-        promoCodeId = validation.promoCode.id;
-        couponSource = "internal";
       }
     }
 
@@ -259,6 +279,7 @@ export async function POST(req: Request) {
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       ...(!resolvedCouponCode ? { allow_promotion_codes: true } : {}),
+      ...(stripeDiscounts ? { discounts: stripeDiscounts } : {}),
       ...(deliveryRequest ? { client_reference_id: deliveryRequest.id } : {}),
       payment_intent_data: {
         setup_future_usage: "off_session",
