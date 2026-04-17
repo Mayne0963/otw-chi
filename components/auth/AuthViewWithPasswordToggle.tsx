@@ -7,6 +7,12 @@ type AuthViewWithPasswordToggleProps = {
   path: string;
 };
 
+function shouldShowResetDeliveryNote(path: string): boolean {
+  const normalizedPath = path.trim().toLowerCase();
+  if (!normalizedPath) return false;
+  return normalizedPath.includes('forgot') || normalizedPath.includes('reset');
+}
+
 function applyPasswordToggle(scope: HTMLElement) {
   const inputs = scope.querySelectorAll('input');
 
@@ -68,6 +74,7 @@ function applyPasswordToggle(scope: HTMLElement) {
 
 export default function AuthViewWithPasswordToggle({ path }: AuthViewWithPasswordToggleProps) {
   const scopeRef = useRef<HTMLDivElement>(null);
+  const showResetDeliveryNote = shouldShowResetDeliveryNote(path);
 
   useEffect(() => {
     const scope = scopeRef.current;
@@ -106,8 +113,13 @@ export default function AuthViewWithPasswordToggle({ path }: AuthViewWithPasswor
   }, []);
 
   return (
-    <div ref={scopeRef}>
+    <div ref={scopeRef} className="space-y-3">
       <AuthView path={path} />
+      {showResetDeliveryNote ? (
+        <p className="text-xs text-otwOffWhite/65">
+          If the reset email is not in your inbox, check your spam or junk folder.
+        </p>
+      ) : null}
     </div>
   );
 }
