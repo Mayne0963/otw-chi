@@ -241,7 +241,7 @@ export async function POST(req: Request) {
         payment_method_types: ['card'],
         // Let Stripe skip card entry when 100% discounts reduce checkout due to $0.
         payment_method_collection: 'if_required',
-        ...(dbUser.role === 'ADMIN' ? { allow_promotion_codes: true } : {}),
+        allow_promotion_codes: true,
         line_items: [
           {
             price: resolvedPriceId,
