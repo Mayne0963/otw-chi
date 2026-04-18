@@ -23,11 +23,35 @@ import {
 } from '@/lib/request-route-locations';
 import CancelOrderButton from '@/components/order/CancelOrderButton';
 import OrderConfirmationPanel from '@/components/order/OrderConfirmationPanel';
+import RequestPaymentSync from './RequestPaymentSync';
 
 export const dynamic = 'force-dynamic';
 
-export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+function firstQueryValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
+
+export default async function RequestDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    checkout?: string | string[];
+    session_id?: string | string[];
+    free?: string | string[];
+  }>;
+}) {
   const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const checkout = firstQueryValue(resolvedSearchParams.checkout);
+  const checkoutSuccess = checkout === 'success';
+  const checkoutSessionId = firstQueryValue(resolvedSearchParams.session_id);
+  const freeCheckoutRaw = firstQueryValue(resolvedSearchParams.free);
+  const freeCheckout = freeCheckoutRaw === '1' || freeCheckoutRaw === 'true';
   const user = await getCurrentUser();
   if (!user) {
     redirect('/sign-in');
@@ -175,6 +199,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
   return (
     <OtwPageShell>
+      <RequestPaymentSync
+        requestId={id}
+        checkoutSuccess={checkoutSuccess}
+        sessionId={checkoutSessionId}
+        freeCheckout={freeCheckout}
+      />
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
             <OtwButton as="a" href="/requests" variant="ghost" size="sm" className="-ml-2">

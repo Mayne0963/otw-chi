@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       if (deliveryRequest.deliveryFeePaid) {
         return NextResponse.json({
           alreadyPaid: true,
-          url: `${resolveRequestOrigin(req) || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/request/${deliveryRequest.id}`,
+          url: `${resolveRequestOrigin(req) || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/requests/${deliveryRequest.id}`,
         });
       }
 
@@ -248,7 +248,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ 
         url: deliveryRequest
-          ? `${appUrl}${successPath || `/request/${deliveryRequest.id}?checkout=success&free=true`}`
+          ? `${appUrl}${successPath || `/requests/${deliveryRequest.id}?checkout=success&free=true`}`
           : `${appUrl}${successPath || "/order?checkout=success&free=true"}`,
         free: true,
         couponCode: resolvedCouponCode,
@@ -323,7 +323,7 @@ export async function POST(req: Request) {
         deliveryRequestId: deliveryRequest?.id ?? deliveryRequestId ?? ""
       },
       success_url: deliveryRequest
-        ? `${appUrl}${successPath || `/request/${deliveryRequest.id}?checkout=success&session_id={CHECKOUT_SESSION_ID}`}`
+        ? `${appUrl}${successPath || `/requests/${deliveryRequest.id}?checkout=success&session_id={CHECKOUT_SESSION_ID}`}`
         : `${appUrl}${successPath || "/order?checkout=success&session_id={CHECKOUT_SESSION_ID}"}`,
       cancel_url: deliveryRequest
         ? `${appUrl}${cancelPath || `/pay/${deliveryRequest.id}?checkout=cancel`}`

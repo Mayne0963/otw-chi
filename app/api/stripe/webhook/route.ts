@@ -467,54 +467,97 @@ export async function POST(req: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
 
       if (session.metadata?.purpose === 'order_payment') {
-        const userId = await findUserIdFromMetadata(session.metadata);
-        if (userId) {
-          // Attempt to find and update the draft order
-          const draft = await prisma.deliveryRequest.findFirst({
-            where: { 
-              userId, 
-              deliveryCheckoutSessionId: session.id 
-            }
+        const metadataUserId = await findUserIdFromMetadata(session.metadata);
+        const metadataRequestId = session.metadata.deliveryRequestId
+          ? String(session.metadata.deliveryRequestId)
+          : null;
+        const clientReferenceRequestId = session.client_reference_id
+          ? String(session.client_reference_id)
+          : null;
+
+        const requestSelect = {
+          id: true,
+          userId: true,
+          overageBillingMode: true,
+          overageStatus: true,
+          overageMiles: true,
+          overageCents: true,
+        } as const;
+
+        let draft = metadataRequestId
+          ? await prisma.deliveryRequest.findUnique({
+              where: { id: metadataRequestId },
+              select: requestSelect,
+            })
+          : null;
+
+        if (!draft && clientReferenceRequestId && clientReferenceRequestId !== metadataRequestId) {
+          draft = await prisma.deliveryRequest.findUnique({
+            where: { id: clientReferenceRequestId },
+            select: requestSelect,
           });
-          
-          if (draft) {
-             const couponCode = session.metadata.couponCode || null;
-             const metadataDiscountCents = session.metadata.discountCents
-               ? parseInt(session.metadata.discountCents, 10)
-               : null;
-             const checkoutDiscountCents = session.total_details?.amount_discount ?? 0;
-             const discountCents =
-               metadataDiscountCents && metadataDiscountCents > 0
-                 ? metadataDiscountCents
-                 : checkoutDiscountCents > 0
-                   ? checkoutDiscountCents
-                   : null;
-             const promoCodeId = session.metadata.promoCodeId || null;
+        }
 
-             await prisma.deliveryRequest.update({
-               where: { id: draft.id },
-               data: { 
-                 deliveryFeePaid: true,
-                 paymentRequired:
-                   draft.overageBillingMode === OverageBillingMode.INSTANT &&
-                   draft.overageStatus !== OverageStatus.PAID &&
-                   draft.overageMiles > 0 &&
-                   (draft.overageCents ?? 0) > 0,
-                 ...(couponCode ? { couponCode } : {}),
-                 ...(discountCents !== null ? { discountCents } : {})
-               }
-             });
+        if (!draft) {
+          draft = await prisma.deliveryRequest.findFirst({
+            where: { deliveryCheckoutSessionId: session.id },
+            select: requestSelect,
+          });
+        }
 
-             if (promoCodeId) {
-               try {
-                 await redeemPromoCode(promoCodeId, userId, draft.id, prisma);
-                 console.log(`[Stripe Webhook] Redeemed promo code ${promoCodeId} for user ${userId} order ${draft.id}`);
-               } catch (err) {
-                 // Ignore "already redeemed" errors for idempotency
-                 console.log(`[Stripe Webhook] Promo redemption note: ${err instanceof Error ? err.message : 'Unknown'}`);
-               }
-             }
+        if (draft) {
+          const couponCode = session.metadata.couponCode || null;
+          const parsedMetadataDiscountCents = session.metadata.discountCents
+            ? Number.parseInt(session.metadata.discountCents, 10)
+            : NaN;
+          const metadataDiscountCents =
+            Number.isFinite(parsedMetadataDiscountCents) && parsedMetadataDiscountCents > 0
+              ? parsedMetadataDiscountCents
+              : null;
+          const checkoutDiscountCents = session.total_details?.amount_discount ?? 0;
+          const discountCents =
+            metadataDiscountCents !== null
+              ? metadataDiscountCents
+              : checkoutDiscountCents > 0
+                ? checkoutDiscountCents
+                : null;
+          const promoCodeId = session.metadata.promoCodeId || null;
+
+          await prisma.deliveryRequest.update({
+            where: { id: draft.id },
+            data: {
+              deliveryFeePaid: true,
+              paymentRequired:
+                draft.overageBillingMode === OverageBillingMode.INSTANT &&
+                draft.overageStatus !== OverageStatus.PAID &&
+                draft.overageMiles > 0 &&
+                (draft.overageCents ?? 0) > 0,
+              ...(couponCode ? { couponCode } : {}),
+              ...(discountCents !== null ? { discountCents } : {}),
+            },
+          });
+
+          if (promoCodeId) {
+            const redemptionUserId = metadataUserId ?? draft.userId;
+            try {
+              await redeemPromoCode(promoCodeId, redemptionUserId, draft.id, prisma);
+              console.log(
+                `[Stripe Webhook] Redeemed promo code ${promoCodeId} for user ${redemptionUserId} order ${draft.id}`,
+              );
+            } catch (err) {
+              // Ignore "already redeemed" errors for idempotency
+              console.log(`[Stripe Webhook] Promo redemption note: ${err instanceof Error ? err.message : 'Unknown'}`);
+            }
           }
+        } else {
+          console.warn(
+            `[Stripe Webhook] Unable to match order payment session ${session.id} to a delivery request.`,
+            {
+              metadataRequestId,
+              clientReferenceRequestId,
+              metadataUserId: metadataUserId ?? null,
+            },
+          );
         }
         return new NextResponse(null, { status: 200 });
       }
