@@ -310,7 +310,6 @@ export async function createRequestAction(formData: FormData) {
     orderId: created.id,
     customerName: user.name || "",
     customerEmail: user.email || "",
-    customerPhone: user.phone || "",
     serviceType: created.serviceType,
     pickupAddress: created.pickupAddress,
     dropoffAddress: created.dropoffAddress,
