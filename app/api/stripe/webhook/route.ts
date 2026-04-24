@@ -8,6 +8,7 @@ import { constructStripeEvent, getStripe } from '@/lib/stripe';
 import { redeemPromoCode } from '@/lib/promo-code';
 import { activateMembershipAtomically } from '@/lib/membership-activation';
 import { evaluateDeliveryRequestLock } from '@/lib/refunds/lock';
+import { sendZapierWebhook } from '@/lib/services/zapier';
 
 export const runtime = 'nodejs';
 
@@ -437,6 +438,15 @@ export async function POST(req: Request) {
                 deliveryRequestId,
                 stripePaymentIntentId: paymentIntent.id,
               },
+            });
+
+            // Trigger Zapier Webhook for Paid Order
+            sendZapierWebhook("otw_payment_received", {
+              orderId: deliveryRequestId,
+              customerEmail: paymentIntent.receipt_email || "",
+              totalAmount: (paymentIntent.amount_received || paymentIntent.amount || 0) / 100,
+              status: "Paid / Booked",
+              paymentSource: "delivery_fee",
             });
           }
         }

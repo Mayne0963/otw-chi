@@ -15,6 +15,7 @@ import { closeRequestChat } from '@/lib/request-chat';
 import { syncOtwTrueEmployeeAccessForUser, isOtwTrueBenefitType } from '@/lib/otw-true';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { sendZapierWebhook } from '@/lib/services/zapier';
 
 import {
   DeliveryRequestStatus,
@@ -303,6 +304,19 @@ export async function createRequestAction(formData: FormData) {
       },
     });
   }
+  
+  // Trigger Zapier Webhook for the Money Loop
+  sendZapierWebhook("otw_request_created", {
+    orderId: created.id,
+    customerName: user.name || "",
+    customerEmail: user.email || "",
+    customerPhone: user.phone || "",
+    serviceType: created.serviceType,
+    pickupAddress: created.pickupAddress,
+    dropoffAddress: created.dropoffAddress,
+    totalEstimated: createdDeliveryFeeCents / 100,
+    status: effectivePaymentRequired ? "Awaiting Payment" : "New",
+  });
   
   revalidatePath('/requests');
   revalidatePath('/dashboard');

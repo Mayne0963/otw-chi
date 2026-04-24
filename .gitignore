@@ -15,3 +15,20 @@ lib/generated/
 
 # Editor directories
 .vscode
+
+# Ad-hoc & Backups
+*.bak
+*.copy
+*.old
+*.log
+cookies.txt
+=
+
+# Local Keys & Secrets
+openssl-secret.txt
+openssl
+
+# Test / Output Reports
+*-test-report.*
+otw-breakpoints/
+otw-site-test/
