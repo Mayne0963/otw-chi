@@ -306,7 +306,7 @@ export async function createRequestAction(formData: FormData) {
   }
   
   // Trigger Zapier Webhook for the Money Loop
-  sendZapierWebhook("otw_request_created", {
+  await sendZapierWebhook("otw_request_created", {
     orderId: created.id,
     customerName: user.name || "",
     customerEmail: user.email || "",

@@ -441,7 +441,7 @@ export async function POST(req: Request) {
             });
 
             // Trigger Zapier Webhook for Paid Order
-            sendZapierWebhook("otw_payment_received", {
+            await sendZapierWebhook("otw_payment_received", {
               orderId: deliveryRequestId,
               customerEmail: paymentIntent.receipt_email || "",
               totalAmount: (paymentIntent.amount_received || paymentIntent.amount || 0) / 100,
