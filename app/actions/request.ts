@@ -306,15 +306,27 @@ export async function createRequestAction(formData: FormData) {
   }
   
   // Trigger Zapier Webhook for the Money Loop
-  await sendZapierWebhook("otw_request_created", {
+  await sendZapierWebhook('job_request_created', {
+    schemaVersion: 1,
+    requestId: created.id,
+    submittedAt: new Date().toISOString(),
+    businessType: 'otw',
+    feature: 'job_requests',
+    action: 'created',
+    entityType: 'job_request',
+    entityId: created.id,
     orderId: created.id,
-    customerName: user.name || "",
-    customerEmail: user.email || "",
+    customerName: user.name || '',
+    customerEmail: user.email || '',
+    customerPhone: '',
     serviceType: created.serviceType,
     pickupAddress: created.pickupAddress,
     dropoffAddress: created.dropoffAddress,
     totalEstimated: createdDeliveryFeeCents / 100,
-    status: effectivePaymentRequired ? "Awaiting Payment" : "New",
+    totalAmount: createdDeliveryFeeCents / 100,
+    status: effectivePaymentRequired ? 'Awaiting Payment' : 'New',
+    paymentRequired: effectivePaymentRequired,
+    source: 'otw_webapp',
   });
   
   revalidatePath('/requests');

@@ -1,5 +1,12 @@
 const ZAPIER_TIMEOUT_MS = 5000;
 
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `zapier_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function isValidZapierWebhookUrl(value: string) {
   try {
     const parsed = new URL(value);
@@ -7,6 +14,34 @@ function isValidZapierWebhookUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function buildZapierRecord(eventType: string, payload: Record<string, unknown>) {
+  const suppliedRequestId = typeof payload.requestId === 'string' ? payload.requestId.trim() : '';
+  const requestId = suppliedRequestId.length > 0 ? suppliedRequestId : createRequestId();
+
+  const suppliedSubmittedAt = typeof payload.submittedAt === 'string' ? payload.submittedAt.trim() : '';
+  const submittedAt = suppliedSubmittedAt.length > 0 ? suppliedSubmittedAt : new Date().toISOString();
+
+  const suppliedBusinessType = typeof payload.businessType === 'string' ? payload.businessType.trim() : '';
+  const businessType = suppliedBusinessType.length > 0 ? suppliedBusinessType : undefined;
+
+  const cleaned: Record<string, unknown> = { ...payload };
+  delete cleaned.requestId;
+  delete cleaned.submittedAt;
+  delete cleaned.businessType;
+  // Guard against callers accidentally passing the legacy envelope keys.
+  delete cleaned.event;
+  delete cleaned.timestamp;
+  delete cleaned.data;
+
+  return {
+    event: eventType,
+    requestId,
+    submittedAt,
+    ...(businessType ? { businessType } : {}),
+    ...cleaned,
+  };
 }
 
 function parseWebhookUrlList(value: string | undefined) {
@@ -57,11 +92,7 @@ export async function sendZapierWebhook(
   const timeout = setTimeout(() => controller.abort(), ZAPIER_TIMEOUT_MS);
 
   try {
-    const body = JSON.stringify({
-      event: eventType,
-      timestamp: new Date().toISOString(),
-      data: payload,
-    });
+    const body = JSON.stringify(buildZapierRecord(eventType, payload));
 
     const results = await Promise.allSettled(
       webhookUrls.map(async (webhookUrl) => {

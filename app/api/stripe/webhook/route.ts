@@ -441,12 +441,23 @@ export async function POST(req: Request) {
             });
 
             // Trigger Zapier Webhook for Paid Order
-            await sendZapierWebhook("otw_payment_received", {
+            await sendZapierWebhook('payment_received', {
+              schemaVersion: 1,
+              requestId: paymentIntent.id,
+              submittedAt: new Date((paymentIntent.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+              businessType: 'otw',
+              feature: 'payments',
+              action: 'received',
+              entityType: 'job_request',
+              entityId: deliveryRequestId,
               orderId: deliveryRequestId,
-              customerEmail: paymentIntent.receipt_email || "",
+              customerName: '',
+              customerEmail: paymentIntent.receipt_email || '',
+              customerPhone: '',
               totalAmount: (paymentIntent.amount_received || paymentIntent.amount || 0) / 100,
-              status: "Paid / Booked",
-              paymentSource: "delivery_fee",
+              status: 'Paid / Booked',
+              paymentSource: 'delivery_fee',
+              stripePaymentIntentId: paymentIntent.id,
             });
           }
         }
@@ -559,6 +570,26 @@ export async function POST(req: Request) {
               console.log(`[Stripe Webhook] Promo redemption note: ${err instanceof Error ? err.message : 'Unknown'}`);
             }
           }
+
+          await sendZapierWebhook('payment_received', {
+            schemaVersion: 1,
+            requestId: session.id,
+            submittedAt: new Date((session.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+            businessType: 'otw',
+            feature: 'payments',
+            action: 'received',
+            entityType: 'job_request',
+            entityId: draft.id,
+            orderId: draft.id,
+            customerName: '',
+            customerEmail: session.customer_details?.email || session.customer_email || '',
+            customerPhone: '',
+            totalAmount: (session.amount_total ?? 0) / 100,
+            status: 'Paid / Booked',
+            paymentSource: 'order_payment',
+            stripeCheckoutSessionId: session.id,
+            stripePaymentIntentId: session.payment_intent ?? null,
+          });
         } else {
           console.warn(
             `[Stripe Webhook] Unable to match order payment session ${session.id} to a delivery request.`,

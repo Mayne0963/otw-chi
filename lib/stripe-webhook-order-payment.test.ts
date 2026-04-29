@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from '../app/api/stripe/webhook/route';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
+import { sendZapierWebhook } from '@/lib/services/zapier';
 
 vi.mock('next/headers', () => ({
   headers: async () => ({
@@ -30,6 +31,10 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/stripe', () => ({
   getStripe: vi.fn(),
   constructStripeEvent: (body: string) => JSON.parse(body),
+}));
+
+vi.mock('@/lib/services/zapier', () => ({
+  sendZapierWebhook: vi.fn().mockResolvedValue(true),
 }));
 
 describe('Stripe Webhook - Order Payment Completion', () => {
@@ -89,7 +94,12 @@ describe('Stripe Webhook - Order Payment Completion', () => {
       data: {
         object: {
           id: 'cs_order_123',
+          amount_total: 4250,
           client_reference_id: null,
+          customer_email: 'fallback@example.com',
+          customer_details: {
+            email: 'jordan@example.com',
+          },
           metadata: {
             purpose: 'order_payment',
             userId: 'admin_user_id',
@@ -131,6 +141,25 @@ describe('Stripe Webhook - Order Payment Completion', () => {
         couponCode: 'SAVE10',
         discountCents: 500,
       }),
+    });
+    expect(sendZapierWebhook).toHaveBeenCalledWith('payment_received', {
+      schemaVersion: 1,
+      requestId: 'cs_order_123',
+      submittedAt: expect.any(String),
+      businessType: 'otw',
+      feature: 'payments',
+      action: 'received',
+      entityType: 'job_request',
+      entityId: 'req_123',
+      orderId: 'req_123',
+      customerName: '',
+      customerEmail: 'jordan@example.com',
+      customerPhone: '',
+      totalAmount: 42.5,
+      status: 'Paid / Booked',
+      paymentSource: 'order_payment',
+      stripeCheckoutSessionId: 'cs_order_123',
+      stripePaymentIntentId: null,
     });
   });
 });
