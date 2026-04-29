@@ -8,6 +8,7 @@ This app exposes a production intake endpoint for Zapier-based automation:
 - Client submit helper: `lib/automation/form-handler.ts`
 
 Set `ZAPIER_WEBHOOK_URL` to the Zapier Catch Hook URL in every environment that accepts real form submissions.
+To send one submission to multiple Zaps, set `ZAPIER_WEBHOOK_URLS` to a comma-separated list of Catch Hook URLs (this takes precedence over `ZAPIER_WEBHOOK_URL`).
 
 ## 1. Next.js form handler code
 
@@ -278,7 +279,7 @@ Use the `Follow-up Sent` guard to prevent duplicate messages when a completed re
 
 - Validate on the server and client. The server schema is authoritative.
 - Return `422` for field validation errors and include `fieldErrors` keyed by field name.
-- Return `503` when `ZAPIER_WEBHOOK_URL` is missing in the deployment environment.
+- Return `503` when `ZAPIER_WEBHOOK_URL` and `ZAPIER_WEBHOOK_URLS` are missing in the deployment environment.
 - Return `502` when Zapier rejects or times out.
 - Use a short timeout and bounded retry when posting to Zapier. This implementation uses a 5 second timeout and 2 attempts.
 - Include a stable `requestId` in every Zapier payload for debugging and dedupe.
@@ -286,4 +287,4 @@ Use the `Follow-up Sent` guard to prevent duplicate messages when a completed re
 - For high volume, add a database dead-letter table or queue so failed submissions can be replayed.
 - Add Zapier filters that stop payment-link creation when `Stripe Link` is already populated.
 - Use Stripe webhooks or Zapier Stripe triggers to update `Paid`; never trust a redirect URL alone as proof of payment.
-- Keep all secrets server-side: `ZAPIER_WEBHOOK_URL`, Stripe secret key, and storage API keys.
+- Keep all secrets server-side: `ZAPIER_WEBHOOK_URL` / `ZAPIER_WEBHOOK_URLS`, Stripe secret key, and storage API keys.
