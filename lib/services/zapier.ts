@@ -16,6 +16,19 @@ function isValidZapierWebhookUrl(value: string) {
   }
 }
 
+function normalizeBusinessType(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'broskis') return 'broski';
+  return normalized;
+}
+
+function getOrderSourceLabel(businessType: string) {
+  const normalized = normalizeBusinessType(businessType);
+  if (normalized === 'otw') return 'OTW';
+  if (normalized === 'broski') return 'Broskis';
+  return businessType;
+}
+
 function buildZapierRecord(eventType: string, payload: Record<string, unknown>) {
   const suppliedRequestId = typeof payload.requestId === 'string' ? payload.requestId.trim() : '';
   const requestId = suppliedRequestId.length > 0 ? suppliedRequestId : createRequestId();
@@ -24,12 +37,14 @@ function buildZapierRecord(eventType: string, payload: Record<string, unknown>) 
   const submittedAt = suppliedSubmittedAt.length > 0 ? suppliedSubmittedAt : new Date().toISOString();
 
   const suppliedBusinessType = typeof payload.businessType === 'string' ? payload.businessType.trim() : '';
-  const businessType = suppliedBusinessType.length > 0 ? suppliedBusinessType : undefined;
+  const businessType = suppliedBusinessType.length > 0 ? normalizeBusinessType(suppliedBusinessType) : undefined;
+  const orderSource = businessType ? getOrderSourceLabel(businessType) : undefined;
 
   const cleaned: Record<string, unknown> = { ...payload };
   delete cleaned.requestId;
   delete cleaned.submittedAt;
   delete cleaned.businessType;
+  delete cleaned.orderSource;
   // Guard against callers accidentally passing the legacy envelope keys.
   delete cleaned.event;
   delete cleaned.timestamp;
@@ -40,6 +55,7 @@ function buildZapierRecord(eventType: string, payload: Record<string, unknown>) 
     requestId,
     submittedAt,
     ...(businessType ? { businessType } : {}),
+    ...(orderSource ? { orderSource } : {}),
     ...cleaned,
   };
 }

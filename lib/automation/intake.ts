@@ -89,6 +89,7 @@ export function buildZapierAutomationRecord(
   payload: AutomationIntakePayload,
   context: { requestId: string; submittedAt: string },
 ): AutomationZapierRecord {
+  const orderSource = payload.businessType === 'otw' ? 'OTW' : 'Broskis';
   const base = {
     event: AUTOMATION_INTAKE_EVENT,
     requestId: context.requestId,
@@ -102,7 +103,7 @@ export function buildZapierAutomationRecord(
     price: payload.price,
     priceCents: Math.round(payload.price * 100),
     source: payload.source,
-    orderSource: payload.source,
+    orderSource,
     status: 'New',
     paid: false,
     completed: false,

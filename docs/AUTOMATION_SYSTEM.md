@@ -119,7 +119,7 @@ Next.js sends this normalized top-level payload to Zapier:
   "price": 42.5,
   "priceCents": 4250,
   "source": "website",
-  "orderSource": "website",
+  "orderSource": "OTW",
   "status": "New",
   "paid": false,
   "completed": false,
