@@ -172,6 +172,16 @@ export async function createRequestAction(formData: FormData) {
   if (!user) throw new Error('Unauthorized');
   
   const prisma = getPrisma();
+  let customerPhone = '';
+  try {
+    const profile = await prisma.customerProfile.findUnique({
+      where: { userId: user.id },
+      select: { phone: true },
+    });
+    customerPhone = profile?.phone ?? '';
+  } catch {
+    customerPhone = '';
+  }
 
   let miles =
     Number.isFinite(milesInput) && milesInput > 0
@@ -304,6 +314,22 @@ export async function createRequestAction(formData: FormData) {
       },
     });
   }
+
+  const jobRequest = {
+    pickupAddress: pickup,
+    dropoffAddress: dropoff,
+    serviceType,
+    notes,
+    paymentPreference: paymentPreferenceInput,
+    milesInput: Number.isFinite(milesInput) ? milesInput : null,
+    milesComputed: miles,
+    milesEstimate,
+    pickupLat: Number.isFinite(pickupLat) ? pickupLat : null,
+    pickupLng: Number.isFinite(pickupLng) ? pickupLng : null,
+    dropoffLat: Number.isFinite(dropoffLat) ? dropoffLat : null,
+    dropoffLng: Number.isFinite(dropoffLng) ? dropoffLng : null,
+    otwTrueBenefitType: otwTrueBenefitType ?? null,
+  };
   
   // Trigger Zapier Webhook for the Money Loop
   await sendZapierWebhook('job_request_created', {
@@ -318,16 +344,28 @@ export async function createRequestAction(formData: FormData) {
     orderId: created.id,
     customerName: user.name || '',
     customerEmail: user.email || '',
-    customerPhone: '',
+    customerPhone,
     orderType: created.serviceType,
     serviceType: created.serviceType,
     pickupAddress: created.pickupAddress,
     dropoffAddress: created.dropoffAddress,
+    notes,
+    paymentPreference: paymentPreferenceInput,
+    paymentPreferenceResolved: paymentPreference,
+    milesInput: jobRequest.milesInput,
+    milesComputed: jobRequest.milesComputed,
+    milesEstimate: jobRequest.milesEstimate,
+    pickupLat: jobRequest.pickupLat,
+    pickupLng: jobRequest.pickupLng,
+    dropoffLat: jobRequest.dropoffLat,
+    dropoffLng: jobRequest.dropoffLng,
+    otwTrueBenefitType: jobRequest.otwTrueBenefitType,
     job: {
       serviceType: created.serviceType,
       pickupAddress: created.pickupAddress,
       dropoffAddress: created.dropoffAddress,
     },
+    jobRequest,
     totalEstimated: createdDeliveryFeeCents / 100,
     totalAmount: createdDeliveryFeeCents / 100,
     status: effectivePaymentRequired ? 'Awaiting Payment' : 'New',
