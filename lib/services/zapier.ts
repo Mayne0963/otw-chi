@@ -1,4 +1,5 @@
 const ZAPIER_TIMEOUT_MS = 5000;
+let loggedMissingWebhookUrl = false;
 
 function createRequestId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -86,8 +87,9 @@ export async function sendZapierWebhook(
   const webhookUrls = getWebhookUrls();
 
   if (webhookUrls.length === 0) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(
+    if (!loggedMissingWebhookUrl) {
+      loggedMissingWebhookUrl = true;
+      console.error(
         `[ZAPIER] Skipped sending '${eventType}' because ZAPIER_WEBHOOK_URL (or ZAPIER_WEBHOOK_URLS) is not set.`,
       );
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
+import { sendZapierWebhook } from '@/lib/services/zapier';
 import { z } from 'zod';
 import { OverageBillingMode } from '@prisma/client';
 import {
@@ -90,7 +91,15 @@ export async function POST(req: Request) {
     }
     
     const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { neonAuthId: neonAuthUserId } });
+    const user = await prisma.user.findUnique({
+      where: { neonAuthId: neonAuthUserId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        customerProfile: { select: { phone: true } },
+      },
+    });
     
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -300,6 +309,71 @@ export async function POST(req: Request) {
         });
       }
 
+      await sendZapierWebhook('job_request_created', {
+        schemaVersion: 1,
+        requestId: result.request.id,
+        submittedAt: new Date().toISOString(),
+        businessType: 'otw',
+        feature: 'job_requests',
+        action: 'created',
+        entityType: 'job_request',
+        entityId: result.request.id,
+        orderId: result.request.id,
+        customerName: user.name || '',
+        customerEmail: user.email || '',
+        customerPhone: user.customerProfile?.phone || '',
+        orderType: data.serviceType,
+        serviceType: data.serviceType,
+        pickupAddress: data.pickup,
+        dropoffAddress: effectiveDropoffAddress,
+        notes: data.notes ?? '',
+        paymentPreference: data.paymentPreference ?? null,
+        paymentPreferenceResolved: paymentPreference,
+        milesInput: data.milesEstimate,
+        milesComputed: miles,
+        milesEstimate,
+        pickupLat: pickupLocation?.lat ?? null,
+        pickupLng: pickupLocation?.lng ?? null,
+        dropoffLat: dropoffLocation?.lat ?? null,
+        dropoffLng: dropoffLocation?.lng ?? null,
+        intermediateStops,
+        isScheduled,
+        scheduledFor: scheduledFor?.toISOString() ?? null,
+        scheduleWindowMinutes,
+        otwTrueBenefitType: data.otwTrueBenefitType ?? null,
+        job: {
+          serviceType: data.serviceType,
+          pickupAddress: data.pickup,
+          dropoffAddress: effectiveDropoffAddress,
+          notes: data.notes ?? '',
+          milesEstimate,
+        },
+        jobRequest: {
+          pickupAddress: data.pickup,
+          dropoffAddress: effectiveDropoffAddress,
+          serviceType: data.serviceType,
+          notes: data.notes ?? '',
+          paymentPreference: data.paymentPreference ?? null,
+          milesInput: data.milesEstimate,
+          milesComputed: miles,
+          milesEstimate,
+          pickupLat: pickupLocation?.lat ?? null,
+          pickupLng: pickupLocation?.lng ?? null,
+          dropoffLat: dropoffLocation?.lat ?? null,
+          dropoffLng: dropoffLocation?.lng ?? null,
+          intermediateStops,
+          isScheduled,
+          scheduledFor: scheduledFor?.toISOString() ?? null,
+          scheduleWindowMinutes,
+          otwTrueBenefitType: data.otwTrueBenefitType ?? null,
+        },
+        totalEstimated: deliveryFeeCents / 100,
+        totalAmount: deliveryFeeCents / 100,
+        status: paymentRequired ? 'Awaiting Payment' : 'New',
+        paymentRequired,
+        source: 'otw_webapp',
+      });
+
       return NextResponse.json({
         id: result.request.id,
         paymentPreference,
@@ -360,6 +434,69 @@ export async function POST(req: Request) {
 
     const deliveryClientSecret: string | null = null;
     const deliveryPaymentIntentId: string | null = request.deliveryPaymentIntentId ?? null;
+
+    await sendZapierWebhook('job_request_created', {
+      schemaVersion: 1,
+      requestId: request.id,
+      submittedAt: new Date().toISOString(),
+      businessType: 'otw',
+      feature: 'job_requests',
+      action: 'created',
+      entityType: 'job_request',
+      entityId: request.id,
+      orderId: request.id,
+      customerName: user.name || '',
+      customerEmail: user.email || '',
+      customerPhone: user.customerProfile?.phone || '',
+      orderType: data.serviceType,
+      serviceType: data.serviceType,
+      pickupAddress: data.pickup,
+      dropoffAddress: effectiveDropoffAddress,
+      notes: data.notes ?? '',
+      paymentPreference: data.paymentPreference ?? null,
+      paymentPreferenceResolved: paymentPreference,
+      milesInput: data.milesEstimate,
+      milesComputed: miles,
+      milesEstimate,
+      pickupLat: pickupLocation?.lat ?? null,
+      pickupLng: pickupLocation?.lng ?? null,
+      dropoffLat: dropoffLocation?.lat ?? null,
+      dropoffLng: dropoffLocation?.lng ?? null,
+      intermediateStops,
+      isScheduled,
+      scheduledFor: scheduledFor?.toISOString() ?? null,
+      scheduleWindowMinutes,
+      job: {
+        serviceType: data.serviceType,
+        pickupAddress: data.pickup,
+        dropoffAddress: effectiveDropoffAddress,
+        notes: data.notes ?? '',
+        milesEstimate,
+      },
+      jobRequest: {
+        pickupAddress: data.pickup,
+        dropoffAddress: effectiveDropoffAddress,
+        serviceType: data.serviceType,
+        notes: data.notes ?? '',
+        paymentPreference: data.paymentPreference ?? null,
+        milesInput: data.milesEstimate,
+        milesComputed: miles,
+        milesEstimate,
+        pickupLat: pickupLocation?.lat ?? null,
+        pickupLng: pickupLocation?.lng ?? null,
+        dropoffLat: dropoffLocation?.lat ?? null,
+        dropoffLng: dropoffLocation?.lng ?? null,
+        intermediateStops,
+        isScheduled,
+        scheduledFor: scheduledFor?.toISOString() ?? null,
+        scheduleWindowMinutes,
+      },
+      totalEstimated: (request.deliveryFeeCents ?? 0) / 100,
+      totalAmount: (request.deliveryFeeCents ?? 0) / 100,
+      status: paymentRequired ? 'Awaiting Payment' : 'New',
+      paymentRequired,
+      source: 'otw_webapp',
+    });
 
     return NextResponse.json({
       id: request.id,
