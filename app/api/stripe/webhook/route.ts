@@ -410,6 +410,9 @@ export async function POST(req: Request) {
               deliveryFeePaid: true,
               paymentRequired: true,
               deliveryPaymentIntentId: true,
+              serviceType: true,
+              pickupAddress: true,
+              dropoffAddress: true,
             },
           });
 
@@ -454,6 +457,12 @@ export async function POST(req: Request) {
               customerName: '',
               customerEmail: paymentIntent.receipt_email || '',
               customerPhone: '',
+              orderType: deliveryRequest.serviceType,
+              job: {
+                serviceType: deliveryRequest.serviceType,
+                pickupAddress: deliveryRequest.pickupAddress,
+                dropoffAddress: deliveryRequest.dropoffAddress,
+              },
               totalAmount: (paymentIntent.amount_received || paymentIntent.amount || 0) / 100,
               status: 'Paid / Booked',
               paymentSource: 'delivery_fee',
@@ -503,6 +512,9 @@ export async function POST(req: Request) {
           overageStatus: true,
           overageMiles: true,
           overageCents: true,
+          serviceType: true,
+          pickupAddress: true,
+          dropoffAddress: true,
         } as const;
 
         let draft = metadataRequestId
@@ -584,6 +596,12 @@ export async function POST(req: Request) {
             customerName: '',
             customerEmail: session.customer_details?.email || session.customer_email || '',
             customerPhone: '',
+            orderType: draft.serviceType,
+            job: {
+              serviceType: draft.serviceType,
+              pickupAddress: draft.pickupAddress,
+              dropoffAddress: draft.dropoffAddress,
+            },
             totalAmount: (session.amount_total ?? 0) / 100,
             status: 'Paid / Booked',
             paymentSource: 'order_payment',

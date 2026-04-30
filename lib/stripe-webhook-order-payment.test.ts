@@ -118,6 +118,9 @@ describe('Stripe Webhook - Order Payment Completion', () => {
     mockPrisma.deliveryRequest.findUnique.mockResolvedValue({
       id: 'req_123',
       userId: 'customer_user_id',
+      serviceType: 'FOOD',
+      pickupAddress: '110 W Berry St, Fort Wayne, IN',
+      dropoffAddress: '200 E Main St, Fort Wayne, IN',
       overageBillingMode: 'INSTANT',
       overageStatus: 'NONE',
       overageMiles: 0,
@@ -160,6 +163,12 @@ describe('Stripe Webhook - Order Payment Completion', () => {
       paymentSource: 'order_payment',
       stripeCheckoutSessionId: 'cs_order_123',
       stripePaymentIntentId: null,
+      orderType: 'FOOD',
+      job: {
+        serviceType: 'FOOD',
+        pickupAddress: '110 W Berry St, Fort Wayne, IN',
+        dropoffAddress: '200 E Main St, Fort Wayne, IN',
+      },
     });
   });
 });
