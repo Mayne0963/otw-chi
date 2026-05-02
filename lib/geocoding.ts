@@ -1262,6 +1262,10 @@ const TOKEN_EQUIVALENTS: Record<string, string[]> = {
   us: ['u s'],
   ft: ['fort'],
   fort: ['ft'],
+  southside: ['south side'],
+  northside: ['north side'],
+  eastside: ['east side'],
+  westside: ['west side'],
 };
 
 function tokenizeQuery(value: string, options?: { minLength?: number }): string[] {
@@ -1441,9 +1445,11 @@ function getSearchQueries(query: string): Array<{ searchText: string; area?: Ser
   const areas = getServiceAreasForQuery(trimmed);
   const normalized = normalizeQuery(trimmed);
 
-  const queries: Array<{ searchText: string; area?: ServiceArea }> = [{ searchText: trimmed }];
+  const queries: Array<{ searchText: string; area?: ServiceArea }> = [];
 
   for (const area of areas) {
+    queries.push({ searchText: trimmed, area });
+
     const alreadyScoped = normalized.includes(normalizeQuery(area.queryBias));
     if (alreadyScoped) continue;
     queries.push({ searchText: `${trimmed}, ${area.queryBias}`, area });
@@ -1658,7 +1664,7 @@ export async function searchAddress(
 
           if (search.area) {
             url.searchParams.append('viewbox', search.area.viewbox);
-            url.searchParams.append('bounded', '0');
+            url.searchParams.append('bounded', '1');
           }
 
           const response = await fetch(url.toString(), { cache: 'force-cache' });

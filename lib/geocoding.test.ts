@@ -234,6 +234,19 @@ describe('geocoding validation fallbacks', () => {
     expect(results[0]?.zipCode).toBe('46816');
   });
 
+  it('handles concatenated neighborhood tokens like "southside" for Fort Wayne suggestions', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    const results = await searchAddress('Southside High School');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('South Side High School');
+    expect(results[0]?.streetAddress).toContain('3601');
+  });
+
   it('calculates pickup-to-dropoff distance in miles', () => {
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0676, -85.1402)).toBeGreaterThan(0);
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0793, -85.1394)).toBe(0);
