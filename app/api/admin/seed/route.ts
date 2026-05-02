@@ -24,6 +24,8 @@ function getOverageDefaults(planName: string) {
   } as const;
 }
 
+const OTW_ORDERABLE_SERVICE_TYPES = ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'] as const;
+
 export async function POST(_request: Request) {
   try {
     // Check authentication
@@ -141,7 +143,7 @@ export async function POST(_request: Request) {
         markupFree: false,
         cashAllowed: false,
         peerToPeerAllowed: false,
-        allowedServiceTypes: ['FOOD', 'STORE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW PLUS',
@@ -155,7 +157,7 @@ export async function POST(_request: Request) {
         markupFree: false,
         cashAllowed: false,
         peerToPeerAllowed: false,
-        allowedServiceTypes: ['FOOD', 'STORE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW PRO',
@@ -169,7 +171,7 @@ export async function POST(_request: Request) {
         markupFree: true,
         cashAllowed: false,
         peerToPeerAllowed: false,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW ELITE',
@@ -183,7 +185,7 @@ export async function POST(_request: Request) {
         markupFree: true,
         cashAllowed: true,
         peerToPeerAllowed: true,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW BLACK',
@@ -197,7 +199,7 @@ export async function POST(_request: Request) {
         markupFree: true,
         cashAllowed: true,
         peerToPeerAllowed: true,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW BUSINESS CORE',
@@ -211,7 +213,7 @@ export async function POST(_request: Request) {
         markupFree: true,
         cashAllowed: true,
         peerToPeerAllowed: true,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW BUSINESS PRO',
@@ -225,7 +227,7 @@ export async function POST(_request: Request) {
         markupFree: true,
         cashAllowed: true,
         peerToPeerAllowed: true,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW TRUE',
@@ -240,7 +242,7 @@ export async function POST(_request: Request) {
         markupFree: true,
         cashAllowed: true,
         peerToPeerAllowed: true,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
       {
         name: 'OTW ENTERPRISE',
@@ -252,7 +254,7 @@ export async function POST(_request: Request) {
         markupFree: true,
         cashAllowed: true,
         peerToPeerAllowed: true,
-        allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'],
+        allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
       },
     ];
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import { toPickupPassPreviewUrl } from '@/lib/pickup-pass-client';
 
 type PickupPassPayload = {
   pickupPassUrl?: string;
@@ -41,23 +42,6 @@ export default function DriverPickupPassButton({
     };
   }, []);
 
-  const toPreviewUrl = async (rawPickupPassUrl: string): Promise<string> => {
-    if (!rawPickupPassUrl.startsWith('data:')) {
-      return rawPickupPassUrl;
-    }
-
-    const response = await fetch(rawPickupPassUrl);
-    if (!response.ok) {
-      throw new Error('Pickup pass is unavailable for this request.');
-    }
-
-    const blob = await response.blob();
-    revokeBlobUrl();
-    const objectUrl = URL.createObjectURL(blob);
-    blobUrlRef.current = objectUrl;
-    return objectUrl;
-  };
-
   const closeModal = () => {
     setModalOpen(false);
     setErrorMessage(null);
@@ -92,7 +76,13 @@ export default function DriverPickupPassButton({
         throw new Error(payload?.error ?? 'Pickup pass is unavailable for this request.');
       }
 
-      const previewUrl = await toPreviewUrl(payload.pickupPassUrl);
+      const previewUrl = await toPickupPassPreviewUrl({
+        rawUrl: payload.pickupPassUrl,
+        revokeExisting: revokeBlobUrl,
+        setObjectUrl: (value) => {
+          blobUrlRef.current = value;
+        },
+      });
       setPickupPassUrl(previewUrl);
     } catch (error) {
       const message =

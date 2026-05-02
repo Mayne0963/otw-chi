@@ -1,6 +1,7 @@
 import { OverageBillingMode, Prisma, type PrismaClient } from '@prisma/client';
 import { getPrisma } from '@/lib/db';
 import { getStripe } from '@/lib/stripe';
+import { OTW_ORDERABLE_SERVICE_TYPES } from '@/lib/allowed-service-types';
 
 const BASIC_PLAN_NAME = 'OTW BASIC';
 
@@ -66,7 +67,7 @@ async function ensureBasicMembership(
         markupFree: false,
         cashAllowed: false,
         peerToPeerAllowed: false,
-        allowedServiceTypes: ['FOOD', 'STORE'],
+        allowedServiceTypes: [...OTW_ORDERABLE_SERVICE_TYPES],
         overageBillingMode: OverageBillingMode.INSTANT,
         overageRateCentsPerMile: 200,
         overageMinimumCents: 500,

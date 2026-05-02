@@ -44,6 +44,7 @@ function getDatabaseUrl() {
 
 const adapter = new PrismaNeon({ connectionString: getDatabaseUrl() });
 const prisma = new PrismaClient({ adapter });
+const OTW_ORDERABLE_SERVICE_TYPES = ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'];
 
 async function main() {
   // Helper to seed City safely
@@ -123,7 +124,7 @@ async function main() {
       markupFree: false,
       cashAllowed: false,
       peerToPeerAllowed: false,
-      allowedServiceTypes: ['FOOD', 'STORE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW PLUS',
@@ -137,7 +138,7 @@ async function main() {
       markupFree: false,
       cashAllowed: false,
       peerToPeerAllowed: false,
-      allowedServiceTypes: ['FOOD', 'STORE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW PRO',
@@ -151,7 +152,7 @@ async function main() {
       markupFree: true,
       cashAllowed: false,
       peerToPeerAllowed: false,
-      allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW ELITE',
@@ -165,7 +166,7 @@ async function main() {
       markupFree: true,
       cashAllowed: true,
       peerToPeerAllowed: true,
-      allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW BLACK',
@@ -179,7 +180,7 @@ async function main() {
       markupFree: true,
       cashAllowed: true,
       peerToPeerAllowed: true,
-      allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW BUSINESS CORE',
@@ -193,7 +194,7 @@ async function main() {
       markupFree: true,
       cashAllowed: true,
       peerToPeerAllowed: true,
-      allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW BUSINESS PRO',
@@ -207,7 +208,7 @@ async function main() {
       markupFree: true,
       cashAllowed: true,
       peerToPeerAllowed: true,
-      allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW TRUE',
@@ -222,7 +223,7 @@ async function main() {
       markupFree: true,
       cashAllowed: true,
       peerToPeerAllowed: true,
-      allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
     {
       name: 'OTW ENTERPRISE',
@@ -234,7 +235,7 @@ async function main() {
       markupFree: true,
       cashAllowed: true,
       peerToPeerAllowed: true,
-      allowedServiceTypes: ['FOOD', 'STORE', 'FRAGILE', 'CONCIERGE', 'RIDE'],
+      allowedServiceTypes: OTW_ORDERABLE_SERVICE_TYPES,
     },
   ];
 

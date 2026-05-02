@@ -1,4 +1,5 @@
 import { getPrisma } from '@/lib/db';
+import { OTW_ORDERABLE_SERVICE_TYPES } from '@/lib/allowed-service-types';
 
 type EnsureUserInput = {
   neonAuthUserId: string;
@@ -38,7 +39,7 @@ export async function ensureUser({ neonAuthUserId, email }: EnsureUserInput) {
           markupFree: false,
           cashAllowed: false,
           peerToPeerAllowed: false,
-          allowedServiceTypes: ['FOOD', 'STORE'],
+          allowedServiceTypes: [...OTW_ORDERABLE_SERVICE_TYPES],
           overageBillingMode: 'INSTANT',
           overageRateCentsPerMile: 200,
           overageMinimumCents: 500,

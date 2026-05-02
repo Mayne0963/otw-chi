@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/db";
 import { isAdminFreeCoupon } from "@/lib/admin-discount";
+import { OTW_ORDERABLE_SERVICE_TYPES } from "@/lib/allowed-service-types";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -33,7 +34,7 @@ async function ensureBasicMembership(prisma: ReturnType<typeof getPrisma>, userI
         markupFree: false,
         cashAllowed: false,
         peerToPeerAllowed: false,
-        allowedServiceTypes: ["FOOD", "STORE"],
+        allowedServiceTypes: [...OTW_ORDERABLE_SERVICE_TYPES],
         overageBillingMode: "INSTANT",
         overageRateCentsPerMile: 200,
         overageMinimumCents: 500,

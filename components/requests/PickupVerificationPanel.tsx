@@ -1,11 +1,12 @@
 'use client';
 
-import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { downscaleImage } from '@/lib/image/downscale';
+import { toPickupPassPreviewUrl } from '@/lib/pickup-pass-client';
 import { formatDate } from '@/lib/utils';
 
 type PickupVerificationPanelProps = {
@@ -80,6 +81,7 @@ export default function PickupVerificationPanel({
   const [uploadsAllowed, setUploadsAllowed] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const pickupPassObjectUrlRef = useRef<string | null>(null);
 
   const hasPassAndNotExpired = hasPickupPass && !pickupPassExpired;
   const uploadsPaused = pickupPassFeatureEnabled && base64Mode && !uploadsAllowed;
@@ -99,6 +101,21 @@ export default function PickupVerificationPanel({
 
     return 'Pickup pass uploaded.';
   }, [hasPickupPass, pickupPassExpired, pickupPassExpiresAt]);
+
+  const revokePickupPassObjectUrl = useCallback(() => {
+    if (!pickupPassObjectUrlRef.current) {
+      return;
+    }
+
+    URL.revokeObjectURL(pickupPassObjectUrlRef.current);
+    pickupPassObjectUrlRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      revokePickupPassObjectUrl();
+    };
+  }, [revokePickupPassObjectUrl]);
 
   useEffect(() => {
     if (!uploadFile) {
@@ -189,9 +206,18 @@ export default function PickupVerificationPanel({
 
     let active = true;
     void fetchPickupPassUrl()
-      .then((url) => {
+      .then((url) =>
+        toPickupPassPreviewUrl({
+          rawUrl: url,
+          revokeExisting: revokePickupPassObjectUrl,
+          setObjectUrl: (value) => {
+            pickupPassObjectUrlRef.current = value;
+          },
+        }),
+      )
+      .then((previewUrl) => {
         if (active) {
-          setPickupPassPreviewUrl(url);
+          setPickupPassPreviewUrl(previewUrl);
         }
       })
       .catch((fetchError) => {
@@ -203,7 +229,7 @@ export default function PickupVerificationPanel({
     return () => {
       active = false;
     };
-  }, [fetchPickupPassUrl, hasPassAndNotExpired, pickupPassPreviewUrl]);
+  }, [fetchPickupPassUrl, hasPassAndNotExpired, pickupPassPreviewUrl, revokePickupPassObjectUrl]);
 
   const saveDetails = async () => {
     if (!canEdit) {
@@ -291,7 +317,19 @@ export default function PickupVerificationPanel({
       setPickupPassExpired(false);
       setPickupPassUploadedAt(payload.pickupPassUploadedAt ?? null);
       setPickupPassExpiresAt(payload.pickupPassExpiresAt ?? null);
-      setPickupPassPreviewUrl(payload.pickupPassUrl ?? null);
+      if (payload.pickupPassUrl) {
+        const previewUrl = await toPickupPassPreviewUrl({
+          rawUrl: payload.pickupPassUrl,
+          revokeExisting: revokePickupPassObjectUrl,
+          setObjectUrl: (value) => {
+            pickupPassObjectUrlRef.current = value;
+          },
+        });
+        setPickupPassPreviewUrl(previewUrl);
+      } else {
+        revokePickupPassObjectUrl();
+        setPickupPassPreviewUrl(null);
+      }
       setSuccess('Pickup pass uploaded.');
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Unable to upload pickup pass');
@@ -333,6 +371,7 @@ export default function PickupVerificationPanel({
       setPickupPassExpired(false);
       setPickupPassUploadedAt(null);
       setPickupPassExpiresAt(null);
+      revokePickupPassObjectUrl();
       setPickupPassPreviewUrl(null);
       setSuccess('Pickup pass removed.');
     } catch (removeError) {
@@ -348,8 +387,15 @@ export default function PickupVerificationPanel({
 
     try {
       const signedUrl = await fetchPickupPassUrl();
-      setPickupPassPreviewUrl(signedUrl);
-      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+      const previewUrl = await toPickupPassPreviewUrl({
+        rawUrl: signedUrl,
+        revokeExisting: revokePickupPassObjectUrl,
+        setObjectUrl: (value) => {
+          pickupPassObjectUrlRef.current = value;
+        },
+      });
+      setPickupPassPreviewUrl(previewUrl);
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
     } catch (openError) {
       if (openError instanceof Error && /expired/i.test(openError.message)) {
         setPickupPassExpired(true);
