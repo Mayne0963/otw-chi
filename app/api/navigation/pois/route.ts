@@ -6,7 +6,15 @@ type HerePlacesResponse = {
     id?: string;
     title?: string;
     position?: { lat: number; lng: number };
-    address?: { label?: string };
+    address?: {
+      label?: string;
+      houseNumber?: string;
+      street?: string;
+      city?: string;
+      stateCode?: string;
+      state?: string;
+      postalCode?: string;
+    };
     distance?: number;
     categories?: Array<{ name?: string }>;
   }>;
@@ -58,6 +66,10 @@ export async function GET(request: Request) {
         title: item.title,
         position: item.position,
         address: item.address?.label,
+        streetAddress: [item.address?.houseNumber, item.address?.street].filter(Boolean).join(" ").trim() || undefined,
+        city: item.address?.city,
+        state: item.address?.stateCode || item.address?.state,
+        zipCode: item.address?.postalCode,
         distance: item.distance,
         categories: item.categories?.map((c) => c.name).filter(Boolean) || [],
       })),

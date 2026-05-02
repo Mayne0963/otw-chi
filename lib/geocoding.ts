@@ -41,6 +41,22 @@ type RankedAddress = {
   matchedTokenCount: number;
 };
 
+type HerePoiResult = {
+  title?: string;
+  position?: { lat: number; lng: number };
+  address?: string;
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  distance?: number;
+};
+
+type HerePoiProxyResponse = {
+  success?: boolean;
+  items?: HerePoiResult[];
+};
+
 const searchResultCache = new Map<string, CachedSearchEntry>();
 
 const SERVICE_AREAS: ServiceArea[] = [
@@ -1300,11 +1316,20 @@ function isSpecificAddressQuery(normalizedQuery: string, tokens: string[]): bool
   return hasStreetLikeShape || hasNumericToken;
 }
 
+function matchesTokenVariant(searchWords: string[], searchableText: string, variant: string): boolean {
+  if (!variant) return false;
+  if (variant.includes(' ')) return searchableText.includes(variant);
+  return searchWords.some((word) => word.startsWith(variant));
+}
+
 function countMatchedTokens(searchableText: string, queryTokens: string[]): number {
   if (queryTokens.length === 0) return 0;
+  const searchWords = searchableText.split(' ').filter(Boolean);
   return queryTokens.reduce((count, token) => {
     const variants = getTokenVariants(token);
-    return variants.some((variant) => searchableText.includes(variant)) ? count + 1 : count;
+    return variants.some((variant) => matchesTokenVariant(searchWords, searchableText, variant))
+      ? count + 1
+      : count;
   }, 0);
 }
 
@@ -1350,21 +1375,26 @@ function computeAddressMatchScore(params: {
     if (searchableText.includes(normalizedQuery)) score += 120;
   }
 
+  const nameWords = nameTokenText.split(' ').filter(Boolean);
+  const streetWords = streetAddress.split(' ').filter(Boolean);
+  const cityWords = city.split(' ').filter(Boolean);
+  const zipWords = zipCode.split(' ').filter(Boolean);
+
   for (const token of queryTokens) {
     const variants = getTokenVariants(token);
-    if (variants.some((variant) => nameTokenText.includes(variant))) {
+    if (variants.some((variant) => matchesTokenVariant(nameWords, nameTokenText, variant))) {
       score += 48;
       continue;
     }
-    if (variants.some((variant) => streetAddress.includes(variant))) {
+    if (variants.some((variant) => matchesTokenVariant(streetWords, streetAddress, variant))) {
       score += 44;
       continue;
     }
-    if (variants.some((variant) => zipCode.includes(variant))) {
+    if (variants.some((variant) => matchesTokenVariant(zipWords, zipCode, variant))) {
       score += 38;
       continue;
     }
-    if (variants.some((variant) => city.includes(variant))) {
+    if (variants.some((variant) => matchesTokenVariant(cityWords, city, variant))) {
       score += 32;
     }
   }
@@ -1536,6 +1566,10 @@ function getFeaturedLocationSuggestions(
   const normalized = normalizeQuery(query);
   const tokens = tokenizeQuery(query, { minLength: 2 });
   const allowDefaultWhenNoMatch = options?.allowDefaultWhenNoMatch !== false;
+  const tokenMatchesHaystack = (haystack: string, token: string) => {
+    const haystackWords = haystack.split(' ').filter(Boolean);
+    return getTokenVariants(token).some((variant) => matchesTokenVariant(haystackWords, haystack, variant));
+  };
 
   if (!normalized) {
     return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
@@ -1571,11 +1605,11 @@ function getFeaturedLocationSuggestions(
   }
 
   const exactTokenMatches = FEATURED_LOCATION_INDEX.filter(({ matchHaystack }) =>
-    tokens.every((token) => getTokenVariants(token).some((variant) => matchHaystack.includes(variant)))
+    tokens.every((token) => tokenMatchesHaystack(matchHaystack, token))
   );
 
   const partialTokenMatches = FEATURED_LOCATION_INDEX.filter(({ matchHaystack }) =>
-    tokens.some((token) => getTokenVariants(token).some((variant) => matchHaystack.includes(variant)))
+    tokens.some((token) => tokenMatchesHaystack(matchHaystack, token))
   );
 
   if (exactTokenMatches.length > 0 || partialTokenMatches.length > 0) {
@@ -1650,6 +1684,9 @@ export async function searchAddress(
   try {
     const rankedResults = new Map<string, RankedAddress>();
     const searchQueries = getSearchQueries(trimmedQuery);
+    const areasToSearch = Array.from(
+      new Set(searchQueries.map((search) => search.area).filter(Boolean))
+    ) as ServiceArea[];
     const payloads = await Promise.all(
       searchQueries.map(async (search) => {
         try {
@@ -1677,6 +1714,30 @@ export async function searchAddress(
           return Array.isArray(payload) ? payload : [];
         } catch (error) {
           console.warn(`Geocoding request failed for query "${search.searchText}"`, error);
+          return [];
+        }
+      })
+    );
+
+    const herePayloads = await Promise.all(
+      areasToSearch.map(async (area) => {
+        try {
+          const url = getInternalApiUrl('/api/navigation/pois');
+          url.searchParams.set('at', `${area.latitude},${area.longitude}`);
+          url.searchParams.set('query', trimmedQuery);
+          url.searchParams.set('limit', String(LIVE_SEARCH_LIMIT));
+
+          const response = await fetch(url.toString(), { cache: 'no-store' });
+          if (!response.ok) return [];
+
+          const payload = (await response.json()) as unknown;
+          if (!isRecord(payload)) return [];
+          const record = payload as HerePoiProxyResponse;
+          if (!record.success) return [];
+
+          const items = Array.isArray(record.items) ? record.items : [];
+          return items.filter((item): item is HerePoiResult => item != null && typeof item === 'object');
+        } catch {
           return [];
         }
       })
@@ -1760,6 +1821,80 @@ export async function searchAddress(
         });
 
         const dedupeKey = `${formattedAddress.toLowerCase()}|${lat.toFixed(6)}|${lng.toFixed(6)}`;
+        const existing = rankedResults.get(dedupeKey);
+        if (
+          !existing ||
+          score > existing.score ||
+          (score === existing.score &&
+            resolvedAddress.distanceFromServiceArea < existing.address.distanceFromServiceArea)
+        ) {
+          rankedResults.set(dedupeKey, {
+            address: resolvedAddress,
+            score,
+            matchedTokenCount,
+          });
+        }
+      }
+    }
+
+    for (const payload of herePayloads) {
+      for (const item of payload) {
+        const position = item.position;
+        if (!position || !Number.isFinite(position.lat) || !Number.isFinite(position.lng)) continue;
+
+        const lat = position.lat;
+        const lng = position.lng;
+
+        const nearest = getClosestServiceArea(lat, lng);
+        const isWithinServiceArea = nearest.distanceMiles <= nearest.area.radiusMiles;
+        if (!isWithinServiceArea) continue;
+
+        const roundedDistance = Math.round(nearest.distanceMiles * 10) / 10;
+        const formattedAddress = (item.address || '').trim();
+        const placeName = (item.title || '').trim() || undefined;
+        const streetAddress = (item.streetAddress || '').trim();
+        const city = (item.city || '').trim();
+        const state = (item.state || '').trim();
+        const zipCode = (item.zipCode || '').trim();
+
+        if (!formattedAddress && !placeName) continue;
+
+        const searchableText = normalizeQuery(
+          `${formattedAddress} ${placeName || ''} ${streetAddress} ${city} ${state} ${zipCode}`
+        );
+        const matchedTokenCount = countMatchedTokens(searchableText, queryTokens);
+        if (queryTokens.length > 0 && matchedTokenCount < requiredTokenMatches) {
+          continue;
+        }
+
+        const resolvedAddress: GeocodedAddress = {
+          formattedAddress: formattedAddress || placeName || '',
+          placeName,
+          streetAddress,
+          city,
+          state,
+          zipCode,
+          latitude: lat,
+          longitude: lng,
+          serviceAreaName: nearest.area.name,
+          distanceFromServiceArea: roundedDistance,
+          distanceFromFortWayne: roundedDistance,
+          isWithinServiceArea: true,
+        };
+
+        const score = computeAddressMatchScore({
+          address: resolvedAddress,
+          normalizedQuery,
+          queryTokens,
+          searchableText,
+          placeName: normalizeQuery(placeName || ''),
+          streetAddress: normalizeQuery(streetAddress),
+          city: normalizeQuery(city),
+          zipCode: normalizeQuery(zipCode),
+          matchedTokenCount,
+        });
+
+        const dedupeKey = `${resolvedAddress.formattedAddress.toLowerCase()}|${lat.toFixed(6)}|${lng.toFixed(6)}`;
         const existing = rankedResults.get(dedupeKey);
         if (
           !existing ||

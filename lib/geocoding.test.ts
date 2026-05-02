@@ -247,6 +247,51 @@ describe('geocoding validation fallbacks', () => {
     expect(results[0]?.streetAddress).toContain('3601');
   });
 
+  it('returns Fort Wayne POIs via HERE discover when Nominatim has no match', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string'
+          ? new URL(input)
+          : input instanceof URL
+            ? input
+            : new URL((input as Request).url);
+
+      if (url.pathname.includes('/api/navigation/pois')) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            items: [
+              {
+                id: 'here:poi:buy-right',
+                title: 'Buy Right Auto Sales',
+                position: { lat: 41.1176063, lng: -85.1571087 },
+                address: 'Buy Right Auto Sales, 1029 W Coliseum Blvd, Fort Wayne, IN 46808, United States',
+                streetAddress: '1029 W Coliseum Blvd',
+                city: 'Fort Wayne',
+                state: 'IN',
+                zipCode: '46808',
+                distance: 1500,
+                categories: ['car dealer'],
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const results = await searchAddress('Buy Right Auto Sales');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('Buy Right Auto Sales');
+    expect(results[0]?.streetAddress.toLowerCase()).toContain('coliseum');
+    expect(results[0]?.city).toBe('Fort Wayne');
+  });
+
   it('calculates pickup-to-dropoff distance in miles', () => {
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0676, -85.1402)).toBeGreaterThan(0);
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0793, -85.1394)).toBe(0);
