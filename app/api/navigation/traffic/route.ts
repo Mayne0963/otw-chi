@@ -40,12 +40,6 @@ export async function GET(request: Request) {
   try {
     const HERE_API_KEY = requireHereApiKey();
 
-    const requestOrigin = new URL(request.url).origin;
-    const hereHeaders = {
-      Origin: requestOrigin,
-      Referer: `${requestOrigin}/`,
-    };
-
     const { searchParams } = new URL(request.url);
     const bbox = searchParams.get("bbox");
     if (!bbox) {
@@ -83,7 +77,7 @@ export async function GET(request: Request) {
     url.searchParams.set("bbox", bbox);
     url.searchParams.set("apiKey", HERE_API_KEY);
 
-    const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
+    const res = await fetch(url, { cache: "no-store" });
     if (res.status === 429) {
       const retryAfter = Number(res.headers.get("retry-after")) || RATE_LIMIT_DEFAULT_COOLDOWN_MS / 1000;
       cache.set(cacheKey, {

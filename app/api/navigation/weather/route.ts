@@ -23,12 +23,6 @@ export async function GET(request: Request) {
   try {
     const HERE_API_KEY = requireHereApiKey();
 
-    const requestOrigin = new URL(request.url).origin;
-    const hereHeaders = {
-      Origin: requestOrigin,
-      Referer: `${requestOrigin}/`,
-    };
-
     const { searchParams } = new URL(request.url);
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
@@ -46,7 +40,7 @@ export async function GET(request: Request) {
     url.searchParams.set("latitude", lat);
     url.searchParams.set("longitude", lng);
 
-    const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(

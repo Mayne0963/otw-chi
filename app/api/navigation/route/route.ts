@@ -82,12 +82,6 @@ export async function GET(request: Request) {
   try {
     const HERE_API_KEY = requireHereApiKey();
 
-    const requestOrigin = new URL(request.url).origin;
-    const hereHeaders = {
-      Origin: requestOrigin,
-      Referer: `${requestOrigin}/`,
-    };
-
     const { searchParams } = new URL(request.url);
     const origin = searchParams.get("origin");
     const destination = searchParams.get("destination");
@@ -114,7 +108,7 @@ export async function GET(request: Request) {
     }
 
     const url = buildHereRouteUrl({ origin, destination, alternatives, lang, apiKey: HERE_API_KEY });
-    const res = await fetch(url, { cache: "no-store", headers: hereHeaders });
+    const res = await fetch(url, { cache: "no-store" });
     const raw = await res.text().catch(() => "");
     if (!res.ok) {
       if (res.status === 401) {
