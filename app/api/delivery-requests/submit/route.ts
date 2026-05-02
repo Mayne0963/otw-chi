@@ -17,6 +17,8 @@ import {
   syncOtwTrueEmployeeAccessForUser,
 } from '@/lib/otw-true';
 import { validateAddress } from '@/lib/geocoding';
+import { canSendTransactionalEmails } from '@/lib/email/transactional';
+import { sendDeliveryRequestAcknowledgementEmail } from '@/lib/customer-acknowledgements';
 
 export const runtime = 'nodejs';
 
@@ -229,6 +231,23 @@ export async function POST(req: Request) {
         where: { id: result.request.id },
         data: { paymentRequired },
       });
+    }
+
+    if (user.email && canSendTransactionalEmails()) {
+      try {
+        await sendDeliveryRequestAcknowledgementEmail({
+          toEmail: user.email,
+          customerName: user.name,
+          requestId: result.request.id,
+          serviceType: parsed.data.serviceType,
+          pickupAddress: parsed.data.pickupAddress,
+          dropoffAddress: effectiveDropoffAddress,
+          scheduledFor,
+          notes: parsed.data.notes,
+        });
+      } catch (emailError) {
+        console.error('[OTW DELIVERY REQUESTS] Failed to send customer acknowledgment email:', emailError);
+      }
     }
 
     return NextResponse.json(

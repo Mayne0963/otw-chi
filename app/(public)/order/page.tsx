@@ -678,10 +678,10 @@ export default function OrderPage() {
       }
 
       toast({
-        title: requiresPayment ? 'Request created' : 'Request submitted',
+        title: requiresPayment ? 'Request received' : 'Request submitted',
         description: requiresPayment
-          ? 'Complete payment to unlock dispatch for this request.'
-          : 'Your delivery request has been created.',
+          ? 'Complete payment to finish submitting this request.'
+          : 'We received your delivery request.',
       });
 
       router.push(requiresPayment ? `/pay/${deliveryRequestId}` : `/request/${deliveryRequestId}`);

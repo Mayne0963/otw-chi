@@ -6,6 +6,8 @@ import {
   getAutomationConfirmationMessage,
 } from '@/lib/automation/intake';
 import { sendAutomationIntakeToZapier } from '@/lib/automation/zapier';
+import { canSendTransactionalEmails } from '@/lib/email/transactional';
+import { sendAutomationAcknowledgementEmail } from '@/lib/customer-acknowledgements';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,6 +66,14 @@ export async function POST(request: Request) {
       },
       { status: zapierResult.code === 'MISSING_WEBHOOK_URL' ? 503 : 502 },
     );
+  }
+
+  if (parsed.data.businessType === 'otw' && canSendTransactionalEmails()) {
+    try {
+      await sendAutomationAcknowledgementEmail(parsed.data);
+    } catch (emailError) {
+      console.error('[OTW AUTOMATION INTAKE] Failed to send customer acknowledgment email:', emailError);
+    }
   }
 
   return NextResponse.json({

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { extractNeonAuthUserId, getNeonSession } from '@/lib/auth/server';
 import { getPrisma } from '@/lib/db';
 import { sendZapierWebhook } from '@/lib/services/zapier';
+import { canSendTransactionalEmails } from '@/lib/email/transactional';
+import { sendDeliveryRequestAcknowledgementEmail } from '@/lib/customer-acknowledgements';
 import { z } from 'zod';
 import { OverageBillingMode } from '@prisma/client';
 import {
@@ -374,6 +376,23 @@ export async function POST(req: Request) {
         source: 'otw_webapp',
       });
 
+      if (user.email && canSendTransactionalEmails()) {
+        try {
+          await sendDeliveryRequestAcknowledgementEmail({
+            toEmail: user.email,
+            customerName: user.name,
+            requestId: result.request.id,
+            serviceType: data.serviceType,
+            pickupAddress: data.pickup,
+            dropoffAddress: effectiveDropoffAddress,
+            scheduledFor,
+            notes: data.notes,
+          });
+        } catch (emailError) {
+          console.error('[OTW REQUESTS] Failed to send customer acknowledgment email:', emailError);
+        }
+      }
+
       return NextResponse.json({
         id: result.request.id,
         paymentPreference,
@@ -497,6 +516,23 @@ export async function POST(req: Request) {
       paymentRequired,
       source: 'otw_webapp',
     });
+
+    if (user.email && canSendTransactionalEmails()) {
+      try {
+        await sendDeliveryRequestAcknowledgementEmail({
+          toEmail: user.email,
+          customerName: user.name,
+          requestId: request.id,
+          serviceType: data.serviceType,
+          pickupAddress: data.pickup,
+          dropoffAddress: effectiveDropoffAddress,
+          scheduledFor,
+          notes: data.notes,
+        });
+      } catch (emailError) {
+        console.error('[OTW REQUESTS] Failed to send customer acknowledgment email:', emailError);
+      }
+    }
 
     return NextResponse.json({
       id: request.id,
