@@ -13,6 +13,7 @@ import {
 import { sendAutomationIntakeToZapier } from '@/lib/automation/zapier';
 import { canSendTransactionalEmails } from '@/lib/email/transactional';
 import { sendAutomationAcknowledgementEmail } from '@/lib/customer-acknowledgements';
+import { canSendSlackOtwIntakeAlerts, sendSlackOtwAutomationAlert } from '@/lib/otw-slack';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,6 +77,14 @@ export async function POST(request: Request) {
   }
 
   await markAutomationIntakeZapierDelivered(requestId, zapierResult.status);
+
+  if (canSendSlackOtwIntakeAlerts()) {
+    try {
+      await sendSlackOtwAutomationAlert({ requestId, payload: parsed.data });
+    } catch (slackError) {
+      console.error('[OTW AUTOMATION INTAKE] Failed to send Slack intake alert:', slackError);
+    }
+  }
 
   if (parsed.data.businessType === 'otw' && canSendTransactionalEmails()) {
     try {

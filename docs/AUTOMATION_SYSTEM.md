@@ -9,6 +9,7 @@ This app exposes a production intake endpoint for Zapier-based automation:
 
 Set `ZAPIER_WEBHOOK_URL` to the Zapier Catch Hook URL in every environment that accepts real form submissions.
 To send one submission to multiple Zaps, set `ZAPIER_WEBHOOK_URLS` to a comma-separated list of Catch Hook URLs (this takes precedence over `ZAPIER_WEBHOOK_URL`).
+Optional OTW Slack alerts can be enabled with `SLACK_OTW_REQUESTS_WEBHOOK_URL` for delivery requests and `SLACK_OTW_INTAKE_WEBHOOK_URL` for automation intake submissions.
 
 ## 1. Next.js form handler code
 

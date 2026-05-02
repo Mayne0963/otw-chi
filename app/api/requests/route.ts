@@ -4,6 +4,7 @@ import { getPrisma } from '@/lib/db';
 import { sendZapierWebhook } from '@/lib/services/zapier';
 import { canSendTransactionalEmails } from '@/lib/email/transactional';
 import { sendDeliveryRequestAcknowledgementEmail } from '@/lib/customer-acknowledgements';
+import { canSendSlackOtwRequestAlerts, sendSlackOtwRequestAlert } from '@/lib/otw-slack';
 import { z } from 'zod';
 import { OverageBillingMode } from '@prisma/client';
 import {
@@ -376,6 +377,26 @@ export async function POST(req: Request) {
         source: 'otw_webapp',
       });
 
+      if (canSendSlackOtwRequestAlerts()) {
+        try {
+          await sendSlackOtwRequestAlert({
+            requestId: result.request.id,
+            customerName: user.name,
+            customerEmail: user.email,
+            customerPhone: user.customerProfile?.phone,
+            serviceType: data.serviceType,
+            pickupAddress: data.pickup,
+            dropoffAddress: effectiveDropoffAddress,
+            notes: data.notes,
+            scheduledFor,
+            paymentRequired,
+            totalEstimated: deliveryFeeCents / 100,
+          });
+        } catch (slackError) {
+          console.error('[OTW REQUESTS] Failed to send Slack request alert:', slackError);
+        }
+      }
+
       if (user.email && canSendTransactionalEmails()) {
         try {
           await sendDeliveryRequestAcknowledgementEmail({
@@ -516,6 +537,26 @@ export async function POST(req: Request) {
       paymentRequired,
       source: 'otw_webapp',
     });
+
+    if (canSendSlackOtwRequestAlerts()) {
+      try {
+        await sendSlackOtwRequestAlert({
+          requestId: request.id,
+          customerName: user.name,
+          customerEmail: user.email,
+          customerPhone: user.customerProfile?.phone,
+          serviceType: data.serviceType,
+          pickupAddress: data.pickup,
+          dropoffAddress: effectiveDropoffAddress,
+          notes: data.notes,
+          scheduledFor,
+          paymentRequired,
+          totalEstimated: (request.deliveryFeeCents ?? 0) / 100,
+        });
+      } catch (slackError) {
+        console.error('[OTW REQUESTS] Failed to send Slack request alert:', slackError);
+      }
+    }
 
     if (user.email && canSendTransactionalEmails()) {
       try {

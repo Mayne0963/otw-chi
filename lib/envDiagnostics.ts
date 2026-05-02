@@ -12,6 +12,8 @@ const SERVER_ENV: EnvRequirement[] = [
   { key: "STRIPE_WEBHOOK_SECRET", public: false, optional: true, description: "Stripe webhook verification" },
   { key: "ZAPIER_WEBHOOK_URL", public: false, optional: true, description: "Zapier Catch Hook URL for Broski and OTW automation" },
   { key: "ZAPIER_WEBHOOK_URLS", public: false, optional: true, description: "Optional fan-out: comma-separated list of Zapier Catch Hook URLs (overrides ZAPIER_WEBHOOK_URL when set)" },
+  { key: "SLACK_OTW_REQUESTS_WEBHOOK_URL", public: false, optional: true, description: "Slack incoming webhook URL for OTW delivery request alerts" },
+  { key: "SLACK_OTW_INTAKE_WEBHOOK_URL", public: false, optional: true, description: "Slack incoming webhook URL for OTW automation intake alerts" },
   { key: "STRIPE_PRICE_BASIC", public: false, optional: true, description: "Stripe price ID: Basic" },
   { key: "STRIPE_PRICE_PLUS", public: false, optional: true, description: "Stripe price ID: Plus" },
   { key: "STRIPE_PRICE_EXEC", public: false, optional: true, description: "Stripe price ID: Executive" },
