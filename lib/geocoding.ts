@@ -1484,7 +1484,7 @@ function getFeaturedLocationSuggestions(
     tokens.some((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)))
   ).map(({ location }) => location);
 
-  if (partialTokenMatches.length > 0) {
+  if (tokens.length === 1 && partialTokenMatches.length > 0) {
     return partialTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
 
@@ -1686,19 +1686,14 @@ export async function searchAddress(
       return prioritized;
     }
 
-    if (specificAddressQuery) {
-      return [];
-    }
-
-    setCachedSearchResults(cacheKey, featuredSuggestions);
-    return featuredSuggestions;
+    const fallbackResults = featuredMatches.slice(0, DEFAULT_SEARCH_LIMIT);
+    setCachedSearchResults(cacheKey, fallbackResults);
+    return fallbackResults;
   } catch (error) {
     console.error('Address search error:', error);
-    if (specificAddressQuery) {
-      return [];
-    }
-    setCachedSearchResults(cacheKey, featuredSuggestions);
-    return featuredSuggestions;
+    const fallbackResults = featuredMatches.slice(0, DEFAULT_SEARCH_LIMIT);
+    setCachedSearchResults(cacheKey, fallbackResults);
+    return fallbackResults;
   }
 }
 

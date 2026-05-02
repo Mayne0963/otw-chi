@@ -27,4 +27,13 @@ describe('geocoding validation fallbacks', () => {
     expect(result?.placeName).toBe('Parkview Field');
     expect(result?.streetAddress).toBe('1301 Ewing St');
   });
+
+  it('does not fall back to unrelated featured locations for weak multi-token matches', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    await expect(searchAddress('Brewer Park')).resolves.toEqual([]);
+  });
 });
