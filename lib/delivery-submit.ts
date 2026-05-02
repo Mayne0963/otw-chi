@@ -3,6 +3,7 @@ import { getStripe } from './stripe';
 import { calculateServiceMiles } from './service-miles';
 import { isServiceTypeAllowedForPlan } from './service-miles-access';
 import { UNLIMITED_SERVICE_MILES } from './membership-miles';
+import { resolveInitialDeliveryFeePaid } from './delivery-fee-settlement';
 import { getMembershipPlanPerks } from './membership-perks';
 import { computeOverage } from './overage';
 import { addLineItem, getPeriodKey, recomputePeriodTotal, upsertPeriod } from './overage-invoice';
@@ -394,12 +395,12 @@ export async function submitDeliveryRequest(
         : Number.isFinite(input.deliveryFeeCents)
           ? Math.max(0, Math.round(Number(input.deliveryFeeCents)))
           : 0;
-      const hasBillableDeliveryFee = deliveryFeeCents > 0;
-      const deliveryFeePaid = consumedOtwTrueBenefit
-        ? true
-        : typeof input.deliveryFeePaid === 'boolean'
-          ? input.deliveryFeePaid
-          : !hasBillableDeliveryFee;
+      const deliveryFeePaid = resolveInitialDeliveryFeePaid({
+        deliveryFeeCents,
+        deliveryFeePaid: input.deliveryFeePaid,
+        payWithMiles: effectivePayWithMiles,
+        consumedOtwTrueBenefit: Boolean(consumedOtwTrueBenefit),
+      });
       const effectivePaymentRequired = consumedOtwTrueBenefit ? false : paymentRequired;
       const quoteBreakdown = {
         ...quote.quoteBreakdown,
