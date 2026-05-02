@@ -305,6 +305,10 @@ export function AddressSearch({
         e.preventDefault();
         if (selectedIndex >= 0 && selectedIndex < results.length) {
           handleSelect(results[selectedIndex]);
+          break;
+        }
+        if (results.length > 0) {
+          handleSelect(results[0]);
         }
         break;
       case "Escape":

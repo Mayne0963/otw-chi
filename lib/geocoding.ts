@@ -1193,6 +1193,31 @@ function normalizeQuery(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+const SECONDARY_UNIT_DESIGNATOR_PATTERN =
+  '(?:apt\\.?|apartment|unit|suite|ste\\.?|bldg\\.?|building|fl\\.?|floor|rm\\.?|room)';
+
+function stripSecondaryUnitDesignators(query: string): string {
+  let cleaned = query;
+
+  cleaned = cleaned.replace(
+    new RegExp(
+      `(?:,?\\s*)\\b${SECONDARY_UNIT_DESIGNATOR_PATTERN}\\b\\s*#?\\s*(?=[A-Za-z0-9-]*\\d)[A-Za-z0-9-]+\\b`,
+      'gi'
+    ),
+    ''
+  );
+  cleaned = cleaned.replace(/(?:,?\s*)#\s*(?=[A-Za-z0-9-]*\d)[A-Za-z0-9-]+\b/gi, '');
+
+  cleaned = cleaned
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*,/g, ', ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/,+\s*$/g, '')
+    .trim();
+
+  return cleaned;
+}
+
 const TOKEN_EQUIVALENTS: Record<string, string[]> = {
   st: ['street', 'saint'],
   street: ['st'],
@@ -1265,6 +1290,7 @@ function computeAddressMatchScore(params: {
   queryTokens: string[];
   searchableText: string;
   placeName: string;
+  placeNameTokenText?: string;
   streetAddress: string;
   city: string;
   zipCode: string;
@@ -1276,11 +1302,14 @@ function computeAddressMatchScore(params: {
     queryTokens,
     searchableText,
     placeName,
+    placeNameTokenText,
     streetAddress,
     city,
     zipCode,
     matchedTokenCount,
   } = params;
+
+  const nameTokenText = placeNameTokenText ?? placeName;
 
   let score = 0;
 
@@ -1299,7 +1328,7 @@ function computeAddressMatchScore(params: {
 
   for (const token of queryTokens) {
     const variants = getTokenVariants(token);
-    if (variants.some((variant) => placeName.includes(variant))) {
+    if (variants.some((variant) => nameTokenText.includes(variant))) {
       score += 48;
       continue;
     }
@@ -1425,12 +1454,56 @@ function toFeaturedAddress(location: FeaturedLocation): GeocodedAddress {
   };
 }
 
-const FEATURED_LOCATION_INDEX = FEATURED_FORT_WAYNE_LOCATIONS.map((location) => ({
-  location,
-  haystack: normalizeQuery(
-    `${location.placeName} ${location.streetAddress} ${location.city} ${location.state} ${location.zipCode} ${location.aliases.join(' ')}`
-  ),
-}));
+const FEATURED_LOCATION_INDEX = FEATURED_FORT_WAYNE_LOCATIONS.map((location) => {
+  const nameAndAliases = `${location.placeName} ${location.aliases.join(' ')}`;
+  return {
+    location,
+    matchHaystack: normalizeQuery(`${nameAndAliases} ${location.streetAddress} ${location.zipCode}`),
+    fullHaystack: normalizeQuery(
+      `${nameAndAliases} ${location.streetAddress} ${location.city} ${location.state} ${location.zipCode}`
+    ),
+  };
+});
+
+function rankFeaturedLocationMatches(
+  matches: Array<(typeof FEATURED_LOCATION_INDEX)[number]>,
+  query: string,
+  tokens: string[]
+): GeocodedAddress[] {
+  const normalizedQuery = normalizeQuery(query);
+
+  return matches
+    .map(({ location, matchHaystack, fullHaystack }) => {
+      const address = toFeaturedAddress(location);
+      const placeNameBase = normalizeQuery(location.placeName);
+      const placeNameTokenText = normalizeQuery(`${location.placeName} ${location.aliases.join(' ')}`);
+      const streetAddress = normalizeQuery(location.streetAddress);
+      const city = normalizeQuery(location.city);
+      const zipCode = normalizeQuery(location.zipCode);
+      const matchedTokenCount = countMatchedTokens(matchHaystack, tokens);
+      const score = computeAddressMatchScore({
+        address,
+        normalizedQuery,
+        queryTokens: tokens,
+        searchableText: fullHaystack,
+        placeName: placeNameBase,
+        placeNameTokenText,
+        streetAddress,
+        city,
+        zipCode,
+        matchedTokenCount,
+      });
+
+      return { address, score, matchedTokenCount };
+    })
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.matchedTokenCount - a.matchedTokenCount ||
+        a.address.distanceFromServiceArea - b.address.distanceFromServiceArea
+    )
+    .map((item) => item.address);
+}
 
 function getFeaturedLocationSuggestions(
   query: string,
@@ -1444,11 +1517,12 @@ function getFeaturedLocationSuggestions(
     return FEATURED_FORT_WAYNE_LOCATIONS.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
   if (tokens.length === 0) {
-    const lightweightMatches = FEATURED_LOCATION_INDEX.filter(({ haystack }) => haystack.includes(normalized))
-      .map(({ location }) => location);
+    const lightweightMatches = FEATURED_LOCATION_INDEX.filter(({ fullHaystack }) =>
+      fullHaystack.includes(normalized)
+    );
 
     if (lightweightMatches.length > 0) {
-      return lightweightMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+      return rankFeaturedLocationMatches(lightweightMatches, query, tokens).slice(0, DEFAULT_SEARCH_LIMIT);
     }
 
     if (!allowDefaultWhenNoMatch) return [];
@@ -1456,7 +1530,7 @@ function getFeaturedLocationSuggestions(
   }
 
   if (options?.exactOnly) {
-    const exactMatches = FEATURED_LOCATION_INDEX.filter(({ location, haystack }) => {
+    const exactMatches = FEATURED_LOCATION_INDEX.filter(({ location, matchHaystack }) => {
       const placeName = normalizeQuery(location.placeName);
       const streetAddress = normalizeQuery(location.streetAddress);
 
@@ -1465,27 +1539,36 @@ function getFeaturedLocationSuggestions(
         normalized.includes(placeName) ||
         normalized === streetAddress ||
         normalized.includes(streetAddress) ||
-        countMatchedTokens(haystack, tokens) === tokens.length
+        countMatchedTokens(matchHaystack, tokens) === tokens.length
       );
-    }).map(({ location }) => location);
+    });
 
-    return exactMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+    return rankFeaturedLocationMatches(exactMatches, query, tokens).slice(0, DEFAULT_SEARCH_LIMIT);
   }
 
-  const exactTokenMatches = FEATURED_LOCATION_INDEX.filter(({ haystack }) =>
-    tokens.every((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)))
-  ).map(({ location }) => location);
+  const exactTokenMatches = FEATURED_LOCATION_INDEX.filter(({ matchHaystack }) =>
+    tokens.every((token) => getTokenVariants(token).some((variant) => matchHaystack.includes(variant)))
+  );
 
-  if (exactTokenMatches.length > 0) {
-    return exactTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
-  }
+  const partialTokenMatches = FEATURED_LOCATION_INDEX.filter(({ matchHaystack }) =>
+    tokens.some((token) => getTokenVariants(token).some((variant) => matchHaystack.includes(variant)))
+  );
 
-  const partialTokenMatches = FEATURED_LOCATION_INDEX.filter(({ haystack }) =>
-    tokens.some((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)))
-  ).map(({ location }) => location);
+  if (exactTokenMatches.length > 0 || partialTokenMatches.length > 0) {
+    const combinedMatches: Array<(typeof FEATURED_LOCATION_INDEX)[number]> = [];
+    const seenLocations = new Set<FeaturedLocation>();
 
-  if (partialTokenMatches.length > 0) {
-    return partialTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
+    for (const entry of exactTokenMatches) {
+      combinedMatches.push(entry);
+      seenLocations.add(entry.location);
+    }
+    for (const entry of partialTokenMatches) {
+      if (seenLocations.has(entry.location)) continue;
+      combinedMatches.push(entry);
+      seenLocations.add(entry.location);
+    }
+
+    return rankFeaturedLocationMatches(combinedMatches, query, tokens).slice(0, DEFAULT_SEARCH_LIMIT);
   }
 
   if (!allowDefaultWhenNoMatch) return [];
@@ -1513,7 +1596,9 @@ function dedupeAddresses(addresses: GeocodedAddress[]): GeocodedAddress[] {
 export async function searchAddress(
   query: string
 ): Promise<GeocodedAddress[]> {
-  const trimmedQuery = query.trim();
+  const rawTrimmedQuery = query.trim();
+  const strippedQuery = stripSecondaryUnitDesignators(rawTrimmedQuery);
+  const trimmedQuery = strippedQuery || rawTrimmedQuery;
   const normalizedQuery = normalizeQuery(trimmedQuery);
   const queryTokens = tokenizeQuery(trimmedQuery, { minLength: 2 });
   const specificAddressQuery = isSpecificAddressQuery(normalizedQuery, queryTokens);

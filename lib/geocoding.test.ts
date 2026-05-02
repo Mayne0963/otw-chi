@@ -52,6 +52,81 @@ describe('geocoding validation fallbacks', () => {
     expect(results[0]?.placeName).toBe('Parkview Field');
   });
 
+  it('strips suite/unit/apt details so Fort Wayne addresses still resolve', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string'
+          ? new URL(input)
+          : input instanceof URL
+            ? input
+            : new URL(input.url);
+
+      const q = url.searchParams.get('q') ?? '';
+      if (/\\b(apt|apartment|unit|suite|ste|#)\\b/i.test(q)) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+
+      return new Response(
+        JSON.stringify([
+          {
+            lat: '41.070677',
+            lon: '-85.010725',
+            display_name:
+              '3016, Ashcroft Drive, Anthony Wayne Village, Fort Wayne, Allen County, Indiana, 46806, United States',
+            address: {
+              house_number: '3016',
+              road: 'Ashcroft Drive',
+              city: 'Fort Wayne',
+              state: 'Indiana',
+              postcode: '46806',
+            },
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const results = await searchAddress('3016 Ashcroft Dr, Fort Wayne, IN 46806 Apt 3');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.streetAddress).toContain('3016');
+
+    const calledQs = fetchMock.mock.calls
+      .map(([input]) => {
+        const url =
+          typeof input === 'string'
+            ? new URL(input)
+            : input instanceof URL
+              ? input
+              : new URL((input as Request).url);
+        return url.searchParams.get('q') ?? '';
+      })
+      .join(' | ');
+
+    expect(calledQs.toLowerCase()).not.toContain(' apt ');
+    expect(calledQs.toLowerCase()).not.toContain(' suite ');
+    expect(calledQs.toLowerCase()).not.toContain(' unit ');
+  });
+
+  it('ranks featured suggestions by closest textual match first', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    const results = await searchAddress('Wayne High School');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('Wayne High School');
+
+    const sniderIndex = results.findIndex((result) => result.placeName === 'R. Nelson Snider High School');
+    if (sniderIndex !== -1) {
+      expect(sniderIndex).toBeGreaterThan(0);
+    }
+  });
+
   it('calculates pickup-to-dropoff distance in miles', () => {
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0676, -85.1402)).toBeGreaterThan(0);
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0793, -85.1394)).toBe(0);
