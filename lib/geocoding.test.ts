@@ -220,6 +220,20 @@ describe('geocoding validation fallbacks', () => {
     expect(calledQueries.some((q) => q.includes('fort wayne, in'))).toBe(true);
   });
 
+  it('suggests south Fort Wayne places like Villa Capri Apartments', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    const results = await searchAddress('Villa Capr');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('Villa Capri Apartments');
+    expect(results[0]?.streetAddress).toBe('2015 Fox Point Trl');
+    expect(results[0]?.zipCode).toBe('46816');
+  });
+
   it('calculates pickup-to-dropoff distance in miles', () => {
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0676, -85.1402)).toBeGreaterThan(0);
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0793, -85.1394)).toBe(0);

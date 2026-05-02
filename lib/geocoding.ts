@@ -957,6 +957,16 @@ const FEATURED_FORT_WAYNE_LOCATIONS: FeaturedLocation[] = [
     aliases: ['swinney', 'park', 'west side park'],
   },
   {
+    placeName: 'Villa Capri Apartments',
+    streetAddress: '2015 Fox Point Trl',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46816',
+    latitude: 41.0094575,
+    longitude: -85.1090412,
+    aliases: ['villa capri', 'fox point trail apartments', 'fox point trail', '46816', 'south fort wayne'],
+  },
+  {
     placeName: 'Brewer Park',
     streetAddress: '800 E Pettit Ave',
     city: 'Fort Wayne',
