@@ -145,6 +145,81 @@ describe('geocoding validation fallbacks', () => {
     }
   });
 
+  it('adds Fort Wayne, IN bias even when query already contains Fort Wayne', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string'
+          ? new URL(input)
+          : input instanceof URL
+            ? input
+            : new URL((input as Request).url);
+
+      const q = (url.searchParams.get('q') ?? '').toLowerCase();
+
+      if (q === 'southwest fort wayne') {
+        return new Response(
+          JSON.stringify([
+            {
+              lat: '42.2976812',
+              lon: '-83.0986713',
+              display_name: 'Fort Wayne, 6053, Southwest Detroit, Detroit, Wayne County, Michigan, United States',
+              address: {
+                city: 'Detroit',
+                state: 'Michigan',
+                postcode: '48209',
+              },
+              namedetails: { name: 'Fort Wayne' },
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+
+      if (q.includes('southwest fort wayne') && q.includes('fort wayne, in')) {
+        return new Response(
+          JSON.stringify([
+            {
+              lat: '41.0727241',
+              lon: '-85.2499968',
+              display_name:
+                'Parkview Southwest, Glencarin Boulevard, Fort Wayne, Allen County, Indiana, 46804, United States',
+              address: {
+                road: 'Glencarin Boulevard',
+                city: 'Fort Wayne',
+                state: 'Indiana',
+                postcode: '46804',
+              },
+              namedetails: { name: 'Parkview Southwest' },
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const results = await searchAddress('Southwest Fort Wayne');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.formattedAddress.toLowerCase()).toContain('fort wayne');
+
+    const calledQueries = fetchMock.mock.calls
+      .map(([input]) => {
+        const url =
+          typeof input === 'string'
+            ? new URL(input)
+            : input instanceof URL
+              ? input
+              : new URL((input as Request).url);
+        return (url.searchParams.get('q') ?? '').toLowerCase();
+      });
+
+    expect(calledQueries.some((q) => q.includes('fort wayne, in'))).toBe(true);
+  });
+
   it('calculates pickup-to-dropoff distance in miles', () => {
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0676, -85.1402)).toBeGreaterThan(0);
     expect(calculateDistanceMiles(41.0793, -85.1394, 41.0793, -85.1394)).toBe(0);

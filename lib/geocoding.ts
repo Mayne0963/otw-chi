@@ -1434,9 +1434,7 @@ function getSearchQueries(query: string): Array<{ searchText: string; area?: Ser
   const queries: Array<{ searchText: string; area?: ServiceArea }> = [{ searchText: trimmed }];
 
   for (const area of areas) {
-    const alreadyScoped =
-      normalized.includes(normalizeQuery(area.name)) ||
-      normalized.includes(normalizeQuery(area.queryBias));
+    const alreadyScoped = normalized.includes(normalizeQuery(area.queryBias));
     if (alreadyScoped) continue;
     queries.push({ searchText: `${trimmed}, ${area.queryBias}`, area });
   }
