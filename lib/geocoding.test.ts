@@ -28,16 +28,34 @@ describe('geocoding validation fallbacks', () => {
     expect(result?.streetAddress).toBe('1301 Ewing St');
   });
 
-  it('does not fall back to unrelated featured locations for weak multi-token matches', async () => {
+  it('suggests Brewer Park in Fort Wayne when searching by name', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify([
+            {
+              lat: '42.3830734',
+              lon: '-82.9866898',
+              display_name: 'Brewer Park, 4535, Detroit, Wayne County, Michigan, 48214, United States',
+              address: {
+                city: 'Detroit',
+                state: 'Michigan',
+                postcode: '48214',
+              },
+              namedetails: { name: 'Brewer Park' },
+            },
+          ]),
+          { status: 200 },
+        ),
+      ),
     );
 
-    const results = await searchAddress('Brewer Park');
+    const results = await searchAddress('Brewer Park, Fort Wayne');
 
     expect(results.length).toBeGreaterThan(0);
-    expect(results.some((result) => result.placeName?.toLowerCase().includes('park'))).toBe(true);
+    expect(results[0]?.placeName).toBe('Brewer Park');
+    expect(results[0]?.streetAddress).toContain('800');
   });
 
   it('still returns default featured suggestions for short unmatched queries', async () => {

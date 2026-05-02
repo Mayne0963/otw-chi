@@ -957,6 +957,16 @@ const FEATURED_FORT_WAYNE_LOCATIONS: FeaturedLocation[] = [
     aliases: ['swinney', 'park', 'west side park'],
   },
   {
+    placeName: 'Brewer Park',
+    streetAddress: '800 E Pettit Ave',
+    city: 'Fort Wayne',
+    state: 'IN',
+    zipCode: '46806',
+    latitude: 41.038829,
+    longitude: -85.125727,
+    aliases: ['brewer park', 'park', 'pettit and weisser', 'mount vernon park', 'splash pad'],
+  },
+  {
     placeName: 'Lindenwood Nature Preserve',
     streetAddress: '600 Lindenwood Ave',
     city: 'Fort Wayne',
