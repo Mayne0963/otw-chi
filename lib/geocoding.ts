@@ -1163,10 +1163,10 @@ export function formatAddressLines(address: GeocodedAddress) {
 }
 
 /**
- * Calculate distance between two coordinates using Haversine formula
- * Returns distance in miles
+ * Calculate distance between two coordinates using Haversine formula.
+ * Returns distance in miles.
  */
-function calculateDistance(
+export function calculateDistanceMiles(
   lat1: number,
   lon1: number,
   lat2: number,
@@ -1374,7 +1374,7 @@ function getClosestServiceArea(latitude: number, longitude: number): {
   let closestDistance = Number.POSITIVE_INFINITY;
 
   for (const area of SERVICE_AREAS) {
-    const distance = calculateDistance(area.latitude, area.longitude, latitude, longitude);
+    const distance = calculateDistanceMiles(area.latitude, area.longitude, latitude, longitude);
     if (distance < closestDistance) {
       closestDistance = distance;
       closestArea = area;
@@ -1484,7 +1484,7 @@ function getFeaturedLocationSuggestions(
     tokens.some((token) => getTokenVariants(token).some((variant) => haystack.includes(variant)))
   ).map(({ location }) => location);
 
-  if (tokens.length === 1 && partialTokenMatches.length > 0) {
+  if (partialTokenMatches.length > 0) {
     return partialTokenMatches.slice(0, DEFAULT_SEARCH_LIMIT).map(toFeaturedAddress);
   }
 
@@ -1686,12 +1686,18 @@ export async function searchAddress(
       return prioritized;
     }
 
-    const fallbackResults = featuredMatches.slice(0, DEFAULT_SEARCH_LIMIT);
+    const fallbackResults =
+      featuredMatches.length > 0
+        ? featuredMatches.slice(0, DEFAULT_SEARCH_LIMIT)
+        : featuredSuggestions.slice(0, DEFAULT_SEARCH_LIMIT);
     setCachedSearchResults(cacheKey, fallbackResults);
     return fallbackResults;
   } catch (error) {
     console.error('Address search error:', error);
-    const fallbackResults = featuredMatches.slice(0, DEFAULT_SEARCH_LIMIT);
+    const fallbackResults =
+      featuredMatches.length > 0
+        ? featuredMatches.slice(0, DEFAULT_SEARCH_LIMIT)
+        : featuredSuggestions.slice(0, DEFAULT_SEARCH_LIMIT);
     setCachedSearchResults(cacheKey, fallbackResults);
     return fallbackResults;
   }

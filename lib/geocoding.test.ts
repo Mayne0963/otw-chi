@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { searchAddress, validateAddress } from './geocoding';
+import { calculateDistanceMiles, searchAddress, validateAddress } from './geocoding';
 
 describe('geocoding validation fallbacks', () => {
   afterEach(() => {
@@ -34,6 +34,26 @@ describe('geocoding validation fallbacks', () => {
       vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
     );
 
-    await expect(searchAddress('Brewer Park')).resolves.toEqual([]);
+    const results = await searchAddress('Brewer Park');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((result) => result.placeName?.toLowerCase().includes('park'))).toBe(true);
+  });
+
+  it('still returns default featured suggestions for short unmatched queries', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    const results = await searchAddress('Til');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('Parkview Field');
+  });
+
+  it('calculates pickup-to-dropoff distance in miles', () => {
+    expect(calculateDistanceMiles(41.0793, -85.1394, 41.0676, -85.1402)).toBeGreaterThan(0);
+    expect(calculateDistanceMiles(41.0793, -85.1394, 41.0793, -85.1394)).toBe(0);
   });
 });

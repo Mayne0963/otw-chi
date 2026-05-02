@@ -425,6 +425,7 @@ export function ServiceMilesCalculator() {
                 setDropoffAddress(addr);
                 setQuote(null);
               }}
+              distanceReference={pickupAddress}
             />
             {dropoffLines && (
               <div className="text-xs text-muted-foreground">

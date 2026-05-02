@@ -218,6 +218,7 @@ export function NewRequestForm() {
                   })
                 }}
                 className="w-full"
+                distanceReference={pickupAddress}
               />
               {dropoffAddress && (
                 <div className="flex items-start gap-2 text-xs text-secondary bg-secondary/10 border border-secondary/30 rounded-lg p-2">

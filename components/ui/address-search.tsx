@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 import { Search, MapPin, AlertCircle, LocateFixed, ExternalLink, Info } from "lucide-react";
 import {
+  calculateDistanceMiles,
   formatAddressLines,
   reverseGeocodeAddress,
   searchAddress,
@@ -21,6 +22,8 @@ interface AddressSearchProps {
   className?: string;
   error?: string;
   enableCurrentLocation?: boolean;
+  distanceReference?: Pick<GeocodedAddress, "latitude" | "longitude"> | null;
+  distanceReferenceLabel?: string;
 }
 
 type LocationPreference = "allow" | "deny" | "unknown";
@@ -81,6 +84,8 @@ export function AddressSearch({
   className,
   error,
   enableCurrentLocation = false,
+  distanceReference = null,
+  distanceReferenceLabel = "pickup location",
 }: AddressSearchProps) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<GeocodedAddress[]>([]);
@@ -521,29 +526,39 @@ export function AddressSearch({
         <div className="absolute z-50 mt-1 max-h-[300px] w-full overflow-auto rounded-xl border border-border/70 bg-card/95 shadow-otwElevated backdrop-blur">
           {results.map((address, index) => {
             const lines = formatAddressLines(address);
+            const distanceMiles = distanceReference
+              ? calculateDistanceMiles(
+                  distanceReference.latitude,
+                  distanceReference.longitude,
+                  address.latitude,
+                  address.longitude,
+                )
+              : (address.distanceFromServiceArea ?? address.distanceFromFortWayne);
+            const distanceLabel = distanceReference
+              ? `${distanceMiles.toFixed(1)} miles from ${distanceReferenceLabel}`
+              : `${distanceMiles.toFixed(1)} miles from ${
+                  address.serviceAreaName || "service center"
+                }`;
             return (
-            <button
-              key={index}
-              type="button"
-              onClick={() => handleSelect(address)}
-              className={cn(
-                "flex w-full items-start gap-3 px-4 py-3 text-left text-sm text-foreground transition-colors duration-300",
-                "hover:bg-muted/50",
-                selectedIndex === index && "bg-muted/60"
-              )}
-            >
-              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-secondary/80" />
-              <div className="flex-1 space-y-1">
-                <div className="font-medium">{lines.primary}</div>
-                {lines.secondary && (
-                  <div className="text-xs text-muted-foreground">{lines.secondary}</div>
+              <button
+                key={index}
+                type="button"
+                onClick={() => handleSelect(address)}
+                className={cn(
+                  "flex w-full items-start gap-3 px-4 py-3 text-left text-sm text-foreground transition-colors duration-300",
+                  "hover:bg-muted/50",
+                  selectedIndex === index && "bg-muted/60"
                 )}
-                <div className="text-xs text-secondary">
-                  ✓ {(address.distanceFromServiceArea ?? address.distanceFromFortWayne).toFixed(1)} miles from{' '}
-                  {address.serviceAreaName || 'service center'}
+              >
+                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-secondary/80" />
+                <div className="flex-1 space-y-1">
+                  <div className="font-medium">{lines.primary}</div>
+                  {lines.secondary && (
+                    <div className="text-xs text-muted-foreground">{lines.secondary}</div>
+                  )}
+                  <div className="text-xs text-secondary">✓ {distanceLabel}</div>
                 </div>
-              </div>
-            </button>
+              </button>
             );
           })}
         </div>

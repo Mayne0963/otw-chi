@@ -14,7 +14,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { formatAddressLines, validateAddress, type GeocodedAddress } from '@/lib/geocoding';
+import {
+  calculateDistanceMiles,
+  formatAddressLines,
+  validateAddress,
+  type GeocodedAddress,
+} from '@/lib/geocoding';
 import { downscaleImage } from '@/lib/image/downscale';
 import { getMembershipPlanPerks } from '@/lib/membership-perks';
 import { calculateRequestRouteMiles } from '@/lib/request-stops';
@@ -214,6 +219,18 @@ export default function OrderPage() {
   const dropoffLines = useMemo(
     () => (dropoffAddress ? formatAddressLines(dropoffAddress) : null),
     [dropoffAddress],
+  );
+  const pickupToDropoffMiles = useMemo(
+    () =>
+      pickupAddress && dropoffAddress
+        ? calculateDistanceMiles(
+            pickupAddress.latitude,
+            pickupAddress.longitude,
+            dropoffAddress.latitude,
+            dropoffAddress.longitude,
+          )
+        : null,
+    [dropoffAddress, pickupAddress],
   );
   const planPerks = useMemo(() => getMembershipPlanPerks(membershipPlan), [membershipPlan]);
   const resolvedIntermediateStops = useMemo(
@@ -847,6 +864,11 @@ export default function OrderPage() {
                       {dropoffLines.secondary ? (
                         <div className="mt-1 text-white/55">{dropoffLines.secondary}</div>
                       ) : null}
+                      {pickupToDropoffMiles != null ? (
+                        <div className="mt-1 text-white/55">
+                          {pickupToDropoffMiles.toFixed(1)} miles from pickup
+                        </div>
+                      ) : null}
                       <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-emerald-200/80">
                         Locked to the business profile location on file
                       </div>
@@ -866,11 +888,17 @@ export default function OrderPage() {
                   enableCurrentLocation
                   onSelect={setDropoffAddress}
                   className="w-full"
+                  distanceReference={pickupAddress}
                 />
                 {dropoffLines ? (
                   <div className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs text-white/75">
                     <div className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-otwGold" />{dropoffLines.primary}</div>
                     {dropoffLines.secondary ? <div className="mt-1 text-white/55">{dropoffLines.secondary}</div> : null}
+                    {pickupToDropoffMiles != null ? (
+                      <div className="mt-1 text-white/55">
+                        {pickupToDropoffMiles.toFixed(1)} miles from pickup
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -932,6 +960,7 @@ export default function OrderPage() {
                               );
                             }}
                             className="w-full"
+                            distanceReference={pickupAddress}
                           />
                           {stopLines ? (
                             <div className="mt-2 rounded-lg border border-white/10 bg-black/30 p-2 text-xs text-white/75">
