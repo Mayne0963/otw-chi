@@ -17,3 +17,44 @@ export const requireHereMapsBrowserKey = () => {
   }
   return key;
 };
+
+const normalizeOrigin = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const withScheme =
+    trimmed.startsWith("http://") || trimmed.startsWith("https://")
+      ? trimmed
+      : /^[a-z0-9.-]+(?::\d+)?$/i.test(trimmed)
+        ? `https://${trimmed}`
+        : null;
+  if (!withScheme) return null;
+
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+};
+
+const getHereAllowedOrigin = (request?: Request): string | null => {
+  const candidate =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_URL ||
+    request?.headers.get("origin") ||
+    request?.headers.get("referer");
+
+  return normalizeOrigin(candidate);
+};
+
+export const getHereRequestHeaders = (request?: Request): Record<string, string> => {
+  const origin = getHereAllowedOrigin(request);
+  if (!origin) return {};
+
+  // Some HERE API keys are restricted to "trusted domains". Server-side calls
+  // must forward a valid Origin/Referer for those keys to authorize.
+  return { Origin: origin, Referer: origin };
+};

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseHereRoute, parseHereAlternatives, type HereRouteResponse } from "@/lib/navigation/here";
-import { requireHereApiKey } from "@/lib/navigation/hereEnv";
+import { getHereRequestHeaders, requireHereApiKey } from "@/lib/navigation/hereEnv";
 
 const HERE_ENABLE_SPANS = process.env.HERE_ROUTE_SPANS === "true";
 const ROUTE_CACHE_TTL_MS = 30_000;
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     }
 
     const url = buildHereRouteUrl({ origin, destination, alternatives, lang, apiKey: HERE_API_KEY });
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store", headers: getHereRequestHeaders(request) });
     const raw = await res.text().catch(() => "");
     if (!res.ok) {
       if (res.status === 401) {

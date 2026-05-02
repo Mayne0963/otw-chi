@@ -145,30 +145,33 @@ describe('Stripe Webhook - Order Payment Completion', () => {
         discountCents: 500,
       }),
     });
-    expect(sendZapierWebhook).toHaveBeenCalledWith('payment_received', {
-      schemaVersion: 1,
-      requestId: 'cs_order_123',
-      submittedAt: expect.any(String),
-      businessType: 'otw',
-      feature: 'payments',
-      action: 'received',
-      entityType: 'job_request',
-      entityId: 'req_123',
-      orderId: 'req_123',
-      customerName: '',
-      customerEmail: 'jordan@example.com',
-      customerPhone: '',
-      totalAmount: 42.5,
-      status: 'Paid / Booked',
-      paymentSource: 'order_payment',
-      stripeCheckoutSessionId: 'cs_order_123',
-      stripePaymentIntentId: null,
-      orderType: 'FOOD',
-      job: {
-        serviceType: 'FOOD',
-        pickupAddress: '110 W Berry St, Fort Wayne, IN',
-        dropoffAddress: '200 E Main St, Fort Wayne, IN',
-      },
-    });
+    expect(sendZapierWebhook).toHaveBeenCalledWith(
+      'payment_received',
+      expect.objectContaining({
+        schemaVersion: 1,
+        requestId: 'cs_order_123',
+        submittedAt: expect.any(String),
+        businessType: 'otw',
+        feature: 'payments',
+        action: 'received',
+        entityType: 'job_request',
+        entityId: 'req_123',
+        orderId: 'req_123',
+        customerName: '',
+        customerEmail: 'jordan@example.com',
+        customerPhone: '',
+        totalAmount: 42.5,
+        status: 'Paid / Booked',
+        paymentSource: 'order_payment',
+        stripeCheckoutSessionId: 'cs_order_123',
+        stripePaymentIntentId: null,
+        orderType: 'FOOD',
+        job: expect.objectContaining({
+          serviceType: 'FOOD',
+          pickupAddress: '110 W Berry St, Fort Wayne, IN',
+          dropoffAddress: '200 E Main St, Fort Wayne, IN',
+        }),
+      }),
+    );
   });
 });

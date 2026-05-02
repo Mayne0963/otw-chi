@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireHereApiKey } from "@/lib/navigation/hereEnv";
+import { getHereRequestHeaders, requireHereApiKey } from "@/lib/navigation/hereEnv";
 
 type HereWeatherResponse = {
   observations?: {
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     url.searchParams.set("latitude", lat);
     url.searchParams.set("longitude", lng);
 
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store", headers: getHereRequestHeaders(request) });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(
