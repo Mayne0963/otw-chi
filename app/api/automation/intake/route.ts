@@ -5,6 +5,11 @@ import {
   formatAutomationValidationErrors,
   getAutomationConfirmationMessage,
 } from '@/lib/automation/intake';
+import {
+  markAutomationIntakeZapierDelivered,
+  markAutomationIntakeZapierFailed,
+  persistAutomationIntakeRecord,
+} from '@/lib/automation/storage';
 import { sendAutomationIntakeToZapier } from '@/lib/automation/zapier';
 import { canSendTransactionalEmails } from '@/lib/email/transactional';
 import { sendAutomationAcknowledgementEmail } from '@/lib/customer-acknowledgements';
@@ -55,9 +60,11 @@ export async function POST(request: Request) {
 
   const requestId = createRequestId();
   const submittedAt = new Date().toISOString();
+  await persistAutomationIntakeRecord(parsed.data, { requestId, submittedAt });
   const zapierResult = await sendAutomationIntakeToZapier(parsed.data, { requestId, submittedAt });
 
   if (!zapierResult.ok) {
+    await markAutomationIntakeZapierFailed(requestId, zapierResult);
     return NextResponse.json(
       {
         ok: false,
@@ -67,6 +74,8 @@ export async function POST(request: Request) {
       { status: zapierResult.code === 'MISSING_WEBHOOK_URL' ? 503 : 502 },
     );
   }
+
+  await markAutomationIntakeZapierDelivered(requestId, zapierResult.status);
 
   if (parsed.data.businessType === 'otw' && canSendTransactionalEmails()) {
     try {

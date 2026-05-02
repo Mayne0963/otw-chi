@@ -160,7 +160,7 @@ type AutomationIntakePayload =
     };
 ```
 
-Storage tables should include these fields.
+Neon storage should include these fields. In OTW, these now map to the Prisma model `AutomationIntakeSubmission`, keyed by the generated `requestId`, while Zapier can still mirror the same payload into any downstream table or workflow you need.
 
 Common fields:
 

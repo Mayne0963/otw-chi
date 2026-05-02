@@ -77,6 +77,28 @@ export type AutomationZapierRecord = {
   dropoffAddress?: string;
 };
 
+export type AutomationStorageRecord = {
+  id: string;
+  submittedAt: Date;
+  businessType: AutomationBusinessType;
+  customerName: string;
+  phone: string;
+  email: string;
+  serviceType: string;
+  notes: string;
+  price: number;
+  priceCents: number;
+  source: string;
+  orderSource: string;
+  status: 'New';
+  paid: false;
+  completed: false;
+  followUpSent: false;
+  address?: string;
+  pickupAddress?: string;
+  dropoffAddress?: string;
+};
+
 export function formatAutomationValidationErrors(error: z.ZodError): AutomationFieldErrors {
   return error.issues.reduce<AutomationFieldErrors>((acc, issue) => {
     const key = issue.path.length ? issue.path.join('.') : 'form';
@@ -109,6 +131,44 @@ export function buildZapierAutomationRecord(
     completed: false,
     followUpSent: false,
   } satisfies Omit<AutomationZapierRecord, 'address' | 'pickupAddress' | 'dropoffAddress'>;
+
+  if (payload.businessType === 'broski') {
+    return {
+      ...base,
+      address: payload.address,
+    };
+  }
+
+  return {
+    ...base,
+    pickupAddress: payload.pickupAddress,
+    dropoffAddress: payload.dropoffAddress,
+  };
+}
+
+export function buildAutomationStorageRecord(
+  payload: AutomationIntakePayload,
+  context: { requestId: string; submittedAt: string },
+): AutomationStorageRecord {
+  const orderSource = payload.businessType === 'otw' ? 'OTW' : 'Broskis';
+  const base = {
+    id: context.requestId,
+    submittedAt: new Date(context.submittedAt),
+    businessType: payload.businessType,
+    customerName: payload.customerName,
+    phone: payload.phone,
+    email: payload.email,
+    serviceType: payload.serviceType,
+    notes: payload.notes,
+    price: payload.price,
+    priceCents: Math.round(payload.price * 100),
+    source: payload.source,
+    orderSource,
+    status: 'New',
+    paid: false,
+    completed: false,
+    followUpSent: false,
+  } satisfies Omit<AutomationStorageRecord, 'address' | 'pickupAddress' | 'dropoffAddress'>;
 
   if (payload.businessType === 'broski') {
     return {

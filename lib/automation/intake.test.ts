@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { automationIntakeSchema, buildZapierAutomationRecord } from './intake';
+import { automationIntakeSchema, buildAutomationStorageRecord, buildZapierAutomationRecord } from './intake';
 
 describe('automation intake schema', () => {
   it('normalizes a Broski request and builds Zapier defaults', () => {
@@ -36,6 +36,42 @@ describe('automation intake schema', () => {
       followUpSent: false,
       priceCents: 4250,
     });
+  });
+
+  it('builds a Neon storage record with shared lifecycle fields', () => {
+    const parsed = automationIntakeSchema.parse({
+      businessType: 'otw',
+      customerName: 'Jordan Lee',
+      phone: '+12605550123',
+      email: 'jordan@example.com',
+      serviceType: 'catering',
+      pickupAddress: '123 Main St',
+      dropoffAddress: '456 Elm St',
+      notes: 'Buffet setup requested',
+      price: 42.5,
+      source: 'website',
+    });
+
+    const record = buildAutomationStorageRecord(parsed, {
+      requestId: 'req_456',
+      submittedAt: '2026-04-26T18:00:00.000Z',
+    });
+
+    expect(record).toMatchObject({
+      id: 'req_456',
+      businessType: 'otw',
+      customerName: 'Jordan Lee',
+      pickupAddress: '123 Main St',
+      dropoffAddress: '456 Elm St',
+      price: 42.5,
+      priceCents: 4250,
+      orderSource: 'OTW',
+      status: 'New',
+      paid: false,
+      completed: false,
+      followUpSent: false,
+    });
+    expect(record.submittedAt.toISOString()).toBe('2026-04-26T18:00:00.000Z');
   });
 
   it('requires a Broski address', () => {

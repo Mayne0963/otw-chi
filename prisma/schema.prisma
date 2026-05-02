@@ -270,6 +270,40 @@ model ContactMessage {
   @@index([createdAt])
 }
 
+model AutomationIntakeSubmission {
+  id                 String   @id
+  submittedAt        DateTime
+  businessType       String
+  customerName       String
+  phone              String
+  email              String
+  serviceType        String
+  notes              String   @default("")
+  price              Decimal  @db.Decimal(10, 2)
+  priceCents         Int
+  source             String
+  orderSource        String
+  status             String   @default("New")
+  paid               Boolean  @default(false)
+  completed          Boolean  @default(false)
+  followUpSent       Boolean  @default(false)
+  stripeLink         String?
+  address            String?
+  pickupAddress      String?
+  dropoffAddress     String?
+  zapierLastAttemptAt DateTime?
+  zapierDeliveredAt  DateTime?
+  zapierStatusCode   Int?
+  zapierErrorCode    String?
+  zapierErrorMessage String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([businessType, createdAt])
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+}
+
 model BusinessMembershipInvoiceRequest {
   id                           String                                 @id @default(cuid())
   userId                       String?
