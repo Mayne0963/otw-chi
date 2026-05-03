@@ -334,6 +334,32 @@ describe('geocoding validation fallbacks', () => {
     expect(results[0]?.city).toBe('Fort Wayne');
   });
 
+  it('falls back to curated Fort Wayne businesses when provider lookups are empty', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    const results = await searchAddress('Buy Right Auto Sales');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('Buy Right Auto Sales');
+    expect(results[0]?.streetAddress).toBe('1029 W Coliseum Blvd');
+  });
+
+  it('returns newly added Fort Wayne entertainment locations from the curated list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
+    );
+
+    const results = await searchAddress('Georgetown Entertainment');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('Georgetown Entertainment');
+    expect(results[0]?.streetAddress).toBe('6770 E State Blvd');
+  });
+
   it('keeps long business searches discoverable when only a business suffix is missing', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url =

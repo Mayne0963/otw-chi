@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getHereRequestHeaders, requireHereApiKey } from "@/lib/navigation/hereEnv";
+import { getHereRequestHeaderCandidates, requireHereApiKey } from "@/lib/navigation/hereEnv";
 
 type HerePlacesResponse = {
   items?: Array<{
@@ -42,11 +42,34 @@ export async function GET(request: Request) {
     url.searchParams.set("limit", limit);
     url.searchParams.set("apiKey", HERE_API_KEY);
 
-    const res = await fetch(url, { cache: "no-store", headers: getHereRequestHeaders(request) });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
+    let res: Response | null = null;
+    let responseText = "";
+    for (const headers of getHereRequestHeaderCandidates(request)) {
+      const attempt = await fetch(url, { cache: "no-store", headers });
+      if (attempt.ok) {
+        res = attempt;
+        break;
+      }
+
+      responseText = await attempt.text().catch(() => "");
+      res = attempt;
+
+      // Retry with the next header candidate only for auth-style failures.
+      if (attempt.status !== 401 && attempt.status !== 403) {
+        break;
+      }
+    }
+
+    if (!res) {
       return NextResponse.json(
-        { success: false, error: `HERE places failed: ${res.status} ${text}` },
+        { success: false, error: "HERE places failed before receiving a response." },
+        { status: 502 }
+      );
+    }
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { success: false, error: `HERE places failed: ${res.status} ${responseText}` },
         { status: 502 }
       );
     }

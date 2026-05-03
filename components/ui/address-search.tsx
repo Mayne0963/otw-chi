@@ -530,19 +530,14 @@ export function AddressSearch({
         <div className="absolute z-50 mt-1 max-h-[300px] w-full overflow-auto rounded-xl border border-border/70 bg-card/95 shadow-otwElevated backdrop-blur">
           {results.map((address, index) => {
             const lines = formatAddressLines(address);
-            const distanceMiles = distanceReference
-              ? calculateDistanceMiles(
+            const distanceLabel = distanceReference
+              ? `${calculateDistanceMiles(
                   distanceReference.latitude,
                   distanceReference.longitude,
                   address.latitude,
                   address.longitude,
-                )
-              : (address.distanceFromServiceArea ?? address.distanceFromFortWayne);
-            const distanceLabel = distanceReference
-              ? `${distanceMiles.toFixed(1)} miles from ${distanceReferenceLabel}`
-              : `${distanceMiles.toFixed(1)} miles from ${
-                  address.serviceAreaName || "service center"
-                }`;
+                ).toFixed(1)} miles from ${distanceReferenceLabel}`
+              : null;
             return (
               <button
                 key={index}
@@ -560,7 +555,9 @@ export function AddressSearch({
                   {lines.secondary && (
                     <div className="text-xs text-muted-foreground">{lines.secondary}</div>
                   )}
-                  <div className="text-xs text-secondary">✓ {distanceLabel}</div>
+                  {distanceLabel && (
+                    <div className="text-xs text-secondary">✓ {distanceLabel}</div>
+                  )}
                 </div>
               </button>
             );

@@ -40,21 +40,52 @@ const normalizeOrigin = (value: string | null | undefined): string | null => {
   }
 };
 
-const getHereAllowedOrigin = (request?: Request): string | null => {
-  const candidate =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_VERCEL_URL ||
-    request?.headers.get("origin") ||
-    request?.headers.get("referer");
+const getRequestUrlOrigin = (request?: Request): string | null => {
+  if (!request) return null;
+  try {
+    return normalizeOrigin(new URL(request.url).origin);
+  } catch {
+    return null;
+  }
+};
 
-  return normalizeOrigin(candidate);
+export const getHereAllowedOrigins = (request?: Request): string[] => {
+  const rawCandidates = [
+    request?.headers.get("origin"),
+    request?.headers.get("referer"),
+    getRequestUrlOrigin(request),
+    request?.headers.get("x-forwarded-host"),
+    request?.headers.get("host"),
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_VERCEL_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ];
+
+  const seen = new Set<string>();
+  const origins: string[] = [];
+
+  for (const candidate of rawCandidates) {
+    const normalized = normalizeOrigin(candidate);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    origins.push(normalized);
+  }
+
+  return origins;
+};
+
+export const getHereRequestHeaderCandidates = (request?: Request): Record<string, string>[] => {
+  const origins = getHereAllowedOrigins(request);
+  const candidates = origins.map((origin) => ({
+    Origin: origin,
+    Referer: `${origin}/`,
+  }));
+
+  candidates.push({});
+  return candidates;
 };
 
 export const getHereRequestHeaders = (request?: Request): Record<string, string> => {
-  const origin = getHereAllowedOrigin(request);
-  if (!origin) return {};
-
-  // Some HERE API keys are restricted to "trusted domains". Server-side calls
-  // must forward a valid Origin/Referer for those keys to authorize.
-  return { Origin: origin, Referer: origin };
+  return getHereRequestHeaderCandidates(request)[0] ?? {};
 };
