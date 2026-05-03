@@ -220,7 +220,7 @@ describe('geocoding validation fallbacks', () => {
     expect(calledQueries.some((q) => q.includes('fort wayne, in'))).toBe(true);
   });
 
-  it('suggests south Fort Wayne places like Villa Capri Apartments', async () => {
+  it('suggests Villa Capri as a complex without pinning it to one apartment address', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response(JSON.stringify([]), { status: 200 })),
@@ -229,9 +229,51 @@ describe('geocoding validation fallbacks', () => {
     const results = await searchAddress('Villa Capr');
 
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.placeName).toBe('Villa Capri Apartments');
-    expect(results[0]?.streetAddress).toBe('2015 Fox Point Trl');
+    expect(results[0]?.placeName).toBe('Villa Capri');
+    expect(results[0]?.streetAddress).toBe('Fox Point Trl');
     expect(results[0]?.zipCode).toBe('46816');
+  });
+
+  it('keeps exact Fox Point Trail addresses separate from the Villa Capri complex result', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string'
+          ? new URL(input)
+          : input instanceof URL
+            ? input
+            : new URL((input as Request).url);
+
+      if (url.pathname.includes('/api/navigation/pois')) {
+        return new Response(JSON.stringify({ success: true, items: [] }), { status: 200 });
+      }
+
+      return new Response(
+        JSON.stringify([
+          {
+            lat: '41.0094575',
+            lon: '-85.1090412',
+            display_name:
+              '2015 Fox Point Trl, Fort Wayne, Allen County, Indiana, 46816, United States',
+            address: {
+              house_number: '2015',
+              road: 'Fox Point Trl',
+              city: 'Fort Wayne',
+              state: 'Indiana',
+              postcode: '46816',
+            },
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const results = await searchAddress('2015 Fox Point Trl');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.streetAddress).toBe('2015 Fox Point Trl');
+    expect(results[0]?.placeName).toBeUndefined();
   });
 
   it('handles concatenated neighborhood tokens like "southside" for Fort Wayne suggestions', async () => {
@@ -290,6 +332,50 @@ describe('geocoding validation fallbacks', () => {
     expect(results[0]?.placeName).toBe('Buy Right Auto Sales');
     expect(results[0]?.streetAddress.toLowerCase()).toContain('coliseum');
     expect(results[0]?.city).toBe('Fort Wayne');
+  });
+
+  it('keeps long business searches discoverable when only a business suffix is missing', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string'
+          ? new URL(input)
+          : input instanceof URL
+            ? input
+            : new URL((input as Request).url);
+
+      if (url.pathname.includes('/api/navigation/pois')) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            items: [
+              {
+                id: 'here:poi:buy-right',
+                title: 'Buy Right Auto Sales',
+                position: { lat: 41.1176063, lng: -85.1571087 },
+                address: 'Buy Right Auto Sales, 1029 W Coliseum Blvd, Fort Wayne, IN 46808, United States',
+                streetAddress: '1029 W Coliseum Blvd',
+                city: 'Fort Wayne',
+                state: 'IN',
+                zipCode: '46808',
+                distance: 1500,
+                categories: ['car dealer'],
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const results = await searchAddress('Buy Right Auto Sales LLC Fort Wayne');
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0]?.placeName).toBe('Buy Right Auto Sales');
+    expect(results[0]?.streetAddress).toContain('1029');
   });
 
   it('calculates pickup-to-dropoff distance in miles', () => {

@@ -24,11 +24,13 @@ type FeaturedLocation = {
   aliases: string[];
 };
 
-const DEFAULT_SEARCH_LIMIT = 12;
+const DEFAULT_SEARCH_LIMIT = 16;
 const LIVE_SEARCH_LIMIT = 24;
 const MIN_LIVE_QUERY_LENGTH = 3;
 const SEARCH_CACHE_TTL_MS = 90_000;
 const SEARCH_CACHE_MAX_ENTRIES = 200;
+const PROVIDER_RESULT_LIMIT = 32;
+const FEATURED_PRIORITY_LIMIT = 4;
 
 type CachedSearchEntry = {
   results: GeocodedAddress[];
@@ -973,14 +975,14 @@ const FEATURED_FORT_WAYNE_LOCATIONS: FeaturedLocation[] = [
     aliases: ['swinney', 'park', 'west side park'],
   },
   {
-    placeName: 'Villa Capri Apartments',
-    streetAddress: '2015 Fox Point Trl',
+    placeName: 'Villa Capri',
+    streetAddress: 'Fox Point Trl',
     city: 'Fort Wayne',
     state: 'IN',
     zipCode: '46816',
     latitude: 41.0094575,
     longitude: -85.1090412,
-    aliases: ['villa capri', 'fox point trail apartments', 'fox point trail', '46816', 'south fort wayne'],
+    aliases: ['villa capri apartments', 'fox point trail apartments', 'fox point trail', '46816', 'south fort wayne'],
   },
   {
     placeName: 'Brewer Park',
@@ -1305,9 +1307,15 @@ function getTokenVariants(token: string): string[] {
   return Array.from(variants);
 }
 
-function getRequiredTokenMatches(tokens: string[]): number {
+function getRequiredTokenMatches(tokens: string[], specificAddressQuery: boolean): number {
   if (tokens.length <= 2) return tokens.length;
-  return tokens.length - 1;
+  if (specificAddressQuery) {
+    return Math.max(2, tokens.length - 2);
+  }
+  if (tokens.length <= 4) {
+    return tokens.length - 1;
+  }
+  return Math.max(2, Math.ceil(tokens.length * 0.6));
 }
 
 function isSpecificAddressQuery(normalizedQuery: string, tokens: string[]): boolean {
@@ -1331,6 +1339,54 @@ function countMatchedTokens(searchableText: string, queryTokens: string[]): numb
       ? count + 1
       : count;
   }, 0);
+}
+
+function hasStrongTextMatch(params: {
+  normalizedQuery: string;
+  queryTokens: string[];
+  searchableText: string;
+  placeName: string;
+  streetAddress: string;
+  city: string;
+  zipCode: string;
+  matchedTokenCount: number;
+  specificAddressQuery: boolean;
+}): boolean {
+  const {
+    normalizedQuery,
+    queryTokens,
+    searchableText,
+    placeName,
+    streetAddress,
+    city,
+    zipCode,
+    matchedTokenCount,
+    specificAddressQuery,
+  } = params;
+
+  if (!normalizedQuery) return false;
+  if (placeName === normalizedQuery || streetAddress === normalizedQuery) return true;
+  if (placeName.startsWith(normalizedQuery) || streetAddress.startsWith(normalizedQuery)) return true;
+  if (searchableText.includes(normalizedQuery)) return true;
+
+  const hasAddressNumber = /\d/.test(normalizedQuery);
+  if (
+    specificAddressQuery &&
+    hasAddressNumber &&
+    streetAddress &&
+    queryTokens.some((token) => /\d/.test(token) && streetAddress.includes(token)) &&
+    matchedTokenCount >= Math.max(2, queryTokens.length - 2)
+  ) {
+    return true;
+  }
+
+  if (!specificAddressQuery && matchedTokenCount >= Math.max(2, Math.ceil(queryTokens.length / 2))) {
+    if (placeName || streetAddress || city || zipCode) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function computeAddressMatchScore(params: {
@@ -1588,7 +1644,7 @@ function getFeaturedLocationSuggestions(
   }
 
   if (options?.exactOnly) {
-    const exactMatches = FEATURED_LOCATION_INDEX.filter(({ location, matchHaystack }) => {
+    const exactMatches = FEATURED_LOCATION_INDEX.filter(({ location, fullHaystack }) => {
       const placeName = normalizeQuery(location.placeName);
       const streetAddress = normalizeQuery(location.streetAddress);
 
@@ -1597,19 +1653,21 @@ function getFeaturedLocationSuggestions(
         normalized.includes(placeName) ||
         normalized === streetAddress ||
         normalized.includes(streetAddress) ||
-        countMatchedTokens(matchHaystack, tokens) === tokens.length
+        countMatchedTokens(fullHaystack, tokens) === tokens.length
       );
     });
 
     return rankFeaturedLocationMatches(exactMatches, query, tokens).slice(0, DEFAULT_SEARCH_LIMIT);
   }
 
-  const exactTokenMatches = FEATURED_LOCATION_INDEX.filter(({ matchHaystack }) =>
-    tokens.every((token) => tokenMatchesHaystack(matchHaystack, token))
+  const exactTokenMatches = FEATURED_LOCATION_INDEX.filter(({ fullHaystack }) =>
+    tokens.every((token) => tokenMatchesHaystack(fullHaystack, token))
   );
 
-  const partialTokenMatches = FEATURED_LOCATION_INDEX.filter(({ matchHaystack }) =>
-    tokens.some((token) => tokenMatchesHaystack(matchHaystack, token))
+  const partialFeaturedMatchFloor =
+    tokens.length <= 2 ? 1 : tokens.length <= 4 ? 2 : 3;
+  const partialTokenMatches = FEATURED_LOCATION_INDEX.filter(
+    ({ fullHaystack }) => countMatchedTokens(fullHaystack, tokens) >= partialFeaturedMatchFloor
   );
 
   if (exactTokenMatches.length > 0 || partialTokenMatches.length > 0) {
@@ -1679,7 +1737,7 @@ export async function searchAddress(
     return featuredSuggestions;
   }
 
-  const requiredTokenMatches = getRequiredTokenMatches(queryTokens);
+  const requiredTokenMatches = getRequiredTokenMatches(queryTokens, specificAddressQuery);
 
   try {
     const rankedResults = new Map<string, RankedAddress>();
@@ -1789,7 +1847,22 @@ export async function searchAddress(
           `${formattedAddress} ${placeName || ''} ${streetAddress} ${city} ${state} ${zipCode}`
         );
         const matchedTokenCount = countMatchedTokens(searchableText, queryTokens);
-        if (queryTokens.length > 0 && matchedTokenCount < requiredTokenMatches) {
+        const normalizedPlaceName = normalizeQuery(placeName || '');
+        const normalizedStreetAddress = normalizeQuery(streetAddress);
+        const normalizedCity = normalizeQuery(city);
+        const normalizedZipCode = normalizeQuery(zipCode);
+        const strongTextMatch = hasStrongTextMatch({
+          normalizedQuery,
+          queryTokens,
+          searchableText,
+          placeName: normalizedPlaceName,
+          streetAddress: normalizedStreetAddress,
+          city: normalizedCity,
+          zipCode: normalizedZipCode,
+          matchedTokenCount,
+          specificAddressQuery,
+        });
+        if (queryTokens.length > 0 && matchedTokenCount < requiredTokenMatches && !strongTextMatch) {
           continue;
         }
 
@@ -1813,10 +1886,10 @@ export async function searchAddress(
           normalizedQuery,
           queryTokens,
           searchableText,
-          placeName: normalizeQuery(placeName || ''),
-          streetAddress: normalizeQuery(streetAddress),
-          city: normalizeQuery(city),
-          zipCode: normalizeQuery(zipCode),
+          placeName: normalizedPlaceName,
+          streetAddress: normalizedStreetAddress,
+          city: normalizedCity,
+          zipCode: normalizedZipCode,
           matchedTokenCount,
         });
 
@@ -1863,7 +1936,22 @@ export async function searchAddress(
           `${formattedAddress} ${placeName || ''} ${streetAddress} ${city} ${state} ${zipCode}`
         );
         const matchedTokenCount = countMatchedTokens(searchableText, queryTokens);
-        if (queryTokens.length > 0 && matchedTokenCount < requiredTokenMatches) {
+        const normalizedPlaceName = normalizeQuery(placeName || '');
+        const normalizedStreetAddress = normalizeQuery(streetAddress);
+        const normalizedCity = normalizeQuery(city);
+        const normalizedZipCode = normalizeQuery(zipCode);
+        const strongTextMatch = hasStrongTextMatch({
+          normalizedQuery,
+          queryTokens,
+          searchableText,
+          placeName: normalizedPlaceName,
+          streetAddress: normalizedStreetAddress,
+          city: normalizedCity,
+          zipCode: normalizedZipCode,
+          matchedTokenCount,
+          specificAddressQuery,
+        });
+        if (queryTokens.length > 0 && matchedTokenCount < requiredTokenMatches && !strongTextMatch) {
           continue;
         }
 
@@ -1887,10 +1975,10 @@ export async function searchAddress(
           normalizedQuery,
           queryTokens,
           searchableText,
-          placeName: normalizeQuery(placeName || ''),
-          streetAddress: normalizeQuery(streetAddress),
-          city: normalizeQuery(city),
-          zipCode: normalizeQuery(zipCode),
+          placeName: normalizedPlaceName,
+          streetAddress: normalizedStreetAddress,
+          city: normalizedCity,
+          zipCode: normalizedZipCode,
           matchedTokenCount,
         });
 
@@ -1919,12 +2007,14 @@ export async function searchAddress(
           a.address.distanceFromServiceArea - b.address.distanceFromServiceArea
       )
       .map((item) => item.address)
-      .slice(0, DEFAULT_SEARCH_LIMIT);
+      .slice(0, PROVIDER_RESULT_LIMIT);
 
-    const prioritized = dedupeAddresses([...featuredMatches, ...resolvedResults]).slice(
-      0,
-      DEFAULT_SEARCH_LIMIT
-    );
+    const prioritizedFeatured = featuredMatches.slice(0, FEATURED_PRIORITY_LIMIT);
+    const remainingFeatured = featuredMatches.slice(prioritizedFeatured.length);
+    const prioritizedPool = specificAddressQuery
+      ? [...resolvedResults, ...prioritizedFeatured, ...remainingFeatured]
+      : [...prioritizedFeatured, ...resolvedResults, ...remainingFeatured];
+    const prioritized = dedupeAddresses(prioritizedPool).slice(0, DEFAULT_SEARCH_LIMIT);
     if (prioritized.length > 0) {
       setCachedSearchResults(cacheKey, prioritized);
       return prioritized;
