@@ -1,6 +1,6 @@
 'use client';
 
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Loader2, MapPin, Plus, Search, X } from 'lucide-react';
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { trackOtwEvent, type OtwServiceType } from '@/lib/analytics/otwTrack';
 import {
   calculateDistanceMiles,
   formatAddressLines,
@@ -83,6 +84,23 @@ type ServiceMilesWalletResponse = {
 
 const DEFAULT_SCHEDULE_WINDOW_MINUTES = 30;
 const DEFAULT_SCHEDULE_PRESET_MINUTES_AHEAD = 120;
+
+function toOtwServiceType(value: ServiceType): OtwServiceType {
+  switch (value) {
+    case 'FOOD':
+      return 'FOOD_DELIVERY';
+    case 'STORE':
+      return 'STORE_PICKUP';
+    case 'FRAGILE':
+      return 'FRAGILE_ITEM';
+    case 'CONCIERGE':
+      return 'PERSONAL_ERRAND';
+    case 'RIDE':
+      return 'RIDE_SERVICE';
+    default:
+      return 'OTHER';
+  }
+}
 
 function toLocalDateValue(date: Date): string {
   const year = date.getFullYear();
@@ -210,7 +228,34 @@ export default function OrderPage() {
   const [scheduledTime, setScheduledTime] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittedRef = useRef(false);
   const uploadsPaused = pickupPassEnabled && base64Mode && !uploadsAllowed;
+
+  useEffect(() => {
+    void trackOtwEvent('REQUEST_STARTED', {
+      page: '/order',
+      serviceType: toOtwServiceType('FOOD'),
+      metadata: { flow: 'order' },
+    });
+  }, []);
+
+  const handlePickupSelected = (address: GeocodedAddress) => {
+    setPickupAddress(address);
+    void trackOtwEvent('REQUEST_STEP_COMPLETED', {
+      page: '/order',
+      serviceType: toOtwServiceType(serviceType),
+      metadata: { step: 'pickup_selected' },
+    });
+  };
+
+  const handleDropoffSelected = (address: GeocodedAddress) => {
+    setDropoffAddress(address);
+    void trackOtwEvent('REQUEST_STEP_COMPLETED', {
+      page: '/order',
+      serviceType: toOtwServiceType(serviceType),
+      metadata: { step: 'dropoff_selected' },
+    });
+  };
 
   const pickupLines = useMemo(
     () => (pickupAddress ? formatAddressLines(pickupAddress) : null),
@@ -259,6 +304,65 @@ export default function OrderPage() {
     filteredJobSiteBusinesses.length === 0;
   const missingJobSiteBusinessProfile =
     isFoodJobSiteBenefit && availableJobSiteBusinesses.length === 0;
+
+  const hasRequestDraftSignal = Boolean(
+    pickupAddress ||
+      dropoffAddress ||
+      resolvedIntermediateStops.length > 0 ||
+      notes.trim() ||
+      orderReference.trim() ||
+      pickupInstructions.trim() ||
+      dropoffInstructions.trim(),
+  );
+
+  useEffect(() => {
+    if (!hasRequestDraftSignal) return;
+    if (submittedRef.current) return;
+
+    let sent = false;
+    const send = () => {
+      if (sent) return;
+      if (submittedRef.current) return;
+      sent = true;
+      void trackOtwEvent('REQUEST_ABANDONED_SIGNAL', {
+        page: '/order',
+        serviceType: toOtwServiceType(serviceType),
+        metadata: {
+          hasPickup: Boolean(pickupAddress),
+          hasDropoff: Boolean(dropoffAddress),
+          stopsCount: resolvedIntermediateStops.length,
+          deliveryTiming,
+          paymentPreference: canChooseMonthlyPayments ? paymentPreference : 'INSTANT',
+        },
+      });
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') send();
+    };
+
+    const onPageHide = () => send();
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [
+    canChooseMonthlyPayments,
+    deliveryTiming,
+    dropoffAddress,
+    hasRequestDraftSignal,
+    notes,
+    orderReference,
+    paymentPreference,
+    pickupAddress,
+    pickupInstructions,
+    dropoffInstructions,
+    resolvedIntermediateStops.length,
+    serviceType,
+  ]);
 
   useEffect(() => {
     if (!pickupPassFile) {
@@ -526,6 +630,10 @@ export default function OrderPage() {
     event.preventDefault();
 
     if (!isSignedIn || !user) {
+      void trackOtwEvent('LOGIN_REQUIRED', {
+        page: '/order',
+        metadata: { reason: 'request_submit' },
+      });
       router.push('/sign-in');
       return;
     }
@@ -549,6 +657,11 @@ export default function OrderPage() {
     }
 
     if (!pickupAddress || !dropoffAddress) {
+      void trackOtwEvent('ERROR_SHOWN', {
+        page: '/order',
+        serviceType: toOtwServiceType(serviceType),
+        metadata: { code: 'missing_address' },
+      });
       toast({
         title: 'Missing address',
         description: 'Please select both pickup and dropoff addresses.',
@@ -557,6 +670,11 @@ export default function OrderPage() {
       return;
     }
     if (hasIncompleteIntermediateStops) {
+      void trackOtwEvent('ERROR_SHOWN', {
+        page: '/order',
+        serviceType: toOtwServiceType(serviceType),
+        metadata: { code: 'incomplete_stops' },
+      });
       toast({
         title: 'Finish your stop list',
         description: 'Select an address for each added stop or remove the empty stop before submitting.',
@@ -570,6 +688,11 @@ export default function OrderPage() {
     if (isScheduled) {
       scheduledForIso = buildScheduledForIso(scheduledDate, scheduledTime);
       if (!scheduledForIso) {
+        void trackOtwEvent('ERROR_SHOWN', {
+          page: '/order',
+          serviceType: toOtwServiceType(serviceType),
+          metadata: { code: 'invalid_schedule' },
+        });
         toast({
           title: 'Schedule required',
           description: 'Choose a valid date and time for your scheduled request.',
@@ -578,6 +701,11 @@ export default function OrderPage() {
         return;
       }
       if (new Date(scheduledForIso).getTime() <= Date.now()) {
+        void trackOtwEvent('ERROR_SHOWN', {
+          page: '/order',
+          serviceType: toOtwServiceType(serviceType),
+          metadata: { code: 'schedule_not_future' },
+        });
         toast({
           title: 'Schedule must be in the future',
           description: 'Select a future date and time.',
@@ -659,6 +787,18 @@ export default function OrderPage() {
         createPayload.paymentRequired || createPayload.deliveryPaymentRequired,
       );
 
+      void trackOtwEvent('REQUEST_SUBMITTED', {
+        page: '/order',
+        serviceType: toOtwServiceType(serviceType),
+        metadata: {
+          paymentRequired: requiresPayment,
+          paymentPreference: canChooseMonthlyPayments ? paymentPreference : 'INSTANT',
+          deliveryTiming,
+          stopsCount: resolvedIntermediateStops.length,
+        },
+      });
+      submittedRef.current = true;
+
       if (pickupPassEnabled && pickupPassFile) {
         if (uploadsPaused) {
           toast({
@@ -707,6 +847,11 @@ export default function OrderPage() {
         title: 'Unable to submit request',
         description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive',
+      });
+      void trackOtwEvent('ERROR_SHOWN', {
+        page: '/order',
+        serviceType: toOtwServiceType(serviceType),
+        metadata: { code: 'request_submit_failed' },
       });
     } finally {
       setIsSubmitting(false);
@@ -777,7 +922,7 @@ export default function OrderPage() {
               <AddressSearch
                 ariaLabel="Pickup address"
                 enableCurrentLocation
-                onSelect={setPickupAddress}
+                onSelect={handlePickupSelected}
                 className="w-full"
               />
               {pickupLines ? (
@@ -886,7 +1031,7 @@ export default function OrderPage() {
                 <AddressSearch
                   ariaLabel="Dropoff address"
                   enableCurrentLocation
-                  onSelect={setDropoffAddress}
+                  onSelect={handleDropoffSelected}
                   className="w-full"
                   distanceReference={pickupAddress}
                 />
@@ -917,7 +1062,14 @@ export default function OrderPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setIntermediateStops((current) => [...current, null])}
+                    onClick={() => {
+                      void trackOtwEvent('REQUEST_STEP_COMPLETED', {
+                        page: '/order',
+                        serviceType: toOtwServiceType(serviceType),
+                        metadata: { step: 'stop_added', stopsCount: intermediateStops.length + 1 },
+                      });
+                      setIntermediateStops((current) => [...current, null]);
+                    }}
                     className="border-white/20 bg-black/20 text-white hover:bg-black/30"
                   >
                     <Plus className="h-4 w-4" />
@@ -939,11 +1091,19 @@ export default function OrderPage() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
+                              onClick={() => {
+                                void trackOtwEvent('REQUEST_STEP_COMPLETED', {
+                                  page: '/order',
+                                  serviceType: toOtwServiceType(serviceType),
+                                  metadata: {
+                                    step: 'stop_removed',
+                                    stopsCount: Math.max(0, intermediateStops.length - 1),
+                                  },
+                                });
                                 setIntermediateStops((current) =>
                                   current.filter((_entry, currentIndex) => currentIndex !== index),
-                                )
-                              }
+                                );
+                              }}
                               className="h-8 px-2 text-white/70 hover:text-white"
                             >
                               <X className="h-4 w-4" />
@@ -998,7 +1158,15 @@ export default function OrderPage() {
                 <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Service Type</label>
                 <Select
                   value={serviceType}
-                  onChange={(event) => setServiceType(event.target.value as ServiceType)}
+                  onChange={(event) => {
+                    const value = event.target.value as ServiceType;
+                    setServiceType(value);
+                    void trackOtwEvent('SERVICE_SELECTED', {
+                      page: '/order',
+                      serviceType: toOtwServiceType(value),
+                      metadata: { location: 'order_form' },
+                    });
+                  }}
                   className="bg-black/20 text-white"
                 >
                   <option value="FOOD">Food Pickup</option>
@@ -1048,7 +1216,15 @@ export default function OrderPage() {
               </label>
               <Select
                 value={deliveryTiming}
-                onChange={(event) => setDeliveryTiming(event.target.value as 'ASAP' | 'SCHEDULED')}
+                onChange={(event) => {
+                  const value = event.target.value as 'ASAP' | 'SCHEDULED';
+                  setDeliveryTiming(value);
+                  void trackOtwEvent('REQUEST_STEP_COMPLETED', {
+                    page: '/order',
+                    serviceType: toOtwServiceType(serviceType),
+                    metadata: { step: 'delivery_timing_selected', deliveryTiming: value },
+                  });
+                }}
                 className="bg-black/30 text-white"
               >
                 <option value="ASAP">ASAP</option>
@@ -1089,7 +1265,15 @@ export default function OrderPage() {
                 <div className="space-y-2">
                   <Select
                     value={paymentPreference}
-                    onChange={(event) => setPaymentPreference(event.target.value as PaymentPreference)}
+                    onChange={(event) => {
+                      const value = event.target.value as PaymentPreference;
+                      setPaymentPreference(value);
+                      void trackOtwEvent('REQUEST_STEP_COMPLETED', {
+                        page: '/order',
+                        serviceType: toOtwServiceType(serviceType),
+                        metadata: { step: 'payment_preference_selected', paymentPreference: value },
+                      });
+                    }}
                     className="bg-black/30 text-white"
                   >
                     <option value="INSTANT">Pay instantly (required before dispatch)</option>

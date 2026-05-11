@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { SignOutButton } from "@/components/auth/SignOutButton"
 import { getClientCapabilities } from "@/lib/capabilities"
 import OtwBrandLink from "@/components/branding/OtwBrandLink"
+import { trackOtwEvent } from "@/lib/analytics/otwTrack"
 import { 
   type LucideIcon,
   LayoutDashboard, 
@@ -105,6 +106,7 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
 
     const systemRoutes: NavRoute[] = [
       { label: "OTW-OS", href: "/admin/otw-os", icon: Settings },
+      { label: "OTW Analytics", href: "/admin/otw/analytics", icon: LayoutDashboard },
       { label: "Admin Settings", href: "/admin/settings", icon: Settings },
       { label: "Storage", href: "/admin/system/storage", icon: HardDrive },
       { label: "Migrations", href: "/admin/migrate", icon: RefreshCw },
@@ -168,7 +170,15 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
         key={route.href}
         href={route.href}
         prefetch={false}
-        onClick={onLinkClick}
+        onClick={() => {
+          onLinkClick?.()
+          if (route.href === "/support" && !pathname.startsWith("/admin")) {
+            void trackOtwEvent("SUPPORT_CLICKED", {
+              page: pathname,
+              metadata: { location: options?.nested ? "sidebar_nested" : "sidebar_primary" },
+            })
+          }
+        }}
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
           options?.nested && "ml-2 pl-4",
@@ -250,7 +260,20 @@ export function DashboardSidebar({ role, onLinkClick }: DashboardSidebarProps) {
           <p className="text-xs font-medium text-otwOffWhite">Need help?</p>
           <p className="text-xs text-white/50 mt-1">Contact support anytime.</p>
           <Button asChild variant="outline" size="sm" className="mt-3 w-full border-white/10 text-xs h-8">
-            <Link href="/support" prefetch={false}>Support</Link>
+            <Link
+              href="/support"
+              prefetch={false}
+              onClick={() => {
+                if (!pathname.startsWith("/admin")) {
+                  void trackOtwEvent("SUPPORT_CLICKED", {
+                    page: pathname,
+                    metadata: { location: "sidebar_help_card" },
+                  })
+                }
+              }}
+            >
+              Support
+            </Link>
           </Button>
         </div>
       </div>

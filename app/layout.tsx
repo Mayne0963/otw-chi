@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import ErrorEventRedirector from '@/components/error/ErrorEventRedirector';
 import DeploymentUpdateChecker from '@/components/system/DeploymentUpdateChecker';
 import GlobalPageLogo from '@/components/branding/GlobalPageLogo';
+import AnalyticsProvider from '@/components/analytics/AnalyticsProvider';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <DeploymentUpdateChecker />
             <ErrorEventRedirector />
             <GlobalPageLogo />
+            <AnalyticsProvider />
             {children}
             <OtwCookieConsent />
           </ThemeProvider>

@@ -6,6 +6,7 @@ import { Check } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { getConsumerPlanDisplayPerks } from '@/lib/membership-perks';
+import OtwLeadCaptureCard from '@/components/analytics/OtwLeadCaptureCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,6 +188,16 @@ export default async function PricingPage() {
             email: user?.email ?? null,
             phone: customerProfile?.phone ?? null,
           }}
+        />
+      </div>
+
+      <div className="max-w-3xl mx-auto pt-2">
+        <OtwLeadCaptureCard
+          title="Ask About Memberships"
+          subtitle="Not ready to subscribe yet? Leave your info and OTW will follow up."
+          interestType="MEMBERSHIP_INTEREST"
+          ctaLabel="Send Membership Interest"
+          compact
         />
       </div>
     </div>

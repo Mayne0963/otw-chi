@@ -36,14 +36,22 @@ export function useCurrentUser(): UseCurrentUserReturn {
   const [dbLoading, setDbLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!sessionUser?.id) {
-      setDbUser(null);
-      setDbLoading(false);
-      return;
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setDbUser(null);
+        setDbLoading(false);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
-    setDbLoading(true);
+    queueMicrotask(() => {
+      if (!cancelled) setDbLoading(true);
+    });
 
     fetch('/api/auth/me', {
       credentials: 'include',

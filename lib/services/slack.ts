@@ -2,7 +2,10 @@ import 'server-only';
 
 type SlackWebhookEnvKey =
   | 'SLACK_OTW_REQUESTS_WEBHOOK_URL'
-  | 'SLACK_OTW_INTAKE_WEBHOOK_URL';
+  | 'SLACK_OTW_INTAKE_WEBHOOK_URL'
+  | 'SLACK_ALERTS_WEBHOOK_URL'
+  | 'SLACK_OTW_WEBHOOK_URL'
+  | 'SLACK_ORDERS_WEBHOOK_URL';
 
 function normalizeText(value?: string | null) {
   return typeof value === 'string' ? value.trim() : '';

@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import OtwSessionIdField from '@/components/analytics/OtwSessionIdField';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,7 @@ export default async function ContactPage() {
       <OtwSectionHeader title="Contact OTW" subtitle="Reach the team for support or ops." />
       <Card className="mt-3 space-y-3 p-5 sm:p-6">
         <form action={submitContactMessage} className="space-y-3">
+          <OtwSessionIdField name="otwSessionId" />
           <div>
             <label htmlFor="contact-email" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Email</label>
             <input
@@ -47,6 +49,7 @@ export async function submitContactMessage(formData: FormData) {
   'use server';
   const currentUser = await getCurrentUser();
 
+  const sessionId = String(formData.get('otwSessionId') ?? '').trim();
   const payload = {
     email: String(formData.get('email') ?? '').trim(),
     message: String(formData.get('message') ?? '').trim(),
@@ -69,6 +72,42 @@ export async function submitContactMessage(formData: FormData) {
       message: parsed.data.message,
     },
   });
+
+  if (sessionId.length >= 8) {
+    const customerProfile = dbUserId
+      ? await prisma.customerProfile
+          .findUnique({ where: { userId: dbUserId }, select: { id: true } })
+          .catch(() => null)
+      : null;
+
+    prisma.otwSiteEvent
+      .create({
+        data: {
+          sessionId,
+          userId: dbUserId ?? undefined,
+          customerProfileId: customerProfile?.id ?? undefined,
+          eventType: 'CONTACT_SUBMITTED',
+          page: '/contact',
+          metadata: {
+            kind: 'contact_message',
+          },
+        },
+      })
+      .catch(() => null);
+  }
+
+  prisma.otwLead
+    .create({
+      data: {
+        name: currentUser?.name?.trim() || undefined,
+        email: parsed.data.email,
+        interestType: 'GENERAL_CONTACT',
+        sourcePage: '/contact',
+        message: parsed.data.message,
+      },
+      select: { id: true },
+    })
+    .catch(() => null);
 
   revalidatePath('/contact');
 }

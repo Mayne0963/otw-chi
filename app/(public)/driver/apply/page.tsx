@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { trackOtwEvent } from '@/lib/analytics/otwTrack';
 
 type DriverApplicationStatus = 'PENDING' | 'APPROVED' | 'WAITLIST' | 'DENIED';
 
@@ -61,6 +62,10 @@ export default function DriverApplyPage() {
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+    void trackOtwEvent('DRIVER_APPLICATION_STARTED', { page: '/driver/apply' });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +153,7 @@ export default function DriverApplyPage() {
     e.preventDefault();
 
     if (!isSignedIn) {
+      void trackOtwEvent('LOGIN_REQUIRED', { page: '/driver/apply', metadata: { reason: 'driver_apply_submit' } });
       toast({
         title: 'Sign in required',
         description: 'You must be signed in before applying as a driver.',
@@ -179,6 +185,7 @@ export default function DriverApplyPage() {
         description: "We'll be in touch shortly!",
       });
 
+      void trackOtwEvent('DRIVER_APPLICATION_SUBMITTED', { page: '/driver/apply' });
       if (payload?.application) {
         setExistingApplication(payload.application);
       }
@@ -193,6 +200,7 @@ export default function DriverApplyPage() {
         description,
         variant: "destructive"
       });
+      void trackOtwEvent('ERROR_SHOWN', { page: '/driver/apply', metadata: { code: 'driver_apply_submit_failed' } });
     } finally {
       setLoading(false);
     }

@@ -16,6 +16,7 @@ import {
   removeOtwTrueEmployeeAction,
 } from '@/app/actions/otw-true';
 import { isBusinessMembershipPlanName } from '@/lib/membership';
+import OtwMembershipCheckoutSuccessTracker from '@/components/analytics/OtwMembershipCheckoutSuccessTracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -177,6 +178,7 @@ export default async function MembershipManagePage({
   return (
     <OtwPageShell>
       <BillingSync success={checkoutSuccess} />
+      <OtwMembershipCheckoutSuccessTracker success={checkoutSuccess} />
       <OtwSectionHeader title="Manage Membership" subtitle="Your plan and billing." />
       {checkoutSuccess && (
         <div className="mt-4 rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-500">

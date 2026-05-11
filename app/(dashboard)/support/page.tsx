@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import OtwEmptyState from '@/components/ui/otw/OtwEmptyState';
 import { formatDistanceToNow } from 'date-fns';
 import { createTicketAction } from '@/app/(dashboard)/support/actions';
+import OtwSessionIdField from '@/components/analytics/OtwSessionIdField';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,7 @@ export default async function SupportPage() {
         <>
           <OtwCard className="mt-3 space-y-3">
             <form action={createTicketAction} className="space-y-3">
+              <OtwSessionIdField name="otwSessionId" />
               <div>
                 <label htmlFor="support-subject" className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1 block">Subject</label>
                 <input id="support-subject" name="subject" className="w-full rounded-xl bg-otwBlack/40 border border-white/15 px-3 py-2" />

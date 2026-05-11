@@ -88,6 +88,8 @@ const isPublicRoute = (pathname: string) => {
   if (matchesPath(pathname, '/api/navigation')) return true;
   if (matchesPath(pathname, '/api/geocoding')) return true;
   if (matchesPath(pathname, '/api/otw/estimate')) return true;
+  if (matchesPath(pathname, '/api/otw/leads')) return true;
+  if (matchesPath(pathname, '/api/otw/site-events')) return true;
   if (matchesPath(pathname, '/api/orders')) return true;
   if (matchesPath(pathname, '/api/orders/draft')) return true;
   if (matchesPath(pathname, '/api/orders/search')) return true;

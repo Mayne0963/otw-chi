@@ -169,6 +169,53 @@ enum DisputeStatus {
   RESOLVED_DENIED
 }
 
+enum OtwLeadInterestType {
+  SERVICE_REQUEST
+  MEMBERSHIP_INTEREST
+  DRIVER_INTEREST
+  BUSINESS_ACCOUNT
+  FRAGILE_DELIVERY
+  STORE_PICKUP
+  FOOD_DELIVERY
+  ERRAND_SERVICE
+  PEER_TO_PEER_DELIVERY
+  GENERAL_CONTACT
+  LAUNCH_LIST
+}
+
+enum OtwServiceType {
+  FOOD_DELIVERY
+  STORE_PICKUP
+  FRAGILE_ITEM
+  PERSONAL_ERRAND
+  RIDE_SERVICE
+  PEER_TO_PEER
+  EVENT_SUPPORT
+  HOME_WAIT_SERVICE
+  OTHER
+}
+
+enum OtwSiteEventType {
+  PAGE_VIEW
+  CTA_CLICK
+  SERVICE_VIEW
+  SERVICE_SELECTED
+  REQUEST_STARTED
+  REQUEST_STEP_COMPLETED
+  REQUEST_SUBMITTED
+  REQUEST_ABANDONED_SIGNAL
+  MEMBERSHIP_VIEW
+  MEMBERSHIP_SELECTED
+  MEMBERSHIP_CHECKOUT_STARTED
+  MEMBERSHIP_CHECKOUT_COMPLETED
+  LOGIN_REQUIRED
+  DRIVER_APPLICATION_STARTED
+  DRIVER_APPLICATION_SUBMITTED
+  CONTACT_SUBMITTED
+  SUPPORT_CLICKED
+  ERROR_SHOWN
+}
+
 // Models
 model User {
   id                String    @id @default(cuid())
@@ -207,6 +254,7 @@ model User {
   founderServiceLogs FounderServiceLog[]
   auditLogs          AuditLog[]
   sentMessages       RequestMessage[]
+  otwSiteEvents      OtwSiteEvent[]
 }
 
 model DriverApplication {
@@ -268,6 +316,45 @@ model ContactMessage {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model OtwLead {
+  id           String              @id @default(cuid())
+  name         String?
+  email        String?
+  phone        String?
+  interestType OtwLeadInterestType
+  serviceType  OtwServiceType?
+  sourcePage   String?
+  message      String?             @db.Text
+  metadata     Json?
+  createdAt    DateTime            @default(now())
+
+  @@index([createdAt])
+  @@index([interestType, createdAt])
+  @@index([serviceType, createdAt])
+}
+
+model OtwSiteEvent {
+  id               String           @id @default(cuid())
+  sessionId         String
+  userId            String?
+  customerProfileId String?
+  eventType         OtwSiteEventType
+  page              String?
+  serviceType       OtwServiceType?
+  metadata          Json?
+  createdAt         DateTime         @default(now())
+
+  user              User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerProfile   CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([eventType, createdAt])
+  @@index([serviceType, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt])
+  @@index([customerProfileId, createdAt])
 }
 
 model AutomationIntakeSubmission {
@@ -370,6 +457,7 @@ model CustomerProfile {
   defaultPickup  String?
   defaultDropoff String?
   user           User    @relation(fields: [userId], references: [id])
+  otwSiteEvents  OtwSiteEvent[]
 }
 
 model City {

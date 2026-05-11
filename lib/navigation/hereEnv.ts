@@ -77,7 +77,7 @@ export const getHereAllowedOrigins = (request?: Request): string[] => {
 
 export const getHereRequestHeaderCandidates = (request?: Request): Record<string, string>[] => {
   const origins = getHereAllowedOrigins(request);
-  const candidates = origins.map((origin) => ({
+  const candidates: Record<string, string>[] = origins.map((origin) => ({
     Origin: origin,
     Referer: `${origin}/`,
   }));

@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { formatDistanceToNow } from 'date-fns';
 import { replyToOwnTicketAction } from '@/app/(dashboard)/support/actions';
+import OtwSessionIdField from '@/components/analytics/OtwSessionIdField';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,6 +112,7 @@ export default async function SupportTicketDetailPage({
           <>
             <form action={replyToOwnTicketAction} className="mt-3 space-y-3">
               <input type="hidden" name="id" value={ticket.id} />
+              <OtwSessionIdField name="otwSessionId" />
               <textarea
                 name="reply"
                 className="min-h-[140px] w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"

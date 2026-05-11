@@ -1,6 +1,7 @@
 import { ArrowRight, ShoppingBag, Truck, Package, Flag, ShieldCheck, Clock } from 'lucide-react';
-import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
+import TrackedOtwButtonLink from '@/components/analytics/TrackedOtwButtonLink';
+import OtwLeadCaptureCard from '@/components/analytics/OtwLeadCaptureCard';
 
 export default function HomePage() {
   return (
@@ -29,25 +30,37 @@ export default function HomePage() {
             slow your day down.
           </p>
           
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6 pt-4">
-            <OtwButton 
-              as="a" 
-              href="/pricing"
-              variant="gold" 
+          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap sm:gap-6 pt-4">
+            <TrackedOtwButtonLink
+              href="/order"
+              ctaId="home_start_request"
+              ctaLocation="home_hero"
+              variant="gold"
               className="h-14 px-8 text-base rounded-full shadow-[0_0_20px_rgba(255,215,0,0.2)] transition-all hover:scale-105"
+            >
+              Start a Request
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </TrackedOtwButtonLink>
+            <TrackedOtwButtonLink
+              href="/pricing"
+              ctaId="home_pick_plan"
+              ctaLocation="home_hero"
+              variant="outline"
+              className="h-14 px-8 text-base rounded-full border-otwGold/50 bg-otwGold/10 hover:bg-otwGold/20 backdrop-blur-sm transition-all hover:scale-105 text-otwGold"
             >
               Pick a Plan
               <ArrowRight className="ml-2 h-4 w-4" />
-            </OtwButton>
-            <OtwButton 
-              as="a" 
-              href="/how-it-works"
-              variant="outline" 
-              className="h-14 px-8 text-base rounded-full border-otwGold/50 bg-otwGold/10 hover:bg-otwGold/20 backdrop-blur-sm transition-all hover:scale-105 text-otwGold"
+            </TrackedOtwButtonLink>
+            <TrackedOtwButtonLink
+              href="/driver/apply"
+              ctaId="home_become_driver"
+              ctaLocation="home_hero"
+              variant="ghost"
+              className="h-14 px-8 text-base rounded-full border-otwGold/30 bg-black/10 hover:bg-black/20 backdrop-blur-sm transition-all hover:scale-105 text-otwOffWhite"
             >
-              How It Works
+              Become a Driver
               <ArrowRight className="ml-2 h-4 w-4" />
-            </OtwButton>
+            </TrackedOtwButtonLink>
           </div>
           
           <div className="pt-8 flex items-center justify-center gap-8 text-sm text-muted-foreground/60">
@@ -70,9 +83,15 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold tracking-tight">Use OTW for any request</h2>
             <p className="text-muted-foreground mt-2">From errands to handoffs, our team keeps your day moving.</p>
           </div>
-          <OtwButton as="a" href="/pricing" variant="ghost" className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80">
+          <TrackedOtwButtonLink
+            href="/pricing"
+            ctaId="home_view_plans"
+            ctaLocation="home_service_tiles_header"
+            variant="ghost"
+            className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80"
+          >
             View plans <ArrowRight className="ml-2 h-4 w-4" />
-          </OtwButton>
+          </TrackedOtwButtonLink>
         </div>
         
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -163,9 +182,35 @@ export default function HomePage() {
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
           Pick a plan, submit the request, and let OTW handle it.
         </p>
-        <OtwButton as="a" href="/pricing" variant="gold" className="h-12 px-8 text-base rounded-full">
-          View Plans
-        </OtwButton>
+        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <TrackedOtwButtonLink
+            href="/pricing"
+            ctaId="home_footer_view_plans"
+            ctaLocation="home_footer_cta"
+            variant="gold"
+            className="h-12 px-8 text-base rounded-full"
+          >
+            View Plans
+          </TrackedOtwButtonLink>
+          <TrackedOtwButtonLink
+            href="/services"
+            ctaId="home_footer_services"
+            ctaLocation="home_footer_cta"
+            variant="outline"
+            className="h-12 px-8 text-base rounded-full"
+          >
+            View Services
+          </TrackedOtwButtonLink>
+        </div>
+      </section>
+
+      <section className="max-w-3xl mx-auto">
+        <OtwLeadCaptureCard
+          title="Join the OTW Launch List"
+          subtitle="Get notified when OTW expands to your area and new service tiers open."
+          interestType="LAUNCH_LIST"
+          ctaLabel="Join Launch List"
+        />
       </section>
     </div>
   );

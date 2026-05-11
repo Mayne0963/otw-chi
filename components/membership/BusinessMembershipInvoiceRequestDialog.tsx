@@ -20,6 +20,7 @@ import {
   getBusinessMembershipProfileFieldErrors,
 } from '@/lib/business-membership-profile';
 import { formatAddressLines, type GeocodedAddress } from '@/lib/geocoding';
+import { trackOtwEvent } from '@/lib/analytics/otwTrack';
 
 type InvoiceRequestPlan = {
   id?: string | null;
@@ -254,6 +255,33 @@ export default function BusinessMembershipInvoiceRequestDialog({
       setSuccessMessage(payload?.message ?? `Invoice request received for ${plan.name}.`);
       setValidatedAddress(payload?.invoiceRequest?.validatedAddress ?? null);
       setIsReviewing(false);
+
+      void trackOtwEvent('CONTACT_SUBMITTED', {
+        page: window.location.pathname,
+        metadata: {
+          kind: 'business_invoice_request',
+          planName: plan.name,
+        },
+      });
+
+      // Capture a lightweight lead record for go-to-market follow-up (avoid addresses/tax IDs).
+      void fetch('/api/otw/leads', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: parsed.data.primaryContactFullName,
+          email: parsed.data.primaryContactEmail,
+          phone: parsed.data.primaryContactPhone,
+          interestType: 'BUSINESS_ACCOUNT',
+          sourcePage: window.location.pathname,
+          message: `Business membership invoice request: ${plan.name}`,
+          metadata: {
+            planName: plan.name,
+            employeeCount: parsed.data.employeeCount,
+            industryType: parsed.data.industryType,
+          },
+        }),
+      }).catch(() => null);
     } catch (error) {
       setFormError(
         error instanceof Error
@@ -279,6 +307,12 @@ export default function BusinessMembershipInvoiceRequestDialog({
       <Dialog.Trigger asChild>
         <button
           type="button"
+          onClick={() => {
+            void trackOtwEvent('MEMBERSHIP_SELECTED', {
+              page: window.location.pathname,
+              metadata: { kind: 'business_invoice_dialog_open', planName: plan.name },
+            });
+          }}
           className="mt-auto inline-flex h-11 w-full items-center justify-center rounded-md bg-otwGold px-4 text-sm font-medium text-otwBlack hover:bg-otwGold/90"
         >
           Request Invoice

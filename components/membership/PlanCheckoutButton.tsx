@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import { useToast } from '@/components/ui/use-toast';
+import { trackOtwEvent } from '@/lib/analytics/otwTrack';
 
 export default function PlanCheckoutButton({
   plan,
@@ -29,6 +30,15 @@ export default function PlanCheckoutButton({
     if (!planId && !priceId && !plan) return;
     setLoading(true);
     try {
+      void trackOtwEvent('MEMBERSHIP_SELECTED', {
+        page: window.location.pathname,
+        metadata: {
+          plan: plan ?? null,
+          planId: planId ?? null,
+          priceId: priceId ?? null,
+        },
+      });
+
       const payload: Record<string, string> = {};
       if (planId) payload.planId = planId;
       if (priceId) payload.priceId = priceId;
@@ -42,6 +52,10 @@ export default function PlanCheckoutButton({
       });
       if (res.status === 401) {
         const returnUrl = encodeURIComponent('/pricing');
+        void trackOtwEvent('LOGIN_REQUIRED', {
+          page: window.location.pathname,
+          metadata: { reason: 'membership_checkout' },
+        });
         router.push(`/sign-in?redirect_url=${returnUrl}`);
         return;
       }
@@ -55,6 +69,7 @@ export default function PlanCheckoutButton({
         return;
       }
       if (data?.url) {
+        void trackOtwEvent('MEMBERSHIP_CHECKOUT_STARTED', { page: window.location.pathname });
         router.push(data.url);
         return;
       }
