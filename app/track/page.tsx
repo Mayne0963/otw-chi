@@ -28,7 +28,7 @@ export default async function TrackLandingPage() {
             <OtwButton as="a" href="/sign-in?redirect_url=/track" className="w-full">
               Sign in
             </OtwButton>
-            <OtwButton as="a" href="/sign-up?redirect_url=/track" variant="outline" className="w-full">
+            <OtwButton as="a" href="/auth/sign-up?redirect_url=/track" variant="outline" className="w-full">
               Create account
             </OtwButton>
           </div>

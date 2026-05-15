@@ -54,8 +54,8 @@ export default function PrivacyPage() {
     <OtwPageShell>
       <OtwSectionHeader title="Privacy Policy" subtitle="Effective Date: March 2, 2026" />
 
-      <Card className="mt-3 p-5 sm:p-6 space-y-6 border-otwGold/30 bg-black/60 text-sm leading-relaxed">
-        <p className="text-muted-foreground">
+      <Card className="mt-3 p-5 sm:p-6 space-y-6 border-otwGold/30 bg-black/80 text-sm leading-relaxed">
+        <p className="text-white/75">
           This Privacy Policy explains how OTW collects, uses, stores, and shares
           personal information when you use our platform.
         </p>
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
         {PRIVACY_SECTIONS.map((section) => (
           <section key={section.title} className="space-y-2">
             <h3 className="text-base sm:text-lg font-semibold text-white">{section.title}</h3>
-            <p className="text-muted-foreground">{section.body}</p>
+            <p className="text-white/75">{section.body}</p>
           </section>
         ))}
       </Card>

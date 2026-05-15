@@ -121,9 +121,9 @@ export default async function PricingPage() {
           return (
             <OtwCard key={plan.code} className="relative flex flex-col">
               <div className="p-6 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                   <h3 className="text-2xl font-semibold text-white">{plan.name}</h3>
-                  <span className="text-lg text-white/60">{plan.price}</span>
+                  <span className="text-lg text-white/60 whitespace-nowrap">{plan.price}</span>
                 </div>
 
                 <ul className="space-y-3 mb-8 flex-1">

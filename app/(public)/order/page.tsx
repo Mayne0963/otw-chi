@@ -909,11 +909,32 @@ export default function OrderPage() {
           </p>
         </OtwCard>
 
-        <OtwCard>
-          <form className="space-y-5" onSubmit={submitRequest}>
+	        <OtwCard>
+	          <form className="space-y-5" onSubmit={submitRequest}>
             {!isSignedIn && !isLoading ? (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-                Sign in to submit a delivery request.
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                <div className="font-semibold">Sign in required</div>
+                <div className="mt-1 text-red-100/70">
+                  You can fill out the request now, but you must sign in before submitting.
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <OtwButton
+                    as="a"
+                    href="/sign-in?redirect_url=/order"
+                    variant="outline"
+                    className="h-10 justify-center"
+                  >
+                    Sign in
+                  </OtwButton>
+                  <OtwButton
+                    as="a"
+                    href="/auth/sign-up?redirect_url=/order"
+                    variant="gold"
+                    className="h-10 justify-center"
+                  >
+                    Create account
+                  </OtwButton>
+                </div>
               </div>
             ) : null}
 

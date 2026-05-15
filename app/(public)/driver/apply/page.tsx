@@ -334,6 +334,9 @@ export default function DriverApplyPage() {
               <Button asChild variant="gold" className="w-full h-12 text-base font-semibold">
                 <Link href="/sign-in?redirect_url=/driver/apply">Sign In to Apply</Link>
               </Button>
+              <Button asChild variant="outline" className="w-full h-12 text-base font-semibold">
+                <Link href="/auth/sign-up?redirect_url=/driver/apply">Create account</Link>
+              </Button>
             </div>
           ) : submitted ? (
             <div className="space-y-2 text-center">

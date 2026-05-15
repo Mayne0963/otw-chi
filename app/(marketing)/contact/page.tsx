@@ -5,16 +5,30 @@ import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import OtwSessionIdField from '@/components/analytics/OtwSessionIdField';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ContactPage() {
+type Props = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+export default async function ContactPage({ searchParams }: Props) {
   const user = await getCurrentUser();
+  const sent = searchParams?.sent === '1';
   return (
     <OtwPageShell>
       <OtwSectionHeader title="Contact OTW" subtitle="Reach the team for support or ops." />
+      {sent ? (
+        <Card className="mt-3 border-emerald-400/25 bg-emerald-500/10 p-4 text-sm text-emerald-50">
+          <div className="font-semibold">Message received</div>
+          <div className="mt-1 text-emerald-50/80">
+            Thanks for reaching out. OTW will respond as soon as possible.
+          </div>
+        </Card>
+      ) : null}
       <Card className="mt-3 space-y-3 p-5 sm:p-6">
         <form action={submitContactMessage} className="space-y-3">
           <OtwSessionIdField name="otwSessionId" />
@@ -80,7 +94,7 @@ export async function submitContactMessage(formData: FormData) {
           .catch(() => null)
       : null;
 
-    prisma.otwSiteEvent
+    await prisma.otwSiteEvent
       .create({
         data: {
           sessionId,
@@ -96,7 +110,7 @@ export async function submitContactMessage(formData: FormData) {
       .catch(() => null);
   }
 
-  prisma.otwLead
+  await prisma.otwLead
     .create({
       data: {
         name: currentUser?.name?.trim() || undefined,
@@ -110,4 +124,5 @@ export async function submitContactMessage(formData: FormData) {
     .catch(() => null);
 
   revalidatePath('/contact');
+  redirect('/contact?sent=1');
 }

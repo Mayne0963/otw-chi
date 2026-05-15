@@ -245,6 +245,21 @@ export async function middleware(req: NextRequest) {
     return res;
   };
 
+  // Canonicalize auth routes to a single surface. Production has occasionally
+  // returned 5xx for the legacy /sign-up route, so we redirect it to /auth/sign-up.
+  if (matchesPath(pathname, '/sign-up')) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/auth/sign-up';
+    return finalizeResponse(NextResponse.redirect(url));
+  }
+
+  // Backward-compat redirect for a mis-typed sign-in link that appeared in some builds.
+  if (matchesPath(pathname, '/sign-n-in')) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/sign-in';
+    return finalizeResponse(NextResponse.redirect(url));
+  }
+
   if (isBlockedFeaturePath(pathname)) {
     if (pathname.startsWith('/api')) {
       return finalizeResponse(NextResponse.json({ error: 'Not found' }, { status: 404 }));

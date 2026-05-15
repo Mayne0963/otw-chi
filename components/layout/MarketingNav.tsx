@@ -96,7 +96,7 @@ export function MarketingNav() {
             <OtwButton as="a" href="/order" variant="outline" size="sm" className="hidden md:flex">
               Order Now
             </OtwButton>
-            <OtwButton as="a" href="/sign-up" size="sm">
+            <OtwButton as="a" href="/auth/sign-up" size="sm">
               Get Started
             </OtwButton>
           </SignedOut>
