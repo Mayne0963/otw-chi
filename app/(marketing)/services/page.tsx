@@ -25,9 +25,9 @@ export default function ServicesPage() {
       {
         serviceType: 'FOOD_DELIVERY',
         title: 'Food Pickup',
-        subtitle: 'Hot food pickup and handoff, handled like concierge.',
+        subtitle: 'Per-delivery food pickup after the customer orders direct.',
         icon: ShoppingBag,
-        bullets: ['Pickup only (no hidden markups)', 'Fast handoff', 'Real-time tracking'],
+        bullets: ['Pickup only (no hidden markups)', 'Clear delivery fee', 'Real-time tracking'],
       },
       {
         serviceType: 'STORE_PICKUP',
@@ -45,24 +45,17 @@ export default function ServicesPage() {
       },
       {
         serviceType: 'PERSONAL_ERRAND',
-        title: 'Personal Errands',
-        subtitle: 'Custom requests, professional coordination.',
+        title: 'Business Dispatch',
+        subtitle: 'Local business handoffs and custom delivery coordination.',
         icon: Truck,
-        bullets: ['Errand running', 'Drop-offs and returns', 'Time-saving concierge'],
+        bullets: ['Drop-offs and returns', 'Scheduled handoffs', 'Proof of delivery'],
       },
       {
         serviceType: 'PEER_TO_PEER',
-        title: 'Peer-to-Peer Delivery',
-        subtitle: 'Deliver something to a friend, client, or teammate.',
+        title: 'Peer-to-Peer Handoff',
+        subtitle: 'Deliver something to a client, teammate, or local contact.',
         icon: Users,
         bullets: ['Fast local handoff', 'Tracking link', 'Secure confirmation'],
-      },
-      {
-        serviceType: 'RIDE_SERVICE',
-        title: 'Ride Service',
-        subtitle: 'Comfortable rides when you need to move quickly.',
-        icon: Truck,
-        bullets: ['Simple pickup and drop-off', 'Professional drivers', 'Reliable timing'],
       },
     ],
     [],
@@ -102,7 +95,7 @@ export default function ServicesPage() {
       <div className="space-y-2 text-center">
         <h1 className="text-4xl font-bold tracking-tight">OTW Services</h1>
         <p className="text-white/70 max-w-2xl mx-auto">
-          Concierge-style delivery and service miles for the tasks that slow your day down.
+          Per-delivery pickup, food, catering, and business handoff support for Fort Wayne.
         </p>
       </div>
 
@@ -140,7 +133,7 @@ export default function ServicesPage() {
                     )}
                   </OtwButton>
                   <OtwButton variant="gold" onClick={() => requestService(card.serviceType)}>
-                    Request this service <ArrowRight className="h-4 w-4" />
+                    Request delivery <ArrowRight className="h-4 w-4" />
                   </OtwButton>
                 </div>
 
@@ -162,13 +155,12 @@ export default function ServicesPage() {
 
       <div className="max-w-3xl mx-auto">
         <OtwLeadCaptureCard
-          title="Request a Service (No Pressure)"
-          subtitle="If you are not ready to submit a request yet, leave your info and we will follow up."
+          title="Need Delivery Help?"
+          subtitle="If you are not ready to submit a delivery request yet, leave your info and we will follow up."
           interestType="SERVICE_REQUEST"
-          ctaLabel="Send Request Interest"
+          ctaLabel="Send Delivery Interest"
         />
       </div>
     </div>
   );
 }
-

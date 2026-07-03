@@ -27,7 +27,7 @@ function NavLinks() {
         href="/pricing" 
         className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
-        Memberships
+        Delivery Options
       </Link>
       <Link 
         href="/driver/apply" 
@@ -47,7 +47,7 @@ function NavLinks() {
         href="/request" 
         className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
-        Request a Service
+        Request Delivery
       </Link>
     </>
   )
@@ -84,7 +84,7 @@ export function MarketingNav() {
               Dashboard
             </OtwButton>
             <OtwButton as="a" href="/order" size="sm" className="hidden sm:flex">
-              Order Now
+              Request Delivery
             </OtwButton>
             <UserButton size="icon" />
           </SignedIn>
@@ -94,10 +94,10 @@ export function MarketingNav() {
               Sign In
             </OtwButton>
             <OtwButton as="a" href="/order" variant="outline" size="sm" className="hidden md:flex">
-              Order Now
+              Request Delivery
             </OtwButton>
             <OtwButton as="a" href="/auth/sign-up" size="sm">
-              Get Started
+              Create Account
             </OtwButton>
           </SignedOut>
 
@@ -123,7 +123,7 @@ export function MarketingNav() {
                     </SheetClose>
                     <SheetClose asChild>
                       <Link href="/pricing" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
-                        Pricing
+                        Delivery Options
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
@@ -133,7 +133,7 @@ export function MarketingNav() {
                     </SheetClose>
                     <SheetClose asChild>
                       <Link href="/request" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
-                        Request a Service
+                        Request Delivery
                       </Link>
                     </SheetClose>
                     {capabilities.canSeeFranchise ? (
@@ -150,7 +150,7 @@ export function MarketingNav() {
 
                     <SheetClose asChild>
                       <OtwButton as="a" href="/order" className="w-full">
-                        Order Now
+                        Request Delivery
                       </OtwButton>
                     </SheetClose>
                     

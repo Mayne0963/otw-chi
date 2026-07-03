@@ -1194,7 +1194,9 @@ export default function OrderPage() {
                   <option value="STORE">Store / Grocery</option>
                   <option value="FRAGILE">Fragile Delivery</option>
                   <option value="CONCIERGE">Concierge</option>
-                  <option value="RIDE">Ride</option>
+                  {otwTrueBenefitType === 'COMMUTE_RIDE' ? (
+                    <option value="RIDE">Commute Ride (OTW True)</option>
+                  ) : null}
                 </Select>
               </div>
             </div>

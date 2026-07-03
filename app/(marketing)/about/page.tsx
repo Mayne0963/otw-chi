@@ -55,7 +55,7 @@ export default function AboutPage() {
           </p>
           <div className="flex flex-wrap gap-3">
             <OtwButton as="a" href="/order" variant="gold">
-              Order Now
+              Request Delivery
             </OtwButton>
             <OtwButton as="a" href="/driver/apply" variant="outline">
               Become a Driver
@@ -73,7 +73,7 @@ export default function AboutPage() {
             experience from the first tap to the final handoff.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {['Member-first pricing', 'Driver-first clarity', 'Live status transparency', 'Fort Wayne focused'].map((item) => (
+            {['Per-delivery pricing', 'Driver-first clarity', 'Live status transparency', 'Fort Wayne focused'].map((item) => (
               <div key={item} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
                 <Check className="h-4 w-4 text-otwGold" />
                 {item}

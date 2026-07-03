@@ -29,8 +29,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'OTW Delivery System',
-  description: 'Enterprise-ready skeleton for the OTW Delivery System'
+  title: 'OTW Delivery & Dispatch',
+  description: 'Fort Wayne delivery and dispatch support for food, catering, local pickups, and business handoffs.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

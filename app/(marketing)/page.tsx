@@ -14,20 +14,20 @@ export default function HomePage() {
         <div className="relative z-10 max-w-4xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center rounded-full border border-otwGold/30 bg-otwGold/10 px-3 py-1 text-xs font-medium text-otwGold backdrop-blur-md">
             <span className="mr-2 h-1.5 w-1.5 rounded-full bg-otwGold animate-pulse"></span>
-            Subscription-Based Concierge
+            Delivery & Dispatch
           </div>
           
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-            Own Your Time.
+            Local Delivery,
             <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-otwGold via-yellow-200 to-otwGold">
-              We’ll Handle the Rest.
+              Handled Clean.
             </span>
           </h1>
           
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl leading-relaxed">
-            OTW is a subscription-based concierge service for the errands, pickups, and handoffs that
-            slow your day down.
+            OTW handles per-delivery pickup, food, catering, and business handoffs in Fort Wayne.
+            Broski&apos;s Kitchen customers order through Broski&apos;s; OTW runs the last mile behind the scenes.
           </p>
           
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap sm:gap-6 pt-4">
@@ -38,7 +38,7 @@ export default function HomePage() {
               variant="gold"
               className="h-14 px-8 text-base rounded-full shadow-[0_0_20px_rgba(255,215,0,0.2)] transition-all hover:scale-105"
             >
-              Start a Request
+              Request Delivery
               <ArrowRight className="ml-2 h-4 w-4" />
             </TrackedOtwButtonLink>
             <TrackedOtwButtonLink
@@ -48,7 +48,7 @@ export default function HomePage() {
               variant="outline"
               className="h-14 px-8 text-base rounded-full border-otwGold/50 bg-otwGold/10 hover:bg-otwGold/20 backdrop-blur-sm transition-all hover:scale-105 text-otwGold"
             >
-              Pick a Plan
+              View Delivery Options
               <ArrowRight className="ml-2 h-4 w-4" />
             </TrackedOtwButtonLink>
             <TrackedOtwButtonLink
@@ -81,7 +81,7 @@ export default function HomePage() {
         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Use OTW for any request</h2>
-            <p className="text-muted-foreground mt-2">From errands to handoffs, our team keeps your day moving.</p>
+            <p className="text-muted-foreground mt-2">Food, catering, pickups, and business handoffs without sending customers to a third-party app.</p>
           </div>
           <TrackedOtwButtonLink
             href="/pricing"
@@ -90,22 +90,22 @@ export default function HomePage() {
             variant="ghost"
             className="text-otwGold p-0 h-auto hover:no-underline hover:opacity-80"
           >
-            View plans <ArrowRight className="ml-2 h-4 w-4" />
+            View delivery options <ArrowRight className="ml-2 h-4 w-4" />
           </TrackedOtwButtonLink>
         </div>
         
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { 
-              title: 'Ride Service', 
-              desc: 'Comfortable rides to your destination.',
-              icon: Truck,
+              title: 'Broski’s Delivery',
+              desc: 'Last-mile handoff for Broski’s Kitchen orders and catering.',
+              icon: ShoppingBag,
               color: 'text-otwGold',
               bg: 'bg-otwGold/10'
             },
             { 
               title: 'Food Pickup', 
-              desc: 'Hot & fresh from your favorite spots.',
+              desc: 'Per-delivery food pickup after the customer orders direct.',
               icon: ShoppingBag,
               color: 'text-orange-400',
               bg: 'bg-orange-400/10'
@@ -126,7 +126,7 @@ export default function HomePage() {
             },
             { 
               title: 'Concierge', 
-              desc: 'Custom requests, handled professionally.',
+              desc: 'Business handoffs and custom local delivery requests.',
               icon: Flag,
               color: 'text-emerald-400',
               bg: 'bg-emerald-400/10'
@@ -148,17 +148,17 @@ export default function HomePage() {
         {[
           {
             title: "Clear Pricing",
-            desc: "Confirm your request before the work starts.",
+            desc: "Quote each delivery clearly before dispatch.",
             icon: ShieldCheck
           },
           {
             title: "Flexible Support",
-            desc: "A simple request flow keeps everything clear before dispatch.",
+            desc: "Use per-delivery requests now; memberships can stay optional for recurring users.",
             icon: Clock
           },
           {
             title: "Retention-Safe Drivers",
-            desc: "Drivers are supported with clear incentives for tough jobs and 5-star service.",
+            desc: "Drivers get the details needed for a clean pickup, handoff, and confirmation.",
             icon: Truck
           }
         ].map((feature, i) => (
@@ -180,17 +180,17 @@ export default function HomePage() {
       <section className="rounded-[2rem] bg-otwGold/10 border border-otwGold/20 px-6 py-16 text-center backdrop-blur-sm">
         <h2 className="text-3xl font-bold mb-4">Reliable help when the day gets full.</h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Pick a plan, submit the request, and let OTW handle it.
+          Submit the delivery details, confirm the fee, and let OTW handle the handoff.
         </p>
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
           <TrackedOtwButtonLink
             href="/pricing"
             ctaId="home_footer_view_plans"
             ctaLocation="home_footer_cta"
-            variant="gold"
-            className="h-12 px-8 text-base rounded-full"
-          >
-            View Plans
+          variant="gold"
+          className="h-12 px-8 text-base rounded-full"
+        >
+            View Delivery Options
           </TrackedOtwButtonLink>
           <TrackedOtwButtonLink
             href="/services"

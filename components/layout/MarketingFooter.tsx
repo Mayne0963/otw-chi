@@ -10,14 +10,14 @@ export function MarketingFooter() {
         <div className="space-y-4 lg:col-span-2">
           <h4 className="text-lg font-semibold text-secondary font-display">OTW</h4>
           <p className="text-sm text-muted-foreground">
-            Luxury delivery concierge for the block, the business, and the busy.
+            Fort Wayne delivery and dispatch for food, catering, pickups, and business handoffs.
           </p>
         </div>
         <div className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">Service</h4>
           <ul className="space-y-2 text-sm">
             <li><Link href="/how-it-works" className="hover:text-secondary transition-colors duration-300">How It Works</Link></li>
-            <li><Link href="/pricing" className="hover:text-secondary transition-colors duration-300">Plans</Link></li>
+            <li><Link href="/pricing" className="hover:text-secondary transition-colors duration-300">Delivery Options</Link></li>
             <li><Link href="/cities" className="hover:text-secondary transition-colors duration-300">Cities</Link></li>
           </ul>
         </div>

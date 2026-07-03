@@ -157,8 +157,8 @@ export default async function PricingPage() {
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
-        <h1 className="text-4xl font-bold">Membership Plans</h1>
-        <p className="text-white/70">Flexible memberships for reliable delivery support.</p>
+        <h1 className="text-4xl font-bold">Delivery Options</h1>
+        <p className="text-white/70">Request one delivery when you need it, or use memberships for recurring support.</p>
         <div className="pt-1">
           <Link
             href="/pricing/compare"
@@ -174,8 +174,26 @@ export default async function PricingPage() {
         )}
       </div>
 
+      <OtwCard className="border-otwGold/30 bg-otwGold/10">
+        <div className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">One-Time Delivery</h2>
+            <p className="mt-2 text-sm text-white/75">
+              For food pickup, catering handoff, store pickup, fragile delivery, or local business dispatch.
+              Submit the pickup, dropoff, timing, and notes, then confirm the delivery fee before dispatch.
+            </p>
+          </div>
+          <Link
+            href="/order"
+            className="inline-flex h-11 items-center justify-center rounded-md bg-otwGold px-5 text-sm font-semibold text-black hover:bg-otwGold/90"
+          >
+            Request Delivery
+          </Link>
+        </div>
+      </OtwCard>
+
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Consumer</h2>
+        <h2 className="text-2xl font-semibold">Memberships for recurring customers</h2>
         {renderConsumerCards()}
       </div>
 
