@@ -9,18 +9,26 @@ type Props = {
   params: Promise<{ city: string }>;
 };
 
+function formatCity(rawCity: string): string {
+  return rawCity
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city: rawCity } = await params;
-  const city = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
+  const city = formatCity(rawCity);
   return {
-    title: `Luxury Delivery & Concierge in ${city} | OTW`,
-    description: `Professional food pickup, fragile item delivery, and custom concierge services in ${city}. Active coverage in Downtown, West Side, and South Side.`,
+    title: `Delivery & Dispatch in ${city} | OTW`,
+    description: `Food pickup, catering, store runs, fragile delivery, and local business handoffs in ${city}. Active coverage across Downtown, West Side, and South Side.`,
     alternates: {
-      canonical: `https://otw-chi-two.vercel.app/cities/${rawCity}`,
+      canonical: `https://ontheeway.com/cities/${rawCity}`,
     },
     openGraph: {
-      title: `OTW ${city} - Luxury Delivery Service`,
-      description: `Get what you need, when you need it. Premium delivery in ${city}.`,
+      title: `OTW ${city} — Delivery & Dispatch`,
+      description: `Local per-delivery pickup and dispatch in ${city}. Submit the details, confirm the fee, done.`,
     },
   };
 }
@@ -28,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CityCoveragePage({ params }: Props) {
   const capabilities = getServerCapabilities({});
   const { city: rawCity } = await params;
-  const city = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
+  const city = formatCity(rawCity);
   const zones = ['South Side', 'West Side', 'Downtown', 'North End (Coming Soon)'];
   
   const serviceTypes = [

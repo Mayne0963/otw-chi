@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getServerCapabilities } from "@/lib/capabilities";
 
-const BASE_URL = "https://otw-chi-two.vercel.app";
+const BASE_URL = "https://ontheeway.com";
 
 const marketingRoutes = [
   "",

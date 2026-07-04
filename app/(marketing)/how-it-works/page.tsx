@@ -17,25 +17,25 @@ export default function HowItWorksPage() {
           variant="red"
           className="border-[#f9f5ec]/20 bg-[#b00017] text-[#f9f5ec] [&_h2]:text-[#f9f5ec] [&_p]:text-[#f9f5ec]/85 [&_section]:border-[#f9f5ec]/25 [&_section]:bg-[#f9f5ec]/10"
         >
-          <OtwSectionHeader title="How OTW Works" subtitle="Subscription-first concierge for everyday requests." />
+          <OtwSectionHeader title="How OTW Works" subtitle="Per-delivery pickup and dispatch for Fort Wayne — memberships optional." />
           <div className="mt-3 grid sm:grid-cols-2 gap-4">
             <OtwCard variant="ghost" className="text-[#f9f5ec]">
-              <p className="text-sm">1. Pick a monthly plan.</p>
+              <p className="text-sm">1. Order and pay the merchant direct, or tell us the handoff.</p>
             </OtwCard>
             <OtwCard variant="ghost" className="text-[#f9f5ec]">
-              <p className="text-sm">2. Submit the request details.</p>
+              <p className="text-sm">2. Submit the pickup, dropoff, and delivery details.</p>
             </OtwCard>
             <OtwCard variant="ghost" className="text-[#f9f5ec]">
-              <p className="text-sm">3. Confirm before service starts.</p>
+              <p className="text-sm">3. Confirm the delivery fee before dispatch.</p>
             </OtwCard>
             <OtwCard variant="ghost" className="text-[#f9f5ec]">
-              <p className="text-sm">4. Relax — it’s handled.</p>
+              <p className="text-sm">4. Track it to the door — handled clean.</p>
             </OtwCard>
           </div>
         </OtwCard>
 
         <section>
-          <OtwSectionHeader title="Clear Requests" subtitle="One flow for every service." />
+          <OtwSectionHeader title="Clear Requests" subtitle="One flow for every delivery." />
           <OtwCard variant="default" className="p-4">
             <div className="text-sm opacity-80">Simple handoff</div>
             <div className="text-2xl font-bold mt-1">Tell us what you need and confirm before dispatch.</div>
@@ -43,7 +43,7 @@ export default function HowItWorksPage() {
         </section>
 
         <section>
-          <OtwSectionHeader title="Our Services" subtitle="Premium runs for the city." />
+          <OtwSectionHeader title="Our Services" subtitle="Local runs across Fort Wayne." />
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {services.map((it) => (
               <OtwCard key={it.title} variant="default" className="p-4">
