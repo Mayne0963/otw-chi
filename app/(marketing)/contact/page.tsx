@@ -2,6 +2,14 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Contact OTW',
+  description:
+    'Get in touch with OTW for Fort Wayne delivery, dispatch, business handoffs, and membership questions.',
+  alternates: { canonical: '/contact' },
+};
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';

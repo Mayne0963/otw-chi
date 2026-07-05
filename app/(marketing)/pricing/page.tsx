@@ -7,6 +7,14 @@ import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { getConsumerPlanDisplayPerks } from '@/lib/membership-perks';
 import OtwLeadCaptureCard from '@/components/analytics/OtwLeadCaptureCard';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Delivery Options & Pricing',
+  description:
+    'OTW delivery options for Fort Wayne — request a one-time delivery when you need it, or choose a membership for recurring pickups, catering handoffs, and business dispatch.',
+  alternates: { canonical: '/pricing' },
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -178,9 +186,10 @@ export default async function PricingPage() {
         <div className="grid gap-5 p-6 md:grid-cols-[1fr_auto] md:items-center">
           <div>
             <h2 className="text-2xl font-semibold text-white">One-Time Delivery</h2>
+            <p className="mt-1 text-lg font-semibold text-otwGold">Starting at $9.99</p>
             <p className="mt-2 text-sm text-white/75">
               For food pickup, catering handoff, store pickup, fragile delivery, or local business dispatch.
-              Submit the pickup, dropoff, timing, and notes, then confirm the delivery fee before dispatch.
+              Submit the pickup, dropoff, timing, and notes, and we&apos;ll confirm the final delivery fee before dispatch.
             </p>
           </div>
           <Link

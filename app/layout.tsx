@@ -29,8 +29,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'OTW Delivery & Dispatch',
-  description: 'Fort Wayne delivery and dispatch support for food, catering, local pickups, and business handoffs.'
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://ontheeway.com'),
+  title: {
+    default: 'OTW Delivery & Dispatch',
+    template: '%s | OTW',
+  },
+  description: 'Fort Wayne delivery and dispatch support for food, catering, local pickups, and business handoffs.',
+  alternates: { canonical: '/' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

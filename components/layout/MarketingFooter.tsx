@@ -12,6 +12,18 @@ export function MarketingFooter() {
           <p className="text-sm text-muted-foreground">
             Fort Wayne delivery and dispatch for food, catering, pickups, and business handoffs.
           </p>
+          <p className="text-sm text-muted-foreground">
+            Proud delivery partner of{' '}
+            <a
+              href="https://broskiskitchen.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-secondary hover:underline"
+            >
+              Broski&apos;s Kitchen
+            </a>
+            .
+          </p>
         </div>
         <div className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">Service</h4>

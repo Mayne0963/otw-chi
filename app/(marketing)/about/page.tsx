@@ -1,6 +1,14 @@
 import { Check, Compass, Package, Shield, Zap } from 'lucide-react';
 import OtwButton from '@/components/ui/otw/OtwButton';
 import OtwCard from '@/components/ui/otw/OtwCard';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About OTW',
+  description:
+    "OTW is Fort Wayne's last-mile delivery and dispatch service — the delivery arm for local restaurants, businesses, and concierge runs.",
+  alternates: { canonical: '/about' },
+};
 
 const VALUE_CARDS = [
   {

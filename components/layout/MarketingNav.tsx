@@ -29,11 +29,11 @@ function NavLinks() {
       >
         Delivery Options
       </Link>
-      <Link 
-        href="/driver/apply" 
+      <Link
+        href="/driver/apply"
         className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
-        Apply Today
+        Drive
       </Link>
       {capabilities.canSeeFranchise ? (
         <Link 
@@ -43,8 +43,8 @@ function NavLinks() {
           Franchise
         </Link>
       ) : null}
-      <Link 
-        href="/request" 
+      <Link
+        href="/order"
         className="text-sm font-medium text-muted-foreground hover:text-secondary transition-colors duration-300"
       >
         Request Delivery
@@ -132,7 +132,7 @@ export function MarketingNav() {
                       </Link>
                     </SheetClose>
                     <SheetClose asChild>
-                      <Link href="/request" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
+                      <Link href="/order" className="text-lg font-medium hover:text-secondary transition-colors duration-300">
                         Request Delivery
                       </Link>
                     </SheetClose>

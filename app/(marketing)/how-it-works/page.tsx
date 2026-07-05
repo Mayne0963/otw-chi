@@ -1,6 +1,14 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'How It Works',
+  description:
+    'How OTW delivery works in Fort Wayne — submit a request, confirm the details, and we handle the last-mile pickup and dropoff. Per-delivery pricing, memberships optional.',
+  alternates: { canonical: '/how-it-works' },
+};
 
 export default function HowItWorksPage() {
   const services = [

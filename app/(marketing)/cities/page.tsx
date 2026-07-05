@@ -2,6 +2,14 @@ import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import OtwCard from '@/components/ui/otw/OtwCard';
 import OtwButton from '@/components/ui/otw/OtwButton';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Cities We Serve',
+  description:
+    'OTW delivery and dispatch coverage across Fort Wayne and the surrounding area. See where we run and request service in your zone.',
+  alternates: { canonical: '/cities' },
+};
 import { getCurrentUser } from '@/lib/auth/roles';
 import { getPrisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';

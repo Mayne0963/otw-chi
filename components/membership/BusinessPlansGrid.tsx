@@ -66,7 +66,15 @@ export default function BusinessPlansGrid({ plans, requesterDefaults }: Business
                     </li>
                   ))}
                   {!expanded && hiddenFeatureCount > 0 ? (
-                    <li className="pl-6 text-xs text-white/55">+{hiddenFeatureCount} more perks</li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(true)}
+                        className="pl-6 text-xs font-medium text-otwGold hover:underline"
+                      >
+                        Show all {plan.features.length} perks
+                      </button>
+                    </li>
                   ) : null}
                 </ul>
 

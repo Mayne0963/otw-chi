@@ -7,7 +7,7 @@ export default function DriverZonesPage() {
     <OtwPageShell>
       <OtwSectionHeader title="Driver Zones" subtitle="Your coverage areas." />
       <div className="mt-3 grid sm:grid-cols-3 gap-4">
-        {['South Side', 'West Side', 'Downtown'].map((z) => (
+        {['North OTW', 'South OTW', 'East OTW', 'West OTW'].map((z) => (
           <Card key={z} variant="default" className="p-4">
             <div className="font-semibold">{z}</div>
           </Card>

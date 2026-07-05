@@ -1,6 +1,13 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description: 'Read the terms of service for OTW delivery and dispatch.',
+  alternates: { canonical: '/terms' },
+};
 
 const TERMS_SECTIONS = [
   {

@@ -1,6 +1,13 @@
 import OtwPageShell from '@/components/ui/otw/OtwPageShell';
 import OtwSectionHeader from '@/components/ui/otw/OtwSectionHeader';
 import { Card } from '@/components/ui/card';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'Read the OTW privacy policy covering how we collect, use, and protect your data.',
+  alternates: { canonical: '/privacy' },
+};
 
 const PRIVACY_SECTIONS = [
   {

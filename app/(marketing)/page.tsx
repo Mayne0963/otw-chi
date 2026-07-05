@@ -62,7 +62,11 @@ export default function HomePage() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </TrackedOtwButtonLink>
           </div>
-          
+
+          <p className="pt-4 text-sm text-muted-foreground">
+            One-time delivery <span className="font-semibold text-otwGold">starting at $9.99</span> — final fee confirmed before dispatch.
+          </p>
+
           <div className="pt-8 flex items-center justify-center gap-8 text-sm text-muted-foreground/60">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" />

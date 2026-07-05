@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const city = formatCity(rawCity);
   return {
     title: `Delivery & Dispatch in ${city} | OTW`,
-    description: `Food pickup, catering, store runs, fragile delivery, and local business handoffs in ${city}. Active coverage across Downtown, West Side, and South Side.`,
+    description: `Food pickup, catering, store runs, fragile delivery, and local business handoffs in ${city}. Active coverage across the North, South, East, and West OTW zones.`,
     alternates: {
       canonical: `https://ontheeway.com/cities/${rawCity}`,
     },
@@ -37,7 +37,7 @@ export default async function CityCoveragePage({ params }: Props) {
   const capabilities = getServerCapabilities({});
   const { city: rawCity } = await params;
   const city = formatCity(rawCity);
-  const zones = ['South Side', 'West Side', 'Downtown', 'North End (Coming Soon)'];
+  const zones = ['North OTW', 'South OTW', 'East OTW', 'West OTW'];
   
   const serviceTypes = [
     { title: 'Food Pickup', desc: 'Hot meals from top restaurants, delivered with care.' },
@@ -95,7 +95,7 @@ export default async function CityCoveragePage({ params }: Props) {
         <section className="rounded-3xl p-8 border border-border/70 bg-card/90 text-center space-y-6 shadow-otwSoft">
           <h3 className="text-2xl font-semibold">Get Moving in {city}</h3>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <OtwButton as="a" href="/request" variant="gold">
+            <OtwButton as="a" href="/order" variant="gold">
               Request Delivery
             </OtwButton>
             <OtwButton as="a" href="/driver/apply" variant="outline">

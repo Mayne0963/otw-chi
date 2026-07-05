@@ -231,8 +231,40 @@ export default function DriverApplyPage() {
 
   return (
     <OtwPageShell>
-      <OtwSectionHeader title="Apply as OTW Driver" subtitle="Join the team and earn fair payouts." />
-      
+      <OtwSectionHeader title="Apply as OTW Driver" subtitle="Flexible hours, per-delivery pay, and 100% of your tips." />
+
+      <div className="mt-6 grid max-w-3xl mx-auto gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-otwGold">Pay</h3>
+          <ul className="mt-3 space-y-1.5 text-sm text-white/80">
+            <li>Per-delivery pay plus <span className="font-semibold text-white">100% of your tips</span></li>
+            <li>Roughly <span className="font-semibold text-white">$15–$22/hr</span> on active deliveries</li>
+            <li>Weekly payouts</li>
+            <li>Set your own schedule — drive when you want</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-otwGold">Requirements</h3>
+          <ul className="mt-3 space-y-1.5 text-sm text-white/80">
+            <li>18 or older</li>
+            <li>Valid driver&apos;s license</li>
+            <li>Proof of auto insurance</li>
+            <li>Reliable vehicle</li>
+            <li>Smartphone (iPhone or Android)</li>
+            <li>Pass a background check</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-otwGold">What to expect</h3>
+          <ul className="mt-3 space-y-1.5 text-sm text-white/80">
+            <li>Accept the requests that work for you</li>
+            <li>Real-time in-app navigation and dispatch</li>
+            <li>Professional, insured local deliveries</li>
+            <li>Support from the OTW team</li>
+          </ul>
+        </div>
+      </div>
+
       <div className="mt-6 max-w-xl mx-auto">
         <Card className="space-y-4 p-5 sm:p-6">
           <div className="rounded-xl border border-otwGold/35 bg-otwGold/10 p-4 text-sm text-foreground">
