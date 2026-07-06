@@ -82,6 +82,10 @@ const isPublicRoute = (pathname: string) => {
   // Order confirmation/dispute endpoints enforce ownership + auth in handlers.
   // Bypass edge auth here to avoid false unauthenticated responses from middleware.
   if (matchesPath(pathname, '/api/delivery-request')) return true;
+  // Partner order intake (e.g. Broski's Kitchen delivery handoff) authenticates
+  // via a shared-secret Bearer key in its own route handlers, not a user session.
+  // Bypass edge auth so those requests aren't turned into a sign-in 401.
+  if (matchesPath(pathname, '/api/partner')) return true;
   // Public API routes
   if (matchesPath(pathname, '/api/stripe')) return true;
   if (matchesPath(pathname, '/api/billing/overage/close-period')) return true;
