@@ -40,6 +40,12 @@ const partnerOrderSchema = z.object({
   estimated_prep_time: z.number().int().nonnegative().optional().default(25),
   special_instructions: z.string().optional(),
   payment_method: z.string().optional(),
+  // Optional customer-chosen scheduled delivery date (YYYY-MM-DD) for orders
+  // that deliver on a future day rather than ASAP.
+  scheduled_delivery_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 const toCents = (dollars: number) => Math.max(0, Math.round(dollars * 100));
@@ -109,9 +115,17 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join(' — ') || undefined;
 
-    // Ready-for-delivery ETA: prep time plus a delivery buffer.
-    const etaMinutes = order.estimated_prep_time + 30;
-    const estimatedDelivery = new Date(Date.now() + etaMinutes * 60_000);
+    // Fulfillment time: a customer-chosen scheduled delivery day (noon local) when
+    // provided, otherwise ASAP (prep time plus a delivery buffer).
+    let scheduledFor: Date;
+    let isScheduled = false;
+    if (order.scheduled_delivery_date) {
+      scheduledFor = new Date(`${order.scheduled_delivery_date}T12:00:00`);
+      isScheduled = true;
+    } else {
+      const etaMinutes = order.estimated_prep_time + 30;
+      scheduledFor = new Date(Date.now() + etaMinutes * 60_000);
+    }
 
     const created = await prisma.deliveryRequest.create({
       data: {
@@ -129,7 +143,8 @@ export async function POST(req: Request) {
         deliveryFeePaid: true, // Broski's collects payment; OTW runs the last mile.
         idempotencyKey: order.order_id,
         estimatedMinutes: order.estimated_prep_time,
-        scheduledFor: estimatedDelivery,
+        scheduledFor,
+        isScheduled,
       },
     });
 
@@ -137,7 +152,7 @@ export async function POST(req: Request) {
       {
         success: true,
         otw_order_id: created.id,
-        estimated_delivery_time: estimatedDelivery.toISOString(),
+        estimated_delivery_time: scheduledFor.toISOString(),
         tracking_url: trackingUrl(created.id),
       },
       { status: 201 },
